@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Local Bitcoiners — Bitcoin Meetup Culture Podcast</title>
+  <meta name="description" content="A bitcoin podcast about Bitcoin meetups. Finding, building, and growing local Bitcoin culture through Bitcoin meetups." />
+  <link rel="icon" type="image/png" href="assets/LocalBitcoiners.png" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --cream:   #f5eedc;
+      --cream-d: #ede3c8;
+      --navy:    #1e3a5f;
+      --navy-l:  #2c5282;
+      --orange:  #f7931a;
+      --orange-d:#d97b0e;
+      --text:    #2d2010;
+      --muted:   #6b5a3e;
+      --border:  #d4c4a0;
+      --white:   #fffdf7;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Source Serif 4', Georgia, serif;
+      background: var(--cream);
+      color: var(--text);
+      line-height: 1.65;
+      font-size: 17px;
+    }
+
+    a { color: var(--navy); text-decoration: underline; text-underline-offset: 3px; }
+    a:hover { color: var(--orange); }
+
+    img { display: block; max-width: 100%; }
+
+    /* ── Nav ── */
+    #top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--navy);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+    }
+
+    .nav-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .nav-logo {
+      flex-shrink: 0;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 2px solid var(--orange);
+    }
+    .nav-logo img { width: 100%; height: 100%; object-fit: cover; }
+
+    .nav-site-name {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--cream);
+      letter-spacing: 0.02em;
+      text-decoration: none;
+      flex: 1;
+    }
+    .nav-site-name:hover { color: var(--orange); }
+
+    nav ul {
+      list-style: none;
+      display: flex;
+      gap: 0.25rem;
+    }
+    nav ul li a {
+      color: var(--cream-d);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 0.35rem 0.75rem;
+      border-radius: 4px;
+      transition: background 0.15s, color 0.15s;
+    }
+    nav ul li a:hover {
+      background: rgba(247,147,26,0.18);
+      color: var(--orange);
+    }
+
+    /* ── Hero ── */
+    #hero {
+      position: relative;
+      width: 100%;
+      max-height: 520px;
+      overflow: hidden;
+      background: var(--navy);
+    }
+    #hero img {
+      width: 100%;
+      height: 520px;
+      object-fit: cover;
+      object-position: center top;
+      display: block;
+    }
+    .hero-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(30,58,95,0.15) 0%,
+        rgba(30,58,95,0.55) 65%,
+        rgba(30,58,95,0.80) 100%
+      );
+      display: flex;
+      align-items: flex-end;
+      padding: 2.5rem 2rem;
+    }
+    .hero-text {
+      max-width: 800px;
+    }
+    .hero-text h1 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(1.6rem, 4vw, 2.8rem);
+      font-weight: 700;
+      color: var(--white);
+      line-height: 1.2;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.4);
+    }
+    .hero-text p {
+      font-size: clamp(0.95rem, 2vw, 1.15rem);
+      color: var(--cream);
+      margin-top: 0.5rem;
+      font-style: italic;
+      text-shadow: 0 1px 6px rgba(0,0,0,0.4);
+    }
+
+    /* ── Section wrapper ── */
+    .section {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 4rem 1.5rem;
+    }
+    .section-wide {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 4rem 1.5rem;
+    }
+
+    .section-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.9rem;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 0.4rem;
+      position: relative;
+      padding-bottom: 0.6rem;
+    }
+    .section-title::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 52px;
+      height: 3px;
+      background: var(--orange);
+      border-radius: 2px;
+    }
+
+    /* ── Divider ── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    /* ── About ── */
+    #about .section-body {
+      margin-top: 1.8rem;
+      font-size: 1.05rem;
+      color: var(--text);
+      line-height: 1.8;
+    }
+    #about .section-body p + p { margin-top: 1rem; }
+    #about .section-body a { color: var(--navy-l); font-weight: 600; }
+
+    /* ── Hosts ── */
+    #hosts { background: var(--white); }
+    #hosts .hosts-grid {
+      margin-top: 2rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2rem;
+    }
+    .host-card {
+      background: var(--cream);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.75rem;
+      box-shadow: 0 2px 8px rgba(30,58,95,0.06);
+    }
+    .host-card h3 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 0.75rem;
+    }
+    .host-card p {
+      font-size: 0.97rem;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+    .host-card p + p { margin-top: 0.5rem; }
+    .host-card a {
+      color: var(--navy-l);
+      font-weight: 600;
+    }
+    .nostr-link {
+      display: inline-block;
+      margin-top: 0.9rem;
+      font-size: 0.88rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--orange) !important;
+      text-decoration: none !important;
+      border: 1.5px solid var(--orange);
+      border-radius: 4px;
+      padding: 0.3rem 0.75rem;
+      transition: background 0.15s, color 0.15s;
+    }
+    .nostr-link:hover {
+      background: var(--orange);
+      color: var(--white) !important;
+    }
+
+    /* ── Episodes ── */
+    #episodes { background: var(--cream); }
+
+    #episodes-loading {
+      text-align: center;
+      padding: 3rem 0;
+      font-style: italic;
+      color: var(--muted);
+    }
+    .loading-spinner {
+      display: inline-block;
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--orange);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #episodes-error {
+      display: none;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--orange);
+      border-radius: 6px;
+      padding: 1.5rem 2rem;
+      margin-top: 2rem;
+    }
+    #episodes-error p { font-size: 1rem; }
+    #episodes-error a { font-weight: 600; color: var(--orange); }
+
+    #episodes-list { margin-top: 2rem; }
+
+    .episode-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.75rem 2rem;
+      margin-bottom: 1.75rem;
+      box-shadow: 0 2px 10px rgba(30,58,95,0.06);
+      transition: box-shadow 0.2s;
+    }
+    .episode-card:hover {
+      box-shadow: 0 4px 20px rgba(30,58,95,0.1);
+    }
+
+    .episode-header {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.35rem;
+    }
+    .episode-num {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--orange);
+      flex-shrink: 0;
+    }
+    .episode-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--navy);
+      line-height: 1.3;
+    }
+    .episode-date {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 1rem;
+      font-style: italic;
+    }
+    .episode-desc {
+      font-size: 0.97rem;
+      color: var(--text);
+      line-height: 1.75;
+      margin-bottom: 1.25rem;
+    }
+
+    .episode-player {
+      width: 100%;
+      height: 42px;
+      margin-bottom: 1.1rem;
+      accent-color: var(--orange);
+      border-radius: 6px;
+    }
+    .episode-player::-webkit-media-controls-panel {
+      background: var(--cream-d);
+    }
+
+    .episode-actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 0.45rem 1.1rem;
+      border-radius: 5px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s, color 0.15s, opacity 0.15s;
+    }
+    .btn-primary {
+      background: var(--navy);
+      color: var(--white);
+    }
+    .btn-primary:hover {
+      background: var(--navy-l);
+      color: var(--white);
+    }
+    .btn-outline {
+      background: transparent;
+      color: var(--navy);
+      border: 1.5px solid var(--navy);
+    }
+    .btn-outline:hover {
+      background: var(--navy);
+      color: var(--white);
+    }
+    .btn-disabled {
+      background: transparent;
+      color: var(--border);
+      border: 1.5px solid var(--border);
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+    .btn-disabled:hover { background: transparent; color: var(--border); }
+
+    /* ── Links ── */
+    #links { background: var(--navy); }
+    #links .section-title { color: var(--cream); }
+    #links .section-title::after { background: var(--orange); }
+
+    .links-grid {
+      margin-top: 2.5rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 2rem;
+    }
+    .links-group h3 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--orange);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 1rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid rgba(247,147,26,0.3);
+    }
+    .links-group ul { list-style: none; }
+    .links-group ul li {
+      margin-bottom: 0.65rem;
+      font-size: 0.97rem;
+    }
+    .links-group ul li a {
+      color: var(--cream-d);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .links-group ul li a:hover { color: var(--orange); }
+
+    .payment-code {
+      font-family: monospace;
+      font-size: 0.78rem;
+      color: var(--muted);
+      background: rgba(0,0,0,0.2);
+      border-radius: 4px;
+      padding: 0.3rem 0.5rem;
+      display: block;
+      margin-top: 0.3rem;
+      word-break: break-all;
+      line-height: 1.5;
+    }
+    .links-group ul li a.muted-link {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    .links-group ul li a.muted-link:hover { color: var(--orange); }
+
+    /* ── Footer ── */
+    footer {
+      background: #12253f;
+      color: var(--muted);
+      text-align: center;
+      padding: 2rem 1.5rem;
+      font-size: 0.85rem;
+    }
+    footer a { color: var(--orange); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .nav-inner { gap: 0.75rem; }
+      nav ul li a { padding: 0.3rem 0.5rem; font-size: 0.82rem; }
+      .section, .section-wide { padding: 2.5rem 1.1rem; }
+      .episode-card { padding: 1.25rem 1.1rem; }
+      .links-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════ NAV ══════════════════════════════ -->
+<header id="top-nav">
+  <div class="nav-inner">
+    <a class="nav-logo" href="#hero" aria-label="Local Bitcoiners home">
+      <img src="assets/LocalBitcoiners.png" alt="Local Bitcoiners logo" />
+    </a>
+    <a class="nav-site-name" href="#hero">Local Bitcoiners</a>
+    <nav aria-label="Main navigation">
+      <ul>
+        <li><a href="#episodes">Episodes</a></li>
+        <li><a href="#about">About</a></li>
+        <li><a href="#links">Links</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<!-- ══════════════════════════════ HERO ══════════════════════════════ -->
+<section id="hero" aria-label="Hero">
+  <img src="assets/LocalBitcoiners_banner_YT.png" alt="Local Bitcoiners banner" />
+  <div class="hero-overlay">
+    <div class="hero-text">
+      <h1>Local Bitcoiners</h1>
+      <p>Finding, Building, and Growing Local Bitcoin Culture</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════ ABOUT ══════════════════════════════ -->
+<section id="about">
+  <div class="section">
+    <h2 class="section-title">About the Show</h2>
+    <div class="section-body">
+      <p>A bitcoin podcast about Bitcoin meetups. Finding, building, and growing local Bitcoin culture through Bitcoin meetups. Reed and Rev meet with Bitcoin meetup organizers to learn about different local Bitcoin cultures and what makes them valuable.</p>
+      <p>Do you run a meetup and want to talk about it with us? Want more information about Grassroots Bitcoin or the quarterly meetup organizer calls? Reach out: <a href="mailto:localbitcoiners@gmail.com">localbitcoiners@gmail.com</a></p>
+      <p>Find or contribute information on how to start, run, or grow your meetup: <a href="https://github.com/Reeds-Agent-Team/Bitcoin-Meetups" target="_blank" rel="noopener">Bitcoin Meetups GitHub →</a></p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ══════════════════════════════ HOSTS ══════════════════════════════ -->
+<section id="hosts">
+  <div class="section">
+    <h2 class="section-title">Your Hosts</h2>
+    <div class="hosts-grid">
+
+      <div class="host-card">
+        <h3>Reed</h3>
+        <p>Western Mass Bitcoin Meetup Organizer — <a href="http://westernmassbitcoin.com" target="_blank" rel="noopener">westernmassbitcoin.com</a></p>
+        <p>Nuclear Engineer, Truth Maximalist, God not Religion, Earth not ESG</p>
+        <a class="nostr-link" href="https://primal.net/Reed" target="_blank" rel="noopener">⚡ Nostr</a>
+      </div>
+
+      <div class="host-card">
+        <h3>Rev Hodl</h3>
+        <p>South Bend Bitcoin Meetup Organizer</p>
+        <p>Homesteading, Permaculture, Bitcoin, Freedom. All one or all none!</p>
+        <a class="nostr-link" href="https://primal.net/p/nprofile1qqsy6q3ua80awknlxp6m368qssqghct6ra6scca4meepumhcswkuwegutksft" target="_blank" rel="noopener">⚡ Nostr</a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ══════════════════════════════ EPISODES ══════════════════════════════ -->
+<section id="episodes">
+  <div class="section-wide">
+    <h2 class="section-title">Episodes</h2>
+
+    <div id="episodes-loading">
+      <div class="loading-spinner"></div><br />
+      Loading episodes…
+    </div>
+
+    <div id="episodes-error">
+      <p>Couldn't load episodes right now. Listen directly on <a href="https://fountain.fm/show/Q48WBr6nT3mrbwMZ8ydY" target="_blank" rel="noopener">Fountain →</a></p>
+    </div>
+
+    <div id="episodes-list"></div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ══════════════════════════════ LINKS ══════════════════════════════ -->
+<section id="links">
+  <div class="section">
+    <h2 class="section-title">Listen &amp; Connect</h2>
+
+    <div class="links-grid">
+
+      <div class="links-group">
+        <h3>Listen &amp; Follow</h3>
+        <ul>
+          <li><a href="https://fountain.fm/show/Q48WBr6nT3mrbwMZ8ydY" target="_blank" rel="noopener">🎙 Listen on Fountain</a></li>
+          <li><a href="https://feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU" target="_blank" rel="noopener">📡 RSS Feed</a></li>
+          <li><a href="https://primal.net/p/nprofile1qqsvxvygrc58dqupmk9al5n5xswu5rzcstpfhpjzaf9ustm4vvnytys56dr5z" target="_blank" rel="noopener">🟣 Show on Nostr</a></li>
+        </ul>
+      </div>
+
+      <div class="links-group">
+        <h3>Contact</h3>
+        <ul>
+          <li><a href="mailto:localbitcoiners@gmail.com">✉️ localbitcoiners@gmail.com</a></li>
+        </ul>
+      </div>
+
+      <div class="links-group">
+        <h3>Support the Show</h3>
+        <ul>
+          <li><a href="lightning:localbitcoiners@getalby.com">⚡ Zap: localbitcoiners@getalby.com</a></li>
+          <li>
+            🔗 Silent Payment
+            <a class="muted-link" href="https://docs.cakewallet.com/cryptos/bitcoin/#silent-payments" target="_blank" rel="noopener">(what are silent payments?)</a>
+            <span class="payment-code">sp1qq0cvn8x7x43xcpmqjzmej24jr5ccnsmvqpvjcn7ctzlpntfq9u252qj70jgwxsqugcwp7tmuq6pq77ffepsklhlhv7r434ycxy00zknjygxgl0rl</span>
+          </li>
+          <li>
+            🏦 Paynym: <strong style="color:var(--cream)">+raggedtrack25</strong>
+            <a class="muted-link" href="https://sparrowwallet.com/docs/spending-privately.html#paynym-payment-code" target="_blank" rel="noopener">(what is paynym?)</a>
+            <span class="payment-code">PM8TJa9CSHGKkr2ZxvAicubwbF45NcABU3iWNCqjPxspMAXXjqcNYYqwEYYndHBgWUFHdSFZjrs7DKBT2f77XCjtAhkSMrv5cZ4G1JM7jkAqGbE6xsAk</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="links-group">
+        <h3>Community</h3>
+        <ul>
+          <li><a href="https://github.com/Reeds-Agent-Team/Bitcoin-Meetups" target="_blank" rel="noopener">📖 Bitcoin Meetups Resource</a></li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════ FOOTER ══════════════════════════════ -->
+<footer>
+  <p>© 2026 Local Bitcoiners &nbsp;·&nbsp; <a href="mailto:localbitcoiners@gmail.com">localbitcoiners@gmail.com</a></p>
+</footer>
+
+<!-- ══════════════════════════════ EPISODES JS ══════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  const RSS_URL   = 'https://feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU';
+  const PROXIES   = [
+    url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+    url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  ];
+
+  const $loading  = document.getElementById('episodes-loading');
+  const $error    = document.getElementById('episodes-error');
+  const $list     = document.getElementById('episodes-list');
+
+  /* ── helpers ── */
+  function stripHtml(html) {
+    const d = document.createElement('div');
+    d.innerHTML = html;
+    return d.textContent || d.innerText || '';
+  }
+
+  function fmtDate(str) {
+    try {
+      return new Date(str).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    } catch { return str; }
+  }
+
+  function pad(n, len = 3) {
+    return String(n).padStart(len, '0');
+  }
+
+  /* ── fetch RSS through proxy chain ── */
+  async function fetchRss() {
+    for (const proxy of PROXIES) {
+      try {
+        const resp = await fetch(proxy(RSS_URL), { signal: AbortSignal.timeout(10000) });
+        if (!resp.ok) continue;
+        const json = await resp.json();
+        // allorigins returns { contents: "..." }
+        const raw = json.contents ?? json;
+        if (typeof raw !== 'string') continue;
+        return raw;
+      } catch { /* try next */ }
+    }
+    return null;
+  }
+
+  /* ── render a single episode card ── */
+  function renderCard(item, index, total) {
+    const title       = item.querySelector('title')?.textContent?.trim() ?? 'Episode';
+    const pubDate     = item.querySelector('pubDate')?.textContent ?? '';
+    const enclosure   = item.querySelector('enclosure');
+    const mp3         = enclosure?.getAttribute('url') ?? '';
+    const itunesEp    = item.querySelector('episode')?.textContent?.trim();
+    const epNum       = itunesEp ? parseInt(itunesEp, 10) : (total - index);
+
+    // Description: prefer itunes:summary, then description
+    const descEl    = item.querySelector('summary') ?? item.querySelector('description');
+    const descText  = descEl ? stripHtml(descEl.textContent).trim() : '';
+    // Truncate long descriptions
+    const shortDesc = descText.length > 600 ? descText.slice(0, 600).trimEnd() + '…' : descText;
+
+    const card = document.createElement('article');
+    card.className = 'episode-card';
+
+    card.innerHTML = `
+      <div class="episode-header">
+        <span class="episode-num">Ep. ${epNum}</span>
+        <h3 class="episode-title">${title}</h3>
+      </div>
+      <p class="episode-date">${fmtDate(pubDate)}</p>
+      ${shortDesc ? `<p class="episode-desc">${shortDesc}</p>` : ''}
+      ${mp3 ? `<audio class="episode-player" controls preload="none" src="${mp3}"></audio>` : ''}
+      <div class="episode-actions">
+        ${mp3 ? `<a class="btn btn-primary" href="${mp3}" download>↓ Download MP3</a>` : ''}
+        <a class="btn btn-outline" href="transcripts/localbitcoiners-ep${pad(epNum)}.txt" download>↓ Download Transcript</a>
+      </div>
+    `;
+
+    $list.appendChild(card);
+  }
+
+  /* ── main ── */
+  async function init() {
+    const rawXml = await fetchRss();
+
+    if (!rawXml) {
+      $loading.style.display = 'none';
+      $error.style.display = 'block';
+      return;
+    }
+
+    let doc;
+    try {
+      doc = new DOMParser().parseFromString(rawXml, 'text/xml');
+    } catch {
+      $loading.style.display = 'none';
+      $error.style.display = 'block';
+      return;
+    }
+
+    const items = Array.from(doc.querySelectorAll('item'));
+
+    if (items.length === 0) {
+      $loading.style.display = 'none';
+      $error.style.display = 'block';
+      return;
+    }
+
+    $loading.style.display = 'none';
+
+    // Render cards — newest first (RSS feed order)
+    for (let i = 0; i < items.length; i++) {
+      renderCard(items[i], i, items.length);
+    }
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
