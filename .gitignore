@@ -1,2 +1,9 @@
 CLAUDE_CODE_HANDOFF.md
 .DS_Store
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
