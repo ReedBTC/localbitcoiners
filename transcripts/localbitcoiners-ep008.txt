@@ -1,0 +1,643 @@
+Rev (00:02.182)
+Howdy, local Bitcoiners. Rev Hodel here. I'm back with Reed. And tonight we are going to be talking with Liz and Wesley from Bitcoin Bay in Tampa Bay. And before we get talking into them, I'm going to yet another Meetup Adventure, another story from a local Bitcoin Meetup that I've been attending. And tonight is the last Meetup I've
+
+Went to is my beloved Southwest Michigan Meetup here in Benton Harbor, Michigan. That's at Dwellers Coworking Space on the first Thursday, or not the first Thursday, that's the South Bend Meetup. That's my meetup. Southwest Michigan Meetup is the third Thursday of every month at Dwellers Coworking Space. And this meetup is the big circular economy meetup that I go to. And so I'm always happy to pick up my groceries when I go.
+
+And so this month I was able to pick up six pounds of ground beef, three coats of yogurt, some nice fluffy sourdough dinner rolls, and a few pounds of coffee from our good friend, Otis Bittmeyer. And you know, the meetup was cool because we had some people that had come once and we've talked about it in other episodes, but sometimes you notice that people will come to a meetup. They'll come once and then they don't show back up. But
+
+maybe a few months go by and here they come swinging through again. And that was the case with the woman who was selling the sourdough products. So she came to the meetup a few months ago with a whole tote full of bread and sold it all. And she was pretty excited that she sold out. And so I thought for sure she'd be surely coming back to everyone. But you know, people have lives and maybe they can't make every Bitcoin meetup, but you know, she came back to this one.
+
+with another huge toad of bread and sold a bunch of it. So it's just really cool to, it's a good reason to realize like, hey, if your meetup isn't really pulling big numbers every month, know, just hang in there and then people can swing back through. You gotta be there holding the door open. So Reed, how was yours? I guess you recently talked about the most recent Western Mass Meetup. Do you have a meetup adventure story to share?
+
+Reed (02:19.949)
+Yeah, I don't have a new one. We've been recording more often than we used to. So I haven't been to a meetup since our last recording, but I can talk about our next one. So our next one is coming up Sunday, May 17th. So we're still several weeks out, but that's at 6 PM at the Heavy Culture Cooperative in East Hampton, Mass. So that's our new location. It looks like we're good for our second month in a row there. I'm still in the process of trying to get them to commit to committing
+
+to let us come there for the rest of the year. I sent them all our dates already. I'm pretty excited about it. Last time we got pizza, so we're going to do that again. It'll be pizza, just taking donations if people want to throw down a little bit for some pizza. There's a bar so people can get drinks at the bar. Then we'll do our Socratic seminar.
+
+which I have not prepared for yet. But yeah, one of the things that I got kind of tasked with at the last meetup was, I think I mentioned last time, right? So we started talking about, can we start doing more of using Bitcoin as money at the meetup? And so people liked the idea and we started talking about different ways and people had ideas about how we could post community bulletin boards and things like that. So I have been tasked with
+
+trying to figure out the best way for us to move forward on that path. And so I haven't executed anything yet, but I've got some ideas talking with some other folks in the Meshadel about different ideas that we could do. So hopefully by the next meetup, I'll have some sort of an idea to present back to the group. So yeah, I don't have too, too much. So why don't we introduce our other guests? So we've got Wesley and Liz.
+
+from Bitcoin Bay. Wesley, you want to go first and introduce yourself and you tell us little bit about Bitcoin Bay?
+
+Wesley Schlemmer (04:24.14)
+Yeah, sure. So thanks for having me guys. It's great to be here. Especially as you guys are talking about circular economy stuff. That's why we started Bitcoin Bay. Bitcoin Bay, so I guess I'll start with me. Born and raised outside Tampa. Third generation Florida man. I left, went to school in Boston for six years, came back home during COVID, met the local Bitcoiners pretty soon after getting into mining, meeting people like Barn Miner through Telegram.
+
+and just plugging machines in thinking I was gonna be rich in six months. And I made a lot more friends than I Bitcoin. So I joined the Meetup, the Tampa Bay Bitcoin Meetup is one of the longest active running, consistently running Meetups in the country since 2014. I joined in January of 22. We were hiding like this was,
+
+peak bull market pretty much last cycle. We're at 60, 65K a coin, like $4.50 a gallon of gas. know, everyone is still raw after COVID. And so we had 60 people at BitDevs and no one was there for BitDevs. Nobody knew what was going on. They were just looking for Bitcoin near me and I'll wait, it BitDev at the time. So that's when we decided we became friends with, I became friends with the organizer.
+
+who was a dev and a couple of our guys at the first meetup, we all shut down the next several bars just pinging off each other, like finding best friends, like that stepbrothers scene. And that was when we came up with the idea of Bitcoin Bay, which was a Bitcoin circular economy in a Tampa Bay area. Sounds like you guys are doing a great job up there, so I love to hear it. We've had meetups where people are selling extra produce from their garden, barn jerky from Barn Miner.
+
+BitAxes, 3D printed, there's a lot of peer to peer e-cash going on. So it's great to hear you guys are doing as well up there. I would love to have a Siren-O-Girl. But we incorporated as a nonprofit because we wanted to provide an actual structure to what was going on because as we're hosting events, money is coming in and going out and
+
+Wesley Schlemmer (06:48.782)
+It's not all Wesley's income that we're doing here. So we went that route with a nonprofit route to try and help kind of... It's not these guys coming to try and teach the school of Bitcoin. It's, the president of the Bitcoin Bay Foundation wants to come and talk to you about Bitcoin tonight. So people love their titles. And it's been great. We've been hashing...
+
+for four years, since I've been on the boat. And we're Bitcoin Bay, our offices used be in Tampa, our maples were in Tampa, and our office is in St. Pete, so we go around the entire area, which maybe was taking a bigger bite than we knew how to do at the time, but it's a good name at least.
+
+And our goal is to create a vacation spot for Bitcoiners. Make it the best place in the world to be a Bitcoiner. You come down to Florida in the winter. You can stay with short-term rentals. We have guys that have them. You can stay in Bitcoin. We want to eventually convince people to move here, which I think would be a good way to kick it over to Liz, who is one of our big wins for catching a nomad.
+
+between us and El Salvador, we wanted to have an American version of somewhere you can actually go and live like a Bitcoiner.
+
+Liz (08:23.47)
+Yeah, yeah. So I'll introduce myself. I'm Liz. I, Liz Parrish, I started helping run Bitcoin Meetups back in 2020. So my background is actually in civil engineering and I was living in DC for a while and got to a point I ended up hating my job. So I quit and moved back to Charlotte, North Carolina to be closer to family and have a brother there that's Jacob that's been running Meetups since
+
+2013, so also a very long-standing meetup. And he had kind of taken a hiatus for a little bit. And I've just always loved throwing events. So I would throw like parties at my house, like themed parties all the time. And he approached me and he just said, Liz, like, I know you've wanted to do this for a long time, like be more of an event planner. Do you want to help me really grow Bitcoin Charlotte? So we kind of.
+
+teamed up together to really kind of invigorate the Bitcoin Charlotte scene again. So we started doing that together in 2020 and did that in about till 2025 and founded my own event called Halloween. I think the only Bitcoin themed Halloween party. But yeah, Charlotte just wasn't, it just didn't feel like home to me. And so I did, started nomading kind of around 2023, actually going to different Bitcoin meetups.
+
+around the world. I I would go just go to places and not know anyone and post on X and go on a orange pill app and meet other Bitcoiners. And it was really cool to see other meetups from around the world. And yeah, I thought I was going to move to El Salvador, went there for a bit, lived there for a bit. But around that time, I think 2024, started doing some work with Wesley and the guys at Bitcoin Bay and
+
+came down there to work an event and just fell in love with it and the Bitcoin community there and what they're building. I actually think it's really great that it's a big area because we do have a lot of ground to cover and lots of different groups of people instead of, you know, just kind of like one little city. We have a wide range of people. So, yeah, I've been the events coordinator at Bitcoin base and well, about almost like a year, like I think kind of to the date almost.
+
+Wesley Schlemmer (10:43.406)
+It's crazy how fast time has gone.
+
+Rev (10:49.574)
+So I've got a friend of mine, a sole exporter, and he has some theories around what attracts people to areas to participate in this Bitcoin culture. And what he says is it's not about the numbers, it's about the gravity that's formed by the cultural capital. And so what was it that drew you to Bitcoin Bay, Liz?
+
+Liz (11:16.726)
+Well, think, well, I will say part of it is the location. Like I'm an outdoors girl, so I wanted to be in the outdoors. I think what Wesley and the other guys, like there's a, how do I say this? There's a lot of, there's a lot of young blood there too. they, you know, they started, there's a group of young guys that are started building there and they're very passionate. I mean, you could tell when I met them that they wanted to, like they want to build something great here. And
+
+And like I said, the area that it's covering too is really big. And so there's a lot of space for a big community to build. I mean, I Charlotte was kind of like that too, but it felt smaller to me in a way. And there's just a lot of room for growth here. Not only that, I mean, I'm specifically in St. Petersburg and there's a huge tech hub growing here. Like we're in ARC Innovation Center, like Kathy Woods here. Like there are a lot of...
+
+tech people that are coming here that I don't think people realize. She just said something the other day that this is gonna become like, you know, the San Francisco and the new San Francisco. So that's a big reason. I just think that there's like a lot of room for growth and I was really attracted to that. And also like it is nice being in the sunshine for sure.
+
+Reed (12:34.669)
+Yeah, it seemed like Florida and Texas were both big winners with the Exodus out of California. Are you guys seeing other converts from that? You said it's the new San Francisco. Is that what you're seeing with the young startups and stuff like that happening?
+
+Liz (12:54.03)
+Yeah, I think so. mean, there's a lot of people that I've talked to that are moving from Colorado and from California. We have some people in our group too that snowbird. they do have places, or they'll be on both, like California and in Florida. Or yeah, they're up north in New York and come down here for Florida as well.
+
+Wesley Schlemmer (13:16.45)
+Yeah, we get a lot of nomads too. They'll be out in Colombia or Indonesia, Philippines. That's why I always feel so confident in saying this is the best place in the world is because we have a lot of nomads and this is their home base. It's the place they all keep coming back to.
+
+Liz (13:34.03)
+Yeah.
+
+Yeah, I would agree with that. like that was a big reason. You asked that was a big reason too. met, well, I met a few Bitcoin nomad, nomaders and they, they were like, Liz, like we always come back here just like Wesley's saying. This is, it's like a hidden gem in a way. And it's hard to explain until you, until you get here and experience it for yourself. But I met so many people that they were like, yeah, I mean, I still travel, but I'm always coming back, coming back here.
+
+Rev (14:03.036)
+Well, the kind of energy that a traveler brings is different than somebody who's there all the time. And so if you have this culture of people passing through all the time, and especially if they're coming on a cadence like the snowbirds, that creates a really interesting dynamic to the culture where it's like, hey, so-and-so is coming back, or like they returned. And it kind of, I'm sure, creates some enthusiasm in the group to see these people. Like I was talking about at the beginning where there's person who didn't come back for a couple of months, but maybe it's like,
+
+Wesley Schlemmer (14:22.359)
+Mm-hmm.
+
+Rev (14:32.708)
+eight months or six months between when these people are coming back. And so it feels a lot different.
+
+Liz (14:37.548)
+Yeah, it also adds a lot too. let's say I kind of stopped traveling a little bit, somebody goes to El Salvador, lives there for a few months, and they come back to Tampa, St. Pete, they get to fill us in on what they've learned, you know, which is really nice. And even, mean, like, I don't think this is docking him, but Brandon from Green Candle, I he's traveling a lot and then comes back and tells us where he's been, which is awesome too.
+
+Wesley Schlemmer (15:00.366)
+Yeah, I don't think you could dox him. He films everything he does. But yeah, and that's kind of a funny thing too, is that we have people everywhere. I don't know if you guys have seen the... I forget what the vision, the Sera Warfare division, it's like they have a patch and it's an octopus over the globe. It's like nothing is beyond our reach. I edited that with Bitcoin Bay because I'm always finding people in random...
+
+Liz (15:02.414)
+True.
+
+Wesley Schlemmer (15:26.774)
+random parts of the world, like, I ran into this person from Tampa. We're like, hey, this person told me to tell you hi. I'm just like, what are you doing out there? We have people going to conferences in California, finding somebody that lived two blocks from them, and now they're going to the meetups. It's really funny that we have this distributed community, and I do love that about the meetups. You can literally just post on Twitter and be like,
+
+Hey, is anything happening? And if you're in a major city in the country, like you'll find several things.
+
+Rev (16:02.854)
+Well, another thing interesting about the nomads is that they kind of can grease the wheels of the circular economy, you know, because if you're traveling and you want to travel on Bitcoin, you got to go somewhere where you can spend that stuff. And so if you can create a place where they can come and spend it, they're probably going to want to keep hanging out. So that kind of leads into the circular economy stuff that you guys are building. What do you what from what angle are you taking? Obviously in Michigan, we're focusing on
+
+is food production and stuff, but there's a lot of different ways to do it. What are you guys doing?
+
+Wesley Schlemmer (16:35.598)
+Well, it's taken different forms pretty much every year over the past couple of years. We were early on highlighting a lot of in-network, like our local, like, all right, farm miners is jerky. I had extra stuff. I had a friend that did salsa. So we'd start kind of just bringing just random goods to the meetup. And then we started doing some farmers markets.
+
+as far as stuff, talking to vendors and like, hey, like we're interested in accepting. So a lot of our stuff has been more like outreach and onboarding. We probably should, you now at this point, like host a market, you know, I know Charlotte has the Bitcoin markets that seem to be, you know, kind of growing and popular at every time. And now that Square, you know, turned Bitcoin on, I had a...
+
+back before Claude nuked us, I had my OpenClaw agent scrape the local square merchants and populate a list of like 2,400 merchants in the area that take square, put on a map and that color codes by like city. And so now we have a list that we're able to just start kind of, you know, we can just start knocking down and.
+
+So we've tried doing things like bounty programs with the University of Tampa. We're very involved with the Bitcoin club there. We have two interns a year, and we give lots of talks. So we've done stuff with like, hey, are you a student that goes to the same pizza joint every Thursday or whatever, and they know who you are? Ask them to take Bitcoin. And if you get them to take Bitcoin, we will give you 50,000 sats. We'll give them 50,000 sats.
+
+We'll pay for your next thing on or a pizza. So we try to, there's a guy who did the pirate party in Sweden, Rick Fjorkfing, I think his name, the book is Swarmwise. And it's about creating a decentralized movement and empowering the individuals in it to act.
+
+Wesley Schlemmer (18:55.256)
+towards the goals that you guys are trying to set. So a lot of the onboarding that we've had have been friends that, people that are friends with owners that frequent the place. And so our members are doing it without us being like, hey, go to that business, stuff like that.
+
+Liz (19:12.149)
+Yeah, and
+
+Reed (19:13.251)
+See, go ahead, Liz.
+
+Liz (19:15.214)
+Well, for myself, when I moved here, you know, because I'm, I want to live off Bitcoin. I started, there's a lot of markets where I live. So I started attending a lot of those. And then first just started creating relationships with these people, like not talking about Bitcoin. Like, like I went to this kombucha place and I really liked their kombucha. And so I just, you know, showed up every week buying it. And then slowly I would...
+
+start mentioning, I'm the events coordinator for Bitcoin Bay. Would you be open to accepting Bitcoin? And now they've already established this relationship with me. They like me. So then I would kind of take that route. And then I would slowly ask. In this kombucha place, I asked and took a few weeks. And when I came back one time, one of employees said, hey, I talked to our boss and he really wants to start accepting Bitcoin. He already is a Bitcoiner. He really wants to do this. And I was like,
+
+Okay, this is great, you know, and then we onboarded them and now we're, we're having our meetups there. But I get, I started to do it with the places that I like and I go to, and then I create this relationship with them. Like I go to a sauna and a cold plunge. I met the owner, started going there, and then I kind of slowly told them, know, what I do. And then I was like, you know, it'd be great if you accept Bitcoin. And I kind of was like, well, if you don't, I'm going to stop coming here too. And it's...
+
+For me, it's been pretty easy that way. Like even there's an artist in my neighborhood and same thing. I just kind of went in there, became friends with them first and I was like, hey, you know, it'd be awesome if you accept Bitcoin. Like that's what I do. And that's been pretty successful for me for the most part instead of just like going in and being like, hey, will you accept Bitcoin? Like going right in their face, you know? And they're like, I don't even know who you are or like, why do I want to do this? know? But.
+
+Yeah, that Kombucha place has been great. Like he did start accepting Bitcoin and now we're having, I left the other place we were having our meetups at and I just told them, because I tried to onboard them and they wouldn't do it. And so I thought we're going to leave, you know, because you're not accepting Bitcoin. And so we moved to the Kombucha place, which has been great. And I mean, he wants to get rid of credit cards completely and just only accept Bitcoin and cash. So that's, that's pretty great. And mean, they've been, they've been super supportive too. They're going to put like an orange pill.
+
+Liz (21:30.903)
+kombucha up as one of the drinks. Yeah, so that's kind of my approach. think if you can create a relationship, and sometimes I think some people just kind of go in too hard and scare them. Just be friendly at first.
+
+Rev (21:49.946)
+Reed, I know you were going to jump in there with something, but I just want to add something to what Liz is talking about real quick. that's like, we talk about Bitcoin as peer to peer digital cash, right? But the, what I think people miss about that word peer is that you have like the best way to orange pill is to build a relationship, make them your peer, and then you can transact with them, especially because I personally, I find my Bitcoin to be the best money. And this is really valuable stuff to me. And I don't want to just
+
+throw it away to Steak and Shake or whatever. If I'm spending my Bitcoin, I want to spend it with somebody that I really know and that's going to use that Bitcoin and really appreciate it for what it is. But I just wanted to add that.
+
+Reed (22:29.583)
+Yeah, 100%. I think both of you a little bit alluded to this and this was definitely on the list of things that I wanted to talk to you guys about. So Bitcoin Bay coincidentally was the first place that I went when my meetup was considering starting a 5013C. And Wesley, you were saying one of the big reasons that you did it is so that when you start doing this outreach to these other
+
+businesses or other programs or like in my area, there's a lot of universities and when I approach them, I don't want to just be like the guy who's doing this Bitcoin meetup. If I can go and say, hey, like you were saying, like the president of the not-for-profit Bitcoin not-for-profit in the area, like we're here about educational services, like there's nobody involved, like this isn't like a scam or something like that.
+
+And then Liz, you mentioned too, it's like, well, I get to say, well, I'm the events coordinator for Bitcoin Bay. It's like an organization. It's just like my job kind of. And I feel like it just adds a little bit of, I know it kind of seems like there's like a fiat credibility piece of paper in there somewhere, but I think it's also just like showing them that you're serious about it, like that you're willing to take all these extra steps.
+
+But I'd love to hear more about the 5013C process and how you guys went through that and the pluses, the minuses, what worked well, what are some really annoying challenges, just things that other Bitcoin meetup organizers might want to know.
+
+Wesley Schlemmer (24:04.662)
+Yeah, so if anyone's interested in starting down this road, there's a book from NOLO, N-O-L-O, and it's starting and building a nonprofit.
+
+Or just get your bot to do it at this point, guess. before, in the before times when we had to use our brain and write things, it takes you through the whole process of starting and building a nonprofit. So like what do you need? You need your board. need, based on your state, there's rules on who could serve on the board. What are reporting requirements? It talks about building websites and marketing and...
+
+doing donor stewardship and getting donors and email lists. And so it takes you through the entire thing. I got bored when I got to legal. Well, I already got through the founding, the starting part. So I was like, last I needed to do, I need to get this thing started. I I don't worry about the legal stuff. Which is a joke for anyone that wants to audit me off of that statement. I have a bot that does it now.
+
+And it's actually quite simple if you're gonna stay fairly small, which most meetup organizers looking to go this route probably would stay pretty small. We knew that we were gonna be larger, so we went kind of the harder route. And honestly, we ended up just paying a local legal outfit, a thousand bucks. They're like, we guarantee.
+
+your 501c3 exemption acceptance. We're like, great. They asked us a bunch of questions and then they sent it off. Now, if you're going to stay under 50 grand in total revenue for your first three years, so 50 each year, you can do what's called a 1090EZ. What do say?
+
+Reed (26:16.431)
+1023? Is that what it is?
+
+Wesley Schlemmer (26:17.534)
+1023, yes. Yeah, 1023 easy. And so it's like a one pager. It's a lot simpler. And your reporting requirements is a 990N note card. And on that note card, all it is, your entire reporting for the IRS for that year is, did you have less than $50,000 in revenue? Did you change your officers? Did you change your address?
+
+Now, for Florida, for our solicitation of contributions license, which most states have and are probably all different, we still actually kind of had to go through and break down what all that revenue was based on programming, administrative, and again, I have interns, the finance guys that did this, and I kind of forget the thing, and I booted it up, but I think it's programming, general, and maybe admin. And then it's like, okay, well, this was events.
+
+It was our Suarez, it was the Bitcoin Day Tampa Conference we did. It was our meetup bucket. So you may need to kind of break that stuff down, but states have templates for that stuff. And TechSoup is a great aggregator for tech services for nonprofits. So like we have Canva Pro for free for like 100 users.
+
+So that was great because that helped us make all our meetup flyers and all the graphics. We got all the pro features for free. Google for nonprofits, allegedly will give you 10 grand in ad credits, but we still haven't been accepted because probably because they hit Bitcoin. We have QuickBooks online for like 23 bucks a year. So that helps pull in all the credit cards and the bank accounts and stuff that we have for the business and it helps keep things organized. So there's a lot of tools out there available, which I guess would...
+
+to answer the first question, what is it, unlock? So we've already talked about the perceived legitimacy because I am a person with a title at a job that has an office. It's not just me just coming and doing this thing. I'm not selling you something because this is nonprofit. This is an education, it's community-based. Also, there's no capital gains taxes in a nonprofit.
+
+Wesley Schlemmer (28:38.819)
+So if you are wanting to operate the community on a Bitcoin standard, it takes kind of that burden off. And it also provides just protections, because if you're hosting a meetup and it's at your buddy's house or something and somebody slips and falls, then the non-incorporated association
+
+which is what a meetup is, you are an association that has not incorporated, that's what the legal kind of structure is, isn't gonna protect anybody from that. If you wanted to have the market, you wouldn't have volunteers, and something happened to one of them, and there's the legal shield as well. The downside of running the nonprofit is everything I just said, I mean, that was a ton of jargon, paperwork, and you know, understand the legal side of things. So, you know, there is accounting, there is admin.
+
+But there is that with any organization. And so if you are gonna try and take your meetup from anything that's not just a social, which having a social layer with your local community is 100 % necessary, I'm not downplaying that at all. But if you are wanting to sponsored events, like if you're trying to host a Bitcoin for Business workshop.
+
+and you don't have a space and you need to cater. mean, like you will very quickly, if you have an event of 30, 50 people, you will start spending $1,000 or more. And okay, so where does that money coming from? Oh, we sold tickets. Okay, to who? Who put their money from those tickets into what bank account and then sent what money from where to who? Because what you're gonna end up with is if it's a $1,000 event, you're gonna put $1,000 in income.
+
+and $900 in expenses, you don't get the right off of that income. Like I got W9 for our first sponsors and I was like, ooh, okay, we need to not do this. So, I don't know, that's kind of a long-winded weave around the question, but there's definitely trade-offs. I don't regret it. I definitely would, like if you were gonna do this fresh, get a guy on the board that likes accounting.
+
+Wesley Schlemmer (30:55.981)
+when that likes the legal or that likes the day-to-day, that likes the admin, make sure it's not just the three people that are there the longest or even five. Just make sure that you spread out your strengths and weaknesses across the group. Be intentional about who you're building with. And then also lean on the people that are in your group, because now you can give them titles.
+
+Like, you know, we brought up, you know, Green Candle. He's, he's, I call him our minister of propaganda. Obviously, he's not going to go our business with that. But we have, we have interns, you know, she's our social media coordinator. You know, like now I'm able to like, you know, give you a reference like, yes, like you are this person who performed this task with this title and this job role at this company for X percentage. And if you've got young kids in your groups and they need community service hours for, you know, high school or whatever, you're not able to provide that.
+
+I mean, I can go on and on about this stuff. I've been doing it for while now, but I hope that kind of gets at the gist of the question.
+
+Rev (32:01.638)
+Well, so one question that I've got that kind of piqued my interest is that you kind of get access to some resources. Not only do you get like the free tech stuff, but is it possible that when you're looking for venues or looking for catering or because you have this nonprofit, you get a different deal?
+
+Wesley Schlemmer (32:21.519)
+No, but we and I'm not sure how other states do this Florida gives nonprofits sales tax exemptions so that thousand dollar event would have been a thousand and seventy dollars For us, it's only a thousand dollars. We don't have to pay that seven percent on anything You got it. You know, mean if I'm buying random stuff online like on Amazon, you know, like you got to give them your certificate of exemption and so
+
+We host a lot of events. so whenever we have one of our, if you have a $10,000 event, saving 7 % on that, that's a blind item that you don't have to pay.
+
+So that's the deal from people that we've seen.
+
+Reed (33:10.479)
+And speaking of events, so you guys have at least one big event. Do you throw every year? So this is like the, excuse me, Sound Money Soiree, is that correct?
+
+Wesley Schlemmer (33:24.653)
+Mm-hmm. Yep. Yeah, we just had our third annual soiree on February 28th of this year. Yeah, you know, it's kind of like, so I grew up, my mom ran the auctions, like the fundraisers for like our, like my elementary and middle and high schools. So I've like grown up like around fundraisers and these kind of big parties and you know, I was like, well, you you get your charity stats, you gotta throw a big fancy gala.
+
+And so we use that as kind of like our signature event, try to bring everybody down, bring everyone together, showcase the whole community. And this year was probably our best one yet, and no small part thanks to having Liz on board. I'll let her talk more about that, because she had a large hand in making it all happen. But like those markets you have, we had a silent auction that had
+
+just a smorgasbord of Bitcoin products and services from the whole community that wasn't gonna fly down to Tampa, but Ben Jessman will send us a basket or two of his wine. So it's a great way to extend the opportunity to be part of something to people whenever they can just mail you a basket of tallow or hot sauce.
+
+and stuff like that. I'm really upset that I was not able to get to the auction this year because it's just one of those things. And SeedSigner has been giving us a great basket every year for years. And this would have been my year. And Liz's brother stole it from me. But I'll take it. I got the sister, so I guess I'll allow him to have the SeedSigner basket.
+
+It's been a lot of fun, know, I mean, and Liz being part of all of these different communities and meeting everybody has been great, you just like you have the market, it's a great way to bring everyone together and share and, know, what Bitcoin can do.
+
+Liz (35:30.508)
+Yeah, yeah, and the silent auction. mean, that's not gonna be able to name everybody that that sponsored something. But a lot of the people were from from Noster that I contacted. And everybody was just so generous and so happy to be a part of it. And it was actually really cool if anybody's thinking about doing that, like some people really wanted to contribute to know what their items were, what, how much they would get bid on. Like leather meant
+
+the Bitcoin standard book, he really wanted to know, like, I want to see what people value this as. So that's kind of good for the vendors as well, to see, okay, well, what is somebody actually gonna bid on this? So that was kind of cool. And yeah, having a mix, like we had this year, we had a lot of Bitcoin vendors there in products, which was really, really cool. But then in addition, also try to get some of these businesses that we onboarded to also donate.
+
+And so now that you've created this relationship, like the sauna I went to, he actually, and we gave those businesses a discount too, if they wanted to come to the event. So they got to see our community and then he donated a gift card to the sauna. The artist that I onboarded, he gave a piece of artwork and I'm even talking with him next year about maybe doing like live painting. So you start building these relationships and onboarding these businesses, then they can become part of this bigger event, which is really cool.
+
+Yeah, and then we also had, shout out to Purple Painter. He was there this year. So that was really fun having him there doing 10 minute portraits. So it was really nice having him. And then also we had, there was a cigar roller and poker as well. And I tried to add in just for the, know, all of those are great, but also you got to think about the women, especially like there's a lot more women coming to a gala than might be coming to a regular Bitcoin meetup. So was like, hey, we got to do something for the ladies too, you know?
+
+Wesley Schlemmer (37:23.542)
+Ha ha ha ha ha
+
+Liz (37:24.376)
+Purple Painter really helped with that, just doing the portraits and he would do double portraits or couple portraits as well, which was nice. But then we also got a flower bouquet building station, which was great. I mean, that's something that the women could take home, but also they started putting flowers as boutonniers for the guys as well. So just adds in something fun, know, kind of thinking outside of the box, like not everything has to be so Bitcoin only, you know, and you got to think about
+
+Who's coming to this gala as well? And if they're not, you know, if they're a girlfriend or a wife and maybe they don't want the Bitcoin standard book. So what else could I put in this auction that they're gonna want? You know, maybe it is a sauna session or we have somebody locally that always donates like laser treatments and facials, things like that. you gotta think, yeah, you gotta think of that too. Like who's coming to this event and not just like, we're only gonna.
+
+Wesley Schlemmer (38:15.663)
+Those are big hits.
+
+Liz (38:22.946)
+have straight Bitcoin products. And I think that thinking that way, it builds a bigger community and it makes people want to come back because they feel welcome.
+
+Rev (38:35.292)
+So you have, mentioned, or we mentioned Hodaween, I think you did at the beginning. so was that like kind of the biggest, the first event like that that you've kind of put together?
+
+Liz (38:45.678)
+Yeah, that was the first and yeah, it honestly kind of started as a joke. Bitcoin Vegan, his birthday is around either it's on Halloween or around then and we were all sitting around a table and we're like, oh, we got to do something for your birthday. And I mean, I just came up with Halloween and yeah, we, yeah, it kind of started as a joke. And then my brother, Jacob has, he always had a pumpkin carving contest at his house. So we were like, oh, let's combine the two and.
+
+It was really fun, that first pumpkin night. It's always really fun because people are doing Bitcoin themed pumpkins and stuff. And again, it's kind of a little different. People get to show their artistic side. Then my idea with the actual party, kind of what I saying about the 4A too, it's like, okay, how can we bring Bitcoin to people in a different way? That people, maybe they don't want to come to a meetup. How can we make this fun? So Halloween it was just...
+
+Halloween party on on white paper day and everybody dresses as Satoshi Nakamoto. So that means you can dress up as whoever or whatever you want and What I noticed from that was that the first year we did that in the second year we got a lot of wives and girlfriends like BTC sessions came or second year and His wife came and he said this is the first the Quinten been she's ever been to because she didn't want to go to any now I mean, she's going I've seen her a bunch but
+
+I think having events like that that are a little more, I joke, like not as scary. Some people just don't want to go to a Bitcoin meetup, a regular Bitcoin meetup. So try to come up with a way to bring people into Bitcoin in a fun way. So we have the costume contest. You win Sats if you win. And then also we hid Sats throughout the venue. I think it's with Ellen Sats. I forget who that was through, but.
+
+Yeah, it's just a fun way. And I think that's important for all meetup organizers to think of because when I started helping my brother in Charlotte, like we were just sitting around a bar and there's nothing wrong with that. Like that's fine, but not everybody wants to do that. And especially like if you do bring like, and maybe not all women want to do that. So what other ways can you introduce Bitcoin? When I started helping him, I was like, well, listen, we can talk about Bitcoin anywhere. It doesn't have to be at a...
+
+Liz (41:08.174)
+at a bar, you know, you can, so what I started doing, I was like, oh, I'm just gonna do the things I wanna do and invite the Bitcoin community. And it was really, really interesting when you do that. And we noticed this at Bitcoin Bay too, like, okay, maybe you have a, one week we have an event at a bar, it's a social, but then, you know, the next week we're gonna volunteer with, you your local community. And it brings out a whole different group of people. And so I think that's really, really important to do as well.
+
+One of them I did in Charlotte was called Bitcoin Rocks. And we paired up with a local artist that painted our logo on a rock. And we hid 21 of them throughout the city of Charlotte and put all of them on social media, had a QR code that if you found one of these rocks, you did have to come to one of our meetups and you would get Bitcoin. People loved it. They were following us on social media and trying to...
+
+trying to find these rocks and we talked about the importance of scarcity. I think that's important to think about because a lot of them I was going to at first, like, okay, we're just sitting around a bar at the same place, like doing the same thing, and that can get old. But we also talk about a Bitcoin base too. You also have to recycle because there's constantly new people coming in too. although we might be going to meet up for a long time, there's somebody down the street that knows nothing about Bitcoin, so you also have to have...
+
+Bitcoin 101 still, you know?
+
+Reed (42:36.591)
+Yeah, and we've been talking recently about the benefits of having even like regional events. Like anytime you throw a little bit of a bigger gathering, you get people from it's not just your regular crew, right? Like if you have a party or get together or something like that, like a regional event, you're going to get people either flying in or coming in because it's an excuse to get together with a bigger group of Bitcoiners. And I think a lot of people actually
+
+A lot of people's first touch point with other Bitcoiners are these bigger events, you know what I mean? Like the Bitcoin conference or something like that. And we got the big Bitcoin conference coming up here pretty soon. Is it next week? I think it's like next week, right? And so, Liz, I know you're going to be there representing a little bit Bitcoin meetups, right? Do you want to talk to us about the booth?
+
+Liz (43:31.385)
+Yeah, yeah, so this will be, geez, I think, I wanna say the fourth year that we're having a booth at the conference for meetups. And it's great, we have volunteers from meetups from all over the world that will take time at the booth and be there to show people where they can find their local meetup, or if they don't have one, how to start your own. And you can also show your own meetup while you're there.
+
+But what is amazing, like what you're saying, Reed, is we get so many people that are at that conference that they have no idea they can go meet other Bitcoiners in their local community. They just have no clue. Like they're coming to our booth and this is the first time they've ever met other like-minded people at the conference and they have no idea. And I'm talking like big cities too. Like I remember last year when I was there at the booth, there were a lot of people from Chicago and they're like, there's a...
+
+I can go to a group in Chicago and meet and hang out with like-minded people. So I just think it's really important to keep getting the word out because some people just have no idea. So yeah, we'll have the booth. be in the Bitcoin Bazaar. We'll be there all three days. And we have SatLantis helping us sponsor the booth this year, which is great. yeah, we'll do exactly. Somebody comes up.
+
+show them how to find their local meetup. And if we don't know where it's at, and don't know how to find one, we're gonna direct them to the get to your GitHub to how to start your own meetup. And then in addition, we're also Wesley and I and two other meetup organizers are gonna be speaking on stage on Tuesday as well about Bitcoin meetup.
+
+Rev (45:18.502)
+Dude, so that Chicago touch point is really interesting because that's a meetup culture that I'm close enough to where I participate with those guys. And it's really sort of blown up in the last year or so. The Chicago scene has been revived somehow. And maybe that booth had something to do with it. I mean, these guys, recently spun up this thing called the Chicago Bitcoin Collective, where it's like a restaurant with a coworking space. And they're doing like...
+
+Liz (45:42.073)
+Yeah.
+
+Rev (45:44.834)
+events every week there, like all the time. I'm going to a barbecue coming up here this weekend. That'll be my first time visiting there. But before that started, the bread and butter meetup of the Chicago culture was the BitDevs. And so I was curious, as far as the Tampa Bay, Bitcoin Bay's bread and butter, it sounds like you have a bunch of different meetup formats, but what's the most popular or just the ones that your favorite ones?
+
+Wesley Schlemmer (46:13.485)
+I think the most popular RLIs is at the kombucha place. Those consistently get the higher numbers. The bit devs get the same people. The workshops are always a mixed bag. And the socials definitely have the higher attendance rates.
+
+Liz (46:39.055)
+Yeah, I guess-
+
+Rev (46:40.218)
+What's your favorite though? which one do you prefer? Like, do you really get psyched about?
+
+Wesley Schlemmer (46:45.775)
+Well, I liked doing the workshops for a while because in the beginning, I didn't know what was going on. So I was, I wanna know, I just learned how to use bisque. And now you're all gonna learn how to use bisque. I just learned how to use RoboSats or this is how we're gonna do stuff like that. it was.
+
+A lot of it was just scratching my own itch, enforcing myself how to learn by teaching. Like, graphene, you know, like we're gonna set up a graphene phone, privacy workshops, stuff like that. you know, it's a little selfish, I, you hey, you you guys, I wanna learn this and you get to do it with me. So I always enjoyed those. And it was after a while, like those socials, we were at the same bar.
+
+with the same guys complaining about the same stuff. And I'm like, what are we doing here? I have friends. I don't need more. Some are surprised, but I am still quite introverted. it was, I don't go to as many socials as I used to, mostly just because there's just.
+
+so much stuff going on, it was definitely that same kind of, that was what made me want to pick, all right, we're learning how to do things. We're gonna take action here. We're gonna start actually building out these tools that, we're learning about a bit devs. Ben's sitting there yapping over our heads and we're all like, the, Frost? I don't know what's going, like, Shnor? Who? So we started actually, okay, let's do a Nostar workshop. Let's build a seed signer. I liked that stuff.
+
+So that's kind of direction I took it for a while We always keep the socials though. We still have them you know, because there is something for everybody and and actually for if people are looking for It's not gonna be quick cash, but like people will pay for Boot camps like I started doing a Bitcoin for beginners boot camp on Saturdays and charging like 25 bucks a head
+
+Wesley Schlemmer (49:10.543)
+I needed to charge more. But don't be afraid to charge if you're a meetup. If you have information and implementation and people want it, they will pay to come get it. So that's a very small way to get some revenue going. It was a lot easier with mutiny.
+
+back in the day, because they'd hey, just download this test, just don't even download anything, just go to this test wallet and we'll do fake stats. I like doing the hands-on stuff, even though it always bites me when ask, because everyone's device is different and the QR codes just never work.
+
+Reed (49:53.808)
+I did some workshops with my Meetup. I did a multi-sig workshop a couple of times. I did the charging thing and it's probably just a thing that people need to get over. I didn't like it. I started to think... I mentioned for our Meetup last time, I just brought pizza and I wasn't going to charge people for it. So was just like, it's a...
+
+a donation if you want, right? Because all the, you know, the stats are just going to go to the meetup anyway. I don't know if, like, have you thought about, like, or have you had experience with, like, just trying to drive donations and having that not really work very well? And like, there's a difference when you just charge for the event upfront.
+
+Wesley Schlemmer (50:46.159)
+People don't donate. It's not true at all. That's not true. We have a core group of monthly donors that I am extremely thankful for and are the reason why we're able to do what we do. We have a very lean operation. We run on a Bitcoin standard, so everything costs 10 times more than it does in our heads. So we have a small office. We have...
+
+Reed (50:48.163)
+Mm.
+
+Wesley Schlemmer (51:15.119)
+newsletter, meetup, some tech stuff. But we don't even pizza to the meetups. We don't feed people. People will bring snacks sometimes or beers. whenever we have a meetup and we're at the end, like, hey, we have these membership tiers that if you guys find value here, we'd love for you to join and help support.
+
+And it's, yeah, we don't find a super high conversion. Maybe none of us are natural salespeople. You don't want to be begging for money. You don't want be telling people you need to pay to be here. But it is something we do, people do have to get over. You are trading your time and your energy for this thing. And that is valuable. And you should feel comfortable.
+
+requesting value for that. I mean, it was like when people like wanted consulting help, I used to charge $30 an hour. And then very quickly it was like, nope, that's I need to, everyone's like, you need charge way more. But now like I like when like someone who's been around for a year and a half wants me to help them set up like a hardware wallet, takes me, know, a hardware wallet and a desktop and all that. And it takes me three hours. I feel bad charging them hundred bucks an hour. Like that's like, that's my guy. But also like,
+
+I just spent an afternoon here and like I do have rent.
+
+Liz (52:43.959)
+Yeah, think this is interesting in the Bitcoin Meetup space because, Reed, why did you feel bad about charging?
+
+Reed (52:53.763)
+I don't know. guess I felt like I was trying to do an educational service. And so, I'm the one pushing everybody to learn more. You guys need to learn this stuff. It would be really great if you could pick up these extra skills because these are going to be good tools to have in the toolbox as you continue to hold your own Bitcoin and things like that. And so, I don't know.
+
+I think I'm just not that type of I think it's just me. It's like a me thing. Like why I was uncomfortable with it. Because like you guys are saying, they're walking away with something tangible. They're walking away with this knowledge. I just felt like I was the one pushing them into it from the beginning. And so I don't know. I don't like the feeling like, I don't want people to think that I'm pushing them in this direction just so I could sell them.
+
+like tickets to this workshop.
+
+Rev (53:54.842)
+I think without experience too, it's hard to put a price on it. Like, Wesley, you're talking about the $30 for consulting. Like maybe you've never, you've never done consulting probably about Bitcoin. So it's like, if I start out at a hundred dollars an hour and like, you just kind of get a vibe for it. Right. So like, cause there's a, well, first of all, the same guy, he actually brings a cooler with beer to the meetup and does value for value, you know, just have beers. If you want to kick me some sats, whatever. but he also is,
+
+doing this regional meetup, he's starting to plan this regional meetup, he's doing like a hotel party, you know, and having some, getting the conference room and having a little bit of, you know, education and stuff involved with it. But, you know, I was kind of like, at first we were talking about doing this maybe at a free place where people didn't have to like buy a hotel room if they wanted to stay the night. And for people that wanted to come in charging something, but just to, just to first of all, get an idea of who's gonna, how many people are gonna show up.
+
+If you just have like this open click RSVP, know, lot of people click that button and never go. But if they have to actually pay even $5 now you can be a little, you get a better idea of who's showing up. But then it's like, you get to the point where this price is so cheap that now your events are full. It's like, well, that's the indicator that you can now raise your price on your tickets without having to try and guess the value of this thing right off the bat.
+
+Wesley Schlemmer (55:20.515)
+Totally, when I see I have a Meetup and it's got 15 RSVPs on meetup.com, I'm like, we're gonna have four people. But whenever I know when it's one of like our, and I know it's like when it's like our members social, it's our supporting members social, so either you're a donor or you're like a volunteer or a contributor. Like we have a guy that always like.
+
+He's got a truck, he's got an SUV and he pulls and he has like a trailer thing that he can pull stuff. So anytime we have an event, he helps us load stuff up and take stuff out. He brings EDIs and ice, you that's a supporter. We've got a guy that is graphic design. That's a supporter. You know, they're not paying us monthly. So we'll have like, you know, events just for our supporters. Two RSVPs. I know 15 of them are coming. You know, so like, because they have skin in the game, just like you have to charge a little bit for.
+
+You know, make sure, if you're charging $10, somebody is like infinitely more likely to come than if you didn't charge at all. Now, it is gonna limit your attendance. Less people are going to come, but more people have said they will show up. And we put a lot of effort into our meetups. And not like Bitcoin Bay, like Bitcoin organizers. You know, put a lot of effort, know, what is money, what is Bitcoin, you know, how did, like these are like,
+
+concepts that are courses that are taught. And we're all volunteers in this great game, and we're putting our time, energy, and knowledge into producing these things. And if somebody isn't willing to give you 10 bucks for it, all of our meetups are free. It's just whenever we have the extra boot camps or the Bitcoin for Business workshops.
+
+because we're renting out a space, we're paying, we need sponsors to cover that stuff. So we don't charge people to come to socials, the bit devs, but if we're gonna do a Saturday session, and I'm gonna have to spend my Saturday afternoon teaching you guys for three hours to do a crash course on Bitcoin, you're getting this cheap at 25 bucks. So.
+
+Wesley Schlemmer (57:44.1)
+You know, and it just makes it more sustainable as well. know, cause the regional stuff's great, you know, but if you're getting a couple dozen people together, it's gonna cost you some money. mean, like, obviously you can, you like, you can bring the pizza to the meetup. You wanted to have the meetup, you invited everyone to the bar and you're gonna bring two pizzas. That's not gonna kill you, you know, over, you know, it's 40 bucks, you know, every other week or so. Whatever, you can eat that.
+
+But if you're going to start actually doing stuff with venues and productions and things like that, you can't eat that forever. Unless you were mining early on back in the day and you just are feeling altruistic, you've got to find ways to make it sustainable because the blocks keep coming and this isn't the last bull run. I feel a lot older this time around.
+
+Rev (58:41.276)
+Well, know what, one of the reasons why I think the meetup organizers work so hard, and I don't know if this is subconscious or a conscious awareness, but like when you're, when you're participating in the Fiat system, right? The name of the game is to extract as much for yourself as possible. And that's how you win in Fiat. But in Bitcoin, the name of the game is how the more you give, the more effort you put into the Bitcoin culture, the more you get back. And so this comes into like this permaculture stuff that I'm into where there's three ethics, earth care, people care, and non-extraction.
+
+And so like, if you're, if you're trying to give all your time to like accomplish this, right? Make sure that every decision you make improves your environment. Every decision you make helps build the community around you. And it does so in a way, which doesn't take from anywhere else. There's a principle in permaculture called obtain a yield. And so if you're obtaining a yield from making these decisions, once again, that makes it sustainable. And a lot of times obtaining a yield is getting a little bit of Bitcoin, getting a little bit of financial capital.
+
+And so it's not, you shouldn't be ashamed or think that this is a bad thing that when you, when you're giving to Bitcoin, that you expect a little bit of a yield out of that effort.
+
+Wesley Schlemmer (59:50.029)
+Yeah, 100%.
+
+And that's it.
+
+Reed (59:54.288)
+So speaking of yield and getting returns for what you're providing, Rev, what are you thinking? Is this a good time to start transitioning to boosts and other things, value for value stuff?
+
+Rev (01:00:12.708)
+Yeah, I think so. before we get into the boost bot list for the night, would just want to go through some final key takeaways from our discussion here. I guess, Liz, do you have any key takeaways?
+
+Liz (01:00:28.623)
+key takeaways. I would say to all the meetup organizers out there, keep building and keep creating community and maybe in some different ways that you haven't thought of before.
+
+Wesley Schlemmer (01:00:49.199)
+Yeah, I'd echo that. I know this is probably for the local builders, but I would say don't reinvent the wheel. How many What Is Money presentations you think are scattered across all the Meetup organizers' computers? I'm sure your audience already knows about Reed's resources, and we need to add our website builder.
+
+to that as well, which I guess we didn't even talk about at all, is if you are gonna have meetup and you don't want to roll your website, Bitcoin Bay has an open meetup framework that anybody can use. I wonder, I don't know how easy it is to share that. we'll put in the show notes or we'll get it added to the repo. But you just download the skill and then you tell your bot to deploy it in whatever colors you want with your local contacts and it builds in like a BTC pay.
+
+or btcmap.org scanner for your local area. So it has a whole feature rich back end that I still don't fully understand because I'm not the dev. But it has newsletter stuff built in and all that. I think just as people are building out, just definitely don't reinvent the wheel. Do as little work as possible because somebody else has already done it. Make sure you're asking people that have organized stuff before because.
+
+I mean, the grassroots community is my favorite part about Bitcoin. The only reason I go to these conferences anymore is to see everyone. I haven't been to a talk other than Ross's in, I three years. So it's a great community to be part of. And the longer you survive, the better it gets.
+
+Rev (01:02:35.952)
+Yeah, think as for what I'm, go ahead, Reid. Yeah, sorry.
+
+Reed (01:02:36.099)
+Yeah, I think too.
+
+Reed (01:02:41.359)
+Yeah, talking about the AIs, so the AIs come up a bunch on our episodes and I think that it's kind of almost directly related to one of the key takeaways I was going to say for this episode, which I think it's kind of related to sustainability. Being a Bitcoin meetup organizer, I've said it on other episodes, it can be kind of a big ask. We're volunteers here.
+
+And so anything that we can do to try to make it more sustainable, whether that's like a 5013C, or like you were talking about with using the AIs or using the agents to make your life a little bit easier. Like whatever you can do to try to, if it means that your Meetup is going to run for that many more months or that many more years, it's something that all vehicle Meetup organizers should think about.
+
+Rev (01:03:35.44)
+Yeah, and think for me, what I'm hearing from this discussion is that, once again, in order to create the movement, the excitement, the cultural capital that creates the gravity to bring people in, you got to find ways to make it fun and creative. Because Bitcoiners like to have fun. I love to have fun. I want to have fun at the Bitcoin meetup. And I really would enjoy having all these different flavors of meetups to go to.
+
+And not only fun for the people coming to the meetup, but Wesley, like you're talking about, when you want to run a workshop, you want to pick something that you're going to have fun sharing with everyone. And so that's kind of what we're doing here with this podcast too, by trying to incorporate a lot of this value for value stuff. We're going to talk a little bit about something new that we've been playing around with. But before we get into that, I'm going to talk about, I'm just going to go through all the boosts that we've got since the last episode.
+
+And so...
+
+First one we have is 10,000 Sats from Fountain. And that was on LocalBitcoiners, how meetups can benefit from value for value, Noster and value chains, episode seven. And it says, and this is anonymous, check out our new website for the Columbia South Carolina Bitcoin Meetup, columbiabitcoin.com. Our meetups are the fourth Saturday of the month at Savage Craft Aeroworks in West Columbia, South Carolina.
+
+So there you go. There's a meetup for you to come check out, fourth Saturday every month. Get more information at columbiabitcoin.com. yeah, thanks for the sats and for the boost. This is really what I hope that we can do is just read off boost after boost after boost of people with meetups out there so people know that there might be one just like the booth there at the conference.
+
+Rev (01:05:29.712)
+people don't know that there's a Bitcoin meetup right around there. And these people could be on Nostra. They could be listening to this right now. so yeah, let them know about your meetup.
+
+Liz (01:05:37.015)
+Yeah, I've never been to that one, but it's close to Charlotte and I've heard really good things about that meetup.
+
+Rev (01:05:43.964)
+So there's some cross pollination. Some people are traveling to each one. That's another reason, you know. It's like anyone from Charlotte listening to this and they haven't made their way down there. Now you hear about it again, fourth Saturday, go get down there and hang out. Next boost we have is a thousand sats from Fountain from William the French. And he says, born in 1972, when I was a kid in Northern Ontario, our local AM station ran a virtual garage sale.
+
+over the AM radio waves every Sunday morning. It was awesome.
+
+And I think William is kind of referencing this Sats market thing that we were talking about in the last episode, which was local Bitcoiners, how Bitcoin meetups can benefit from value for value, Noster and value chains, episode seven. We were talking about Bullish, who has this Sats market there on Noster. And so thanks for the boost, William the French. Next, we've got 2,100 Sats.
+
+via Fountain from Reed. Thanks, Reed. He says value chain for the win. And this is something that we're kind of playing with this boost bot. So every time you boost the podcast from any app, right, any podcasting 2.0 app, not just Fountain, our Reed's Lightning node will see that boost come through and automatically generate a note that gets posted onto Noster. And there's actually, there's splits in there. So if anyone zaps that boost,
+
+on our note here, you'll get a split of those sets. And this is this idea of the value chain. So the more you participate, the more opportunity you get to get a rebate back on your participation from other people who appreciate the value that you're giving.
+
+Reed (01:07:30.767)
+We've been doing all kinds of your experimentation with that. It's been fun. We've been throwing notes around on Nostra quite a bit. So it's fun times.
+
+Rev (01:07:42.628)
+Okay, next boost we got is 3000 Sats from Fountain. This is Laguse. And they say, I'm prepping to talk about Nostr at a meetup. And I've been thinking about how people care more about stuff when it's easy to see how it's useful for them specifically. Everybody knows that feeling of, we don't use that website app platform anymore. I hadn't yet made the connection about planning meetups and events with Nostr. And I like that example.
+
+So yeah, we talk about this, we're really trying to suggest that any meetup organizers use whatever platform you're comfortable with, you're already using, whether that's meetup.com, Luma, Avento, whatever, but also make an event on Noster so that we can start to cooperate. We get a better aggregation of all the meetups that are going on out there because Noster is the one place that isn't walled off. Then the meetups can be like,
+
+actually aggregated together in one place where if you know about this, you can go find them all. So thanks, Lagus.
+
+Rev (01:08:51.42)
+And then we got another 3000 stats from Laguse. And he says also running a meetup out of a music venue would be a dream. And so Reed's newest venue is...
+
+Reed (01:09:02.105)
+Hell yeah. It's awesome. I can't wait. I really hope we can get some Value for Value music stuff there at some point. mean, we've only had one meetup there. I'm not trying to go overboard with them right away, but yeah, I'm very excited about this new venue.
+
+Rev (01:09:05.53)
+Yeah, if there's any of those.
+
+Liz (01:09:19.607)
+You gotta do a Toonster event.
+
+Reed (01:09:24.063)
+Exactly, that's I'm saying.
+
+Liz (01:09:24.193)
+You gotta get open mic up there.
+
+Reed (01:09:28.077)
+Yeah, I had an open call last episode. If anybody knows anything, the best way for me to show value for value music to musicians and venues, I'm all ears. Give me the download so I can do a good pitch.
+
+Rev (01:09:46.844)
+Okay, so next up we've got 6006sats. Is that boobs? I'm not good with the number stuff yet. I'm gonna learn this lingo eventually guys, but keep playing with me here. And so that's from Late Stage Hodl. And Late Stage Hodl is a homie from Lake Satoshi. And Liz, I know you've been to Lake Satoshi at least once.
+
+There's some Lake Satoshi HODLween crossover and it's really cool. what Lake Stage HODL says is, keep up the good work, gents. Really enjoy y'all's discussion. And it's holding me over until I can get back to Lake Satoshi. There you go. And listen to Rev speak his mind about all the things he has bouncing around in there. And hopefully someone will start boosting from South Alabama or Florida panhandle area with the meetup. So there you go. Late Stage HODL doesn't have a meetup. He's looking for one. So anyone?
+
+Liz (01:10:41.123)
+in Alabama?
+
+Rev (01:10:43.662)
+South Alabama or Florida Panhandle.
+
+Liz (01:10:46.095)
+Well, there's, I know there's some people on Noster because there was a NosterBama event that I went to right there on the Panhandle with Sergio. So I know they don't, I don't know if they have the Vicklimia, but there's, there's a NosterFam there for sure. I think they're going to do NosterBama again, I'm pretty sure.
+
+Rev (01:11:01.435)
+Yeah, that.
+
+Rev (01:11:05.028)
+Yes, they are. Nosturbama sounded like it was a killer time, man.
+
+Liz (01:11:08.195)
+Yeah, it was great. We went skydiving. Yeah. Yeah, it was awesome.
+
+Rev (01:11:12.174)
+you were there. Yeah, yeah. The skydiving sounded like everyone loved that. So there you go. Noster Meetups are Bitcoin meetups as far as I'm concerned. And they're a lot of fun.
+
+So anyways, keep your eye out. Anybody out there, Sergio, if you're hearing this, let us know about Nostra Bamma on a boost and we'll get you connected with Late Stage HODL. Next we got William the French with 500 Sats. He says, great episode up here in Kitchener, Ontario. Sorry, William the French. And we have active farmers market culture with a strong cash is king culture. I'm wondering if anyone listening here is from my area.
+
+and would like to help orange pill these folks. Also, the idea of insisting on denominating in SATs. I lived in Mexico for two months once and by the end of that short time, I had started thinking in pesos. It doesn't take long, cheers. So there you go. Here's another person, doesn't have the meetup, but they're looking to cooperate with somebody in the area. So if you're listening and you're in Kitchener, God, I can't say that.
+
+Go find William the French. She's on Noster. And this note is on our end pub on Noster. So you'll be able to find William that way as well.
+
+Rev (01:12:36.036)
+Next we got 100 stats from an anonymous. Thank you.
+
+And now we have 5,000 stats from Matthew D. And Matthew D has been, I think he's boosted just about every episode and he's got White Paper Soap Company. I'll say it every time I buy my soap from him. He's a local guy here to Michigan. But Matthew D, he says, disregard my post about the talk on 421. Michigan Bitcoin isn't doing the Tuesday talks anymore. So we're recording this right now.
+
+So unfortunately, if you showed up to see Matthew D talk, he ain't there. But thanks, Matthew D. We really appreciate all the boosts and keeping interacting with us. And so next, we got a boost from me, 220 Sats. Grassroots Event is high signal, high impact, and high vibes. Thanks, Andrew and Fundamentals for joining Reid and I.
+
+Liz (01:13:17.711)
+you
+
+Rev (01:13:40.644)
+And so I think everyone here, except me, was at that grassroots event.
+
+Reed (01:13:46.031)
+right. Yep.
+
+Rev (01:13:48.442)
+Yeah, so I missed out on that one, but at least I got to talk to people about it.
+
+Reed (01:13:50.714)
+Yeah, that's something that I guess we didn't end up talking about on this episode because we had the recap episode a couple of weeks ago, but yeah, grassroots, super high signal. And again, it kind of comes back to almost like those regional events, Where the more that we can get together in person, especially the Bitcoin meetup organizers getting together in person, I don't know.
+
+Ever since the first grassroots I went to, it really lit a fire under me in terms of taking my meetup more seriously and understanding the mission that we're all on together and realizing there's a whole bunch of other people all over who are all thinking about the same stuff that I'm thinking about. I love the grassroots events.
+
+Wesley Schlemmer (01:14:39.182)
+Yeah, me too.
+
+Rev (01:14:41.852)
+All right, next we got another boost from me. this was, I'm boosting this show so much at the end here, because we're testing out some of these new value for value features that we're playing around with. so in this boost, I boosted the information about my meetup. So South Bend, Indiana Bitcoin Meetup is the first Thursday of the month at Lang Lab 6.30 PM. And what I did in addition to putting that information is I made the note on Noster for the event. And then I copied the event string into my boost. And so now in...
+
+This doesn't work in every client, unfortunately, but now when you see this Noster note that goes out there, my event is right there in that message and you can click on it in RSVP and everything. And so this is a way you can embed your Noster events into the boost. So when you promote it, it's very easy for anyone who's actually interested to get all the full details right there instead of going to some other website or anything else. It really integrates the boosting process together in promoting your meetup.
+
+And then next we got Reed. go ahead.
+
+Reed (01:15:39.182)
+And for, yeah, well, this is the segue to my boost too. Like the benefit of some of this testing, right? Is that, like you said, your event's not going to show up in every client the same. But because you did that test, now we made changes to the boost bot. So going forward, if you do share the event link, the Nostr event link directly in Fountain, like in your Fountain, like just copy and paste it over, now it should render on all the...
+
+the different Nostra clients.
+
+Rev (01:16:10.94)
+Fingers crossed. There's so many different ways to do it out there. We don't really know if it works every time, but let's give it a shot. We'll work on making it work if it doesn't. so Reed's just repping his meetup. I won't say shilling. Western Mass Bitcoin Meetup, Sunday, May 17th at 6 p.m. at the Heavy Culture Cooperative in East Hampton, Massachusetts. And actually, the other cool thing about this boost is that Reed has tagged his meetup and pub in there.
+
+Reed (01:16:12.547)
+Fingers crossed. This is true.
+
+Rev (01:16:39.836)
+So now when somebody sees this boost from Fountain over to Noster, they can easily go and click on that Meetup and Pub and get more information about the Meetup that way. And so you start to see what we're trying to play around with here is that as you participate in this value for value boost stuff, if you do it through Fountain with this Noster integration, or actually, well, anyone, anywhere, right? Any of these podcasting 2.0 apps, now you can directly link into your Noster social graph.
+
+because Reed is tagged in this note, as well as the Western Mass Bitcoin Meetup. And so it's linking it all together.
+
+next we got 500 sats from William the French again, dude, thanks William for all the boosts. You're really, giving us lots of value here. listening, but old, we don't like fountain because emails so doxxing what other options. And so, yeah, I, I did reply to William, on Noster. So there's a, you can go to nude pos nude podcasting apps.com and that will get you all of the,
+
+the other options for these podcasts 2.0 apps. And you'll be able to find one in there that should allow you to boost from outside of Fountain and not have to give up your email.
+
+Reed (01:17:56.282)
+And that website is safe for work. Just saying.
+
+Rev (01:17:59.452)
+Yes. Yeah. It's, it's our friend Spencer from a bowl after bowl. think that he has that domain, uh, redirect to new podcasting apps.com, but it's just so much more fun if you go to nude podcasting apps. So this is what I'm talking. We got to have fun guys. Um, and so the next boost we got 200 sats from, uh, Satoshi chef. And, uh, this one I also was playing around with, but, so they say,
+
+Wesley Schlemmer (01:17:59.728)
+you
+
+Reed (01:18:11.567)
+That's right.
+
+Rev (01:18:28.304)
+This was a high yield episode for me. A goal of my project is the Noster value pack is to make a large public zaps, gamify it, test the infrastructure and zap the leaderboard. So I know this person from Lake Satoshi and that's why I figured they wouldn't mind with me playing around with their note a little bit, but they do these, these Noster value packs where they, they consolidate, they pick a bunch of stuff from all of these different
+
+people on Noster selling stuff, combine it together in a box and then try and see who wants to get that box. And it's just a way to get people exposure to a bunch of the different people on Noster that are producing products and selling them. And so I wanted to show in the next boost that you can also paste in your, like they had a Zap Snag on Noster. And so with that message, they could actually add the note with the Zap Snag in it.
+
+So with the boost, now you're actually getting people directly to that zap snag so they can see what you're talking about. here in the, you'd have to, it does render the note right there. So you can, you don't even have to click anything. You can just see it in our, our end pub on our feed for local Bitcoiners. And this gets blasted out. Anytime you boost, goes to all the local Bitcoiners social graph. And so that leads into the next,
+
+cool thing that we're trying to do, is Reed's also developed some leaderboards and I guess you can, I just take it away, Reed.
+
+Reed (01:20:04.847)
+Yeah, we're tacking the leaderboards onto this episode, and so I promised not to take too much time, but I did want to give them a little bit of air time. So we have three leaderboards, and so I'm just going to read through them kind of real quick here just to give people a flavor of some of the other stuff that we're doing to promote the show, but more so to promote the people who are promoting our show, right? It's to promote you.
+
+So the first leaderboard is really just breaking down some of our episodes. And so it's the Episode Boost Leaderboard. And so this is the episodes that have brought in the most total number of Sats. And so, hey, maybe this is a good way for you to think. If episode five, which is in first place with Augie, and 63,373 Sats, well, if episode five brought in all those Sats, that's if you haven't listened to that one.
+
+That's probably a good one to check out, right? Because it brought in a lot of value. So episode five is in first place. Episode one, our pilot episode with just revenue, that was in second place, 56,771 Sats, followed by episode two is in third place. And that was with GC, the Bitcoin breakdown, and James from Jersey City. That was 47,062 Sats.
+
+And then in fourth and fifth place are episode seven and episode four. And those are two other rips with just Rev and I. So the next leaderboard we have is about our...
+
+Rev (01:21:41.798)
+Well, I want to say one thing about that leaderboard real quick before you move on. this, mean, so Liz and Wesley, you are, you are in the splits for this episode. So now if your episode that you're on gets on the leaderboard and people continue to zap, you'll continue to get that value split. And my, my hope is that when you guys will take those sats, you do whatever they're yours. But the idea is that then you can roll that into your, treasury there and use it to help get your, do something cool for the meetup. Right.
+
+Reed (01:21:45.294)
+Yeah, go for it.
+
+Rev (01:22:11.384)
+And so this is just another way that like, this is us giving value back to the people that come on our show and participate with us is by getting, if you can get on that leaderboard, now you get these, these sat splits forever. know, people continuously see that you brought the fire, signal on the episode, you know, that's all I wanted to mention about that.
+
+Reed (01:22:30.969)
+Hell yeah.
+
+Wesley Schlemmer (01:22:33.199)
+That's awesome, appreciate it.
+
+Reed (01:22:36.427)
+So next leaderboard, these are our listeners who have boosted the most number of episodes. So not the most number of boosts, not the most number of sats, just how many episodes have they boosted? So first place, Matthew D. Six episodes. So we've only had seven. So that means six out of seven, Matthew D. Thank you so much. Followed by God's Death and Shadrach in War Time, all tied for second place with four episodes.
+
+And then we have a big tie for third place between Mark, Rev Hodel, Otis Bittmeier, Boomer, Jair, and Business Cat. So thanks guys. just like Rev said, so everybody there, they're all in a big giant zap split. So if people are zapping that note, then you get a little bit of a cut. This is like your ranking in terms of the real local Bitcoin or Rider dies.
+
+So thank you, folks. And then finally, our last leaderboard. These are our top boosts of all time. So the single, the biggest single boosts ever sent to the show. And so, you we're only seven episodes in, you know, but we're hoping that this is going to be a leaderboard that, you know, maybe people want to stay on top because, hey, if you get on this leaderboard, you know, you're going to get read out on the regular. So in first and second place, both first and second, is Bitcoin is for everyone.
+
+which is a conference coming up May 22nd and May 23rd, 2026. Both of those boosts. So the first one was 12,020 sats and the second one was 11,010 sats. So thank you again to Bitcoin is for Everyone. Third place is... Yes, Portland, Oregon. Thank you. Third place is Otis Bittmeyer. Otis Bittmeyer Coffee, definitely one of the faves.
+
+Rev (01:24:22.118)
+And that conference is in Portland, Oregon.
+
+Reed (01:24:36.275)
+And so he boosted us 10,420 sats. That was back on episode one. And then in fourth and fifth place, have We All Eat with 10,020 sats, and then Matthew D with 10,000 sats on episode six. So again, everybody here is tagged for Zap Splits. And yeah, thanks everybody for boosting the show. like we were talking about this whole time, we're just looking for ways to give value back and keep the sats flowing.
+
+Rev (01:25:05.616)
+Yeah, and if you run across one of these leader boards on Noster, give those guys a follow, because they're all doing cool stuff. Everybody's got something going on. Otis Bittmeyer's got coffee if you need coffee, and you can go find him this way.
+
+Rev (01:25:20.186)
+And so I guess that's it. We're trying to have fun, lean into this value for value stuff. Let us know what you think. Do you love the leaderboard idea? Do you hate the leaderboard idea? Give us a boost, let us know. We'll talk about it. But thanks, Liz and Wesley, for spending some time with us. I think that it was great to hear about everything going on down there at Bitcoin Bay.
+
+Reed (01:25:46.585)
+Yeah, and you guys will be representing big time at the Bitcoin conference. So good luck on stage and good luck at the booth. We're really hoping, I would say all Bitcoin meetup organizers are really pulling for you so we can get some more people in hopefully following the big conference. I'm very hopeful. I think that there'll be a big surge of new meetup attendees after the Bitcoin meetup, after the big Bitcoin conference.
+
+Wesley Schlemmer (01:25:46.733)
+Yeah, thank you guys for watching.
+
+Liz (01:25:46.766)
+Yeah.
+
+Wesley Schlemmer (01:26:15.896)
+Yeah, Lord willing.
+
+Reed (01:26:19.567)
+All right, Rev, you got anything else?
+
+Rev (01:26:22.842)
+Roll the outro.
+
+Reed (01:26:24.848)
+All right.
+

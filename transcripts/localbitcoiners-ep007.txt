@@ -1,0 +1,563 @@
+Rev (00:02.79)
+Hey, local Bitcoiners. Rev Hodel here. I'm back with Reed. It's just the two of us tonight. And we're kind of squeezing in a rip here just because we're so excited. We've been making a lot of developments as far as the whole, I'm new to podcasting and I'm here to fix this mentality. We're really enjoying doing this podcasting thing. And so we wanted to talk a little bit about
+
+Noster and how Noster and podcasting and value for value can all kind of tie together. But before I really get into it, we're going to do the typical thing where we talk about some meetup adventures. And I think Reid's got a much more exciting story than I do this evening, but I'll start off. And so last night I went to the social meetup in Grand Rapids. That's at Two Guys Brewery. And it's the second
+
+Monday of every month at six o'clock, two guys brewery. And it was a good turn out of people. I sold a little maple syrup. I bought some cupcakes. But the biggest, I think the biggest conversation we had was where these, this AI is heading in relation to like robotics and everything. And really how it's trending in a direction where we're going to start to try and play God here.
+
+You know, and we're going to try and inject this AI into the robots and there's going to be these machines, but really where it's going to lead is to, the robots having sex and, and procreating more robots. I mean, cause that's the most efficient way to like procreate, like to create a workforce. Right. So it was, it was a kind of a, a half silly half serious discussion, but it really got me thinking like, all right, this, could really get ourselves into trouble here. if, if things take a few steps too much further.
+
+we've already been doing genetic modifications of crops and, really playing around in the agricultural side with, with this, God-like intervention with nature. And I can just see that, you know, once you start realizing it's too difficult to start manufacturing these, these, robots that are humanoid, why not just make, a biological robot that you can inject, you can program with AI and just have your little, workers. So.
+
+Rev (02:32.976)
+Pretty interesting discussion.
+
+Reed (02:33.474)
+did not think that's where you were going with that by the way. That caught me off guard. That was a good one.
+
+Rev (02:37.498)
+Yeah, was, yeah. So that's what we talked about. And, you know, Buffalo, another guy that he sort of is organizing this meetup, he was inspired by our episode with Augie when we were talking about regional meetups and he's wanting to start a regional meetup, which was cool to hear. And he's got some ideas about how to do a white paper day regional meetup around Halloween.
+
+So keep an eye out for that. We'll see if things can get figured out for the Michigan White Paper Day regional meetup. Reid, I know you've got exciting news about your new venue and everything, so lay it on us.
+
+Reed (03:21.656)
+Yeah, well, I think mostly the news was in our last recording, which was that we locked down the venue here. But we had our first meetup there and it delivered. There were some logistical bumps in the road because it was our first time there. I didn't have the right cable to go from my computer to the speaker thing. And so the video had not great audio, but it was doable.
+
+Also, their projector is pretty low resolution. And so I to remember that when I make my slides next time to make everything nice and big. But that's OK. They were easy hurdles to clear. Everybody had a good time. And yeah, we were able to hang out before and after. We closed the place down.
+
+So the venue brought in a bunch of business that wouldn't have been there anyway because they don't have shows on Sunday nights, which is why we get the venue. But yeah, we had a great meetup. Sometimes, not all the time, but sometimes when I'm putting my slides together for the Socratic seminar, I start noticing maybe it's something that was in the news or whatever. I start to notice, okay, there's going to be a little bit of a theme.
+
+for this episode or for this meetup. And this month it was using Bitcoin as money, which was perfect because the big news this week was the whole thing with Iran like using Bitcoin as money in the straight and all this stuff. So everybody was keen to talk about that anyway. And we have been talking on this podcast so much about the circular economies and I'd been meaning to talk to them about that.
+
+Yeah, we got some people set up with lightning wallets. There was a little bit of stats flowing a little bit at the meetup, which was great to see. And we've got people with ideas about what they can bring in next time and how are they going to let people know. And I have a little bit of a homework assignment to figure out if there's going to be a good way for us to coordinate some of that stuff. But yeah, no, it was a great meetup.
+
+Rev (05:40.87)
+So I have a question about when you're transitioning from like to a new location, because with the South Bend meetup, Bitcoin account and I are considering moving the meetup to Michigan City for a number of reasons. But the primary reason is we're trying to find a place that will accept Bitcoin so we can buy food with Bitcoin, buy drinks with Bitcoin. But we're not quite sure how to
+
+Reed (05:41.536)
+I did have... go ahead. Yeah.
+
+Rev (06:08.87)
+transition, how to make that transition for our regulars. Did you find that the regulars were cool? They all showed up. Was it that the meetup was in a new location? Did you attract new people because it was maybe a little closer or just how did that go?
+
+Reed (06:26.21)
+By coincidence, I guess, we had no new people. The last bunch of meetups, we've actually been pulling in one or two new people like every meetup, which has been great. But this one, we've also gone for huge stretches where we don't get any new people. So it's not uncommon, but we didn't get any new people this time. But basically, all the regulars showed up. I think there were 13 people there, which is pretty good size for us. That's a good turnout.
+
+And yeah, I was also trying to blast out on as many channels as I could. Like, hey, don't forget, we got the new meetup location, so don't go to the old place because we're not going to be there. But yeah, it seemed like everybody got the message.
+
+Rev (07:11.836)
+Now your meetup is, mostly on a regular cadence, but you do switch it up from time to time if that's required. So people aren't like totally like just conditioned to going like to the same place at the same time every time of the month or whatever. So that's probably helpful.
+
+Reed (07:18.68)
+We do. Yeah.
+
+That's right.
+
+Yeah.
+
+Reed (07:29.964)
+Yeah, do it with our meetup. You do kind of have to check the calendar because it's not like the third Sunday of every month or whatever. We don't do it that way. And again, it's mostly because of my schedule. Like my schedule isn't that reliable or predictable. And so the meetup schedule isn't that reliable or predictable. But you know, it hasn't, it hasn't caused problems. We just have to, I just do a good job, I guess, to try to make sure people know to check this, like the schedule and everybody knows at this point to check the schedule.
+
+So the only other cool thing that happened, had one of our, it was the, one of the new guys who came to the last meetup came again this time. But he was driving, he was driving like an hour and a half to come to the meetup. And we, but we were his closest meetup. You know, there aren't very many meetups near us. And so we started talking to him and he's starting his own meetup. And so there's going to be a new meetup coming on the schedule here.
+
+Let's see, you'd think I would have had it prepared here.
+
+Yeah, I don't, here it is.
+
+Rev (08:39.386)
+Yeah, give him a shout out. Let him, let everyone know where this brand spanking new meetup is happening.
+
+Reed (08:46.114)
+Yep, so it's going to be Wednesday, May 20th from 7 p.m. to 9 p.m. at Conspiracy in Middletown, Connecticut. And so that's CT Bitcoin Meetup number one on the calendar. So if you're in the area, if you're in the Connecticut, I think it's the southern Connecticut area, check it out. May 20th.
+
+Rev (09:10.202)
+Yeah, go celebrate the birth of a new Bitcoin meetup. Sometimes the first ones, if people get a little bit of word out about them, can be some of the most exciting and fun meetups, these kickoff ones. At least in the Michigan community, we've talked about it in previous episodes, but because there's such a good culture here, when somebody else starts a meetup, people kind of are willing to go out of their way to go to the first one and make it, really kick it off with a bang. And so...
+
+Hopefully this new meetup can get some of that enthusiasm too.
+
+Reed (09:48.366)
+Okay, yeah, so the only other things with the venue I did, I was able to talk to some of the, like the ownership who was there and I sent them all our meetups for the rest of the year. And so I'm hoping to lock those all down, but it's all signs are pointing towards, I think this is gonna be it. I think we landed the new venue. And I can't remember if I mentioned it last time, but now that we're there,
+
+Dude, this place, would be actually pretty perfect for like value for value music. And so if anyone's listening who knows something about how I should pitch that to them, I would be all ears. And maybe in the coming months, that would be something that I would bring up with them about, hey, this could be a good way to bring in some additional revenue for your place and for these bands. So maybe something to think about.
+
+Rev (10:45.328)
+Dude, would like nothing more than to have my meetup location also be a music venue where it just so happens that the meetup is also live music at the same time. God, that's a dream. So yeah, hell yeah, man.
+
+Reed (11:03.342)
+All right, should we move on to some of our featured topics here?
+
+Rev (11:08.686)
+Yeah, let's, let's get into it. and so I kind of said, you know, we've been having a lot of fun podcasting and, seeing what it's like to, to participate in this value for value thing. And really I've been, I've been pretty good at boosting the shows that I want to support and that I like, over time, I go through phases with it. I'm sure a lot of people are similar where they get hot on the boosting, all the other favorite shows and, getting, you know, getting that support out there and then they take a break for a while.
+
+But it's this whole meme of, I'm new to Bitcoin, I'm here to fix it. I'm new to podcasting, I'm here to fix it. Now, I don't exactly, it's not exactly about that specifically, but basically the point is that we're getting some cool ideas here. And I think it's revealing a little bit more about what the potential of this concept of value for value offers. But first and foremost, just to...
+
+Go really focus in, like zoom in on what a Bitcoin meetup is. Like Noster is a location on the internet. It's a digital location in which like us as Bitcoiners can go and we can build this cultural capital uninhibited. It's because like you have your true identity, your key pair. You've got your relays, which is like your property. You own the data, right? Now you can...
+
+use somebody else's really, you can use your own so on and so forth. And then you've got this commons type of place where there's this interoperability between all of the different kind one clients and so on and so forth. And then you can take it a step further and you can look at more of these niche clients like my favorite is corny chat. know, most many nights of the week at after eight 30, I'll be hanging out on corny chat, just talking to other Bitcoiners on there about Bitcoin and life and whatever else.
+
+And there's a huge value for value component tied into all of this. so like Noster is a place where Bitcoin meetups happen. It's just a digital Bitcoin meetup. It's a non, it's a distributed meetup localized through the internet.
+
+Rev (13:22.492)
+Do you have any ideas about thoughts on that?
+
+Reed (13:23.276)
+Well, so I actually hadn't really brought this up with you recently, but I think we're one week out and I don't have any of the details here. So the last couple of months, I've been participating in a... It's like a monthly Nostre Farmer's Market. And it's kind of a hard thing to explain because it's...
+
+a set up this place and a whole bunch of vendors, you pay, I forget what it is. It's some very trivial amount of Sats, like don't know, a thousand Sats to get a little storefront and you can populate items for sale in your little storefront. And then there's basically just a virtual place where we just go hang out. And it's not like corny chats because it's no audio, but it's a big group chat.
+
+and you can send zaps in it. And there's a jukebox. And so everybody runs over the little jukebox thing with their little avatar on the screen and cues up the next song, which pulls, I think, from Wave Lake. You pay 21 sats and bam, you got your next song on the cue. So it's kind of like that. It's supposed to be kind of like a place where you can get together and hang out and...
+
+Maybe you were thinking about buying a product on Nostr, but now you can have a chat with the person who's selling it and ask them questions and do whatever else. So yeah, so that's on the 21st of every month. So I think that's like one week from today.
+
+Rev (15:08.304)
+What is he calling it? The, the not Narcester market. It was funny because the, I don't know if you heard, bullish boosted, rabbit hole recap with the details on the, on the last upcoming one. And they were confused whether it was, a physical thing where people were getting together. and this is what I'm talking about. This Noster creates a true space, a locality that is,
+
+Reed (15:11.182)
+It's like Noster Market.
+
+Reed (15:23.186)
+yeah.
+
+Reed (15:28.407)
+It is confusing.
+
+Rev (15:38.446)
+as close to reality as you can get because of all these features of the protocol that you have your true identity, that there is all of this stuff that really defines the location. And at the same time, it's not ruggable, right? Like nobody can shadow ban you. Nobody can delete, ban your account, delete your account, stop you. You can just do it.
+
+The jukebox feature is pretty cool too. That adds like a whole other element of fun to it. So you could just go in there and talk to the people. Maybe you don't want to even buy anything, but you just want to like hit the jukebox and just like listen to some tunes and talk to people and hang out in the group chat or whatever. Very cool way to get this browsing type of...
+
+Reed (16:15.95)
+Yes.
+
+Reed (16:21.966)
+That's right.
+
+It's fun.
+
+Rev (16:33.608)
+It's part of our human nature, I think, to want to just go and meander. Granted, you can't pick the items up and hold them or anything, but you can browse. A lot of times, the search is overwhelming. If you're searching for a product on Amazon or something like that, and you can go page after page after page looking for the perfect thing or on eBay page after page after page, to have a limited scope,
+
+Reed (17:00.962)
+the worst.
+
+Rev (17:02.274)
+of just like, okay, the vendor is here. I can ask them questions. This is what I have available to me. I'm going to go have, I'm going to shop and I'm going to have some fun and I'm going to do it on Noster. And at the same time, this is a Bitcoin meetup, right? Because Bitcoin is involved all the way through. The only way to pay is in Bitcoin.
+
+Reed (17:19.886)
+Correct. So I have some details since I was a little fast and loose there with my explanation of what it was. So it is called the bullish market and it is on April 21st. It's the 21st of every month. So if you would like to be a vendor, so if you're returning vendor, which that's what I am now because this will be my third one, it's 1,111 Sats. So not a lot of Sats.
+
+And if you're a new vendor, it's 2,222 sets. So again, pretty reasonable to set up a little storefront and go get to hang out and hopefully give shoppers on Nostr a little bit of a different experience.
+
+Rev (18:07.524)
+And so this, those, that pricing mechanism kind of gets into this point that I'm trying to make often about the fact that Noster creates, the unit of account for Bitcoin. helps to create a unit of account for Bitcoin because you're not, I'm not thinking about like, okay, a row of sticks, one, one, one, one, one, you know, four ones. how much is that in Fiat? It's just like, yeah, a thousand sats. No big deal. All right. I, that's not a heavy lift, especially, at
+
+it in today's market. and then, so it's, just, it starts to normalize thinking in terms of sats, which is also, I think really important. it's a place, Noster is a place where you can go and you can have sats as your unit of account. which is unique amongst meetups, right? If I go to a meetup in grand Rapids or Chicago or anywhere else, everyone's still thinking in dollars at those meetups.
+
+It hasn't gotten to the point where the velocity is high enough to where we're thinking in terms of SATs as our unit of account. So very cool. And so.
+
+In addition to the fact that this value for value component comes into play too, that's another thing that makes Noster unique versus a typical meetup or even like a group chat on Signal or Telegram. If you're group chat or if you're hanging out in Noster, now the ability to send Bitcoin is there. There's Zaps there. And so this gets into value for value. And something that I'm trying to...
+
+I've been thinking about it as I'm calling it the value chain right now, just kind of riffing off of, you know, think stack chain was the first, we're on Twitter. There are people, the meme of stack chain got started and then over on Noster then it became like pleb chain. And so there's all these chains, right? So why not make another chain? This is the value chain and this has to do with value for value. so like corny chat is a good example of this where when, when you hang out in corny chat, you can, you can use your Noster wallet connect.
+
+Rev (20:19.152)
+Which Nostra Wallet Connect is like, this is the secret sauce that makes it all so amazing because it's, you can set up your wallet. You can set a limit to how much you want to spend in any given time period. so you can't get totally, there's no bug that can totally liquidate your entire wallet and everything kind of safe. But now when I'm in CornyChat, every five minutes, I can send 10 sats to Vic, the developer of CornyChat and, and give him value for the value that I'm getting hanging out there.
+
+And at the same time, I can also send 10 sats every five minutes or whatever I want to the room, the person who opened the room and started the room and letting them know like, Hey, I appreciate that you took the time to open this room and allow me to come in here and hang out. And then beyond that, now I, now there's features in there where I can, if someone says something cool or, know, someone has a huge announcement, Hey, it's my birthday or, you know, I just had a baby or something. You can now zap them directly in corny chat.
+
+And this, value for value component comes into play where we're now, this is starting to normalize, the gift economy, like this, this idea of like, getting value first and then paying for it afterwards and paying for it in whatever way you feel is worth it. and so a lot of times I think people want to try and try and figure out exactly, you know, what the track they're trying to analyze it, right?
+
+What is this value? What am I really getting out of it? Is it worth 5,000 sets, 10,000 sets more or less? Um, but really it, I think if we get into the culture of it all, like just getting used to you, you get your, numbers, right? 21 sets, 42 sets, 121, 721, whatever it might be. And you use these numbers for different reasons. And that's your unit of account. You just blast those apps out. You just push that value out in any direction.
+
+whenever the opportunity comes up and you get used to just spending Bitcoin all the time. But at the same time, if you're providing value and you're doing something cool, you're receiving Bitcoin all the time. And so this creates a circular economy, right? This is the dream of all of the Bitcoin meetups is to have Sats go out as somebody. I would go to the Bitcoin meetup. I buy stuff, but I also want to earn some Bitcoin at the same time. I want to have value return to me. There's a reciprocation.
+
+Reed (22:42.926)
+Yeah, think a lot about... So value for value breaks people's mental models of how you transfer monetary value over the internet. One of the things that... I have no idea when I heard this, maybe as part of my 40 hours a week, like four years ago or something like that.
+
+But I remember hearing people talking about the early internet and regretting the path that we went down to monetize the internet, which was primarily ads. That was it. That was the monetization mechanism for the internet was ads. And nowadays, it's either an ad or a paywall. That's it. Those are your two options. And value for value changes that.
+
+And I think when I first started to wrap my head around value for value was when Gigi started to talk about it right around the time when he first started coming over to Nostr. And one of the things, especially when you start thinking about paywalls and forcing people to turn their eyeballs over to whatever you're trying to put on their screen in front of them that they don't really want to look at.
+
+It all comes down to the fact that information wants to be free. Ideas want to be free. They're extremely hard to contain. They just spread all over the place. It's difficult to put a box around them. And so, in Nostr, everything's open. Everything's open. There are no paywalls.
+
+because information wants to be free. And so if we're going to transition to an internet experience that is actually open and free, instead of just moving and hopping from one wild garden to the next wild garden to the next wild garden, making it impossible to get your data out and move it from one place to another, if you don't like that experience, then I think you're going to have to start wrapping your head around the fact that
+
+Reed (25:08.334)
+value for value is that's the payment mechanism of the open internet. And so look, you can choose not to participate. It's not a requirement. You don't have to send people value. But I think if you start getting enough value out of these experiences, eventually you're going to realize it. And you're going to say, I'm actually, this is such a better experience than I've ever had anywhere else on the internet.
+
+I really need to be rewarding these people for producing this content and putting it all out there for absolutely free and asking for nothing in return. And then bam, and then the zap button is right there waiting for you. And I think that people come around to that realization kind of in their own time. But for people who have been hanging out in Nostra for years, it's something that a lot of people, it just settles in and it's not a problem. It's not a barrier. I don't hem and haw about
+
+I just listed off those stats. I'm not concerned about sending bullish 1,111 stats. Not concerned in the least because he's providing me this amazing platform that never existed before. This is a whole new thing. And I get to participate for 1,000 stats. Totally worth it.
+
+Rev (26:27.984)
+Yeah, and gets you to think about...
+
+When, when, so this is getting back to this concept of the value chain. can create a chain reaction. So, I, like I said, I've been sort of getting back into, boosting other podcasts a bunch now. And when I boost those podcasts, because I'm doing it through fountain and fountain is Noster integrated. now I know that when I boost this podcast on fountain, that boost goes to the podcast creator.
+
+the content producer, but it also goes to my entire social graph as well. And so the way that I think about, so like, okay, I'm going to create some, I'm first of all, giving value in the form of sats to the content creator. And then I'm also providing some thoughtful message that is relevant to the content of that episode of that podcast episode that I'm listening to. But if I word it correctly, my message can stand alone as a message to my social graph at the same time. And then when my social graph sees it,
+
+they can also now choose to boost me for the value that they get out of my message. And then they can repost that message to their social graph and maybe they can get boosted for it. And now this is promoting the podcast and it starts this chain reaction of activity that is all driven instead of I need to get paid before I do this action. I'm just doing the action in hopes of providing value. I'm going to try and maximize.
+
+the value that I can create with each interaction that I do in order to get sort of a rebate. I mean, this kind of goes back to the home mining principle of like, the heat is a byproduct. It's not a waste product. It's a byproduct and you can use the heat. And like, if you can use your interaction with the value for value ecosystem, you get a rebate on your value for value. Like I might've boost that podcast 721 sats.
+
+Rev (28:27.5)
+for to put my message on there, I'm giving 721 sats to them. But then on my, Noster, now I'm getting a hundred sats back in 21 in the boost that I'm getting or the zaps that I'm getting for that, information at the same time. And so now I'm getting a rebate and then the information is now propagating. And this creates like a marketplace or a market for what is the most valuable information out there.
+
+Reed (28:56.952)
+So I'm not, you I think maybe this is the right time to start, you know, people who are listening to this podcast, like you guys have heard me talk, right? The last, I can't remember when, maybe two or three weeks ago or a month ago or something, we came out with this boost bot for the podcast. And I think at the time, the way I was thinking about it is that it's cool that you can go into Fountain and see all the boosts.
+
+And it's cool that Fountain does have their own boost bot. So when someone zaps the show, they do push out a note saying, like you said, when you zap a show or when you boost a show in Fountain, your whole social graph ends up seeing that message.
+
+But I thought there was kind of a couple pieces missing to that. One, the podcast doesn't get tagged. So yeah, in the Boostbot, like you could click a link and I think it opens up in Fountain. But wouldn't it be nice if your podcast has a Nostr account to promote the Nostr account of the podcast? And so that's basically, so our Boostbot is pulling data from my Lightning node.
+
+to push and then constructs a note and pushes it out with all the metadata, which is the message, the person's end pub, and it can tag them and say how much it is. And so that's where people who listen to our show know that we have this thing now. And so that's another way to propagate the information. We're spreading, we're increasing the number of opportunities for people to see and interact
+
+with these notes and to give people credit, credit where credit is due, right? You want to boost our show? Well, I want to boost you. The show wants to give you some love back. And so we do that by tagging them in a note and saying, you know, here's your message blasted out, not just to our audience when we read off the boosts, but also on Nostr as a kind one note.
+
+Rev (31:08.124)
+Well, in addition to that, we were starting to play around with this leaderboard idea. And so now, uh, because people will discover a show and they'll interact with it, but that might be, you know, several, several weeks back or several, several episodes back. And so the boost bot allows us to easily continue to read off those messages on the latest episode. But in addition to that, now there's like a running tally. And so you can see like.
+
+Reed (31:14.136)
+The leaderboard is new.
+
+Rev (31:37.102)
+Over time, if people are like finding a lot of value out of this one episode, that's very old. Now this leaderboard can show everybody else who's, who's stumbling across, across our content, where to start, like where, where the value is in where, or where our audience thinks the value is. And it, cause I feel like podcasts, so there's so much good information that gets out there and then it just gets buried in all the rest of the information. And, it.
+
+Reed (32:03.064)
+Definitely.
+
+Rev (32:05.968)
+there needs to be a way to like keep that super good relevant information, the Banger podcast, exposed to people so they can experience it too if they're just discovering this feed.
+
+Reed (32:22.168)
+Yeah, so the leaderboard came out of a discussion actually that you and I were just chatting, I think over signal. And a question came up, what was the the total number of sats that were zapped to this episode? And that isn't a statistic that Fountain gives you. Like when you're a podcaster on Fountain, like they don't give you that statistic. They tell you how many dollars that you've been, like how much revenue, I guess you've...
+
+created for your episode, but they show $200. And so, we as people who spend all our time on Nostr and we denominate as many things as we can, even in our heads in Sats, well, I don't really care how many dollars I got. What I want to know is how many Sats I got because Sats are eternal. Let's say our show made $25 worth of Bitcoin in 2011.
+
+Well, wouldn't it be a lot more relevant to know that we made like 25 Bitcoin in 2011? Who cares if we made $25 in 2011? Nobody cares about that. What they would care about though is if we made 25 Bitcoin off of one episode. So that's why I don't care how many dollars that we got in an episode. I want to know how many sats we got because that's the number that's eternal. So with the help of our friendly AI assistant,
+
+was able to build a bot that tallies up all the total sats that have been zapped for every episode, because fortunately for us, we've been receiving zaps to my nodes since the first episode. So we tallied everything up. Episode 1 is still the leader. I'm sorry. Actually, episode 1 got flipped. Episode 5 is the leader, so the farmer's market with Augie. Episode 1 is number 2. And then episode 2.
+
+And then episode four, Cypher Puncture at Code. And then we've got episode three with Boomer, Meetups and Podcasts at the Signal. And then unsurprisingly, our last episode was the lowest, but that's only because it only came out like four days ago. So yeah, it's a cool thing to just be able to see it. So the leaderboard is going to get sent out every Monday at 10 a.m. Eastern. That's where we set up the bot.
+
+Reed (34:49.676)
+And so every Monday, you can log in and see, or you can check our Nostra feed and see where the leaderboard stands. And so some of the cool things that we were talking about, like maybe episode three was your favorite episode and you're disappointed that episode three isn't in the top three. Well, no fear, because you can just go on and give it a boost and it will move up the leaderboard.
+
+Maybe you hadn't gotten around to it yet. Maybe you thought, well, I only sent him 100 sats. Maybe I should have made it 1,000 sats. But whatever it is, this is your opportunity. And now you can kind of see where the episodes stack up in terms of value received. And maybe that can also be a signal back to you about, well, maybe these episodes at the top, maybe these are the highest value delivered. If I haven't listened to one of those, maybe I want to go check out their number one episode.
+
+So it's just kind of, it's another way to start thinking about when the, the sats are flowing on an open permissionless network, what kinds of new information that becomes available and what we humans are going to do with that information. It's still kind of unknown. And so we're just looking for cool ways to get that information to the surface.
+
+Rev (36:12.678)
+When the sats don't lie, that, because it's coming from, cause I know that, you know, with the, with the zaps on Nostra, you can kind of, spoof the zaps and you can, the clients can show a zap amount that didn't actually end up landing in anyone's lightning node. But this information is coming directly from the lightning node. Like this is, this is finalized payments, you know? And so this is like, people put real skin in the game. They, they really put their value out there to say like this podcast.
+
+Reed (36:31.864)
+directly. That's a good point.
+
+Rev (36:42.232)
+episode was worth it for me to put this much money down. And so over time, hopefully that proves that like this content is the most valuable content that we've produced. And then other people can easily see that. Like these are the highest quality things that we've been able to create. And if you take it a step further, because we haven't, there's a whole nother level to this discussion, right? Where now you can start adding in splits.
+
+Like it's very easy for us to, add splits in with, with the guests. And so, now as a guest, if you're getting, a little bit of financial, Kickback for coming on our show and providing some high signal, good information. you have an incentive now to like promote that, to put it out there because anytime someone
+
+Reed (37:13.272)
+Mm-hmm.
+
+Rev (37:38.276)
+says, yes, this, this was good information. I'll give you some value for it. They get a little bit of value. And then if you can get on the leaderboard, now you're going to be getting for value from being on the leaderboard because people are going to be continuously finding that episode and maybe boosting it more. And so it adds, instead of having sponsors, right. one of the biggest criticisms I have of like some of the podcasts that I listened to in Normiland, like the telepathy tapes is a good example of, of a podcast that I listened to.
+
+all the time that's not a Bitcoin podcast. And they have these fucking mid-roll ad reads that drive me crazy. It's like, dude, you really don't have anything else to... Like if you're starting a podcast, your goal should be to like market your stuff, your audience, like the people in your community, you should be promoting that information, not like having somebody else pay you to promote their product. And so...
+
+with this value for value thing, now it can be purely, there's no ethical dilemma here, right? It's not like, did I choose a sponsor? How can I choose a sponsor that totally aligns with the show? And is the deal good? And are we going to be corrupted by the money that we're getting from the sponsor? In the value for value thing, we don't get any money. We just put the value out there and see what comes in.
+
+And then it's up to the participants that join us in this journey of value for value to help continue to propagate that value chain, to create the value chain reaction that drives that content to the top through this leaderboard mechanism as one example.
+
+Reed (39:21.154)
+So I would be... I feel like remiss if I didn't mention the fact that part of the idea of the leaderboard, like putting the leaderboard out, I would say was at least partially inspired by Maxi Madness. Shout out to the bugle. Because when the bugle brought Maxi Madness to Nostre, we saw value for value.
+
+in a whole different way that I don't remember ever seeing that type of interaction with Sats on Gnoster before. Like we've had Zapathons, we've had lots of cool stuff where the Sats get flowing really fast on Gnoster and it's really cool. But it was just a whole different thing. It became competitive, it became gamified, and not everybody took it super seriously.
+
+But enough people took it super seriously that it became actually a really cool little area of Nostr for a solid week there. And so we had a few conversations about we really liked the idea of trying to gamify this in some way, or form. And the leaderboard accomplishes that in a different way. It's not Maxi Madness. But now, if maybe you don't like that, Augie's episode is number one.
+
+and you really think the Jersey City episode should be number one. Well, right now, all it would take is a 15,000 sad zap and boom, you just flipped the leaderboard and now Jersey City is in first place. so, that part of it, I feel like was definitely inspired by the craziness of the week of Maxi Madness on Nostair. That was a really cool and fun experience.
+
+Rev (41:15.824)
+Well, in the gamification of things, creates an incentive for people to break things. Cause if you can win at the game, then you're going to try and figure out how to get around the rules, right? To think outside the box. And I've always thought about this in regards to like, you know, soft forks and Bitcoin upgrades and this test net stuff. was, I always think like if they had like a test net game where it was like, if you can break
+
+Reed (41:24.855)
+Hmm.
+
+Rev (41:44.9)
+something in this new soft fork or whatever, and get this bounty, right? By playing the game of breaking the soft fork, then it creates a a much bigger incentive for people to try and actually work at it rather than just this small group of people who are already thinking about it all the time. You get somebody new in there who has got a totally different perspective because they want to play the game and have some fun. Now, you don't know what you couldn't
+
+What will be unearthed, right? What people will discover. so gamification is a great way to like create proof of concept for these value for value mechanisms to show that they work and to like learn about how to make them better and how to increase the effectiveness of the ultimate goal, which is propagation of Bitcoin cultural capital. Like how can we find the way to like
+
+get the highest signal, the best Bitcoin information out there and have it rise to the top and be at the forefront so everyone can participate and operate and get the most utility out of their Bitcoin and do the best for Bitcoin.
+
+Reed (43:03.32)
+So I know we said at the beginning this was going to be a bit of a Nostr episode, but maybe before we pivot, because I wanted to bring up a couple other Nostr topics and sort of circle this back to Bitcoin Meetups, because I've been doing some thinking recently about what are some of the ways, what are some of the things that Bitcoin Meetups can do to lean into Nostr and to lean into some of this value for value stuff.
+
+So I can start talking about that, I don't want to cut it. Do you have more stuff you wanted to hit with the value chain stuff?
+
+Rev (43:38.074)
+Yeah. Well, so, like, I think what this leads to is, like the Zapathons is a good example of, just an organic thing that manifested on Nostra early on as a, was a fun thing, you know, and, and since it's died off, it's been hard to get Zapathons going. haven't really seen a real good Zapathon happen in a very long time. But if you can take, like, if you can combine the idea with the Zapathon with Maxi Madness and create like a scope of content.
+
+For example of like, let's, let's try and find the best homesteading content on Nostr. Let's try and find the best e-cash content on Nostr. you can set a timeframe. All right. In this timeframe, if you, if you want to participate in this Zapathon, you tag your note, you put a hashtag on there with, with whatever tag that everyone kind of agrees upon, like homestead Zapathon or something. And then you can add up the, the amount of Zaps that the content gets and then
+
+the winner is the person who gets the most zaps and you could take it a step further to try and make it so everyone wins more. So the value chain continues to propagate and say like, all right, if you're participating in this zapathon and you're one of the people who wants to win, you can actually increase your score by zapping all the other notes. Like the more you zap that increases your score to win. And so you can create these rules around the game. of, of prop of
+
+pushing this content to the top that then creates incentives for everyone to get paid to monetize the content in general. And that increases participation. And the more you participate, the better your reputation is in the ecosystem. If, because once again, this is all public. The, the, the whole it's the, the, the lack of privacy is actually a feature, not a bug. If you put it in the right light, right.
+
+We're now because I'm publicly participating in all this shit and putting my sats on the line and saying, yes, I vouch for this content. Now you, you are seen as the person, because this is one of the things that the, the maxi madness thing revealed to me is that you can see who was, who was really putting a lot of sats down on that. And so they're a heavy participant. They really got into that. That game, you know? And so if you, if you find that somebody's really into,
+
+Rev (46:01.872)
+whatever this content lens that you want to start the Zapathon through or whatever this game, then this creates reputation, right? And let's say you, instead of sponsorships, now, if you want to like, cause like Maxi Manus was sponsored by Predix or whatever, right? I don't know what their deal was, but instead of having sponsors, you could just have, you could be soap miner, right? And you're like, dude, I'm, I want soap, like homesteading content is definitely in my audience.
+
+And so I have a huge incentive to participate in this Zapathon and zap the shit out of all of these, all of this content as marketing for my soap minor product. And so this is like, instead of like a sponsorship where there's like a paid ad deal, you're just participating and building your reputation as a guy who's like, you know, in it to just propagate the cultural capital.
+
+And you're probably going to get increased your sales from that. And the value chain continues to react like the wave goes, it moves on.
+
+Reed (47:06.926)
+Yeah, it makes me think too. I was vehemently agreeing with you as you were saying how the openness and the lack of privacy on Nostr is actually a huge feature that can be tapped into. And it makes me think too, like we talked about how, okay, sure, sometimes there are podcast episodes that just get buried in the feed. I'm not scrolling back three or four months.
+
+to see what podcast I maybe just didn't click on and I probably should go back and listen to. That's just a hard thing. And I've always thought the same thing happens in Nostra because we don't have algos. Because we don't have algorithms that continuously boost all this stuff to the front of everyone's pages, stuff kind of gets lost. Sometimes you might have a banger note, right? But you send it at Sunday night at midnight.
+
+and nobody sees it. And guess what? No one's going to scroll back Monday morning and find it and it's just gone. And so it's like, you know, do I repost it? Like, how do I make more content on Nostr kind of evergreen? Like, how do we stop losing information? And so I've been trying to think about that more and more. And like we said, like all these ideas that we're talking about for the podcast are ways that we can bring up older episodes.
+
+and remind people that these things exist. And so, yeah, so I'm thinking about that more in other areas too. Maybe we can spend another episode talking more about that. But what do you think? you want to pivot to some ideas that I've been kicking around with how Bitcoin meetups can use Nostra too?
+
+Rev (48:56.655)
+Yeah, yeah.
+
+Reed (49:02.537)
+So the Western Mass Bitcoin Meetup has an end pub. It was something that I was using early on to send out, I guess, like reminders and stuff about the meetup. I'm not going to lie though, it was kind of a pain because as a Bitcoin Meetup organizer, especially when your meetup is in the phase where you're like, boy, I'd really like to get some more people in the door.
+
+And you start racking your brain. What are all the different things I should be doing to get the message out about my meetup? And so you're like, okay, well, I'm going to post it to meetup.com, but maybe that's not enough. Maybe people aren't looking on meetup.com. Maybe they're looking on Luma or maybe they're looking on Eventbrite. I have no idea. So maybe I'll start posting my meetup in lots of places. I'll post it on Orange Pill app and I'll post it here and I'll post it there. And now as a meetup organizer, you're spending every time you want to post a new meetup,
+
+get ready to go sit down at your computer for like a freaking hour and copy and paste all this information all over the internet because you're just hopping from one walled garden to the next walled garden. You know, and we've talked about on this podcast before that if you do it on Nostr, if you post your meetup on Nostr, it will show up in all of the Nostr event apps. And so now it doesn't matter. Like Nostr is the open one, right? The other thing too,
+
+And because people have been hearing me talk about my experiences with the AI stuff, my AI can't go post my meetup on meetup.com for me. Like it just can't do it. You know, and it can't go post it for me on St Atlantis either. And it can't go post it for me on Luma. But you know where it can post it for me is Nostr. That's a one shot. That's a one shot for my agent. Hey, go grab my, my meetup details off my website and post it as an event note on Nostr.
+
+That's a one-shot note. now bam, now your Meetup is now on every Meetup event platform that exists. again, going back to the open data thing, if you post your Meetup on Nostr, now that information becomes public and it's not behind a paywall and it's not behind a walled garden, it's not behind some weird web socket or whatever, it just lives on all the Nostr relays that you can...
+
+Reed (51:27.768)
+poll at any time. You can pull data off of those. They're all open. So the question becomes, once we hit a critical mass of meetups that actually just take the two seconds to post on Nostr2, now all of this aggregation stuff, there's been so many attempts in the past to try to aggregate all the meetups around the world. People try to build maps. People try to build lists. People try to build
+
+feeds of like, here's all the upcoming events and you can filter by area and all this stuff. But those lists are so unbelievably hard to put together and they never stay up to date because, well I was posting on meetup.com, but I got sick of the fees. So now I'm posting somewhere else and that's, that's the old site. We don't use that site anymore. People are always hopping around and doing different things and it's so hard to pull all that data.
+
+But if we can all just do that one extra thing, right? Meetup.com and Nostr, Luma and Nostr, SatLantis and Nostr. Now we can break, now we have, sure, you can still get your SEO scores and all the other, you know, the normies who actually do go to meetup.com and that is a real thing, right? Normies are not going on Nostr to find your Meetup, not yet, right?
+
+So yeah, I'm not saying to stop doing those things, but just find a workflow. You're going to find, think, that it does not take very long to just throw your event on. You don't even need a cover image. You don't need anything. Nobody really cares. You don't need ticketing. You don't need all this stuff. What people want is they just need a date, a time, and a location where there's going to be Bitcoiners. And that amount of information is really easy to get onto Nostr.
+
+So that's definitely, to me, that's probably the biggest thing I think that Bitcoin meetup organizers can start doing to lean into Noster.
+
+Rev (53:33.052)
+Yeah, it's just the one place where it will be there, right? This information, you can find it. there's, like you said, there's no setting up an account. You just got your NSEC and your public key, and you can go and check all this stuff out. And it's just a great place to aggregate all of the Bitcoin Meetup events.
+
+Reed (54:03.278)
+Yeah, one of the things I was really hoping for, because I know SatLantis does have some Nostra integration tools, but I was surprised to learn that one of those things is not publishing it as a, wish I knew the kind event off the top of my head, but like the event, there's a specific Nostra note that you develop for Nostra events. And I was very surprised to find out that they're not pulling information in from those and they're also not publishing to those either.
+
+And I really think that I would really like to see them start doing that, even if it's just in addition to what they have going on. Just give us a way to just automate that workflow and get the information out there on Nostr. It will make a lot of this data aggregation stuff significantly easier.
+
+Rev (54:53.18)
+Because then you can choose whatever, you were talking about, if you like Plectos, if you like Floxter, if you like SatLantis, you can use that as the lens in which you go browsing, looking for meetups, because it's not necessarily, people take road trips, people travel, and when they're traveling, they wanna try and find a Bitcoin meetup. And if they have to try and check meetup.com and Avento and Luma to see if there's a meetup.
+
+in the area that they're going to, they have to look at five, 10 different place, whatever, a bunch of different places to go and see if there's a meetup there. When instead they could just go to Noster and, from whatever their favorite lens of looking at Noster through this events kind is, they can see if there's something there or not. And it just creates a very wide net for you to cast to get your meetup on the map. You know, it's then it's there on Noster everywhere.
+
+all over an Oster, whatever lens you want to look at it through.
+
+Reed (55:54.814)
+And the other thing too, is again, I think we found out from the grassroots conference that there are a number of Bitcoin meetup organizers out there who are leaning into this AI thing. And I'm telling you, these things are so easy to like, you want to integrate some of these things into your website, like no problem. That's like a one shot. That's like, okay, I want a new page.
+
+on my Meetup and I want it dedicated to all the Nostr events that I've published from this NPUB. Go add that. That's something they can spin that up immediately. That's such an easy feed to develop. And now your website is now populated with all your events. And actually...
+
+Rev (56:45.34)
+Well, in this, this kind of... Go ahead, go ahead, sorry.
+
+Reed (56:49.302)
+No, no, because I was about to pivot. You go ahead.
+
+Rev (56:51.718)
+So this comes back to the value chain thing too, because the event is on Noster, right? It's a note that you can boost or you can zap, can repost or whatever. As someone who's attending the Meetup, now it's very easy for you to let other people know, hey, this is my Meetup. I'd love to see you there. And you can create that value chain going, whereas what are you going to do? You're going to go to meetup.com, copy the link, make a Noster note with the...
+
+the meetup.com link in there and everything. And it gets even further like if Bitcoin meetups start to have treasuries and start to lean into the value for value value chain type of thing, where they're starting to get sats through their end pub of for whatever reason. Maybe it's because they came on to our show and they got splits and now they got some sats from the splits to like create bounties, right? And you could put a bounty out there like, hey, if you're coming to the meetup,
+
+cause I see people saying like, please RSVP on meetup.com. So it shows that like people are actually coming to this thing. So when people on meetup.com look, they see that it's a real thing that people are going to. but when it's on Noster, right? Like you can actually get value from doing that. And so like, if you repost the event as the meetup, organizer, you can then zap that person for, for helping to promote the event and the value chain continues.
+
+And everybody wins, right? It just propagates the information and creates incentives for people to participate and cooperate.
+
+Reed (58:28.654)
+Yeah, exactly. mean, it's... Nostra's got the payments built in. So now you don't need to put a donation page on your website. People can just zap you. It's all your payment information is already there. And the other thing that I've been starting to do... And again, it's almost kind of... I said at the beginning, I wasn't really using our Bitcoin Meetups and Pub, but I'm starting to bring it back.
+
+Now that I've got the agents that can post some of this stuff for me, now that we're exploring all of these ideas, it's kind of got my juices turning a little bit here about how I can be better utilizing the asset that is my Bitcoin meetups end pub. Because it was kind of just sitting there. And I have a feeling that there's probably a lot of Bitcoin meetups who have an end pub for their meetup. If all you're doing on it is just like, hey, see us Saturday night at...
+
+6 p.m. or whatever and you post one note per month, you know, that's tough. It's tough when you're posting one note per month and you don't have great discoverability and you don't have a ton of followers. But the more stuff you start doing, like the more people are going to start following your account because now you're publishing more valuable information. And so now it's not just, it's a reminder every once a month. Now it does more than that. And one of the things that I did
+
+recently was we started a monthly newsletter or blog post maybe with the meetup. And the first one, I sent it out via email. And then shortly thereafter, I was like, why the hell did I send this out via email? Like, let me store it as an Austronaut. So I converted it over into a long form Austronaut and published it that way. And so this month when I did the
+
+I'm doing it just once a month. So this month when I did the blog post, that's what I did. I post it as a long form Nostr note. And now those live forever, right? Because now they're out there. And I think what I'm going to do is exactly what I was saying before about events I'm going to do for blogs. So our website, I'll add a page and say, here are our blog posts. And all it's going to be is it's just going to be pulling the kind once. Or excuse me.
+
+Reed (01:00:53.838)
+It's going to be pulling the... I can never remember all the kind numbers. I think it's 30023. Yeah, the long form notes.
+
+Rev (01:00:58.748)
+The long form kind, yeah. 30023. Maybe. Okay.
+
+Reed (01:01:04.277)
+I believe that's correct. Yeah, I think it's 30023. And so that's another thing that we're going to start doing. And we've got the boost bot. And so I think I'm going to try to start maybe making some bots to help send out more frequently reminders, maybe post, maybe get a little bit of a backlog of cool stuff that we've done or start resurrecting some of our slides or some of our slideshows that we have that
+
+you know, are all publicly available. Like we post all our slides are on the GitHub repo. They're on our website. So maybe do a better job advertising that those exist. And I think our, end pub is a great place to do that.
+
+Rev (01:01:47.238)
+Well, it's like, so when you integrate it with Nostr, now this information is not just for your meetup, but it's for all of Nostr too, to discover and interact with. And this is kind of gets into like, when you take Lightning payments and you have your own node and you can programmatically create conditions upon when this payment comes in, what your bot is going to do to propagate that information.
+
+Now you've got like a program, like a programmatic way of interacting with payments. And there's, you don't need fucking smart contracts and all this shit. Like you can just use Noster in tandem with Lightning to create these programmatic things that happen automatically based on whatever conditions you want. If you want to create a game about, about this program, programmatic zap that you get, or these payments that you get, you can do that.
+
+If you want to try and create incentives for create bounties for people to propagate the information that you're getting, you can do that. And that helps once again, to bring the most valuable content to the surface and keep it relevant. Like it doesn't get lost anymore.
+
+Reed (01:03:04.003)
+Right.
+
+Reed (01:03:08.398)
+So yeah, so those are some of the things. I guess I will bring it up because that was what you just mentioned. So I've been also trying to play around with the idea of, you sort of declared a new term at the beginning of this, which is the value chain. And I was thinking, I guess for audience members who maybe haven't put this together, like Rev and I are having...
+
+a number of conversations per week. We are actually talking about a lot of this stuff throughout the week in the background. And I think that's actually one of the reasons why we wanted to have an episode like this, is to air some of this stuff out and brainstorm a little bit together on air. But one of the things that I was playing around with, I tentatively called V for V 2.0, like following the podcasting 2.0. And really what it was,
+
+was I recently kind of hacked together a little website to do a long form note editor. So not super important for this episode. Maybe I can talk more about it later. But what I realized is that in order to use this Nostr app, you were logging in. Like logging in with Amber or logging in with Primal or logging in with your NPUB or whatever it is. So once you're logged in, now the site knows your NPUB.
+
+And so I added a donation button, right, where you can send us value and you can add a note. Well, I already had the Boost bot for the podcast, and so I built a Boost bot for the website. So if you zap, you know, I added, it's a custom, you know, I built the Bolt 11 invoice, right, into the website. And so it's got some metadata tags so that my bot will pick it up.
+
+when it comes into my Lightning Note, it'll see, we just got 21 sats on the website and we know which end public came from. You can do it anonymously too, but it'll give you credit just like the Boostbot does. It'll say the amount, it'll say the message, it'll say who sent this app. And so I think that this is, I kind of feel like this is something that a lot of websites could benefit from something like this and giving...
+
+Reed (01:05:33.966)
+kind of giving back a little bit to the person who's sending you value, right? It's just an automated thing. It's not costing them anything to just give you a little boost, shout you out a little bit on Nostr. And like you were saying at the very beginning, now if I put that out there, well, maybe that note gets sapped. And then I'm getting, right, it just continues the chain. So we will continue playing around with a lot of these ideas.
+
+for the podcast, for our meetups, for our other projects. We're gonna keep experimenting. We're gonna keep brainstorming, trying stuff out, seeing what sticks. And yeah, we're gonna keep talking about it because I think the V for V internet, I think it's the future. It's just very, very early and no one's really wrapped their heads around the implications of the future we might be heading into.
+
+Rev (01:06:34.308)
+It is the frontier, man. We are on the frontier and that means that it's open water. It's wide open for us to explore and play with. And if we can make it fun and everything can be zappable and if you take some consideration when you're giving the value to the thing that you want to provide the value to because you got value from it, but at the same time, you're considering how you're crafting the message in which you're
+
+adding that value. Now you can get more value back because it's putting this information out to all the people that you're connected to. And that creates the chain reaction of the propagation of the best, most valuable stuff.
+
+Reed (01:07:22.606)
+So on the last episode, I keep getting confused about the way we... I mean, it's our show. I should probably know this by now. So do you want to hit the boosts or do you want to a recap, like favorite moments or key takeaways?
+
+Rev (01:07:41.68)
+Well, I I think we kind of just hit the key takeaway, but we can do it anyways. I think really if anyone's heard me on other podcasts, I talk about this concept of the nine forms of capital. I mean, this is a permaculture thing. And in addition to that, there's these three ethics of permaculture, earth care, people care, and the third ethic I call non-extraction. And the extractive nature of all these walled gardens is the problem. And what Noster is,
+
+And what Bitcoin is, is non-extractive. And so we can lean into the non-extractive nature of this and combine that with this idea of like these nine forms of capital. when you're, when you're providing, when you're, when you're getting value for something, you probably have some value to add, right? And it doesn't necessarily have to be in Bitcoin. You provide the value in the zap to the initial content creator, but
+
+Additionally, when you add your information that you're adding to it in the form of your note, you can also provide some intellectual capital. You can tell a story. You can add value to your social graph at the same time. And so this is basically accomplishing this with one action. You're giving value to someone else because you've received value. And then you're also finding a way to propagate additional value out.
+
+to the other people who will be seeing this. And so with that one action, you're accomplishing a lot more capital creation than if it was in a walled garden. And this potential, if we can figure out a way to increase the velocity of this and create this as like a culture, just culturally, this is how we do it. This is gonna create a lot of capital creation and it's gonna push
+
+the most valuable information to the top. It's going to create the signal through all the noise. we're going to really, the pioneers at the frontier here are going to continue to accelerate way beyond the people that are stuck in Twitter or in these other walled gardens.
+
+Reed (01:09:56.514)
+Yeah, was, I mean, you took the words out of my mouth. I the key takeaways that I'm feeling are, know, Waldgarten is the past, right? That's the old internet. You know, I really think that Nostr is going to be the new internet. It's miles ahead of anything else.
+
+that has its same scope. Like the scope of NOSTER is unbelievable. I was having a conversation and I guess this isn't a recap point, but I was having a conversation recently and I was talking about different NOSTER integrations. And the person I was talking to got very confused because they kind of thought that NOSTER was just Twitter. And so it's like...
+
+If that's what you think that Gnoster is, then the example I used was Gnoster Wallet Connect, where we're using that. It's not a kind one note that ends up in your feed, but you are using the Gnoster relays to propagate information in a free and open way. And what a game changer Gnoster Wallet Connect was for interacting with my node was unbelievable.
+
+You know, NOSTER, the more time I spend on it, the more I think it's going to win. And I really think that meetups in particular should start leaning in to NOSTER. And the more you start leaning in, like you're going to start getting, it is slow at the beginning, right? You're not going to show up with, you know, 3000 followers, right? It takes time, but it starts to happen at the more value you start delivering.
+
+It's just one big value for value and it's not just Sats, right? Like you were talking at just a minute ago. There's lots of other ways you can provide value other than just sending Sats. Sats is more like what you get back. So lean into Nostr, steer clear of walled gardens, know, information wants to be free.
+
+Rev (01:12:20.24)
+The value, yeah, the Sats are a rebate, right? There's so much more value. The social capital that you can build, the reputation that you can build, the intellectual capital that you can build and share, the experiential capital that you can build and share. And first and foremost, the most important thing is the cultural capital, right? The fact that we're creating this ubiquitous baseline of information that everyone has access to.
+
+Reed (01:12:20.792)
+So with that.
+
+Rev (01:12:50.97)
+that when people come in to Noster and they're a Bitcoiner and they go to Bitcoin meetups, they can get on the same page really fast and avoid making huge mistakes. the, avoid KYC, avoid the centralized getting rug pulled by keeping your coins on coinbase, not your keys, not your coins. Avoid all that shit. I am trying to the boost. It was open and now I am not able to see the thread.
+
+for the boosts.
+
+Rev (01:13:48.156)
+The Revolution will have bad UX. Round 3.
+
+Rev (01:13:55.352)
+Okay, here it goes, it finally loaded. All right, sweet.
+
+Rev (01:14:05.414)
+So we recently released an episode with fundamentals and Andrew from Bitcoin Park.
+
+Rev (01:14:20.016)
+And we got some boosts and this episode was recently, it was, it's, we put out another episode pretty quickly after this one. So there hasn't been a ton of boosts, but it doesn't matter if you boost this episode, you boost any episode, no matter what episode you boost, it's going to show up in our boost bot and we're going to see it chronologically. And so the, and it won't be truncated and
+
+Reed (01:14:38.4)
+and it won't be truncated.
+
+Rev (01:14:45.37)
+So the first boost that we got, and this is kind of a, well, it's, it's neither here nor there, but the first boost, the award goes to God's death. and God's death boosted 1,237 sats from fountain. And he says, thank you, gentlemen. And God's death is another person who's, I think he's boosted just about every episode that we've done. And so he also gets the award for.
+
+The boost streak, right? Like God's death is on a streak here. He's boosting every episode. Let's have some fun. You know, get on your streak guys. You know, if you, if you love our show and you want to keep boosting, doesn't have to be 12,337 sats or whatever, just whatever you want to boost, but you could boost every episode and you can get on a streak and we'll get you on the, the, the, we'll gamify it. Right. And so the, yeah.
+
+Reed (01:15:40.25)
+We have more ideas. We did not air all our ideas. Revenant, we've got more ideas for things for boost bots. I think you're teasing some of them here. But it's all open data. When you have open data, there's cool stuff you can do with it. And so we're going to be playing around with that.
+
+Rev (01:15:59.714)
+Not everybody knows that God's death has boosted like every episode, unless we say it, but you might be able to know that God's death boosts every episode on Nostr if you follow the local Bitcoiners and put. And so thank you that God's death. We really appreciate your continued support. Keep listening. We'll keep providing you the value. And so he did boost on the, the grassroots root cap, Philly suburbs and Bitcoin park, Nashville episode six.
+
+Reed (01:16:03.84)
+every episode. That's right.
+
+Rev (01:16:31.068)
+Next boost we got 100 sats.
+
+Rev (01:16:36.9)
+And this just says undefined. It's 100 Sats from Fountain Undefined. And this is from the Bitcoin Meetup is the Farmers Market, Kansas City, Missouri with Augie, episode 5. So I'm going to assume that's an anonymous boost. But thank you for the 100 Sats. You know who you are. Next boost, we got 7,000 Sats from
+
+An end pub that is not populating. It just says end pub gobbledygook. But the message is absolutely inspiring, Rip. Just love the enthusiasm behind local Bitcoin food production and community building. And that's from local Bitcoiners. Meetup is the Farmer's Market, Kansas City, Missouri with Augie, episode number five. Next one we got is 10,000 Sats from Matthew D.
+
+And Matthew D is another guy from Michigan here that I know and he's been boosting every episode. I always say Matthew D, that's the guy that I get my soap from, white paper soap. get my tallow bomb from him. He makes good, high quality product. If you're in Michigan, I think you can also order it. He'll ship it, get some soap or some tallow bomb from him. And his message is after 2023 to 2025, I have no idea how anyone can still be shitcoining.
+
+Imagine thinking that there's still any value there. And that was from local Bitcoiners grassroots recap, Philly suburbs, Bitcoin Park, Nashville, episode six. Well, thank you, Matthew D. You're certainly high up on the leaderboard as far as our biggest supporters go. And I hope people buy your soap because it is good. Next, we got 100 Sats from Fountain, from Noster Gang and
+
+They say, shit coin exorcism. And that's from local Bitcoiners grassroots recap, Philly suburbs, Bitcoin Park Nashville episode six. And NostraGang has been there also boosting right along with us. So we appreciate it NostraGang and a hundred stats, man. Great. You put a hundred stats down. We'll read it. You know, join the party. Let's let's get this value chain going guys. You know, this is the idea. We want to propagate the information here.
+
+Reed (01:19:03.98)
+Yeah, shitcoin exorcism. That was such a good story. It's actually one of my favorite stories, I feel like, from the meetup is we had a true shitcoin convert. It was awesome.
+
+Rev (01:19:04.316)
+Rev (01:19:19.684)
+It doesn't happen too often. You don't hear that story very often. And it was good that you were able to find an opportunity to share that. Next, we got 100 Sats from Pyrohawk. And he says, for what it's worth, I saw Bitcoin Park because I was in Nashville looking for parks to go to. So I wouldn't be surprised if that's how some other non-Bitcoiners learned about it. As mentioned at the beginning, names can make a big difference.
+
+Reed (01:19:22.936)
+Pretty rare. Yeah.
+
+Rev (01:19:48.506)
+And that's from local Bitcoiners grassroots recap, Philly suburbs, Bitcoin park, Nashville episode six. And so yeah, Pyrohawk, it is kind of, I do agree with you that if you can come up with some cool name, mean, everything is marketing, right? And, and sure, you can just like, just say, Hey, this is a Bitcoin meetup for my town. And it's like, you know, Bitcoin meetup for spring, Springfield, wherever, right?
+
+But if you can create something that's interesting around it to help attract people, especially when you create the Noster note that promotes the meetup, right? That is the correct event kind. So it propagates across all of the other Noster event apps. This is going to make it more attractive for somebody who's taking a road trip and they're looking for a Bitcoin meetup as they're passing by, they're going to stop through because you've actually got an interesting sounding one because you've made a good name. So I agree.
+
+Think about the name. Don't let it stop you. Don't get the analysis paralysis, but definitely names are valuable. And finally, we've got 5,000 sats from Mark. here, Mark, here we go. Mark's got the meetup info. This is what everyone's been waiting for. Bitcoin meetup at Good Day Brewing in Paris, California on April 24th, 2026. So Good Day Brewing, you're in the area of
+
+Paris, California on April 24th, coming up here. Go check it out. Buy a beer, burger or soda with Bitcoin. you can pay in Bitcoin over there too. That's pretty sweet. You can use Lightning. So he says, buy a beer, burger or soda with Bitcoin over the Lightning Network. Meet plebs and join the mission. We're on the mission, Mark. Hell yeah, man. Go hang out with Mark and join the mission.
+
+Mark's been also boosting every episode and so Right here and this is a pretty recent, you know These are these are the people who are boosting soon and they're boosting often, right? These are the ride or dies and so You guys out there that are boosting us this quick and this often through the episode. We're gonna find a way to Put some value back in your direction and we do appreciate it and It's just crazy man. How much
+
+Rev (01:22:16.528)
+I never really thought that this podcast would have the impact that it's having. You kind of say, if only one person listens to the thing and takes an action based on something that we're talking about, we've succeeded in our mission. And it's almost like every episode, someone's reaching out to me. There's people boosting in, talking about how they're starting meetups. I hope that it's creating this snowball effect where...
+
+Bitcoin meetups become more more ubiquitous and there's more people willing to go out to them, check them out and participate.
+
+Reed (01:22:57.966)
+So yeah, it really is. It's truly amazing. I feel like I'm completely failing open here at being able to convey the gratitude I have for the people who listen to the show, who boost the show. But also, it's not a zero effort activity to start a Bitcoin meetup. In some ways, it's kind of a big ask.
+
+And so when we get stories, you know, after an episode that somebody went out and started a meetup because they started listening to the pod and they realized that, you know, they didn't have a meetup near them. You know, I hope, you know, one of the things that we're trying to get across here is the amount of value that you get in return for doing that service for your area. Like you actually get a lot back, you know, in these other forms of capital.
+
+Like sure, sometimes you might get some zaps and stuff like that. Maybe you accumulate a little bit of sats for yourself on the side, but you're gaining a ton of cultural capital. You're growing your local area of trusted Bitcoiners who are, you you talk about the ride or dies from the podcast, but you know, all these meetups, they're all ride or dies at your local meetup. know, those are the guys, you know, that's really where you want to make...
+
+your local connections is with your local RiderDice. And that's where you're going to find them. Is that a meetup? So every time we hear a story that another meetup has started, it's just adding fuel here. We're going to keep spreading the message here and hopefully we can make Bitcoin meetups the norm here. Let's get back to the time when everyone's just trying to meet up with other Bitcoiners.
+
+to continue propagating Bitcoin culture, to continue spreading Bitcoin education, to continue informing people about what's actually going on, and spreading all kinds of other value, whether that's using Bitcoin as actual money with circular economies, whether it's spreading education, or just forming bonds in your local area. These are all things that are going to be huge for Bitcoiners as we move into the future.
+
+Rev (01:25:24.646)
+Take action and create a catalyst for the value chain reaction to happen.
+
+Reed (01:25:34.402)
+Love it, dude. This is a good rip. You got anything else before we go?
+
+Rev (01:25:39.45)
+Roll the outro.
+
