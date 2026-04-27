@@ -320,11 +320,24 @@ export async function publishBoostShareNote({
 // Without this check, a malicious LNURL server could falsely report
 // settled=true and trick the modal into showing the success state for a
 // payment that never happened.
+// Hard cap on poll iterations. Bolt11 invoices typically expire in 1
+// hour; well before that the user has either paid (resolves the poll)
+// or abandoned the modal (cancel handle stops the poll). The cap exists
+// only to backstop bugs — if the cancel handle is somehow lost (modal
+// remount during HMR, stray ref leak), polling self-terminates instead
+// of running forever.
+const POLL_VERIFY_MAX_ITERATIONS = 720  // 720 × 2.5s = 30 min
+
 export function pollVerify(verifyUrl, intervalMs, onSettled, expectedPaymentHash = null) {
   if (!verifyUrl.startsWith('https://')) return () => {}
   let active = true
+  let iter = 0
   async function tick() {
     if (!active) return
+    if (iter++ >= POLL_VERIFY_MAX_ITERATIONS) {
+      active = false
+      return
+    }
     try {
       const res = await fetch(verifyUrl)
       if (res.ok) {

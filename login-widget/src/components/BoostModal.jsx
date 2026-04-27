@@ -151,11 +151,18 @@ export default function BoostModal({ user, onUserChange, onClose }) {
     return () => { cancelled = true }
   }, [paid, shareToFeed, shareAttempted, canShareToFeed, message, amount])
 
+  // Esc closes the modal — but only if a layered LoginModal isn't open
+  // on top of us. Both modals attach their own keydown listener; without
+  // this guard, hitting Esc to back out of the login flow would close the
+  // boost form too and lose whatever the user had typed.
   useEffect(() => {
-    function handleKey(e) { if (e.key === 'Escape') onClose() }
+    function handleKey(e) {
+      if (loginOpen) return
+      if (e.key === 'Escape') onClose()
+    }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [onClose])
+  }, [onClose, loginOpen])
 
   // Lock page scroll while the modal is open so swipes inside the modal
   // don't scroll the page underneath (especially on mobile where the
@@ -306,7 +313,7 @@ export default function BoostModal({ user, onUserChange, onClose }) {
                       <button
                         key={p}
                         onClick={() => setAmount(String(p))}
-                        className={`flex-1 text-xs py-1 rounded border transition-colors ${
+                        className={`flex-1 text-xs py-2 rounded border transition-colors ${
                           amount === String(p)
                             ? 'border-orange-600 text-orange-400 bg-orange-950/30'
                             : 'border-neutral-700 text-neutral-500 hover:border-neutral-600 hover:text-neutral-300'
@@ -337,7 +344,7 @@ export default function BoostModal({ user, onUserChange, onClose }) {
                     {donorNpub ? (
                       <button
                         onClick={() => setAnonymous(false)}
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 transition-colors ${
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-3 px-3 transition-colors ${
                           !anonymous ? 'bg-neutral-700 text-neutral-100' : 'bg-neutral-800 text-neutral-500 hover:text-neutral-300'
                         }`}
                       >
@@ -351,7 +358,7 @@ export default function BoostModal({ user, onUserChange, onClose }) {
                     ) : (
                       <button
                         onClick={() => setLoginOpen(true)}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 transition-colors bg-orange-500 hover:bg-orange-600 text-white font-medium"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-3 px-3 transition-colors bg-orange-500 hover:bg-orange-600 text-white font-medium"
                       >
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                           <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
@@ -363,7 +370,7 @@ export default function BoostModal({ user, onUserChange, onClose }) {
                     )}
                     <button
                       onClick={() => setAnonymous(true)}
-                      className={`flex-1 py-2 px-3 border-l border-neutral-700 transition-colors ${
+                      className={`flex-1 py-3 px-3 border-l border-neutral-700 transition-colors ${
                         anonymous ? 'bg-neutral-700 text-neutral-100' : 'bg-neutral-800 text-neutral-500 hover:text-neutral-300'
                       }`}
                     >
@@ -430,9 +437,9 @@ export default function BoostModal({ user, onUserChange, onClose }) {
                 <button
                   onClick={handleGenerate}
                   disabled={loading || !!initError || !lnurlMeta}
-                  className="w-full py-2 rounded bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium text-white transition-colors"
+                  className="w-full py-3 rounded bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium text-white transition-colors"
                 >
-                  {loading ? 'Preparing boost…' : !lnurlMeta && !initError ? 'Connecting…' : 'Boost ⚡'}
+                  {loading ? 'Preparing boost…' : !lnurlMeta && !initError ? 'Checking lightning address…' : 'Boost ⚡'}
                 </button>
               </>
             )}

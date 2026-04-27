@@ -13,9 +13,8 @@ export default function BoostButton({ user, onUserChange }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        // Inline styles for the props preflight: false leaves at the browser
-        // defaults (background, border, font, cursor). Same pattern as the
-        // logged-in LoginButton.
+        // Inline styles for the props preflight: false leaves at the
+        // browser defaults (background, border, font, cursor).
         style={{
           background: '#f7931a',
           border: 'none',

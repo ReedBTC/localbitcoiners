@@ -18,15 +18,19 @@ function setUser(u) {
   }
 }
 
-// Restore-cancellation flag. Set by abortRestore() when the user takes
-// an action that should win over the silent background restore (manual
-// login, manual logout). The restore promise still completes its work
-// asynchronously; we just discard its result.
-let restoreCancelled = false
-function abortRestore() { restoreCancelled = true }
+// Per-attempt cancellation token. Each call to mount() creates a fresh
+// token; abortRestore() flips the *current* token's cancelled flag. The
+// token-object pattern (vs. a module-level boolean) means future restore
+// re-attempts each get a clean slate, and a stale `cancelled = true`
+// from a prior attempt can't accidentally suppress the next one.
+let activeRestore = null
+function abortRestore() {
+  if (activeRestore) activeRestore.cancelled = true
+}
 
 // Tiny hook every internal component uses to track the shared user.
-// Avoids duplicating the subscription logic across LoginButton + BoostButton.
+// Lets BoostButton (and any future consumer) subscribe to login/logout
+// without each one wiring up its own listener.
 function useSharedUser() {
   const [user, setLocal] = useState(currentUser)
   useEffect(() => {
@@ -73,12 +77,15 @@ const api = {
     // render immediately in their logged-out state, and flip to the
     // logged-in view when (and if) restore succeeds. If the user
     // clicks Login before restore completes, abortRestore() flips
-    // restoreCancelled and we discard the result.
+    // this attempt's cancellation token and we discard the result.
     const saved = loadSession()
     if (saved) {
+      const token = { cancelled: false }
+      activeRestore = token
       restoreSession(saved)
-        .then((u) => { if (!restoreCancelled) setUser(u || null) })
-        .catch(() => { if (!restoreCancelled) setUser(null) })
+        .then((u) => { if (!token.cancelled) setUser(u || null) })
+        .catch(() => { if (!token.cancelled) setUser(null) })
+        .finally(() => { if (activeRestore === token) activeRestore = null })
     }
   },
 
