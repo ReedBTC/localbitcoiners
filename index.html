@@ -79,6 +79,13 @@
     /* ── Reset & Base ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    /* Hard guard: never let the page itself scroll horizontally. Without
+       this, a single overflowing child (long URL, wide image, etc.) lets
+       the body scroll right, and on mobile the initial scroll position
+       can land non-zero — which makes fixed-position modals appear "off
+       to the right" relative to the visual viewport. */
+    html, body { overflow-x: hidden; max-width: 100vw; }
+
     :root {
       --cream:   #f5eedc;
       --cream-d: #ede3c8;
