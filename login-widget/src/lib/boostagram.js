@@ -35,7 +35,7 @@ import { withTimeout } from './utils.js'
 // Hardcoded lightning address for the show. No runtime kind-0 lookup —
 // boosts always go to one place, and a network round-trip on modal-open
 // just adds latency + a failure surface.
-export const RECIPIENT_LUD16 = 'localbitcoinerspod@getalby.com'
+export const RECIPIENT_LUD16 = 'localbitcoiners@getalby.com'
 
 // Recipient npub for the optional kind 1 share-to-feed note. Decoded once
 // at module load; the hex pubkey populates the kind 1 `p` tag and the
