@@ -160,18 +160,24 @@ export default function LoginScreen({ onLogin, embedded = false }) {
         } catch {}
       }
       if (qrStuckTimerRef.current) clearTimeout(qrStuckTimerRef.current)
+      // 5s on mobile (was 10s) — when the user comes back from the signer
+      // app and we haven't received the response, it's almost always
+      // because the OS killed the WebSocket while they were tabbed away
+      // and the bunker's reply landed on a now-dead socket. Faster prompt
+      // = faster path to "fresh URI, try once more" recovery.
+      const stuckDelay = isMobile ? 5000 : 10000
       qrStuckTimerRef.current = setTimeout(() => {
         qrStuckTimerRef.current = null
         if (qrSignerRef.current && qrWaiting) {
           setQrStuckPrompt(true)
         }
-      }, 10000)
+      }, stuckDelay)
     }
     document.addEventListener('visibilitychange', onVis)
     return () => {
       document.removeEventListener('visibilitychange', onVis)
     }
-  }, [qrWaiting])
+  }, [qrWaiting, isMobile])
 
   function cancelActiveQrFlow() {
     if (qrSignerRef.current) {
@@ -352,12 +358,17 @@ export default function LoginScreen({ onLogin, embedded = false }) {
       await connectAndWait(ndk)
 
       // Different signers publish the connect response to different relays;
-      // advertise + subscribe to all three so whichever the signer picks,
-      // we'll see the response.
+      // advertise + subscribe to a broad set so whichever relay the signer
+      // picks, we'll see the response. nsec.app, primal, and damus cover
+      // most named bunkers; nos.lol + relay.nostr.band catch Amber-on-
+      // Android configurations that publish to a wider set or fall back
+      // to a "well-known" relay when the user's preferred isn't reachable.
       const NC_RELAYS = [
         'wss://relay.nsec.app',
         'wss://relay.primal.net',
         'wss://relay.damus.io',
+        'wss://nos.lol',
+        'wss://relay.nostr.band',
       ]
 
       // Reuse the saved secret + URI if we published one recently.
@@ -710,6 +721,18 @@ export default function LoginScreen({ onLogin, embedded = false }) {
           <p className="text-xs text-neutral-500 text-center">
             Your phone will open whichever signer app claimed the nostrconnect link. Using a different signer? Copy the link above and paste it in.
           </p>
+
+          {/* Amber-specific guidance. Amber on Android frequently fails on
+              the first connect because (a) the user has to find the
+              Approve button in Amber, return here, and the OS may have
+              killed our WebSocket meanwhile, and (b) Amber may prompt a
+              second time for the get_public_key permission scope. The
+              recommended fallback (the bunker:// URL flow below) avoids
+              all of this — Amber generates a stable URL with the user's
+              pubkey already embedded, no relay round-trip handshake. */}
+          <div className="rounded-md border border-neutral-800 bg-neutral-900/50 px-3 py-2 text-[11px] text-neutral-400 leading-relaxed">
+            <strong className="text-neutral-300">Amber on Android?</strong> If login gets stuck, tap "Open in Signer App" again — Amber will remember your approval and reconnect quickly. Still stuck? Use the <strong>bunker URL</strong> option below instead: in Amber, go to Settings → Connected Apps → Generate bunker URL, then paste it here. That path is more reliable on mobile.
+          </div>
 
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-neutral-800" />

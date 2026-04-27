@@ -5,6 +5,15 @@ import { decrypt as nip04Decrypt } from 'nostr-tools/nip04'
 import { decrypt as nip44Decrypt, getConversationKey } from 'nostr-tools/nip44'
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils'
 
+// Diagnostic logger. Always-on info-level logs prefixed with [lb-nostr]
+// so when a user reports "login stuck on mobile" we can ask them to
+// paste DevTools console output and see exactly which step failed.
+// `console.info` is verbose enough to not clutter the default console
+// view but visible when filtering by "info" or paste-debugging.
+function dlog(...args) {
+  try { console.info('[lb-nostr]', ...args) } catch {}
+}
+
 // Thin NDK-compatible wrapper around nostr-tools' BunkerSigner. NDK's own
 // NIP-46 implementation (v2.18) diverges from the spec in enough places
 // (missing `authors` filter, nip04/nip44 auto-flip, silent encryption choice,
@@ -195,6 +204,7 @@ export async function connectViaNostrConnectUri({ ndk, connectionUri, clientSecr
   if (!relays.length) throw new Error('nostrconnect URI missing relay.')
   if (!secret) throw new Error('nostrconnect URI missing secret.')
   const clientPubkey = getPublicKey(clientSecretKey)
+  dlog('connectViaNostrConnectUri: waiting for bunker reply', { relays, clientPubkey: clientPubkey.slice(0, 8) + '…' })
 
   // Wait for the bunker's first valid reply. It comes as a kind 24133 event
   // addressed to #p=clientPubkey. Bunkers use any of three patterns:
@@ -246,11 +256,16 @@ export async function connectViaNostrConnectUri({ ndk, connectionUri, clientSecr
 
     function onevent(event) {
       if (settled) return
+      dlog('got event', { from: event.pubkey.slice(0, 8) + '…', kind: event.kind })
       const plaintext = decryptNip46Content(clientSecretKey, event.pubkey, event.content)
-      if (!plaintext) return
+      if (!plaintext) {
+        dlog('decrypt failed for event from', event.pubkey.slice(0, 8) + '…')
+        return
+      }
       let parsed
-      try { parsed = JSON.parse(plaintext) } catch { return }
+      try { parsed = JSON.parse(plaintext) } catch { dlog('json parse failed'); return }
       const { method, params, result, error } = parsed
+      dlog('decrypted', { method, result, hasError: !!error })
 
       if (result === 'auth_url') {
         try { onAuthUrl?.(error) } catch {}
@@ -258,6 +273,7 @@ export async function connectViaNostrConnectUri({ ndk, connectionUri, clientSecr
       }
 
       if (result === secret || result === 'ack') {
+        dlog('handshake matched (result)', { resultKind: result === 'ack' ? 'ack' : 'secret' })
         settled = true
         clearTimeout(timer)
         if (signal) signal.removeEventListener('abort', onAbort)
@@ -269,6 +285,7 @@ export async function connectViaNostrConnectUri({ ndk, connectionUri, clientSecr
 
       if (method === 'connect' && Array.isArray(params)) {
         if (params.includes(secret)) {
+          dlog('handshake matched (connect-method with secret in params)')
           settled = true
           clearTimeout(timer)
           if (signal) signal.removeEventListener('abort', onAbort)
@@ -280,6 +297,7 @@ export async function connectViaNostrConnectUri({ ndk, connectionUri, clientSecr
       }
 
       if (error && !result) {
+        dlog('bunker refused', { error })
         settled = true
         clearTimeout(timer)
         cleanup()
@@ -290,6 +308,7 @@ export async function connectViaNostrConnectUri({ ndk, connectionUri, clientSecr
     function buildPoolAndSub() {
       pool = new SimplePool()
       sub = pool.subscribeMany(relays, filter, { onevent })
+      dlog('subscription open', { relays })
     }
 
     // Resubscribe handler — called when the caller signals that the
@@ -299,6 +318,7 @@ export async function connectViaNostrConnectUri({ ndk, connectionUri, clientSecr
     // patience window stays intact.
     function onResubscribe() {
       if (settled) return
+      dlog('resubscribing (tab returned from background)')
       teardownPoolAndSub()
       buildPoolAndSub()
     }
@@ -330,11 +350,22 @@ export async function connectViaNostrConnectUri({ ndk, connectionUri, clientSecr
   // get_public_key RPC compounded with `authors`-filtered subscription
   // latency has been making login feel stuck. The original relays work fine.
 
+  // 30s ceiling (was 15) for the get_public_key round-trip. After the
+  // connect handshake completes, BunkerSigner opens a *fresh* pool and
+  // sends a get_public_key RPC. On mobile this can be slow for two
+  // reasons: (1) the new pool's WebSockets need to handshake from
+  // scratch, and (2) some bunkers (notably Amber on Android) require
+  // a second approval for the get_public_key permission scope —
+  // which means another tab switch and another user gesture before
+  // the response is published. 15s was tight; 30s gives the user
+  // headroom without making well-behaved bunkers feel slow.
+  dlog('handshake done; calling get_public_key')
   const userPubkey = await withTimeout(
     bs.getPublicKey(),
-    15000,
+    30000,
     'Bunker did not return the user pubkey.'
   )
+  dlog('get_public_key returned', { userPubkey: userPubkey.slice(0, 8) + '…' })
 
   return new Nip46BunkerSigner({
     ndk,
