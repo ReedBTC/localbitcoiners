@@ -216,10 +216,20 @@ export default function LoginScreen({ onLogin, embedded = false }) {
       saveSession(buildExtensionRecord(pubkey.pubkey))
       onLogin(user)
     } catch (err) {
+      const msg = err?.message || 'unknown error'
       if (err.message === '__timeout__') {
         setError('Extension did not respond in time. If you are using keys.band, open the extension and approve this site first, then try again.')
+      } else if (/onMessage listener went out of scope|message channel closed|Receiving end does not exist/i.test(msg)) {
+        // Common Firefox / Firefox-Android pattern: the extension opened
+        // an approval popup, but the message channel between content
+        // script and background script died before the user found and
+        // tapped it (Firefox Android tucks the popup under the menu).
+        // After approving once, the extension stores the origin and
+        // the next attempt completes without the popup. Tell the user
+        // exactly where to look instead of leaking the raw error.
+        setError('Your extension needs to approve this site. Open the extension (Firefox menu → Extensions → nos2x / Alby / etc.), tap Allow on the pending prompt, then try again.')
       } else {
-        setError('Extension login failed: ' + (err.message || 'unknown error'))
+        setError('Extension login failed: ' + msg)
       }
     } finally {
       setLoading(false)
