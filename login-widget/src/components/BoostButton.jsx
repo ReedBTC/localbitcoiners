@@ -2,11 +2,10 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import BoostModal from './BoostModal.jsx'
 
-// `user` is passed in from the widget entry, kept in sync via the same
-// module-level listener set the LoginButton uses. So when the donor
-// signs in mid-session, the modal already knows who they are if they
-// open it next.
-export default function BoostButton({ user }) {
+// `user` is passed in from the widget entry, kept in sync via the
+// module-level listener set. `onUserChange` lets the modal's inline
+// login + logout actions propagate up to the shared user state.
+export default function BoostButton({ user, onUserChange }) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -38,6 +37,7 @@ export default function BoostButton({ user }) {
       {open && createPortal(
         <BoostModal
           user={user}
+          onUserChange={onUserChange}
           onClose={() => setOpen(false)}
         />,
         document.body

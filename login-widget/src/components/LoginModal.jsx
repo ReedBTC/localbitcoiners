@@ -32,8 +32,11 @@ export default function LoginModal({ onLogin, onClose }) {
   }
 
   return (
+    // z-[80] so the login modal stacks unambiguously above the boost
+    // modal (z-[70/71]) when launched from inside it via the inline
+    // Sign-in button. Standalone use is unaffected.
     <div
-      className="fixed inset-0 bg-black/70 flex items-start sm:items-center justify-center z-[70] p-3 sm:p-4 overflow-y-auto overflow-x-hidden"
+      className="fixed inset-0 bg-black/70 flex items-start sm:items-center justify-center z-[80] p-3 sm:p-4 overflow-y-auto overflow-x-hidden"
       onMouseDown={onClose}
       role="dialog"
       aria-modal="true"

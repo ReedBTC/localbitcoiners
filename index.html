@@ -175,8 +175,7 @@
       color: var(--orange);
     }
 
-    /* ── Login + boost slots ── */
-    #lb-login-slot,
+    /* ── Boost slot (login UI lives inline inside the boost modal) ── */
     #lb-boost-slot {
       flex-shrink: 0;
       display: flex;
@@ -576,10 +575,10 @@
         flex-wrap: wrap;
       }
       nav ul li a { padding: 0.3rem 0.7rem; font-size: 0.8rem; }
-      /* Boost + login keep their natural width (icon + short label
-         after the LoginButton/BoostButton hide their long text below
-         the sm breakpoint), and sit inline with the logo on row 1. */
-      #lb-boost-slot, #lb-login-slot { flex-shrink: 0; }
+      /* Boost button keeps its natural width (icon + short label after
+         BoostButton hides its long text below the sm breakpoint), and
+         sits inline with the logo on row 1. */
+      #lb-boost-slot { flex-shrink: 0; }
     }
     @media (max-width: 600px) {
       #hero img { height: auto; max-height: 360px; }
@@ -613,7 +612,6 @@
       </ul>
     </nav>
     <div id="lb-boost-slot" aria-label="Boost the Show"></div>
-    <div id="lb-login-slot" aria-label="Sign in with Nostr"></div>
   </div>
 </header>
 

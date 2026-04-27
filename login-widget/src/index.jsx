@@ -1,7 +1,6 @@
 import './styles.css'
 import { createRoot } from 'react-dom/client'
 import { useState, useEffect } from 'react'
-import LoginButton from './components/LoginButton.jsx'
 import BoostButton from './components/BoostButton.jsx'
 import { loadSession, restoreSession } from './lib/sessionPersistence.js'
 import { getNDK } from './lib/ndk.js'
@@ -38,47 +37,34 @@ function useSharedUser() {
   return user
 }
 
-function LoginApp() {
-  const user = useSharedUser()
-  return (
-    <LoginButton
-      user={user}
-      onUserChange={(u) => {
-        // Manual login should win over an in-flight session restore.
-        // If a restore promise is still chewing on the extension when
-        // the user clicks Login → setting the user here means the
-        // eventual restore result (probably the same user, or null on
-        // failure) just gets ignored. abortRestore() also tells the
-        // restore code to stop polling the extension so the two flows
-        // aren't racing for window.nostr.
-        abortRestore()
-        setUser(u)
-      }}
-    />
-  )
-}
-
 function BoostApp() {
   const user = useSharedUser()
-  return <BoostButton user={user} />
+  // The boost modal hosts the login UI inline (sign-in button replaces
+  // the "Boost as me" half of the attribution toggle when logged out),
+  // so onUserChange has to propagate to the same module-level setUser
+  // the login-from-the-nav button used to. abortRestore() stops a
+  // background session restore from racing the user's manual action.
+  return (
+    <BoostButton
+      user={user}
+      onUserChange={(u) => { abortRestore(); setUser(u) }}
+    />
+  )
 }
 
 let mounted = false
 
 const api = {
   /**
-   * Mount the login + boost buttons into their respective slots.
+   * Mount the boost button into its slot. Login UI is now inline inside
+   * the boost modal, so there's no separate nav slot for it.
    * Idempotent — safe to call once on page load.
    */
   mount() {
     if (mounted) return
     mounted = true
-    const loginEl = document.getElementById('lb-login-slot')
     const boostEl = document.getElementById('lb-boost-slot')
 
-    if (loginEl) {
-      createRoot(loginEl).render(<LoginApp />)
-    }
     if (boostEl) {
       createRoot(boostEl).render(<BoostApp />)
     }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import {
   RECIPIENT_LUD16,
@@ -12,13 +13,20 @@ import {
   pollVerify,
 } from '../lib/boostagram.js'
 import { isSafeUrl } from '../lib/utils.js'
+import { clearSession } from '../lib/sessionPersistence.js'
+import { resetNDK } from '../lib/ndk.js'
+import LoginModal from './LoginModal.jsx'
 
 const POLL_INTERVAL_MS = 2500
 const PRESETS = [21, 210, 2100, 21000]
 
-export default function BoostModal({ user, onClose }) {
+export default function BoostModal({ user, onUserChange, onClose }) {
   const [amount, setAmount] = useState('21')
   const [message, setMessage] = useState('')
+
+  // Login modal layered on top of the boost modal — opens when the user
+  // taps the "Sign in with Nostr" half of the attribution toggle.
+  const [loginOpen, setLoginOpen] = useState(false)
 
   // LNURL metadata. Populated once on mount via the hardcoded recipient
   // address. No kind 0 lookup — there's only one recipient (the show), so
@@ -97,6 +105,25 @@ export default function BoostModal({ user, onClose }) {
   useEffect(() => {
     if (anonymous && shareToFeed) setShareToFeed(false)
   }, [anonymous, shareToFeed])
+
+  // When the user logs in mid-modal (via the inline Sign-in button), flip
+  // the attribution toggle to attributed — that's why they signed in.
+  // Tracking the previous donorNpub so this only fires on the null → set
+  // transition, not on every re-render that happens to have a user.
+  const prevDonorRef = useRef(donorNpub)
+  useEffect(() => {
+    if (!prevDonorRef.current && donorNpub) {
+      setAnonymous(false)
+    }
+    prevDonorRef.current = donorNpub
+  }, [donorNpub])
+
+  function handleLogout() {
+    clearSession()
+    resetNDK()
+    onUserChange?.(null)
+    setAnonymous(true)
+  }
 
   // Publish the kind 1 share note once payment confirms — only if the
   // donor opted in, has a signer, and we haven't already attempted.
@@ -299,28 +326,41 @@ export default function BoostModal({ user, onClose }) {
                   />
                 </div>
 
-                {/* Boost as toggle. When the donor isn't logged in, the
-                    attributed option is disabled — anon is the only path. */}
+                {/* Boost as toggle. When logged out, the "you" half becomes
+                    a Sign-in button styled in the site's orange accent —
+                    one tap opens the LoginModal layered on top, and a
+                    successful login auto-flips the toggle to attributed
+                    mode (handled by the donorNpub effect above). */}
                 <div>
                   <label className="block text-xs text-neutral-400 mb-1.5">Boost as</label>
                   <div className="flex rounded-md overflow-hidden border border-neutral-700 text-xs">
-                    <button
-                      onClick={() => setAnonymous(false)}
-                      disabled={!donorNpub}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 transition-colors ${
-                        !donorNpub
-                          ? 'bg-neutral-900 text-neutral-700 cursor-not-allowed opacity-40'
-                          : !anonymous ? 'bg-neutral-700 text-neutral-100' : 'bg-neutral-800 text-neutral-500 hover:text-neutral-300'
-                      }`}
-                      title={!donorNpub ? 'Sign in with Nostr to boost as yourself' : ''}
-                    >
-                      {profile?.image && isSafeUrl(profile.image) && (
-                        <img src={profile.image} alt="" className="w-4 h-4 rounded-full object-cover" onError={e => { e.target.style.display = 'none' }} />
-                      )}
-                      <span className="truncate max-w-[140px]">
-                        {profile?.displayName || profile?.name || (donorNpub ? 'Your npub' : 'Sign in to attribute')}
-                      </span>
-                    </button>
+                    {donorNpub ? (
+                      <button
+                        onClick={() => setAnonymous(false)}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 transition-colors ${
+                          !anonymous ? 'bg-neutral-700 text-neutral-100' : 'bg-neutral-800 text-neutral-500 hover:text-neutral-300'
+                        }`}
+                      >
+                        {profile?.image && isSafeUrl(profile.image) && (
+                          <img src={profile.image} alt="" className="w-4 h-4 rounded-full object-cover" onError={e => { e.target.style.display = 'none' }} />
+                        )}
+                        <span className="truncate max-w-[140px]">
+                          {profile?.displayName || profile?.name || 'Your npub'}
+                        </span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setLoginOpen(true)}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 transition-colors bg-orange-500 hover:bg-orange-600 text-white font-medium"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                          <polyline points="10 17 15 12 10 7" />
+                          <line x1="15" y1="12" x2="3" y2="12" />
+                        </svg>
+                        Sign in with Nostr
+                      </button>
+                    )}
                     <button
                       onClick={() => setAnonymous(true)}
                       className={`flex-1 py-2 px-3 border-l border-neutral-700 transition-colors ${
@@ -330,6 +370,17 @@ export default function BoostModal({ user, onClose }) {
                       Anon
                     </button>
                   </div>
+                  {/* Logout escape hatch — only shown when logged in. The
+                      nav doesn't have a logout button anymore (login lives
+                      inside the boost flow), so this is the only exit. */}
+                  {donorNpub && (
+                    <button
+                      onClick={handleLogout}
+                      className="mt-1.5 text-[10px] text-neutral-600 hover:text-neutral-400 transition-colors"
+                    >
+                      Log out
+                    </button>
+                  )}
                 </div>
 
                 <div>
@@ -480,6 +531,20 @@ export default function BoostModal({ user, onClose }) {
           </div>
         </div>
       </div>
+
+      {/* LoginModal layered on top when the user taps the inline Sign-in
+          button. createPortal so it lives at document.body — siblings to
+          the boost modal — and its own z-index puts it above the boost
+          surface. On success, onLogin fires and the user prop flips to
+          the new identity; the donorNpub useEffect above auto-switches
+          the attribution toggle to attributed mode. */}
+      {loginOpen && createPortal(
+        <LoginModal
+          onLogin={(u) => onUserChange?.(u)}
+          onClose={() => setLoginOpen(false)}
+        />,
+        document.body
+      )}
     </>
   )
 }
