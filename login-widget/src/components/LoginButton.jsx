@@ -74,8 +74,10 @@ export default function LoginButton({ user, onUserChange }) {
               {(name || '?').slice(0, 1).toUpperCase()}
             </span>
           )}
+          {/* Name hidden on mobile — the avatar is enough identification
+              and saves nav real estate where the boost button also lives. */}
           <span
-            className="text-sm max-w-[140px] truncate"
+            className="hidden sm:inline text-sm max-w-[140px] truncate"
             style={{ color: 'var(--cream-d, #ede3c8)' }}
           >
             {name}
@@ -114,14 +116,17 @@ export default function LoginButton({ user, onUserChange }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 transition-colors"
+        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 rounded-md text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 transition-colors"
+        aria-label="Sign in with Nostr"
+        title="Sign in with Nostr"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
           <polyline points="10 17 15 12 10 7" />
           <line x1="15" y1="12" x2="3" y2="12" />
         </svg>
-        Sign in with Nostr
+        <span className="hidden sm:inline">Sign in with Nostr</span>
+        <span className="sm:hidden">Sign in</span>
       </button>
       {open && createPortal(
         <LoginModal

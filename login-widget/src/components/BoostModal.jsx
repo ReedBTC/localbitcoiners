@@ -12,11 +12,13 @@ import {
   pollVerify,
 } from '../lib/boostagram.js'
 import { isSafeUrl } from '../lib/utils.js'
+import { useIsMobile } from '../hooks/useIsMobile.js'
 
 const POLL_INTERVAL_MS = 2500
 const PRESETS = [21, 210, 2100, 21000]
 
 export default function BoostModal({ user, onClose }) {
+  const isMobile = useIsMobile()
   const [amount, setAmount] = useState('21')
   const [message, setMessage] = useState('')
 
@@ -130,6 +132,15 @@ export default function BoostModal({ user, onClose }) {
     return () => window.removeEventListener('keydown', handleKey)
   }, [onClose])
 
+  // Lock page scroll while the modal is open so swipes inside the modal
+  // don't scroll the page underneath (especially on mobile where the
+  // modal becomes a full-viewport sheet).
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [])
+
   async function handleGenerate() {
     setError('')
     const sats = parseInt(amount, 10)
@@ -228,20 +239,34 @@ export default function BoostModal({ user, onClose }) {
     setShareError('')
   }
 
+  // Mobile: full-viewport sheet that scrolls inside itself, matching the
+  // LoginModal pattern. Desktop: centered card with overflow-y-auto so
+  // tall content (auth-url banner, success state, etc.) doesn't clip.
+  const overlayCls = isMobile
+    ? 'fixed inset-0 bg-neutral-950 z-[71] overflow-y-auto'
+    : 'fixed inset-0 z-[71] flex items-start sm:items-center justify-center p-4 overflow-y-auto'
+  const cardCls = isMobile
+    ? 'min-h-full w-full flex flex-col'
+    : 'bg-neutral-900 border border-neutral-800 rounded-lg w-full max-w-sm flex flex-col shadow-2xl my-4'
+
   return (
     <>
-      <div className="fixed inset-0 bg-black/70 z-[70]" onClick={onClose} aria-hidden="true" />
+      {/* Backdrop is hidden on mobile because the sheet itself is the
+          full surface — a darkened layer behind nothing just adds noise. */}
+      {!isMobile && (
+        <div className="fixed inset-0 bg-black/70 z-[70]" onClick={onClose} aria-hidden="true" />
+      )}
 
-      <div className="fixed inset-0 z-[71] flex items-center justify-center p-6" role="dialog" aria-label="Send us a Boost">
-        <div className="bg-neutral-900 border border-neutral-800 rounded-lg w-full max-w-sm flex flex-col shadow-2xl">
+      <div className={overlayCls} role="dialog" aria-label="Send us a Boost">
+        <div className={cardCls}>
 
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800 sticky top-0 bg-neutral-900 z-10">
             <h2 className="text-sm font-semibold text-neutral-200">⚡ Boost the Show</h2>
             <button onClick={onClose} className="text-neutral-500 hover:text-neutral-300 transition-colors text-lg leading-none" aria-label="Close">✕</button>
           </div>
 
-          <div className="px-6 py-5 space-y-4">
+          <div className="px-6 py-5 space-y-4 flex-1">
             {initError && (
               <p className="text-xs text-red-400 bg-red-950/40 border border-red-900 rounded px-3 py-2">{initError}</p>
             )}

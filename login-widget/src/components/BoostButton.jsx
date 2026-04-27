@@ -24,11 +24,16 @@ export default function BoostButton({ user }) {
           font: 'inherit',
           color: '#ffffff',
         }}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-semibold transition-colors hover:!bg-[#d97b0e]"
+        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 rounded-md text-sm font-semibold transition-colors hover:!bg-[#d97b0e]"
         aria-label="Boost the Show"
+        title="Boost the Show"
       >
         <span aria-hidden="true">⚡</span>
-        Boost the Show
+        {/* Hide the long label below the sm breakpoint (640px) so the nav
+            doesn't wrap to multiple rows on phones. The aria-label + title
+            still announce the full action for screen readers + tooltips. */}
+        <span className="hidden sm:inline">Boost the Show</span>
+        <span className="sm:hidden">Boost</span>
       </button>
       {open && createPortal(
         <BoostModal

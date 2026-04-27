@@ -551,17 +551,41 @@
     footer a:hover { text-decoration: underline; }
 
     /* ── Responsive ── */
+    @media (max-width: 760px) {
+      /* Nav becomes a two-row layout on tablets/phones: row 1 = logo +
+         name + buttons; row 2 = nav menu. flex-wrap handles the wrap;
+         setting flex-basis on the menu pushes it to its own row. */
+      .nav-inner {
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        height: auto;
+        padding: 0.6rem 1rem;
+      }
+      .nav-site-name { font-size: 1rem; flex: 1; min-width: 0; }
+      nav { order: 4; flex-basis: 100%; }
+      nav ul {
+        justify-content: center;
+        gap: 0.25rem;
+        flex-wrap: wrap;
+      }
+      nav ul li a { padding: 0.3rem 0.7rem; font-size: 0.8rem; }
+      /* Boost + login keep their natural width (icon + short label
+         after the LoginButton/BoostButton hide their long text below
+         the sm breakpoint), and sit inline with the logo on row 1. */
+      #lb-boost-slot, #lb-login-slot { flex-shrink: 0; }
+    }
     @media (max-width: 600px) {
-      .nav-inner { gap: 0.5rem; flex-wrap: wrap; height: auto; padding: 0.5rem 1rem; }
-      .nav-site-name { font-size: 1rem; }
-      nav { width: 100%; }
-      nav ul { justify-content: flex-end; gap: 0; }
-      nav ul li a { padding: 0.3rem 0.6rem; font-size: 0.8rem; }
-      #lb-boost-slot, #lb-login-slot { order: 3; }
-      #lb-boost-slot { margin-left: auto; }
+      #hero img { height: auto; max-height: 360px; }
+      .hero-overlay { padding: 1.5rem 1rem; }
       .section, .section-wide { padding: 2.5rem 1.1rem; }
+      .section-title { font-size: 1.5rem; }
       .episode-card { padding: 1.25rem 1.1rem; }
+      .episode-title { font-size: 1.1rem; }
       .links-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 420px) {
+      .nav-logo { width: 36px; height: 36px; }
+      .nav-site-name { font-size: 0.92rem; }
     }
   </style>
 </head>
