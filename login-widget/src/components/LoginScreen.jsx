@@ -512,6 +512,7 @@ export default function LoginScreen({ onLogin, embedded = false }) {
       return
     }
     setLoading(true)
+    setLoadingStep('Sending connect request…')
     let authRequested = false
     const clientSecretKey = generateSecretKey()
     const clientSecret = bytesToHex(clientSecretKey)
@@ -534,8 +535,21 @@ export default function LoginScreen({ onLogin, embedded = false }) {
             }
           } catch {}
         },
+        // Stage labels distinguish "waiting on connect ack" (first
+        // Amber prompt) from "waiting on get_public_key ack" (often a
+        // SECOND Amber prompt that users miss because they returned
+        // to the browser after approving the first one). Without this,
+        // a stuck second-prompt looks identical to a stuck connect.
+        onStage: (stage) => {
+          if (stage === 'connect') {
+            setLoadingStep('Waiting for approval in your signer app…')
+          } else if (stage === 'get_public_key') {
+            setLoadingStep('Got connect ack — waiting for read-pubkey approval (check your signer for a SECOND prompt)')
+          }
+        },
         timeoutMs: 180000,
       })
+      setLoadingStep('Connecting to relays…')
       ndk.signer = signer
       await connectAndWait(ndk)
       await ensureUserWriteRelays(ndk, signer.pubkey)
@@ -549,7 +563,13 @@ export default function LoginScreen({ onLogin, embedded = false }) {
       onLogin(user)
     } catch (err) {
       const msg = err?.message || 'unknown error'
-      if (/timeout|did not/i.test(msg)) {
+      if (/return the user pubkey/i.test(msg)) {
+        // Specific failure: connect succeeded (we'd have errored on
+        // bs.connect() otherwise) but get_public_key never returned.
+        // 95% of the time this is "user didn't see the second prompt
+        // in their signer app". Tell them exactly what to look for.
+        setError('Connect was acknowledged, but the signer didn\'t return your pubkey. Open your signer app — there\'s usually a SECOND prompt asking to read your pubkey. Approve it, then try again.')
+      } else if (/timeout|did not/i.test(msg)) {
         setError(authRequested
           ? 'Bunker requested approval but never completed. Tap the approval link above, then try again.'
           : 'Bunker did not respond in time. Check that the connection string is valid and the bunker is online.')
@@ -558,6 +578,7 @@ export default function LoginScreen({ onLogin, embedded = false }) {
       }
     } finally {
       setLoading(false)
+      setLoadingStep('')
       setBunkerValue('')
       setAuthUrl(null)
     }
@@ -750,6 +771,9 @@ export default function LoginScreen({ onLogin, embedded = false }) {
               placeholder="bunker://..."
               autoComplete="off"
               spellCheck={false}
+              inputMode="text"
+              autoCapitalize="none"
+              autoCorrect="off"
               className="w-full px-4 py-3 rounded-lg bg-neutral-900 border border-neutral-700 text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-orange-500 font-mono text-sm"
             />
             <button
@@ -759,6 +783,17 @@ export default function LoginScreen({ onLogin, embedded = false }) {
             >
               {loading ? 'Connecting...' : 'Connect'}
             </button>
+            {/* Stage label during bunker URL connect. Amber on Android
+                often shows TWO permission prompts in sequence (connect,
+                then get_public_key). Without a stage label, the second
+                one is invisible to the user — they think login is stuck
+                when really there's a prompt waiting in their signer. */}
+            {loading && loadingStep && (
+              <p className="text-xs text-orange-400 flex items-center gap-1.5 leading-snug">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse flex-shrink-0 mt-0.5" />
+                <span>{loadingStep}</span>
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -851,6 +886,9 @@ export default function LoginScreen({ onLogin, embedded = false }) {
               placeholder="bunker://..."
               autoComplete="off"
               spellCheck={false}
+              inputMode="text"
+              autoCapitalize="none"
+              autoCorrect="off"
               className="w-full px-4 py-3 rounded-lg bg-neutral-900 border border-neutral-700 text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-orange-500 font-mono text-sm"
             />
           </div>
@@ -864,6 +902,12 @@ export default function LoginScreen({ onLogin, embedded = false }) {
           >
             {loading ? 'Connecting...' : 'Login with Bunker'}
           </button>
+          {loading && loadingStep && (
+            <p className="text-xs text-orange-400 flex items-center gap-1.5 leading-snug">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse flex-shrink-0 mt-0.5" />
+              <span>{loadingStep}</span>
+            </p>
+          )}
         </div>
       )}
     </div>

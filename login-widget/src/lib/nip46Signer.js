@@ -131,20 +131,34 @@ export class Nip46BunkerSigner {
 // parses the pointer out of the URL, and drives connect(). onAuthUrl is
 // called when the bunker responds with `result: "auth_url"` — the UI shows
 // the URL so the user can tap to approve.
-export async function connectViaBunkerUrl({ ndk, bunkerUrl, clientSecretKey, onAuthUrl, timeoutMs = 30000 }) {
+//
+// `onStage` (optional) reports flow position to the caller so the UI can
+// show a stage label that distinguishes "waiting on connect approval"
+// from "waiting on get_public_key approval" — Amber on Android often
+// prompts for both separately, and a "Connecting…" generic spinner
+// hides the second prompt from the user.
+export async function connectViaBunkerUrl({ ndk, bunkerUrl, clientSecretKey, onAuthUrl, onStage, timeoutMs = 30000 }) {
+  dlog('connectViaBunkerUrl: parsing input')
   const bp = await parseBunkerInput(bunkerUrl)
   if (!bp) throw new Error('Invalid bunker:// URL.')
   if (!bp.relays?.length) throw new Error('bunker:// URL has no relays.')
+  dlog('parsed bunker pointer', { pubkey: bp.pubkey.slice(0, 8) + '…', relays: bp.relays })
 
   const csk = clientSecretKey || generateSecretKey()
   const bs = BunkerSigner.fromBunker(csk, bp, {
-    onauth: (url) => { try { onAuthUrl?.(url) } catch {} },
+    onauth: (url) => {
+      dlog('onauth fired (bunker requested approval URL)')
+      try { onAuthUrl?.(url) } catch {}
+    },
   })
 
   // Drive the handshake with our own timeout so a silent bunker doesn't
   // hang the login screen forever. auth_url is fired via onauth mid-wait;
   // the UI is free to extend its own grace period based on that signal.
+  try { onStage?.('connect') } catch {}
+  dlog('calling bs.connect()…')
   await withTimeout(bs.connect(), timeoutMs, 'Bunker did not acknowledge connect.')
+  dlog('bs.connect() resolved (ack received)')
 
   // No switch_relays call: the URL's relays are authoritative, and Primal's
   // bunker has been observed to ignore/stall the RPC. Matches the
@@ -152,11 +166,18 @@ export async function connectViaBunkerUrl({ ndk, bunkerUrl, clientSecretKey, onA
 
   // get_public_key is authoritative. The bunker's own signing pubkey
   // (bp.pubkey) may differ from the user's pubkey (Amber / nsec.app).
+  // Bumped to 60s minimum here — even with caller-supplied longer
+  // timeouts (180s for mobile-fumble headroom) we want a clear stage
+  // signal to the UI so the user knows we're past connect and onto a
+  // potentially-second prompt for read-pubkey permission.
+  try { onStage?.('get_public_key') } catch {}
+  dlog('calling bs.getPublicKey()… (Amber may prompt a second time for read-pubkey permission)')
   const userPubkey = await withTimeout(
     bs.getPublicKey(),
     timeoutMs,
     'Bunker did not return the user pubkey.'
   )
+  dlog('bs.getPublicKey() resolved', { userPubkey: userPubkey.slice(0, 8) + '…' })
 
   return new Nip46BunkerSigner({
     ndk,
