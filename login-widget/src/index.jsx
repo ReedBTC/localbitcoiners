@@ -1,9 +1,12 @@
 import './styles.css'
 import { createRoot } from 'react-dom/client'
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
+import { NDKEvent } from '@nostr-dev-kit/ndk'
 import BoostButton from './components/BoostButton.jsx'
-import { loadSession, restoreSession } from './lib/sessionPersistence.js'
-import { getNDK } from './lib/ndk.js'
+import LoginModal from './components/LoginModal.jsx'
+import { loadSession, restoreSession, clearSession } from './lib/sessionPersistence.js'
+import { getNDK, resetNDK, connectAndWait } from './lib/ndk.js'
 
 // Module-level subscriber list and current user — separated from React
 // state so callers outside the widget (boost button, future features)
@@ -56,6 +59,42 @@ function BoostApp() {
   )
 }
 
+// ── Standalone login prompt ────────────────────────────────────────────────
+// Module-level open/close signal so any consumer (e.g. the boosts page
+// banner) can call api.requestLogin() to surface the login UI without
+// going through the boost modal. The host below is mounted once at
+// startup; the modal renders via portal directly to document.body.
+const loginOpenListeners = new Set()
+let loginIsOpen = false
+function setLoginOpen(v) {
+  loginIsOpen = !!v
+  for (const fn of loginOpenListeners) {
+    try { fn(loginIsOpen) } catch {}
+  }
+}
+
+function LoginPromptHost() {
+  const [open, setOpenLocal] = useState(loginIsOpen)
+  useEffect(() => {
+    const fn = (v) => setOpenLocal(v)
+    loginOpenListeners.add(fn)
+    return () => { loginOpenListeners.delete(fn) }
+  }, [])
+  if (!open) return null
+  return createPortal(
+    <LoginModal
+      onLogin={(u) => {
+        // Same propagation contract as BoostModal's inline login.
+        abortRestore()
+        setUser(u)
+        setLoginOpen(false)
+      }}
+      onClose={() => setLoginOpen(false)}
+    />,
+    document.body,
+  )
+}
+
 let mounted = false
 
 const api = {
@@ -72,6 +111,15 @@ const api = {
     if (boostEl) {
       createRoot(boostEl).render(<BoostApp />)
     }
+
+    // Always-mounted host for the standalone login modal. We attach a
+    // hidden div to the body so requestLogin() works even on pages that
+    // don't have an #lb-boost-slot.
+    const promptHost = document.createElement('div')
+    promptHost.id = 'lb-login-prompt-host'
+    promptHost.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;'
+    document.body.appendChild(promptHost)
+    createRoot(promptHost).render(<LoginPromptHost />)
 
     // Kick off async session restore in the background — the buttons
     // render immediately in their logged-out state, and flip to the
@@ -100,6 +148,84 @@ const api = {
 
   /** The shared NDK instance. */
   getNDK() { return getNDK() },
+
+  /**
+   * Open the standalone login modal. No-op if already logged in — the
+   * banner on consumer pages should hide its sign-in CTA in that case
+   * anyway, but we guard here too.
+   */
+  requestLogin() {
+    if (currentUser) return
+    abortRestore()
+    setLoginOpen(true)
+  },
+
+  /**
+   * Sign the current user out. Mirrors BoostModal's handleLogout: clear
+   * persisted session, reset the NDK instance (drops the signer + relay
+   * pool), then notify listeners so consumers re-render as logged-out.
+   */
+  logout() {
+    if (!currentUser) return
+    clearSession()
+    resetNDK()
+    setUser(null)
+  },
+
+  /**
+   * Sign a raw event template using the current user's signer. Returns a
+   * complete signed event (id, pubkey, sig, created_at) suitable for
+   * publishing to relays OR for sending to a non-relay endpoint (e.g.
+   * a NIP-57 LNURL callback).
+   *
+   * Throws if no user is logged in. Caller is responsible for catching
+   * signer-cancelled errors (e.g. the user denied the prompt).
+   */
+  async signEvent(template) {
+    if (!currentUser) throw new Error('Not signed in')
+    const ndk = getNDK()
+    if (!ndk.signer) throw new Error('No signer available')
+    const ev = new NDKEvent(ndk)
+    ev.kind        = template.kind
+    ev.content     = template.content || ''
+    ev.tags        = Array.isArray(template.tags) ? template.tags : []
+    ev.created_at  = template.created_at || Math.floor(Date.now() / 1000)
+    await ev.sign()
+    return ev.rawEvent()
+  },
+
+  /**
+   * Publish a pre-signed event to the user's outbox. The signedEvent
+   * object must already have id + sig populated (i.e. came from
+   * signEvent above, or another signer).
+   *
+   * Returns a Set of relays that ack'd the event. May be empty if no
+   * relay confirmed within NDK's internal timeout — callers usually
+   * ignore the return and treat the publish as best-effort.
+   */
+  async publishEvent(signedEvent) {
+    if (!signedEvent?.id || !signedEvent?.sig) {
+      throw new Error('Event is not signed')
+    }
+    const ndk = getNDK()
+    // Make sure relays are connected before we try to broadcast — on
+    // pages where signEvent was called immediately after login the pool
+    // can still be mid-handshake.
+    await connectAndWait(ndk).catch(() => {})
+    const ev = new NDKEvent(ndk, signedEvent)
+    return ev.publish()
+  },
+
+  /**
+   * Convenience: sign + publish in one call. Returns the signed raw
+   * event so callers can render the result optimistically (e.g. insert
+   * into a feed).
+   */
+  async signAndPublish(template) {
+    const signed = await this.signEvent(template)
+    await this.publishEvent(signed)
+    return signed
+  },
 }
 
 if (typeof window !== 'undefined') {

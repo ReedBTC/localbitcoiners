@@ -1,0 +1,2138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Podcast Boosts — Local Bitcoiners</title>
+  <meta name="description" content="The Local Bitcoiners boost wall — read the latest boost messages and zaps from listeners on Nostr." />
+  <link rel="canonical" href="https://localbitcoiners.com/boosts.html" />
+  <link rel="icon" type="image/png" href="assets/LocalBitcoiners.png" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://localbitcoiners.com/boosts.html" />
+  <meta property="og:title" content="Podcast Boosts — Local Bitcoiners" />
+  <meta property="og:description" content="The Local Bitcoiners boost wall — read the latest boost messages and zaps from listeners on Nostr." />
+  <meta property="og:site_name" content="Local Bitcoiners" />
+  <meta property="og:image" content="https://localbitcoiners.com/assets/LocalBitcoiners_banner_YT.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { overflow-x: hidden; max-width: 100vw; }
+
+    :root {
+      --cream:   #f5eedc;
+      --cream-d: #ede3c8;
+      --navy:    #1e3a5f;
+      --navy-l:  #2c5282;
+      --orange:  #f7931a;
+      --orange-d:#d97b0e;
+      --text:    #2d2010;
+      --muted:   #6b5a3e;
+      --border:  #d4c4a0;
+      --white:   #fffdf7;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Source Serif 4', Georgia, serif;
+      background: var(--cream);
+      color: var(--text);
+      line-height: 1.65;
+      font-size: 17px;
+    }
+
+    a { color: var(--navy); text-decoration: underline; text-underline-offset: 3px; }
+    a:hover { color: var(--orange); }
+
+    img { display: block; max-width: 100%; }
+
+    /* ── Nav (mirrors index.html) ── */
+    #top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--navy);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+    }
+    .nav-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+    .nav-logo {
+      flex-shrink: 0;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 2px solid var(--orange);
+    }
+    .nav-logo img { width: 100%; height: 100%; object-fit: cover; }
+    .nav-site-name {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--cream);
+      letter-spacing: 0.02em;
+      text-decoration: none;
+      flex: 1;
+    }
+    .nav-site-name:hover { color: var(--orange); }
+    nav ul { list-style: none; display: flex; gap: 0.25rem; }
+    nav ul li a {
+      color: var(--cream-d);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 0.35rem 0.75rem;
+      border-radius: 4px;
+      transition: background 0.15s, color 0.15s;
+    }
+    nav ul li a:hover { background: rgba(247,147,26,0.18); color: var(--orange); }
+    nav ul li a.active { color: var(--orange); }
+    #lb-boost-slot {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      min-height: 32px;
+    }
+
+    /* ── Page header ── */
+    .page-header {
+      background: var(--navy);
+      color: var(--cream);
+      padding: 3rem 1.5rem 2.5rem;
+      text-align: center;
+    }
+    .page-header h1 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      font-weight: 700;
+      color: var(--white);
+      line-height: 1.2;
+    }
+    .page-header p {
+      max-width: 700px;
+      margin: 0.6rem auto 0;
+      font-size: clamp(0.95rem, 2vw, 1.1rem);
+      color: var(--cream);
+      font-style: italic;
+    }
+
+    /* ── Section wrapper ── */
+    .section-wide {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem;
+    }
+
+    /* ── Loading / error ── */
+    #boosts-loading {
+      text-align: center;
+      padding: 3rem 0;
+      font-style: italic;
+      color: var(--muted);
+    }
+    .loading-spinner {
+      display: inline-block;
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--orange);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #boosts-error {
+      display: none;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--orange);
+      border-radius: 6px;
+      padding: 1.5rem 2rem;
+      margin-top: 2rem;
+    }
+    #boosts-error a { font-weight: 600; color: var(--orange); }
+
+    /* ── Note cards (boosts) ── */
+    .note-list { list-style: none; margin: 0; padding: 0; }
+    .note-list li { margin: 0; }
+
+    .note-card {
+      background: var(--cream);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.1rem 1.25rem;
+      margin-bottom: 0.9rem;
+      box-shadow: 0 2px 8px rgba(30,58,95,0.06);
+    }
+    .note-card.is-root {
+      background: var(--white);
+      border-left: 4px solid var(--orange);
+      padding: 1.5rem 1.6rem;
+      margin-bottom: 1.8rem;
+    }
+    .note-card.is-root .note-body { font-size: 1.05rem; }
+
+    /* ── Login banner ── */
+    .login-banner {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1.6rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      box-shadow: 0 2px 8px rgba(30,58,95,0.06);
+    }
+    .login-banner .lb-msg {
+      flex: 1;
+      min-width: 200px;
+      font-size: 0.95rem;
+      color: var(--text);
+    }
+    .login-banner .lb-msg strong { color: var(--navy); font-weight: 700; }
+    .login-banner .lb-msg .muted { color: var(--muted); display: block; font-size: 0.85rem; margin-top: 0.15rem; }
+    .login-banner .lb-cta {
+      background: var(--orange);
+      color: var(--white);
+      border: none;
+      padding: 0.55rem 1.15rem;
+      font-family: 'Source Serif 4', Georgia, serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s;
+      flex-shrink: 0;
+    }
+    .login-banner .lb-cta:hover { background: var(--orange-d); }
+    .login-banner .lb-cta:disabled { opacity: 0.6; cursor: default; }
+    .login-banner.is-logged-in .lb-cta {
+      background: transparent;
+      color: var(--navy);
+      border: 1.5px solid var(--navy);
+    }
+    .login-banner.is-logged-in .lb-cta:hover {
+      background: var(--navy); color: var(--white);
+    }
+    .login-banner img.lb-pfp {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: var(--cream-d);
+    }
+
+    .note-author {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.55rem;
+      font-size: 0.86rem;
+    }
+    .note-author img {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: var(--cream-d);
+    }
+    .note-author .author-name {
+      font-weight: 700;
+      color: var(--navy);
+    }
+    .note-author .author-handle {
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+    .note-author time {
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-style: italic;
+      flex-shrink: 0;
+    }
+
+    .note-body {
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--text);
+      line-height: 1.7;
+      font-size: 0.97rem;
+    }
+    .note-body a { color: var(--navy-l); }
+    .note-body a.nostr-mention { color: var(--orange); font-weight: 600; text-decoration: none; }
+    .note-body a.nostr-mention:hover { text-decoration: underline; }
+
+    /* ── Embedded note (kind 1 quoted via nevent/note) ── */
+    .embed-note {
+      background: var(--cream-d);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.6rem 0;
+      font-size: 0.92rem;
+      white-space: normal;
+    }
+    .embed-note .embed-author {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.4rem;
+      font-size: 0.82rem;
+    }
+    .embed-note .embed-author img {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: var(--cream);
+      flex-shrink: 0;
+    }
+    .embed-note .embed-author .author-name {
+      font-weight: 700;
+      color: var(--navy);
+    }
+    .embed-note .embed-author time {
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-style: italic;
+    }
+    .embed-note .embed-body {
+      color: var(--text);
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .embed-note .embed-footer {
+      margin-top: 0.5rem;
+      font-size: 0.78rem;
+    }
+    .embed-note .embed-footer a {
+      color: var(--muted);
+      text-decoration: none;
+      letter-spacing: 0.04em;
+    }
+    .embed-note .embed-footer a:hover { color: var(--orange); }
+
+    .embed-note.is-missing {
+      color: var(--muted);
+      font-style: italic;
+      font-size: 0.88rem;
+      padding: 0.7rem 0.9rem;
+    }
+    .embed-note.is-missing a { color: var(--navy-l); margin-left: 0.4rem; }
+
+    .embed-note.is-naddr {
+      display: flex;
+      align-items: center;
+      padding: 0.7rem 0.9rem;
+    }
+    .embed-note.is-naddr a {
+      color: var(--navy-l);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .embed-note.is-naddr a:hover { color: var(--orange); }
+
+    /* ── Per-note action bar (Reply / Like / Zap) ── */
+    .note-actions {
+      display: flex;
+      gap: 0.25rem;
+      margin-top: 0.65rem;
+      padding-top: 0.5rem;
+      border-top: 1px dashed var(--border);
+      flex-wrap: wrap;
+    }
+    .note-actions button {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.84rem;
+      padding: 0.32rem 0.65rem;
+      border-radius: 5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: background 0.15s, color 0.15s;
+    }
+    .note-actions button:hover {
+      background: rgba(247,147,26,0.1);
+      color: var(--orange);
+    }
+    .note-actions button:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+    .note-actions button:disabled:hover {
+      background: transparent;
+      color: var(--muted);
+    }
+    .note-actions .lb-icon {
+      font-size: 1rem;
+      line-height: 1;
+    }
+    .note-actions .like-btn[aria-pressed="true"],
+    .note-actions .repost-btn[aria-pressed="true"] {
+      color: var(--orange);
+    }
+    .note-actions .like-btn[aria-pressed="true"] .lb-icon,
+    .note-actions .repost-btn[aria-pressed="true"] .lb-icon {
+      color: var(--orange);
+    }
+
+    /* ── Inline reply composer ── */
+    .reply-composer {
+      margin-top: 0.7rem;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem;
+    }
+    .reply-composer textarea {
+      width: 100%;
+      min-height: 90px;
+      resize: vertical;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.6rem 0.7rem;
+      font: inherit;
+      font-size: 0.95rem;
+      color: var(--text);
+      background: var(--cream);
+      box-sizing: border-box;
+    }
+    .reply-composer textarea:focus {
+      outline: none;
+      border-color: var(--orange);
+    }
+    .reply-composer .rc-actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+      margin-top: 0.6rem;
+    }
+    .reply-composer button {
+      border: none;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 600;
+      font-size: 0.88rem;
+      padding: 0.45rem 1rem;
+      border-radius: 5px;
+      transition: background 0.15s, color 0.15s;
+    }
+    .reply-composer .rc-cancel {
+      background: transparent;
+      color: var(--navy);
+      border: 1.5px solid var(--border);
+    }
+    .reply-composer .rc-cancel:hover { background: var(--border); }
+    .reply-composer .rc-send {
+      background: var(--orange);
+      color: var(--white);
+    }
+    .reply-composer .rc-send:hover { background: var(--orange-d); }
+    .reply-composer .rc-send:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    /* ── Zap modal ── */
+    .zap-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+    .zap-modal {
+      background: var(--white);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 460px;
+      padding: 1.5rem 1.6rem 1.6rem;
+      position: relative;
+      font-family: 'Source Serif 4', Georgia, serif;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .zap-modal h3 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.35rem;
+      color: var(--navy);
+      margin: 0 0 0.85rem;
+    }
+    .zap-modal .zap-recipient {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+    }
+    .zap-modal .zap-recipient img {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: var(--cream-d);
+    }
+    .zap-modal label {
+      display: block;
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: var(--navy);
+      margin-top: 0.85rem;
+      margin-bottom: 0.35rem;
+    }
+    .zap-modal .zap-amounts {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.4rem;
+    }
+    .zap-modal .zap-amounts button {
+      border: 1.5px solid var(--border);
+      background: var(--cream);
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.88rem;
+      font-weight: 600;
+      padding: 0.4rem 0.85rem;
+      border-radius: 6px;
+      color: var(--navy);
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .zap-modal .zap-amounts button:hover {
+      border-color: var(--orange);
+      color: var(--orange);
+    }
+    .zap-modal .zap-amounts button.is-active {
+      background: var(--orange);
+      border-color: var(--orange);
+      color: var(--white);
+    }
+    .zap-modal input[type="number"], .zap-modal textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.55rem 0.7rem;
+      font: inherit;
+      font-size: 0.95rem;
+      background: var(--cream);
+      box-sizing: border-box;
+    }
+    .zap-modal input[type="number"]:focus, .zap-modal textarea:focus {
+      outline: none;
+      border-color: var(--orange);
+    }
+    .zap-modal textarea { min-height: 60px; resize: vertical; }
+    .zap-modal .zap-submit {
+      width: 100%;
+      margin-top: 1.1rem;
+      background: var(--orange);
+      color: var(--white);
+      border: none;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 700;
+      font-size: 1rem;
+      padding: 0.7rem 1rem;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+    .zap-modal .zap-submit:hover { background: var(--orange-d); }
+    .zap-modal .zap-submit:disabled { opacity: 0.6; cursor: default; }
+    .zap-modal .zap-close {
+      position: absolute;
+      top: 0.7rem;
+      right: 0.7rem;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 1.4rem;
+      color: var(--muted);
+      padding: 0.25rem 0.5rem;
+      line-height: 1;
+    }
+    .zap-modal .zap-close:hover { color: var(--navy); }
+    .zap-modal .zap-status {
+      margin-top: 0.7rem;
+      font-size: 0.88rem;
+      color: var(--muted);
+      min-height: 1.2em;
+    }
+    .zap-modal .zap-status.is-error { color: #b34a1d; }
+    .zap-modal .zap-invoice {
+      margin-top: 1rem;
+      padding: 0.85rem;
+      background: var(--cream);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+    .zap-modal .zap-invoice textarea {
+      font-family: monospace;
+      font-size: 0.78rem;
+      min-height: 110px;
+    }
+    .zap-modal .zap-invoice .zap-invoice-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .zap-modal .zap-invoice button, .zap-modal .zap-invoice a {
+      border: 1.5px solid var(--navy);
+      background: transparent;
+      color: var(--navy);
+      cursor: pointer;
+      font: inherit;
+      font-weight: 600;
+      font-size: 0.85rem;
+      padding: 0.4rem 0.85rem;
+      border-radius: 5px;
+      text-decoration: none;
+      transition: background 0.15s, color 0.15s;
+    }
+    .zap-modal .zap-invoice button:hover, .zap-modal .zap-invoice a:hover {
+      background: var(--navy);
+      color: var(--white);
+    }
+
+    /* ── Toast ── */
+    .lb-toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--navy);
+      color: var(--cream);
+      padding: 0.65rem 1.2rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+      z-index: 300;
+      opacity: 0;
+      transition: opacity 0.25s, transform 0.25s;
+      pointer-events: none;
+      max-width: 92vw;
+    }
+    .lb-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .lb-toast.is-error { background: #6b2418; }
+
+    .note-footer {
+      margin-top: 0.7rem;
+      font-size: 0.78rem;
+    }
+    .note-footer a {
+      color: var(--muted);
+      text-decoration: none;
+      letter-spacing: 0.04em;
+    }
+    .note-footer a:hover { color: var(--orange); }
+
+    .replies-heading {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--navy);
+      margin: 0 0 1rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid var(--orange);
+      display: inline-block;
+    }
+    .replies-empty {
+      color: var(--muted);
+      font-style: italic;
+      padding: 1rem 0;
+    }
+
+    .reply-children {
+      list-style: none;
+      margin: 0.6rem 0 0;
+      padding: 0;
+      border-left: 2px solid var(--cream-d);
+      padding-left: 0.9rem;
+    }
+
+    /* ── Footer (mirrors index.html) ── */
+    footer {
+      background: #12253f;
+      color: var(--muted);
+      text-align: center;
+      padding: 2rem 1.5rem;
+      font-size: 0.85rem;
+    }
+    footer a { color: var(--orange); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ── Responsive ── */
+    @media (max-width: 760px) {
+      .nav-inner { gap: 0.5rem; flex-wrap: wrap; height: auto; padding: 0.6rem 1rem; }
+      .nav-site-name { font-size: 1rem; flex: 1; min-width: 0; }
+      nav { order: 4; flex-basis: 100%; }
+      nav ul { justify-content: center; gap: 0.25rem; flex-wrap: wrap; }
+      nav ul li a { padding: 0.3rem 0.7rem; font-size: 0.8rem; }
+      #lb-boost-slot { flex-shrink: 0; }
+    }
+    @media (max-width: 600px) {
+      .section-wide { padding: 2rem 1rem; }
+      .note-card { padding: 0.95rem 1rem; }
+      .note-card.is-root { padding: 1.15rem 1.15rem; }
+      .reply-children { padding-left: 0.6rem; }
+    }
+    @media (max-width: 420px) {
+      .nav-logo { width: 36px; height: 36px; }
+      .nav-site-name { font-size: 0.92rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════ NAV ══════════════════════════════ -->
+<header id="top-nav">
+  <div class="nav-inner">
+    <a class="nav-logo" href="/" aria-label="Local Bitcoiners home">
+      <img src="assets/LocalBitcoiners.png" alt="Local Bitcoiners logo" />
+    </a>
+    <a class="nav-site-name" href="/">Local Bitcoiners</a>
+    <nav aria-label="Main navigation">
+      <ul>
+        <li><a href="/#meetups">Resources</a></li>
+        <li><a href="/#episodes">Episodes</a></li>
+        <li><a href="/boosts.html" class="active">Boosts</a></li>
+        <li><a href="/#links">Links</a></li>
+      </ul>
+    </nav>
+    <div id="lb-boost-slot" aria-label="Boost the Show"></div>
+  </div>
+</header>
+
+<!-- ══════════════════════════════ PAGE HEADER ══════════════════════════════ -->
+<section class="page-header">
+  <h1>Podcast Boosts</h1>
+  <p>Boost messages and replies from listeners on Nostr — newest first.</p>
+</section>
+
+<!-- ══════════════════════════════ FEED ══════════════════════════════ -->
+<section class="section-wide">
+  <div id="boosts-loading">
+    <div class="loading-spinner"></div><br />
+    Loading boosts from Nostr…
+  </div>
+
+  <div id="boosts-error">
+    <p>Couldn't load boosts right now. View the thread directly on
+      <a id="njump-link" href="https://njump.me/" target="_blank" rel="noopener noreferrer">njump.me →</a>
+    </p>
+  </div>
+
+  <div id="boosts-content"></div>
+</section>
+
+<!-- ══════════════════════════════ FOOTER ══════════════════════════════ -->
+<footer>
+  <p>© 2026 Local Bitcoiners Podcast &nbsp;·&nbsp; <a href="mailto:localbitcoiners@gmail.com">localbitcoiners@gmail.com</a></p>
+</footer>
+
+<!-- ══════════════════════════════ BOOSTS FEED (Nostr) ══════════════════════════════ -->
+<script type="module">
+  import { SimplePool, nip19 } from 'https://esm.sh/nostr-tools@2.7.2'
+
+  // ── Config ─────────────────────────────────────────────────────────
+  const ROOT_NEVENT = 'nevent1qvzqqqqqqypzpses3q0zsa5rs8wchh7jws6pmjsvtzpv9xuxgt4yhjp0w43jv3vjqyd8wumn8ghj7urewfsk66ty9enxjct5dfskvtnrdakj7qgwwaehxw309ahx7uewd3hkctcqyr3keved458q3n7x7839r86vj4dx0s4xh0p8j7fzvf4nq7824ulagy77tpj'
+
+  // Primal's caching service — pre-indexed thread + profile data in one
+  // round trip. This is what makes the page feel instant. Same op
+  // mynostr's notes module uses (`thread_view`).
+  const PRIMAL_WS_URL = 'wss://cache1.primal.net/v1'
+  const PRIMAL_TIMEOUT_MS = 6000
+
+  // Direct-relay fallback if Primal can't be reached or returns nothing.
+  const STATIC_RELAYS = [
+    'wss://relay.damus.io',
+    'wss://nos.lol',
+    'wss://relay.primal.net',
+    'wss://relay.nostr.band',
+    'wss://purplepag.es',
+  ]
+
+  // ── Helpers ────────────────────────────────────────────────────────
+  function isSafeUrl(url) {
+    if (typeof url !== 'string') return false
+    try {
+      const u = new URL(url)
+      return u.protocol === 'http:' || u.protocol === 'https:'
+    } catch { return false }
+  }
+
+  function relTime(ts) {
+    const sec = Math.floor(Date.now() / 1000) - ts
+    if (sec < 60)      return `${sec}s ago`
+    if (sec < 3600)    return `${Math.floor(sec/60)}m ago`
+    if (sec < 86400)   return `${Math.floor(sec/3600)}h ago`
+    if (sec < 2592000) return `${Math.floor(sec/86400)}d ago`
+    return new Date(ts * 1000).toLocaleDateString()
+  }
+
+  // ── Content parser (mirrors mynostr's noteParser.js) ───────────────
+  const NOSTR_URI_RE = /nostr:(npub1[a-z0-9]+|nprofile1[a-z0-9]+|note1[a-z0-9]+|nevent1[a-z0-9]+|naddr1[a-z0-9]+)/gi
+  const URL_RE = /https?:\/\/[^\s<>"')\]]+/g
+
+  // Module-level caches. Seeded from the thread's profiles + notes,
+  // augmented with supplementary Primal lookups for mentioned npubs and
+  // referenced event ids before we paint.
+  const profileCache = new Map()  // pubkey hex → { pubkey, name, picture, nip05 }
+  const embedCache   = new Map()  // event id hex → kind-1 event (or null = not found)
+
+  function parseSegments(content) {
+    if (!content) return [{ type: 'text', value: '' }]
+    const tokens = []
+
+    // Nostr URIs first — npub/nprofile become 'mention', note/nevent/naddr
+    // become 'note_embed'. Decoding failures degrade to a plain text token.
+    for (const m of content.matchAll(NOSTR_URI_RE)) {
+      const raw = m[1]
+      const tok = { start: m.index, end: m.index + m[0].length, value: m[0], data: { bech32: raw } }
+      try {
+        const decoded = nip19.decode(raw)
+        tok.data.decoded = decoded
+        if (decoded.type === 'npub') {
+          tok.type = 'mention'
+          tok.data.pubkey = decoded.data
+        } else if (decoded.type === 'nprofile') {
+          tok.type = 'mention'
+          tok.data.pubkey = decoded.data.pubkey
+        } else if (decoded.type === 'note') {
+          tok.type = 'note_embed'
+          tok.data.eventId = decoded.data
+        } else if (decoded.type === 'nevent') {
+          tok.type = 'note_embed'
+          tok.data.eventId = decoded.data.id
+          tok.data.author  = decoded.data.author || null
+        } else if (decoded.type === 'naddr') {
+          tok.type = 'note_embed'
+          tok.data.addressable = true
+          tok.data.naddr = decoded.data
+        } else {
+          tok.type = 'text'
+        }
+      } catch {
+        tok.type = 'text'
+      }
+      tokens.push(tok)
+    }
+
+    // URLs that don't overlap a nostr URI.
+    for (const m of content.matchAll(URL_RE)) {
+      if (tokens.some(t => m.index >= t.start && m.index < t.end)) continue
+      tokens.push({
+        type: 'link',
+        start: m.index, end: m.index + m[0].length,
+        value: m[0], data: { url: m[0] },
+      })
+    }
+
+    tokens.sort((a, b) => a.start - b.start)
+
+    const segments = []
+    let cursor = 0
+    for (const tok of tokens) {
+      if (tok.start > cursor) segments.push({ type: 'text', value: content.slice(cursor, tok.start) })
+      segments.push({ type: tok.type, value: tok.value, data: tok.data })
+      cursor = tok.end
+    }
+    if (cursor < content.length) segments.push({ type: 'text', value: content.slice(cursor) })
+
+    return segments.length ? segments : [{ type: 'text', value: content }]
+  }
+
+  // ── Segment renderers ──────────────────────────────────────────────
+  // opts.inEmbed = true → don't recurse into another note_embed card;
+  // render as a muted chip instead. Mirrors mynostr's EntityCard behavior.
+  function renderSegmentsInto(el, segments, opts = {}) {
+    for (const seg of segments) {
+      if (seg.type === 'text') {
+        el.appendChild(document.createTextNode(seg.value))
+      } else if (seg.type === 'link') {
+        const url = seg.data?.url || seg.value
+        if (isSafeUrl(url)) {
+          const a = document.createElement('a')
+          a.href = url
+          a.textContent = url
+          a.target = '_blank'
+          a.rel = 'noopener noreferrer'
+          el.appendChild(a)
+        } else {
+          el.appendChild(document.createTextNode(url))
+        }
+      } else if (seg.type === 'mention') {
+        el.appendChild(buildMentionEl(seg))
+      } else if (seg.type === 'note_embed') {
+        if (opts.inEmbed) {
+          // No nested embeds — degrade to a chip that links to njump.
+          el.appendChild(buildEmbedChip(seg))
+        } else {
+          el.appendChild(buildEmbedNoteEl(seg))
+        }
+      } else {
+        el.appendChild(document.createTextNode(seg.value || ''))
+      }
+    }
+  }
+
+  function buildMentionEl(seg) {
+    const a = document.createElement('a')
+    a.className = 'nostr-mention'
+    a.target = '_blank'
+    a.rel = 'noopener noreferrer'
+    a.href = `https://njump.me/${seg.data.bech32 || seg.value.replace(/^nostr:/i, '')}`
+
+    const profile = seg.data.pubkey ? profileCache.get(seg.data.pubkey) : null
+    if (profile?.name) {
+      a.textContent = '@' + profile.name
+      if (profile.nip05) a.title = profile.nip05
+    } else {
+      // Truncated npub fallback — keep readable, not the bech32 hash.
+      let npub = seg.data.bech32 || seg.value.replace(/^nostr:/i, '')
+      if (seg.data.pubkey) {
+        try { npub = nip19.npubEncode(seg.data.pubkey) } catch {}
+      }
+      a.textContent = '@' + npub.slice(0, 14) + '…'
+    }
+    return a
+  }
+
+  function buildEmbedChip(seg) {
+    const a = document.createElement('a')
+    a.className = 'nostr-mention'
+    a.target = '_blank'
+    a.rel = 'noopener noreferrer'
+    a.href = `https://njump.me/${seg.data.bech32 || seg.value.replace(/^nostr:/i, '')}`
+    a.textContent = '@' + (seg.data.bech32 || seg.value).slice(0, 14) + '…'
+    return a
+  }
+
+  function buildEmbedNoteEl(seg) {
+    const card = document.createElement('div')
+    card.className = 'embed-note'
+
+    // naddr (long-form etc.) — out of scope to fully render; show a chip
+    // that links to njump.me.
+    if (seg.data.addressable) {
+      card.classList.add('is-naddr')
+      const link = document.createElement('a')
+      link.href = `https://njump.me/${seg.data.bech32}`
+      link.target = '_blank'
+      link.rel = 'noopener noreferrer'
+      link.textContent = '📄 Linked article on Nostr →'
+      card.appendChild(link)
+      return card
+    }
+
+    const ev = seg.data.eventId ? embedCache.get(seg.data.eventId) : null
+    if (!ev) {
+      // null in cache, or not in cache → couldn't load.
+      card.classList.add('is-missing')
+      card.appendChild(document.createTextNode('Quoted note not available'))
+      const link = document.createElement('a')
+      link.href = `https://njump.me/${seg.data.bech32}`
+      link.target = '_blank'
+      link.rel = 'noopener noreferrer'
+      link.textContent = 'View on Nostr →'
+      card.appendChild(link)
+      return card
+    }
+
+    // Author header
+    const authorRow = document.createElement('div')
+    authorRow.className = 'embed-author'
+    const profile = profileCache.get(ev.pubkey)
+
+    const img = document.createElement('img')
+    img.src = profile?.picture || 'assets/LocalBitcoiners.png'
+    img.alt = ''
+    img.referrerPolicy = 'no-referrer'
+    img.onerror = () => { img.src = 'assets/LocalBitcoiners.png' }
+    authorRow.appendChild(img)
+
+    const nameEl = document.createElement('span')
+    nameEl.className = 'author-name'
+    nameEl.textContent = profile?.name || (ev.pubkey.slice(0, 8) + '…')
+    authorRow.appendChild(nameEl)
+
+    const time = document.createElement('time')
+    time.dateTime = new Date(ev.created_at * 1000).toISOString()
+    time.textContent = relTime(ev.created_at)
+    time.title = new Date(ev.created_at * 1000).toLocaleString()
+    authorRow.appendChild(time)
+
+    card.appendChild(authorRow)
+
+    // Body — truncate long quotes; render with inEmbed so nested embeds
+    // become chips rather than blowing up the card height.
+    const body = document.createElement('div')
+    body.className = 'embed-body'
+    const text = ev.content || ''
+    const snippet = text.length > 600 ? text.slice(0, 600) + '…' : text
+    renderSegmentsInto(body, parseSegments(snippet), { inEmbed: true })
+    card.appendChild(body)
+
+    const footer = document.createElement('div')
+    footer.className = 'embed-footer'
+    let nevent = ''
+    try { nevent = nip19.neventEncode({ id: ev.id, author: ev.pubkey }) } catch {}
+    if (nevent) {
+      const link = document.createElement('a')
+      link.href = `https://njump.me/${nevent}`
+      link.textContent = 'View on Nostr →'
+      link.target = '_blank'
+      link.rel = 'noopener noreferrer'
+      footer.appendChild(link)
+    }
+    card.appendChild(footer)
+
+    return card
+  }
+
+  // Back-compat shim — anywhere `renderContentInto(el, text)` was called
+  // now goes through the segment pipeline.
+  function renderContentInto(el, text) {
+    renderSegmentsInto(el, parseSegments(text))
+  }
+
+  // ── Profile parsing ────────────────────────────────────────────────
+  function parseProfileEvent(ev) {
+    try {
+      const meta = JSON.parse(ev.content)
+      return {
+        pubkey:  ev.pubkey,
+        name:    meta.display_name || meta.name || '',
+        picture: isSafeUrl(meta.picture) ? meta.picture : null,
+        nip05:   meta.nip05 || '',
+        lud16:   typeof meta.lud16 === 'string' ? meta.lud16.trim() : '',
+        lud06:   typeof meta.lud06 === 'string' ? meta.lud06.trim() : '',
+      }
+    } catch {
+      return { pubkey: ev.pubkey }
+    }
+  }
+
+  // ── Primal cache: low-level query ──────────────────────────────────
+  // Opens one WS, sends a single REQ, collects EVENTs until EOSE, then
+  // closes. Same wire format mynostr's primal.js uses.
+  function primalQuery(op, params, timeoutMs = PRIMAL_TIMEOUT_MS) {
+    return new Promise((resolve, reject) => {
+      let settled = false
+      const events = []
+      const finish = (val, err) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        try { ws.close() } catch {}
+        if (err) reject(err); else resolve(val)
+      }
+      const ws = new WebSocket(PRIMAL_WS_URL)
+      const subId = `lb_${op}_${Date.now()}`
+      const timer = setTimeout(
+        () => finish(null, new Error(`Primal "${op}" timed out`)),
+        timeoutMs,
+      )
+      ws.onopen = () => {
+        ws.send(JSON.stringify(['REQ', subId, { cache: [op, params] }]))
+      }
+      ws.onerror = () => finish(null, new Error(`Primal WS error (${op})`))
+      // If close fires before EOSE, treat whatever we have as the result.
+      ws.onclose = () => { if (!settled) finish(events) }
+      ws.onmessage = (e) => {
+        let msg; try { msg = JSON.parse(e.data) } catch { return }
+        const [type, , payload] = msg
+        if (type === 'EVENT' && payload) events.push(payload)
+        else if (type === 'EOSE') finish(events)
+      }
+    })
+  }
+
+  // ── Primal: full thread (root + descendants + author profiles) ────
+  async function fetchThreadFromPrimal(rootId) {
+    const events = await primalQuery('thread_view', { event_id: rootId, limit: 400 })
+    const notes = []
+    const profiles = new Map()
+    for (const ev of events) {
+      if (ev.kind === 1) notes.push(ev)
+      else if (ev.kind === 0) profiles.set(ev.pubkey, parseProfileEvent(ev))
+    }
+    return { notes, profiles }
+  }
+
+  // ── Primal: bulk profile lookup (kind 0 by pubkey list) ───────────
+  async function fetchProfilesFromPrimal(pubkeys) {
+    if (!pubkeys.length) return new Map()
+    try {
+      const evs = await primalQuery('user_infos', { pubkeys })
+      const out = new Map()
+      for (const ev of evs) if (ev.kind === 0) out.set(ev.pubkey, parseProfileEvent(ev))
+      return out
+    } catch { return new Map() }
+  }
+
+  // ── Primal: bulk event lookup by id (kind 1 quoted notes) ─────────
+  async function fetchEventsFromPrimal(eventIds) {
+    if (!eventIds.length) return { notes: new Map(), profiles: new Map() }
+    try {
+      const evs = await primalQuery('events', { event_ids: eventIds }, 8000)
+      const notes = new Map()
+      const profiles = new Map()
+      for (const ev of evs) {
+        if (ev.kind === 1) notes.set(ev.id, ev)
+        else if (ev.kind === 0) profiles.set(ev.pubkey, parseProfileEvent(ev))
+      }
+      return { notes, profiles }
+    } catch { return { notes: new Map(), profiles: new Map() } }
+  }
+
+  // ── Direct-relay fallback (used only if Primal didn't return root) ─
+  async function fetchThreadFromRelays(rootId, relays) {
+    const pool = new SimplePool()
+    try {
+      const [root, replies] = await Promise.all([
+        pool.get(relays, { kinds: [1], ids: [rootId] }).catch(() => null),
+        pool.querySync(relays, { kinds: [1], '#e': [rootId], limit: 500 }).catch(() => []),
+      ])
+      const notes = []
+      if (root) notes.push(root)
+      for (const ev of replies) if (ev?.id && ev.id !== rootId) notes.push(ev)
+
+      // Pull missing profiles for everyone in the thread, parallel.
+      const pubkeys = [...new Set(notes.map(n => n.pubkey))]
+      const profiles = new Map()
+      await Promise.all(pubkeys.map(async (pk) => {
+        const ev = await pool.get(relays, { kinds: [0], authors: [pk] }).catch(() => null)
+        if (ev) profiles.set(pk, parseProfileEvent(ev))
+      }))
+      return { notes, profiles }
+    } finally {
+      pool.close(relays)
+    }
+  }
+
+  // ── Render a single note card ──────────────────────────────────────
+  function renderNoteCard(ev, profile, { isRoot = false } = {}) {
+    const card = document.createElement('article')
+    card.className = 'note-card' + (isRoot ? ' is-root' : '')
+
+    const authorRow = document.createElement('div')
+    authorRow.className = 'note-author'
+
+    const img = document.createElement('img')
+    img.src = profile?.picture || 'assets/LocalBitcoiners.png'
+    img.alt = ''
+    img.referrerPolicy = 'no-referrer'
+    img.onerror = () => { img.src = 'assets/LocalBitcoiners.png' }
+    authorRow.appendChild(img)
+
+    const nameWrap = document.createElement('div')
+    nameWrap.style.display = 'flex'
+    nameWrap.style.flexDirection = 'column'
+    nameWrap.style.minWidth = '0'
+
+    const nameEl = document.createElement('span')
+    nameEl.className = 'author-name'
+    nameEl.textContent = profile?.name || (ev.pubkey.slice(0, 8) + '…')
+    nameWrap.appendChild(nameEl)
+
+    if (profile?.nip05) {
+      const handle = document.createElement('span')
+      handle.className = 'author-handle'
+      handle.textContent = profile.nip05
+      nameWrap.appendChild(handle)
+    }
+    authorRow.appendChild(nameWrap)
+
+    const time = document.createElement('time')
+    time.dateTime = new Date(ev.created_at * 1000).toISOString()
+    time.textContent = relTime(ev.created_at)
+    time.title = new Date(ev.created_at * 1000).toLocaleString()
+    authorRow.appendChild(time)
+
+    card.appendChild(authorRow)
+
+    const body = document.createElement('div')
+    body.className = 'note-body'
+    renderContentInto(body, ev.content)
+    card.appendChild(body)
+
+    const footer = document.createElement('div')
+    footer.className = 'note-footer'
+    let nevent = ''
+    try { nevent = nip19.neventEncode({ id: ev.id, author: ev.pubkey }) } catch {}
+    if (nevent) {
+      const link = document.createElement('a')
+      link.href = `https://njump.me/${nevent}`
+      link.textContent = 'View on Nostr →'
+      link.target = '_blank'
+      link.rel = 'noopener noreferrer'
+      footer.appendChild(link)
+    }
+    card.appendChild(footer)
+
+    // Per-note action bar (Reply / Like / Zap). Skipped on the root —
+    // the root card is intentionally hidden; even if we ever surfaced it,
+    // its actions belong on the boost button, not here.
+    if (!isRoot) {
+      card.appendChild(buildActionBar(ev, card))
+    }
+
+    return card
+  }
+
+  // ── Recursive descendant tree (mirrors mynostr's NoteThreadView) ───
+  function renderRepliesTree(parentId, childrenOf, profiles, container) {
+    const kids = childrenOf.get(parentId) || []
+    if (!kids.length) return
+    const ul = document.createElement('ul')
+    ul.className = 'reply-children'
+    for (const ev of kids) {
+      const li = document.createElement('li')
+      li.appendChild(renderNoteCard(ev, profiles.get(ev.pubkey)))
+      renderRepliesTree(ev.id, childrenOf, profiles, li)
+      ul.appendChild(li)
+    }
+    container.appendChild(ul)
+  }
+
+  // ── Main load ──────────────────────────────────────────────────────
+  const $loading = document.getElementById('boosts-loading')
+  const $error   = document.getElementById('boosts-error')
+  const $njump   = document.getElementById('njump-link')
+  const $content = document.getElementById('boosts-content')
+
+  $njump.href = `https://njump.me/${ROOT_NEVENT}`
+
+  function showError() {
+    $loading.style.display = 'none'
+    $error.style.display = 'block'
+  }
+
+  function buildThread(rootId, allNotes) {
+    // root + descendants → root note, parentId→children map.
+    const root = allNotes.find(n => n.id === rootId)
+    const childrenOf = new Map()
+    for (const ev of allNotes) {
+      if (!ev?.id || ev.id === rootId) continue
+      const eTags = (ev.tags || []).filter(t => t[0] === 'e')
+      if (!eTags.length) continue
+      const replyTag = eTags.find(t => t[3] === 'reply') || eTags[eTags.length - 1]
+      const parentId = replyTag?.[1]
+      if (!parentId) continue
+      if (!childrenOf.has(parentId)) childrenOf.set(parentId, [])
+      childrenOf.get(parentId).push(ev)
+    }
+    for (const arr of childrenOf.values()) {
+      arr.sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
+    }
+    return { root, childrenOf }
+  }
+
+  function paint(root, childrenOf, profiles, totalReplies) {
+    $loading.style.display = 'none'
+    $content.innerHTML = ''
+
+    $content.appendChild(buildLoginBanner())
+
+    const repliesHeading = document.createElement('h2')
+    repliesHeading.className = 'replies-heading'
+    repliesHeading.textContent = totalReplies
+      ? `${totalReplies} ${totalReplies === 1 ? 'Boost' : 'Boosts'}`
+      : 'Boosts'
+    $content.appendChild(repliesHeading)
+
+    const directReplies = childrenOf.get(root.id) || []
+    if (!directReplies.length) {
+      const empty = document.createElement('p')
+      empty.className = 'replies-empty'
+      empty.textContent = 'No boosts yet — be the first to reply on Nostr.'
+      $content.appendChild(empty)
+    } else {
+      renderRepliesTree(root.id, childrenOf, profiles, $content)
+    }
+  }
+
+  // ── Per-note action state ──────────────────────────────────────────
+  // Module-level state so handlers (reply / like / zap) can mutate the
+  // tree and trigger a fresh paint without going through React-style
+  // prop drilling. Also tracks which note ids the signed-in user has
+  // already liked, hydrated lazily after sign-in.
+  const state = {
+    rootEvent: null,
+    childrenOf: new Map(),
+  }
+  const likedIds    = new Set()  // event ids liked by current user (lowercased)
+  const repostedIds = new Set()  // event ids reposted (NIP-18 kind 6) by current user
+  let likesHydrated   = false
+  let repostsHydrated = false
+  let lastUserPubkey = null     // detect login switches → re-hydrate
+
+  function rerenderBoosts() {
+    if (!state.rootEvent) return
+    const total = countDescendants(state.rootEvent.id, state.childrenOf)
+    paint(state.rootEvent, state.childrenOf, profileCache, total)
+  }
+
+  function countDescendants(rootId, childrenOf) {
+    let n = 0
+    const stack = [rootId]
+    while (stack.length) {
+      const id = stack.pop()
+      const kids = childrenOf.get(id) || []
+      n += kids.length
+      for (const k of kids) stack.push(k.id)
+    }
+    return n
+  }
+
+  // Hydrate the user's prior likes (NIP-25 kind 7) and reposts (NIP-18
+  // kind 6) once per login session via the widget's NDK. NDK is already
+  // connected to FALLBACK_RELAYS post-login. Best-effort: failure
+  // leaves the sets empty and the user can act again (relays dedup).
+  async function hydrateUserLikes() {
+    const user = window.LBLogin?.getUser?.()
+    if (!user || !user.pubkey) return
+    if (likesHydrated && lastUserPubkey === user.pubkey) return
+    likedIds.clear()
+    try {
+      const ndk = window.LBLogin.getNDK()
+      const events = await ndk.fetchEvents({
+        kinds: [7], authors: [user.pubkey], limit: 500,
+      })
+      for (const ev of events) {
+        if (ev.content === '-') continue   // explicit dislike per NIP-25
+        const eTags = (ev.tags || []).filter(t => t[0] === 'e' && /^[0-9a-f]{64}$/i.test(t[1] || ''))
+        const target = eTags[eTags.length - 1]
+        if (target) likedIds.add(target[1].toLowerCase())
+      }
+    } catch (e) {
+      console.warn('[boosts] like hydration failed', e)
+    }
+    likesHydrated = true
+    document.querySelectorAll('button.like-btn').forEach(btn => {
+      const id = btn.dataset.noteId
+      if (id && likedIds.has(id)) {
+        btn.setAttribute('aria-pressed', 'true')
+        const icon = btn.querySelector('.lb-icon')
+        if (icon) icon.textContent = '♥'
+      }
+    })
+  }
+
+  async function hydrateUserReposts() {
+    const user = window.LBLogin?.getUser?.()
+    if (!user || !user.pubkey) return
+    if (repostsHydrated && lastUserPubkey === user.pubkey) return
+    repostedIds.clear()
+    try {
+      const ndk = window.LBLogin.getNDK()
+      const events = await ndk.fetchEvents({
+        kinds: [6], authors: [user.pubkey], limit: 500,
+      })
+      for (const ev of events) {
+        // NIP-18: the reposted note's id is in the e-tag.
+        const eTags = (ev.tags || []).filter(t => t[0] === 'e' && /^[0-9a-f]{64}$/i.test(t[1] || ''))
+        const target = eTags[eTags.length - 1]
+        if (target) repostedIds.add(target[1].toLowerCase())
+      }
+    } catch (e) {
+      console.warn('[boosts] repost hydration failed', e)
+    }
+    repostsHydrated = true
+    document.querySelectorAll('button.repost-btn').forEach(btn => {
+      const id = btn.dataset.noteId
+      if (id && repostedIds.has(id)) {
+        btn.setAttribute('aria-pressed', 'true')
+      }
+    })
+  }
+
+  // Wire login/logout to like + repost hydration once the widget is up.
+  function bindUserStateHydration() {
+    if (window.LBLogin?.onChange) {
+      window.LBLogin.onChange((u) => {
+        if (u) {
+          lastUserPubkey = u.pubkey
+          hydrateUserLikes()
+          hydrateUserReposts()
+        } else {
+          likesHydrated   = false
+          repostsHydrated = false
+          lastUserPubkey  = null
+          likedIds.clear()
+          repostedIds.clear()
+          document.querySelectorAll('button.like-btn[aria-pressed="true"]').forEach(btn => {
+            btn.setAttribute('aria-pressed', 'false')
+            const icon = btn.querySelector('.lb-icon')
+            if (icon) icon.textContent = '♡'
+          })
+          document.querySelectorAll('button.repost-btn[aria-pressed="true"]').forEach(btn => {
+            btn.setAttribute('aria-pressed', 'false')
+          })
+        }
+      })
+      // If already signed in at page load, hydrate now.
+      if (window.LBLogin.getUser?.()) {
+        lastUserPubkey = window.LBLogin.getUser().pubkey
+        hydrateUserLikes()
+        hydrateUserReposts()
+      }
+    } else {
+      const wait = setInterval(() => {
+        if (window.LBLogin?.onChange) { clearInterval(wait); bindUserStateHydration() }
+      }, 200)
+    }
+  }
+  bindUserStateHydration()
+
+  function ensureLoggedIn() {
+    if (window.LBLogin?.getUser?.()) return true
+    window.LBLogin?.requestLogin?.()
+    return false
+  }
+
+  // ── Action bar ─────────────────────────────────────────────────────
+  function buildActionBar(ev, cardEl) {
+    const bar = document.createElement('div')
+    bar.className = 'note-actions'
+
+    // Reply
+    const replyBtn = document.createElement('button')
+    replyBtn.type = 'button'
+    replyBtn.title = 'Reply'
+    replyBtn.innerHTML = '<span class="lb-icon" aria-hidden="true">💬</span><span>Reply</span>'
+    replyBtn.addEventListener('click', () => toggleReplyComposer(ev, cardEl))
+    bar.appendChild(replyBtn)
+
+    // Repost (NIP-18 plain repost — kind 6, no quote)
+    const repostBtn = document.createElement('button')
+    repostBtn.type = 'button'
+    repostBtn.className = 'repost-btn'
+    repostBtn.dataset.noteId = ev.id.toLowerCase()
+    repostBtn.title = 'Repost'
+    const isReposted = repostedIds.has(ev.id.toLowerCase())
+    repostBtn.setAttribute('aria-pressed', isReposted ? 'true' : 'false')
+    repostBtn.innerHTML = '<span class="lb-icon" aria-hidden="true">🔁</span><span>Repost</span>'
+    repostBtn.addEventListener('click', () => handleRepost(ev, repostBtn))
+    bar.appendChild(repostBtn)
+
+    // Like
+    const likeBtn = document.createElement('button')
+    likeBtn.type = 'button'
+    likeBtn.className = 'like-btn'
+    likeBtn.dataset.noteId = ev.id.toLowerCase()
+    likeBtn.title = 'Like'
+    const isLiked = likedIds.has(ev.id.toLowerCase())
+    likeBtn.setAttribute('aria-pressed', isLiked ? 'true' : 'false')
+    likeBtn.innerHTML = `<span class="lb-icon" aria-hidden="true">${isLiked ? '♥' : '♡'}</span><span>Like</span>`
+    likeBtn.addEventListener('click', () => handleLike(ev, likeBtn))
+    bar.appendChild(likeBtn)
+
+    // Zap
+    const zapBtn = document.createElement('button')
+    zapBtn.type = 'button'
+    zapBtn.title = 'Zap'
+    zapBtn.innerHTML = '<span class="lb-icon" aria-hidden="true">⚡</span><span>Zap</span>'
+    zapBtn.addEventListener('click', () => openZapModal(ev))
+    bar.appendChild(zapBtn)
+
+    return bar
+  }
+
+  // ── Reply ──────────────────────────────────────────────────────────
+  function toggleReplyComposer(parent, cardEl) {
+    if (!ensureLoggedIn()) return
+
+    // Toggle off if already open under this card.
+    const existing = cardEl.querySelector(':scope > .reply-composer')
+    if (existing) { existing.remove(); return }
+
+    const composer = document.createElement('div')
+    composer.className = 'reply-composer'
+
+    const ta = document.createElement('textarea')
+    ta.placeholder = 'Reply on Nostr…'
+    composer.appendChild(ta)
+
+    const actions = document.createElement('div')
+    actions.className = 'rc-actions'
+
+    const cancel = document.createElement('button')
+    cancel.type = 'button'
+    cancel.className = 'rc-cancel'
+    cancel.textContent = 'Cancel'
+    cancel.addEventListener('click', () => composer.remove())
+    actions.appendChild(cancel)
+
+    const send = document.createElement('button')
+    send.type = 'button'
+    send.className = 'rc-send'
+    send.textContent = 'Send Reply'
+    send.addEventListener('click', () => sendReply(parent, ta.value, send, composer))
+    actions.appendChild(send)
+
+    composer.appendChild(actions)
+    cardEl.appendChild(composer)
+    ta.focus()
+  }
+
+  function buildReplyTags(parent) {
+    const rootId = state.rootEvent?.id
+    const tags = []
+    // Root e-tag (NIP-10 marked). If parent IS the root, only emit the
+    // root marker — emitting both root + reply on the same id confuses
+    // clients.
+    if (rootId) tags.push(['e', rootId, '', 'root'])
+    if (parent.id !== rootId) {
+      tags.push(['e', parent.id, '', 'reply'])
+    }
+    // p tags: every p tag from the parent + the parent's own pubkey,
+    // deduplicated.
+    const seenP = new Set()
+    for (const t of parent.tags || []) {
+      if (t[0] === 'p' && t[1] && !seenP.has(t[1])) {
+        seenP.add(t[1])
+        tags.push(['p', t[1]])
+      }
+    }
+    if (parent.pubkey && !seenP.has(parent.pubkey)) {
+      tags.push(['p', parent.pubkey])
+    }
+    tags.push(['client', 'localbitcoiners'])
+    return tags
+  }
+
+  async function sendReply(parent, content, sendBtn, composer) {
+    const text = (content || '').trim()
+    if (!text) return
+    if (!ensureLoggedIn()) return
+    sendBtn.disabled = true
+    sendBtn.textContent = 'Sending…'
+    try {
+      const signed = await window.LBLogin.signAndPublish({
+        kind: 1,
+        content: text,
+        tags: buildReplyTags(parent),
+      })
+      // Make sure the user's profile is in the cache for the new card.
+      const user = window.LBLogin.getUser?.()
+      if (user?.pubkey && !profileCache.has(user.pubkey)) {
+        profileCache.set(user.pubkey, {
+          pubkey:  user.pubkey,
+          name:    user?.profile?.displayName || user?.profile?.name || '',
+          picture: user?.profile?.image || user?.profile?.picture || null,
+          nip05:   user?.profile?.nip05 || '',
+          lud16:   user?.profile?.lud16 || '',
+          lud06:   user?.profile?.lud06 || '',
+        })
+      }
+      // Optimistic insert under the parent — newest first.
+      const list = state.childrenOf.get(parent.id) || []
+      list.unshift(signed)
+      state.childrenOf.set(parent.id, list)
+      embedCache.set(signed.id, signed)
+      composer.remove()
+      rerenderBoosts()
+      showToast('Reply posted')
+    } catch (e) {
+      sendBtn.disabled = false
+      sendBtn.textContent = 'Send Reply'
+      showToast('Reply failed: ' + (e?.message || 'unknown'), true)
+    }
+  }
+
+  // ── Like (NIP-25 kind 7) ───────────────────────────────────────────
+  async function handleLike(ev, btn) {
+    if (!ensureLoggedIn()) return
+    const id = ev.id.toLowerCase()
+    if (likedIds.has(id)) return       // already liked — no-op (no unlike yet)
+
+    // Optimistic.
+    likedIds.add(id)
+    btn.setAttribute('aria-pressed', 'true')
+    const icon = btn.querySelector('.lb-icon')
+    if (icon) icon.textContent = '♥'
+
+    try {
+      await window.LBLogin.signAndPublish({
+        kind: 7,
+        content: '+',
+        tags: [
+          ['e', ev.id],
+          ['p', ev.pubkey],
+          ['k', '1'],
+        ],
+      })
+    } catch (e) {
+      // Roll back optimistic state.
+      likedIds.delete(id)
+      btn.setAttribute('aria-pressed', 'false')
+      if (icon) icon.textContent = '♡'
+      showToast('Like failed: ' + (e?.message || 'unknown'), true)
+    }
+  }
+
+  // ── Repost (NIP-18 kind 6, plain — no quote/q-tag) ────────────────
+  // Single-shot: once reposted we lock the button. Un-reposting would
+  // require publishing a kind 5 deletion which is out of scope here;
+  // users can always do it from another client.
+  async function handleRepost(ev, btn) {
+    if (!ensureLoggedIn()) return
+    const id = ev.id.toLowerCase()
+    if (repostedIds.has(id)) return    // already reposted — no-op
+
+    // Optimistic.
+    repostedIds.add(id)
+    btn.setAttribute('aria-pressed', 'true')
+
+    try {
+      // NIP-18 best practice: stringify the original event into content
+      // so consumers can render the repost without a separate fetch.
+      // Falls back to empty content if the event isn't fully signed in
+      // memory (e.g. the user just published it via reply).
+      let content = ''
+      if (ev.id && ev.pubkey && ev.sig) {
+        try {
+          content = JSON.stringify({
+            id:         ev.id,
+            pubkey:     ev.pubkey,
+            created_at: ev.created_at,
+            kind:       ev.kind,
+            tags:       Array.isArray(ev.tags) ? ev.tags : [],
+            content:    ev.content || '',
+            sig:        ev.sig,
+          })
+        } catch { content = '' }
+      }
+      await window.LBLogin.signAndPublish({
+        kind: 6,
+        content,
+        tags: [
+          ['e', ev.id, ''],            // [name, id, relay-hint]
+          ['p', ev.pubkey],
+          ['k', String(ev.kind || 1)], // signal that we're reposting a kind 1
+        ],
+      })
+      showToast('Reposted')
+    } catch (e) {
+      // Roll back optimistic state.
+      repostedIds.delete(id)
+      btn.setAttribute('aria-pressed', 'false')
+      showToast('Repost failed: ' + (e?.message || 'unknown'), true)
+    }
+  }
+
+  // ── Zap (NIP-57) ───────────────────────────────────────────────────
+  // Modal flow: pick amount + (optional) message → resolve recipient's
+  // lud16 LNURL → request invoice (with signed kind-9734) → pay via
+  // WebLN if available, else show the BOLT11 invoice with a copy
+  // button + lightning: URI link.
+  async function openZapModal(targetEvent) {
+    if (!ensureLoggedIn()) return
+
+    // Pull the recipient's LN address. profileCache is populated for
+    // every thread participant + every mentioned npub during init().
+    let profile = profileCache.get(targetEvent.pubkey)
+    if (!profile?.lud16 && !profile?.lud06) {
+      // Try a fresh profile fetch — older profiles may have only landed
+      // their kind 0 to non-Primal relays.
+      try {
+        const more = await fetchProfilesFromPrimal([targetEvent.pubkey])
+        const fresh = more.get(targetEvent.pubkey)
+        if (fresh) {
+          profileCache.set(targetEvent.pubkey, fresh)
+          profile = fresh
+        }
+      } catch {}
+    }
+    if (!profile?.lud16 && !profile?.lud06) {
+      showToast('This user hasn\'t set a Lightning address', true)
+      return
+    }
+    if (!profile.lud16 && profile.lud06) {
+      // lud06 (raw LNURL bech32) requires a generic bech32 decoder we
+      // don't bundle. Send users to njump for a full-fledged client.
+      showToast('lud06-only profile — zap on njump.me instead', true)
+      return
+    }
+
+    document.body.appendChild(buildZapModal(targetEvent, profile))
+  }
+
+  function buildZapModal(targetEvent, recipientProfile) {
+    const backdrop = document.createElement('div')
+    backdrop.className = 'zap-backdrop'
+    const modal = document.createElement('div')
+    modal.className = 'zap-modal'
+    backdrop.appendChild(modal)
+
+    const close = () => backdrop.remove()
+    backdrop.addEventListener('mousedown', (e) => { if (e.target === backdrop) close() })
+    document.addEventListener('keydown', function onKey(e) {
+      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onKey) }
+    })
+
+    const closeBtn = document.createElement('button')
+    closeBtn.type = 'button'
+    closeBtn.className = 'zap-close'
+    closeBtn.setAttribute('aria-label', 'Close')
+    closeBtn.textContent = '×'
+    closeBtn.addEventListener('click', close)
+    modal.appendChild(closeBtn)
+
+    const h = document.createElement('h3')
+    h.textContent = 'Zap this boost'
+    modal.appendChild(h)
+
+    const recRow = document.createElement('div')
+    recRow.className = 'zap-recipient'
+    const pic = document.createElement('img')
+    pic.src = recipientProfile.picture || 'assets/LocalBitcoiners.png'
+    pic.alt = ''
+    pic.referrerPolicy = 'no-referrer'
+    pic.onerror = () => { pic.src = 'assets/LocalBitcoiners.png' }
+    recRow.appendChild(pic)
+    const recName = document.createElement('div')
+    const dispName = recipientProfile.name || (targetEvent.pubkey.slice(0, 8) + '…')
+    recName.innerHTML = `<strong style="color:var(--navy);">${escapeHtml(dispName)}</strong><br><span style="font-size:0.78rem;color:var(--muted);">${escapeHtml(recipientProfile.lud16)}</span>`
+    recRow.appendChild(recName)
+    modal.appendChild(recRow)
+
+    // Amount picker
+    const amountLabel = document.createElement('label')
+    amountLabel.textContent = 'Amount (sats)'
+    modal.appendChild(amountLabel)
+
+    const presets = document.createElement('div')
+    presets.className = 'zap-amounts'
+    const presetVals = [21, 100, 500, 1000, 5000, 21000]
+    let selectedSats = 100
+    const presetButtons = []
+    for (const v of presetVals) {
+      const b = document.createElement('button')
+      b.type = 'button'
+      b.textContent = v.toLocaleString()
+      if (v === selectedSats) b.classList.add('is-active')
+      b.addEventListener('click', () => {
+        selectedSats = v
+        amountInput.value = ''
+        presetButtons.forEach(pb => pb.classList.toggle('is-active', pb === b))
+      })
+      presetButtons.push(b)
+      presets.appendChild(b)
+    }
+    modal.appendChild(presets)
+
+    const amountInput = document.createElement('input')
+    amountInput.type = 'number'
+    amountInput.min = '1'
+    amountInput.placeholder = 'Custom amount'
+    amountInput.addEventListener('input', () => {
+      const n = parseInt(amountInput.value, 10)
+      if (Number.isFinite(n) && n > 0) {
+        selectedSats = n
+        presetButtons.forEach(pb => pb.classList.remove('is-active'))
+      }
+    })
+    modal.appendChild(amountInput)
+
+    const msgLabel = document.createElement('label')
+    msgLabel.textContent = 'Message (optional)'
+    modal.appendChild(msgLabel)
+
+    const msgInput = document.createElement('textarea')
+    msgInput.placeholder = 'Onward and upward!'
+    modal.appendChild(msgInput)
+
+    const submit = document.createElement('button')
+    submit.type = 'button'
+    submit.className = 'zap-submit'
+    submit.textContent = '⚡ Send Zap'
+    modal.appendChild(submit)
+
+    const status = document.createElement('div')
+    status.className = 'zap-status'
+    modal.appendChild(status)
+
+    const invoiceWrap = document.createElement('div')   // populated only on WebLN-fail path
+    modal.appendChild(invoiceWrap)
+
+    submit.addEventListener('click', async () => {
+      submit.disabled = true
+      status.classList.remove('is-error')
+      status.textContent = 'Resolving Lightning address…'
+      invoiceWrap.innerHTML = ''
+      try {
+        const sats = Math.max(1, parseInt(selectedSats, 10) || 0)
+        if (!sats) throw new Error('Pick an amount')
+        const result = await performZap({
+          recipientLud16: recipientProfile.lud16,
+          recipientPubkey: targetEvent.pubkey,
+          targetEvent,
+          amountSats: sats,
+          message: msgInput.value || '',
+          onStatus: (msg) => { status.textContent = msg },
+        })
+        if (result.paid) {
+          status.classList.remove('is-error')
+          status.textContent = '✅ Zap sent!'
+          submit.style.display = 'none'
+          setTimeout(close, 1800)
+        } else {
+          // WebLN unavailable / declined — show invoice for manual pay.
+          status.textContent = 'Pay this invoice with your Lightning wallet:'
+          invoiceWrap.appendChild(buildInvoiceBlock(result.invoice))
+          submit.style.display = 'none'
+        }
+      } catch (e) {
+        status.classList.add('is-error')
+        status.textContent = e?.message || 'Zap failed'
+        submit.disabled = false
+      }
+    })
+
+    return backdrop
+  }
+
+  function buildInvoiceBlock(invoice) {
+    const wrap = document.createElement('div')
+    wrap.className = 'zap-invoice'
+
+    const ta = document.createElement('textarea')
+    ta.readOnly = true
+    ta.value = invoice
+    wrap.appendChild(ta)
+
+    const actions = document.createElement('div')
+    actions.className = 'zap-invoice-actions'
+
+    const copyBtn = document.createElement('button')
+    copyBtn.type = 'button'
+    copyBtn.textContent = 'Copy invoice'
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(invoice)
+        copyBtn.textContent = 'Copied!'
+        setTimeout(() => { copyBtn.textContent = 'Copy invoice' }, 1500)
+      } catch {
+        ta.select()
+      }
+    })
+    actions.appendChild(copyBtn)
+
+    const open = document.createElement('a')
+    open.href = `lightning:${invoice}`
+    open.textContent = 'Open in wallet'
+    actions.appendChild(open)
+
+    wrap.appendChild(actions)
+    return wrap
+  }
+
+  async function performZap({
+    recipientLud16, recipientPubkey, targetEvent, amountSats, message, onStatus,
+  }) {
+    // 1. Resolve LNURL pay endpoint from lud16 (Lightning Address).
+    const [name, domain] = recipientLud16.split('@')
+    if (!name || !domain) throw new Error('Invalid Lightning address')
+    const lnurlEndpoint = `https://${domain}/.well-known/lnurlp/${name}`
+
+    onStatus?.('Fetching pay request…')
+    const lnurlResp = await fetch(lnurlEndpoint).catch(() => null)
+    if (!lnurlResp || !lnurlResp.ok) throw new Error('Could not reach Lightning address')
+    const lnurlInfo = await lnurlResp.json().catch(() => null)
+    if (!lnurlInfo) throw new Error('Invalid pay request response')
+    if (lnurlInfo.status === 'ERROR') throw new Error(lnurlInfo.reason || 'LNURL error')
+    if (lnurlInfo.tag !== 'payRequest') throw new Error('Endpoint is not a pay request')
+    if (!lnurlInfo.allowsNostr) throw new Error('Recipient hasn\'t enabled Nostr zaps')
+    if (!lnurlInfo.callback) throw new Error('No callback URL in pay request')
+
+    const msats = amountSats * 1000
+    if (lnurlInfo.minSendable && msats < lnurlInfo.minSendable) {
+      throw new Error(`Min ${Math.ceil(lnurlInfo.minSendable / 1000)} sats`)
+    }
+    if (lnurlInfo.maxSendable && msats > lnurlInfo.maxSendable) {
+      throw new Error(`Max ${Math.floor(lnurlInfo.maxSendable / 1000)} sats`)
+    }
+
+    // 2. Build + sign the kind 9734 zap request. NIP-57: this never
+    // gets published to relays — we hand it to the LNURL callback so
+    // the recipient's wallet can attach a kind 9735 receipt to its
+    // invoice settlement.
+    onStatus?.('Signing zap request…')
+    const zapRequest = await window.LBLogin.signEvent({
+      kind: 9734,
+      content: message || '',
+      tags: [
+        ['relays', ...STATIC_RELAYS],
+        ['amount', String(msats)],
+        ['p', recipientPubkey],
+        ['e', targetEvent.id],
+      ],
+    })
+
+    // 3. Request the invoice from the LNURL callback.
+    onStatus?.('Requesting invoice…')
+    const cbUrl = new URL(lnurlInfo.callback)
+    cbUrl.searchParams.set('amount', String(msats))
+    cbUrl.searchParams.set('nostr', JSON.stringify(zapRequest))
+    const invResp = await fetch(cbUrl.toString()).catch(() => null)
+    if (!invResp || !invResp.ok) throw new Error('Invoice request failed')
+    const invJson = await invResp.json().catch(() => null)
+    if (!invJson) throw new Error('Invalid invoice response')
+    if (invJson.status === 'ERROR') throw new Error(invJson.reason || 'Invoice error')
+    const invoice = invJson.pr
+    if (!invoice) throw new Error('No invoice returned')
+
+    // 4. Pay. WebLN preferred — falls through to manual on failure /
+    // user cancel / no extension.
+    if (typeof window !== 'undefined' && window.webln) {
+      try {
+        onStatus?.('Opening wallet…')
+        await window.webln.enable()
+        await window.webln.sendPayment(invoice)
+        return { paid: true, method: 'webln', invoice }
+      } catch (e) {
+        // User declined or wallet errored — fall through to manual.
+        console.warn('[zap] WebLN payment failed', e)
+      }
+    }
+    return { paid: false, invoice }
+  }
+
+  // ── Toast ──────────────────────────────────────────────────────────
+  function showToast(text, isError = false) {
+    const t = document.createElement('div')
+    t.className = 'lb-toast' + (isError ? ' is-error' : '')
+    t.textContent = text
+    document.body.appendChild(t)
+    requestAnimationFrame(() => t.classList.add('show'))
+    setTimeout(() => {
+      t.classList.remove('show')
+      setTimeout(() => t.remove(), 350)
+    }, 3000)
+  }
+
+  // ── Login banner (uses existing window.LBLogin widget) ─────────────
+  function buildLoginBanner() {
+    const banner = document.createElement('div')
+    banner.className = 'login-banner'
+
+    const renderState = () => {
+      banner.innerHTML = ''
+      const user = window.LBLogin?.getUser?.() || null
+      if (user) {
+        banner.classList.add('is-logged-in')
+        const pic = user?.profile?.image || user?.profile?.picture
+        if (pic && isSafeUrl(pic)) {
+          const img = document.createElement('img')
+          img.className = 'lb-pfp'
+          img.src = pic
+          img.alt = ''
+          img.referrerPolicy = 'no-referrer'
+          banner.appendChild(img)
+        }
+        const msg = document.createElement('div')
+        msg.className = 'lb-msg'
+        const name = user?.profile?.displayName || user?.profile?.name || (user?.npub || '').slice(0, 12) + '…'
+        msg.innerHTML = `<strong>Signed in as ${escapeHtml(name)}</strong><span class="muted">Comment, like, zap, or bookmark any boost below.</span>`
+        banner.appendChild(msg)
+
+        const btn = document.createElement('button')
+        btn.type = 'button'
+        btn.className = 'lb-cta'
+        btn.textContent = 'Sign out'
+        btn.addEventListener('click', () => {
+          try { window.LBLogin?.logout?.() } catch {}
+        })
+        banner.appendChild(btn)
+      } else {
+        banner.classList.remove('is-logged-in')
+        const msg = document.createElement('div')
+        msg.className = 'lb-msg'
+        msg.innerHTML = `<strong>Sign in with Nostr</strong><span class="muted">Sign in to comment, like, zap, or bookmark each boost.</span>`
+        banner.appendChild(msg)
+
+        const btn = document.createElement('button')
+        btn.type = 'button'
+        btn.className = 'lb-cta'
+        btn.textContent = 'Sign in with Nostr'
+        btn.addEventListener('click', () => {
+          try { window.LBLogin?.requestLogin?.() } catch {}
+        })
+        banner.appendChild(btn)
+      }
+    }
+
+    renderState()
+    if (window.LBLogin?.onChange) {
+      window.LBLogin.onChange(() => renderState())
+    } else {
+      // Widget not yet mounted — re-render once it lands.
+      const wait = setInterval(() => {
+        if (window.LBLogin?.onChange) {
+          clearInterval(wait)
+          window.LBLogin.onChange(() => renderState())
+          renderState()
+        }
+      }, 200)
+    }
+    return banner
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ))
+  }
+
+  async function init() {
+    let rootId, hintRelays = []
+    try {
+      const decoded = nip19.decode(ROOT_NEVENT)
+      if (decoded.type !== 'nevent') throw new Error('not an nevent')
+      rootId     = decoded.data.id
+      hintRelays = Array.isArray(decoded.data.relays) ? decoded.data.relays.filter(isWsUrl) : []
+    } catch {
+      showError()
+      return
+    }
+
+    // Try Primal first — single round-trip, returns root + descendants
+    // + author profiles all at once.
+    let result = null
+    try {
+      result = await fetchThreadFromPrimal(rootId)
+    } catch (e) {
+      console.warn('[boosts] Primal failed, falling back to relays', e)
+    }
+
+    let { notes, profiles } = result || { notes: [], profiles: new Map() }
+    let { root, childrenOf } = buildThread(rootId, notes)
+
+    // Fallback: if Primal didn't give us the root, hit public relays.
+    if (!root) {
+      const relays = Array.from(new Set([...STATIC_RELAYS, ...hintRelays]))
+      try {
+        const fallback = await fetchThreadFromRelays(rootId, relays)
+        notes = fallback.notes
+        profiles = fallback.profiles
+        ;({ root, childrenOf } = buildThread(rootId, notes))
+      } catch (e) {
+        console.error('[boosts] relay fallback failed', e)
+      }
+    }
+
+    if (!root) { showError(); return }
+
+    // Stash the loaded thread so action handlers can mutate + repaint.
+    state.rootEvent  = root
+    state.childrenOf = childrenOf
+
+    // Seed module-level caches with everything the thread already gave us.
+    for (const [pk, p] of profiles) profileCache.set(pk, p)
+    for (const ev of notes) embedCache.set(ev.id, ev)
+
+    // Scan every note body for nostr: entities and figure out which
+    // npubs/event-ids we still need to resolve so mentions render as
+    // @displayName and quoted notes render as embed cards.
+    const wantedPubkeys = new Set()
+    const wantedEventIds = new Set()
+    for (const ev of notes) {
+      for (const m of (ev.content || '').matchAll(NOSTR_URI_RE)) {
+        try {
+          const decoded = nip19.decode(m[1])
+          if (decoded.type === 'npub') wantedPubkeys.add(decoded.data)
+          else if (decoded.type === 'nprofile') wantedPubkeys.add(decoded.data.pubkey)
+          else if (decoded.type === 'note') wantedEventIds.add(decoded.data)
+          else if (decoded.type === 'nevent') wantedEventIds.add(decoded.data.id)
+          // naddr is intentionally skipped — we render it as a "linked
+          // article" chip without fetching the addressable event.
+        } catch {}
+      }
+    }
+    const missingPubkeys  = [...wantedPubkeys].filter(pk => !profileCache.has(pk))
+    const missingEventIds = [...wantedEventIds].filter(id => !embedCache.has(id))
+
+    if (missingPubkeys.length || missingEventIds.length) {
+      const [extraProfiles, extraEvents] = await Promise.all([
+        fetchProfilesFromPrimal(missingPubkeys),
+        fetchEventsFromPrimal(missingEventIds),
+      ])
+      for (const [pk, p] of extraProfiles) profileCache.set(pk, p)
+      for (const [id, ev] of extraEvents.notes) embedCache.set(id, ev)
+      for (const [pk, p] of extraEvents.profiles) profileCache.set(pk, p)
+      // Mark unresolvable ids so the renderer shows the "not available"
+      // fallback instead of a perpetual skeleton.
+      for (const id of missingEventIds) {
+        if (!embedCache.has(id)) embedCache.set(id, null)
+      }
+
+      // Embedded events come back without their author kind-0; do a
+      // follow-up profile fetch so the embed card renders @displayName
+      // instead of a truncated npub.
+      const embedAuthorPubkeys = []
+      for (const [, ev] of extraEvents.notes) {
+        if (ev?.pubkey && !profileCache.has(ev.pubkey)) embedAuthorPubkeys.push(ev.pubkey)
+      }
+      if (embedAuthorPubkeys.length) {
+        const more = await fetchProfilesFromPrimal(embedAuthorPubkeys)
+        for (const [pk, p] of more) profileCache.set(pk, p)
+      }
+    }
+
+    const totalReplies = notes.filter(n => n.id !== rootId).length
+    paint(root, childrenOf, profiles, totalReplies)
+  }
+
+  function isWsUrl(u) {
+    if (typeof u !== 'string') return false
+    return u.startsWith('wss://') || u.startsWith('ws://')
+  }
+
+  init().catch((err) => {
+    console.error('[boosts] init failed', err)
+    showError()
+  })
+</script>
+
+<!-- Login widget (shared) -->
+<script src="assets/widgets/login-widget.js" defer></script>
+</body>
+</html>
