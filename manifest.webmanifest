@@ -1,0 +1,35 @@
+{
+  "name": "Local Bitcoiners",
+  "short_name": "Local Bitcoiners",
+  "description": "Local Bitcoiners is a Bitcoin podcast about Bitcoin meetup culture. Hosts Reed and Rev Hodl talk with meetup organizers about finding, building, and growing grassroots Bitcoin communities.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#1e3a5f",
+  "background_color": "#f5eedc",
+  "lang": "en",
+  "categories": ["news", "entertainment", "education"],
+  "icons": [
+    {
+      "src": "/assets/LocalBitcoiners.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/LocalBitcoiners.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Podcast Boosts",
+      "short_name": "Boosts",
+      "description": "View the boost wall",
+      "url": "/boosts.html"
+    }
+  ]
+}

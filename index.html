@@ -9,6 +9,14 @@
   <link rel="canonical" href="https://localbitcoiners.com" />
   <link rel="icon" type="image/png" href="assets/LocalBitcoiners.png" />
 
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="theme-color" content="#1e3a5f" />
+  <link rel="apple-touch-icon" href="/assets/LocalBitcoiners.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Local Bitcoiners" />
+
   <!-- RSS autodiscovery -->
   <link rel="alternate" type="application/rss+xml" title="Local Bitcoiners" href="https://feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU" />
 
@@ -911,5 +919,14 @@
 
 <!-- ══════════════════════════════ NOSTR LOGIN WIDGET ══════════════════════════════ -->
 <script src="assets/widgets/login-widget.js" defer></script>
+
+<!-- PWA service worker -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+  }
+</script>
 </body>
 </html>
