@@ -468,6 +468,15 @@
       background: var(--navy);
       color: var(--white);
     }
+    .btn-boost {
+      background: var(--orange);
+      color: var(--white);
+      font-family: inherit;
+    }
+    .btn-boost:hover {
+      background: var(--orange-d);
+      color: var(--white);
+    }
     .btn-disabled {
       background: transparent;
       color: var(--border);
@@ -829,19 +838,79 @@
       }
     } catch { /* worker unavailable, try proxies */ }
 
-    // Fallback: public CORS proxies
+    // Fallback: public CORS proxies. Two response shapes in the wild —
+    // allorigins.win wraps the body in {contents: "..."} JSON, while
+    // corsproxy.io returns the raw upstream body verbatim. Read as text
+    // and decide by the leading character so either shape works.
     for (const proxy of PROXIES) {
       try {
         const resp = await fetch(proxy(RSS_URL), { signal: AbortSignal.timeout(10000) });
         if (!resp.ok) continue;
-        const json = await resp.json();
-        const raw = json.contents ?? json;
-        if (typeof raw !== 'string') continue;
-        return raw;
+        const body = await resp.text();
+        if (!body) continue;
+        const trimmed = body.trimStart();
+        let xml = '';
+        if (trimmed.startsWith('{')) {
+          try {
+            const parsed = JSON.parse(body);
+            xml = typeof parsed?.contents === 'string' ? parsed.contents : '';
+          } catch { /* malformed JSON wrapper, try next */ }
+        } else {
+          xml = body;
+        }
+        if (xml.includes('<item>')) return xml;
       } catch { /* try next */ }
     }
     return null;
   }
+
+  /* ── Podcasting 2.0 value-block parsing ────────────────────────────
+     CSS selectors treat `:` as a pseudo-class operator, so we walk
+     children by localName instead of querying for `podcast:value`.
+     Only `lnaddress`-type recipients are kept — the per-episode boost
+     flow can't pay keysend recipients from the browser. */
+  function firstChildByLocalName(el, name) {
+    if (!el) return null;
+    for (const c of el.children) {
+      if (c.localName === name) return c;
+    }
+    return null;
+  }
+  function allChildrenByLocalName(el, name) {
+    const out = [];
+    if (!el) return out;
+    for (const c of el.children) {
+      if (c.localName === name) out.push(c);
+    }
+    return out;
+  }
+  function parseValueBlock(valueEl) {
+    if (!valueEl) return null;
+    const recipients = [];
+    for (const r of allChildrenByLocalName(valueEl, 'valueRecipient')) {
+      const type = r.getAttribute('type') || '';
+      const address = r.getAttribute('address') || '';
+      const name = r.getAttribute('name') || address;
+      const splitWeight = parseFloat(r.getAttribute('split') || '');
+      if (type !== 'lnaddress') continue;
+      if (!address || !Number.isFinite(splitWeight) || splitWeight <= 0) continue;
+      recipients.push({ name, address, splitWeight, type });
+    }
+    if (recipients.length === 0) return null;
+    const totalWeight = recipients.reduce((acc, r) => acc + r.splitWeight, 0);
+    return { recipients, totalWeight };
+  }
+  function parseSplitsFor(item, channelEl) {
+    const itemBlock = parseValueBlock(firstChildByLocalName(item, 'value'));
+    if (itemBlock) return { ...itemBlock, source: 'item' };
+    const chanBlock = parseValueBlock(firstChildByLocalName(channelEl, 'value'));
+    if (chanBlock) return { ...chanBlock, source: 'channel' };
+    return null;
+  }
+
+  /* Channel element captured at init — passed to renderCard for the
+     value-block fallback when an item has no per-episode splits. */
+  let channelEl = null;
 
   /* ── render a single episode card ── */
   function renderCard(item, index, total) {
@@ -851,6 +920,7 @@
     const mp3         = enclosure?.getAttribute('url') ?? '';
     const itunesEp    = item.querySelector('episode')?.textContent?.trim();
     const epNum       = itunesEp ? parseInt(itunesEp, 10) : (total - index);
+    const guid        = item.querySelector('guid')?.textContent?.trim() ?? '';
 
     // Description: prefer itunes:summary, then description
     const descEl    = item.querySelector('summary') ?? item.querySelector('description');
@@ -858,8 +928,16 @@
     // Truncate long descriptions
     const shortDesc = descText.length > 600 ? descText.slice(0, 600).trimEnd() + '…' : descText;
 
+    // Splits — null-tolerated; if there are no parseable lnaddress
+    // recipients, the boost button is hidden rather than failing on click.
+    const splits = parseSplitsFor(item, channelEl);
+
     const card = document.createElement('article');
     card.className = 'episode-card';
+
+    const boostBtnHtml = splits
+      ? `<button type="button" class="btn btn-boost" data-action="boost-episode">⚡ Boost Episode</button>`
+      : '';
 
     card.innerHTML = `
       <div class="episode-header">
@@ -872,8 +950,26 @@
       <div class="episode-actions">
         ${mp3 ? `<a class="btn btn-primary" href="${mp3}" download>↓ Download MP3</a>` : ''}
         <a class="btn btn-outline" href="transcripts/localbitcoiners-ep${pad(epNum)}.txt" download>↓ Download Transcript</a>
+        ${boostBtnHtml}
       </div>
     `;
+
+    if (splits) {
+      const btn = card.querySelector('[data-action="boost-episode"]');
+      btn.addEventListener('click', () => {
+        if (!window.LBLogin?.openEpisodeBoost) {
+          // Widget bundle hasn't loaded yet (defer on the script tag) —
+          // unlikely on a real page load, but possible on flaky networks.
+          // Fail silently rather than crash; the user can retry.
+          console.warn('Episode boost requested before login widget loaded');
+          return;
+        }
+        window.LBLogin.openEpisodeBoost({
+          episode: { number: epNum, title, guid },
+          splits,
+        });
+      });
+    }
 
     $list.appendChild(card);
   }
@@ -896,6 +992,10 @@
       $error.style.display = 'block';
       return;
     }
+
+    // Capture the channel element so renderCard can fall back to
+    // channel-level <podcast:value> splits when an item lacks its own.
+    channelEl = doc.querySelector('channel');
 
     const items = Array.from(doc.querySelectorAll('item'));
 

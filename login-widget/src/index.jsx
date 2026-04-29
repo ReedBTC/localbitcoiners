@@ -5,8 +5,11 @@ import { createPortal } from 'react-dom'
 import { NDKEvent } from '@nostr-dev-kit/ndk'
 import BoostButton from './components/BoostButton.jsx'
 import LoginModal from './components/LoginModal.jsx'
+import EpisodeBoostModal from './components/EpisodeBoostModal.jsx'
 import { loadSession, restoreSession, clearSession } from './lib/sessionPersistence.js'
 import { getNDK, resetNDK, connectAndWait } from './lib/ndk.js'
+import * as nwc from './lib/nwc.js'
+import { applyRecipientOverrides } from './lib/recipientOverrides.js'
 
 // Module-level subscriber list and current user — separated from React
 // state so callers outside the widget (boost button, future features)
@@ -95,6 +98,41 @@ function LoginPromptHost() {
   )
 }
 
+// ── Episode boost host ───────────────────────────────────────────────────
+// Module-level signal so the home page (or any consumer) can call
+// api.openEpisodeBoost({ episode, splits }) without needing a React ref
+// into the widget. The host below is mounted once at startup and listens
+// for the signal; the modal renders via portal directly to document.body.
+const episodeBoostListeners = new Set()
+let episodeBoostState = null   // { episode, splits } or null when closed
+function setEpisodeBoostState(v) {
+  episodeBoostState = v
+  for (const fn of episodeBoostListeners) {
+    try { fn(episodeBoostState) } catch {}
+  }
+}
+
+function EpisodeBoostHost() {
+  const user = useSharedUser()
+  const [state, setLocalState] = useState(episodeBoostState)
+  useEffect(() => {
+    const fn = (v) => setLocalState(v)
+    episodeBoostListeners.add(fn)
+    return () => { episodeBoostListeners.delete(fn) }
+  }, [])
+  if (!state) return null
+  return createPortal(
+    <EpisodeBoostModal
+      user={user}
+      onUserChange={(u) => { abortRestore(); setUser(u) }}
+      onClose={() => setEpisodeBoostState(null)}
+      episode={state.episode}
+      splitsBundle={state.splits}
+    />,
+    document.body,
+  )
+}
+
 let mounted = false
 
 const api = {
@@ -120,6 +158,14 @@ const api = {
     promptHost.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;'
     document.body.appendChild(promptHost)
     createRoot(promptHost).render(<LoginPromptHost />)
+
+    // Same pattern for the episode boost modal — page calls
+    // api.openEpisodeBoost(...) and the host renders the modal via portal.
+    const epHost = document.createElement('div')
+    epHost.id = 'lb-episode-boost-host'
+    epHost.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;'
+    document.body.appendChild(epHost)
+    createRoot(epHost).render(<EpisodeBoostHost />)
 
     // Kick off async session restore in the background — the buttons
     // render immediately in their logged-out state, and flip to the
@@ -163,14 +209,54 @@ const api = {
   /**
    * Sign the current user out. Mirrors BoostModal's handleLogout: clear
    * persisted session, reset the NDK instance (drops the signer + relay
-   * pool), then notify listeners so consumers re-render as logged-out.
+   * pool), lock the NWC client (in-memory teardown — the encrypted blob
+   * stays at rest, ready to unlock on next login as the same npub), then
+   * notify listeners so consumers re-render as logged-out.
    */
   logout() {
     if (!currentUser) return
     clearSession()
     resetNDK()
+    nwc.lockOnLogout()
     setUser(null)
   },
+
+  /**
+   * Open the episode boost modal for a given RSS item.
+   *
+   * @param {object}  args
+   * @param {object}  args.episode  - { number, title, guid }
+   * @param {object}  args.splits   - { recipients, totalWeight, source }
+   *                                  (use lib/episodeData.js helpers to
+   *                                  build these from a parsed <item>).
+   *
+   * Reentrant-safe: opening with a new episode while one is already
+   * open replaces the in-flight modal's contents. Boost-in-progress
+   * scenarios won't hit this since the modal blocks Esc + backdrop
+   * close while paying.
+   */
+  openEpisodeBoost({ episode, splits }) {
+    if (!episode || !splits || !Array.isArray(splits.recipients)) {
+      console.warn('[LBLogin] openEpisodeBoost: missing episode/splits payload')
+      return
+    }
+    // Apply LB's per-host substitutions (e.g. Fountain's boostbot →
+    // aquafox30@primal.net) before the modal sees the recipient list.
+    // Single chokepoint keeps the override invisible to the home page
+    // parser and ensures every downstream consumer (UI, LNURL, kind
+    // 30078) reflects the swap.
+    const normalizedRecipients = applyRecipientOverrides(splits.recipients)
+    setEpisodeBoostState({
+      episode,
+      splits: { ...splits, recipients: normalizedRecipients },
+    })
+  },
+
+  /** NWC status snapshot for consumers that want to render wallet state. */
+  getNwcStatus() { return nwc.getStatus() },
+
+  /** Subscribe to NWC connect/disconnect events. Returns unsubscribe. */
+  onNwcChange(fn) { return nwc.onChange(fn) },
 
   /**
    * Sign a raw event template using the current user's signer. Returns a

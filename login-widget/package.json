@@ -8,6 +8,7 @@
     "dev": "vite"
   },
   "dependencies": {
+    "@getalby/sdk": "^7.0.0",
     "@noble/hashes": "^1.4.0",
     "@nostr-dev-kit/ndk": "~2.18.1",
     "nostr-tools": "^2",

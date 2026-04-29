@@ -187,6 +187,9 @@ export async function fetchLnurlInvoice(callbackUrl, amountMsats, comment) {
  * @param {number}      params.amountMsats    - Amount in millisatoshis
  * @param {string}      params.message        - Donor's message (may be empty)
  * @param {string}      params.pageUrl        - Site URL for the url tag
+ * @param {Array}       [params.extraTags]    - Optional additional kind 30078 tags (appended verbatim).
+ *                                              Used by per-episode boost flow to carry episode/leg/session
+ *                                              context the bot consumes alongside the spec-required tags.
  * @returns {Promise<{eventId: string, published: boolean}>}
  */
 export async function publishDonationBoostagram({
@@ -197,20 +200,29 @@ export async function publishDonationBoostagram({
   amountMsats,
   message,
   pageUrl,
+  extraTags = [],
 }) {
+  const baseTags = [
+    ['d', paymentHash],
+    ['app', 'localbitcoiners.com', '1.0.0'],
+    ['type', 'donation_boostagram'],
+    ['sender', donorNpub],
+    ['recipient', recipientLud16],
+    ['amount', String(amountMsats)],
+    ['url', pageUrl],
+  ]
+  // Append-only — never let extras override spec-required tags. Filter
+  // on the keys baseTags claims so a malformed caller can't inject a
+  // duplicate 'd' tag (which would invalidate the payment_hash linkage).
+  const reservedKeys = new Set(baseTags.map(t => t[0]))
+  const safeExtras = Array.isArray(extraTags)
+    ? extraTags.filter(t => Array.isArray(t) && typeof t[0] === 'string' && !reservedKeys.has(t[0]))
+    : []
   const eventTemplate = {
     kind: 30078,
     created_at: Math.floor(Date.now() / 1000),
     content: message || '',
-    tags: [
-      ['d', paymentHash],
-      ['app', 'localbitcoiners.com', '1.0.0'],
-      ['type', 'donation_boostagram'],
-      ['sender', donorNpub],
-      ['recipient', recipientLud16],
-      ['amount', String(amountMsats)],
-      ['url', pageUrl],
-    ],
+    tags: [...baseTags, ...safeExtras],
   }
 
   // Burner path is synchronous (raw key + nostr-tools); session path is
