@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import AvatarPill from './AvatarPill.jsx'
 import IdentityDropdown from './IdentityDropdown.jsx'
+import { onIdentityOpenRequest } from '../lib/identitySignal.js'
 
 /**
  * The persistent identity slot in the nav.
@@ -46,6 +47,17 @@ export default function IdentityWidget({
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [open])
+
+  // Outside-the-component requests to open the dropdown — currently
+  // fired by the boost progress banner so the user can click it to
+  // see the in-flight leg status. Captures the trigger rect first so
+  // the menu anchors correctly. No-op when the trigger isn't rendered
+  // (logged-out / restoring branches return early below).
+  useEffect(() => onIdentityOpenRequest(() => {
+    if (!triggerRef.current) return
+    setTriggerRect(triggerRef.current.getBoundingClientRect())
+    setOpen(true)
+  }), [])
 
   // ── Restoring state ──────────────────────────────────────────────
   if (user === undefined) {
@@ -124,6 +136,7 @@ export default function IdentityWidget({
       {open && (
         <IdentityDropdown
           triggerRect={triggerRect}
+          triggerRef={triggerRef}
           user={user}
           walletStatus={walletStatus || { connected: false }}
           onConnectWallet={onConnectWallet}

@@ -25,7 +25,12 @@ import { SITE_URL } from './boostagram.js'
 import { pushToast } from './toast.js'
 
 const MIN_TOTAL_SATS = 1   // floor; modals enforce a higher minimum
-const inFlight = new Map()   // localSessionId → { sessionId, episode, totalSats, startedAt }
+// How long a settled entry hangs around in the dropdown after payAllLegs
+// resolves, showing its final paid/partial/failed badge. Gives a user
+// who opened the dropdown to watch the boost a beat to register the
+// outcome before the row disappears.
+const SETTLED_DISPLAY_MS = 7000
+const inFlight = new Map()   // localSessionId → { sessionId, episode, totalSats, startedAt, status, settledAt? }
 const listeners = new Set()
 let nextLocalCounter = 0
 
@@ -42,19 +47,38 @@ export function onInFlightChange(fn) {
   return () => listeners.delete(fn)
 }
 
-/** Snapshot of currently-running boosts. */
+/** Snapshot of all visible boost entries — both still-processing and
+ *  recently-settled (held for SETTLED_DISPLAY_MS so the dropdown can
+ *  display a paid/partial/failed badge). Each entry has a `status`
+ *  field consumers can read. */
 export function getInFlight() {
   return Array.from(inFlight.values())
 }
 
+/** True if any entry is still actively processing (not just
+ *  lingering after settle). Used by the navigation guard so settled
+ *  entries don't keep holding nav clicks. */
+export function hasActive() {
+  return countActive() > 0
+}
+
+/** Count of entries still actively processing (status === 'in-flight'). */
+function countActive() {
+  let n = 0
+  for (const entry of inFlight.values()) {
+    if (entry.status === 'in-flight') n++
+  }
+  return n
+}
+
 // beforeunload guard — installed once at module load. Browser shows
-// the standard "leave site?" dialog when an in-flight boost is
-// running, giving the user a chance to wait for it to settle. The
-// dialog only triggers when inFlight has entries; otherwise it's a
-// no-op pass-through.
+// the standard "leave site?" dialog when an active boost is running,
+// giving the user a chance to wait for it to settle. Settled entries
+// (already paid/partial/failed, just lingering for the dropdown badge)
+// don't trigger the prompt — there's nothing left to interrupt.
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', (e) => {
-    if (inFlight.size === 0) return
+    if (countActive() === 0) return
     // Modern browsers ignore the message and show their own generic
     // dialog, but setting returnValue (and returning a value) is the
     // standard incantation that triggers it across Chrome/Safari/FF.
@@ -111,6 +135,7 @@ export function submitBoost({
     episode,
     totalSats: sats,
     startedAt: Date.now(),
+    status: 'in-flight',
   })
   notify()
 
@@ -132,16 +157,30 @@ export function submitBoost({
       // payAllLegs is documented as never-throws; this is belt-and-
       // braces. Treat as all-failed for the toast logic below.
       console.warn('[boostQueue] payAllLegs threw unexpectedly', e)
-    } finally {
-      inFlight.delete(localId)
+    }
+
+    // Derive the terminal status. allSucceeded → paid; some succeeded
+    // → partial; none → failed (or threw). The entry stays in the Map
+    // for SETTLED_DISPLAY_MS so the dropdown can show the badge.
+    const status = !result ? 'failed'
+                 : result.allSucceeded ? 'paid'
+                 : result.anySucceeded ? 'partial'
+                 : 'failed'
+    const entry = inFlight.get(localId)
+    if (entry) {
+      inFlight.set(localId, { ...entry, status, settledAt: Date.now() })
       notify()
     }
+    setTimeout(() => {
+      inFlight.delete(localId)
+      notify()
+    }, SETTLED_DISPLAY_MS)
 
     // All-failed signal. Partial failures stay silent (Podcasting 2.0
     // doesn't surface them either) but a fully-failed boost likely
     // means a wallet problem the user can act on, so we fire a
     // single transient toast.
-    if (!result || !result.anySucceeded) {
+    if (status === 'failed') {
       pushToast({
         kind: 'error',
         message: 'Couldn\'t deliver your boost. Check that your wallet is connected and has a balance.',

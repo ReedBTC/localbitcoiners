@@ -21,6 +21,11 @@ import { getNDK, resetNDK, connectAndWait } from './lib/ndk.js'
 import * as nwc from './lib/nwc.js'
 import { applyRecipientOverrides } from './lib/recipientOverrides.js'
 import { pushToast } from './lib/toast.js'
+// Side-effect import: installs a same-origin click interceptor that
+// briefly holds nav (≤2s) when a boost is in flight, so a user who
+// clicks Boost and immediately clicks a nav link doesn't reload the
+// page before the NWC relay acks the publish.
+import './lib/navigationGuard.js'
 
 // ── Shared user state ────────────────────────────────────────────────────
 // Tri-state:
@@ -172,6 +177,12 @@ function ensureRealRestore() {
       if (result?.kind === 'ok' && result.user) {
         stubRestoreAttempts = 0
         setUser(result.user)
+        // Pre-warm NWC: opens the relay socket + handshake now so the
+        // next boost publishes instantly instead of paying the unlock
+        // cost on the click. ensureReady is idempotent and short-
+        // circuits when there's no stored blob, so this is a safe
+        // fire-and-forget.
+        nwc.ensureReady(result.user).catch(() => {})
         consumePendingAction()
       } else if (result?.kind === 'permanent') {
         forceLogoutWithMessage('Session expired — please sign in again.')
@@ -312,6 +323,10 @@ function LoginPromptHost() {
         stubRestoreAttempts = 0
         setUser(u)
         setLoginOpen(false)
+        // Pre-warm NWC in case this account already has a stored blob
+        // from a previous session (logged out then back in as same npub).
+        // No-op for fresh accounts that haven't connected a wallet yet.
+        nwc.ensureReady(u).catch(() => {})
         // If a boost or wallet-connect was waiting on login, run it now.
         consumePendingAction()
       }}
@@ -486,6 +501,9 @@ const api = {
           //               isn't stuck staring at a phantom identity
           if (result?.kind === 'ok' && result.user) {
             setUser(result.user)
+            // Pre-warm NWC — see the equivalent call in
+            // ensureRealRestore for the rationale.
+            nwc.ensureReady(result.user).catch(() => {})
           } else if (result?.kind === 'permanent') {
             forceLogoutWithMessage('Saved session was invalid — please sign in again.')
           }

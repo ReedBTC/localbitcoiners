@@ -22,6 +22,8 @@ const EDGE_PADDING = 12
 
 export default function IdentityDropdown({
   triggerRect,
+  triggerRef,           // ref to the trigger button, so a click on it
+                        // is recognized as the toggle (not "outside")
   user,
   walletStatus,         // { connected, alias }
   onConnectWallet,
@@ -50,6 +52,11 @@ export default function IdentityDropdown({
     function onDocClick(e) {
       if (!menuRef.current) return
       if (menuRef.current.contains(e.target)) return
+      // Click on the trigger itself is the toggle path — let the
+      // trigger's onClick run and flip `open` to false. Without this
+      // guard, mousedown closes here, then the trigger's onClick reads
+      // the freshly-closed state and re-opens it.
+      if (triggerRef?.current?.contains(e.target)) return
       onClose()
     }
     function onKey(e) { if (e.key === 'Escape') onClose() }
@@ -61,7 +68,7 @@ export default function IdentityDropdown({
       document.removeEventListener('mousedown', onDocClick)
       document.removeEventListener('keydown', onKey)
     }
-  }, [onClose])
+  }, [onClose, triggerRef])
 
   // Compute position. Anchor below the trigger, right-aligned. Clamp to
   // the viewport with edge padding so the menu never clips on mobile.
@@ -121,10 +128,12 @@ export default function IdentityDropdown({
         )}
       </div>
 
-      {/* In-flight boosts — appears only while a boost is sending,
-          disappears once it settles. Hidden entirely otherwise. We
-          don't track completed boosts; the casual user has the same
-          opacity Podcasting 2.0 ships with — click and trust. */}
+      {/* Boosts in progress + recently-settled. Appears while any
+          boost is sending and lingers a few seconds after settle so
+          the user can register a paid / partial / failed badge before
+          the row disappears. We don't track completed boosts beyond
+          that window — the casual user has the same opacity
+          Podcasting 2.0 ships with: click and trust. */}
       {pending.length > 0 && (
         <div className="px-4 py-3 border-b border-neutral-800 space-y-2">
           <p className="text-[11px] text-neutral-500 uppercase tracking-wide">In Progress</p>
@@ -139,10 +148,7 @@ export default function IdentityDropdown({
                     <span className="text-neutral-300 truncate">
                       {epLabel} · {p.totalSats.toLocaleString()} sats
                     </span>
-                    <span className="text-orange-400 text-[10px] flex-shrink-0 inline-flex items-center gap-1">
-                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" aria-hidden="true" />
-                      Sending…
-                    </span>
+                    <BoostStatusBadge status={p.status} />
                   </div>
                 </li>
               )
@@ -181,6 +187,46 @@ export default function IdentityDropdown({
       </div>
     </div>,
     document.body,
+  )
+}
+
+function BoostStatusBadge({ status }) {
+  // 'in-flight' | 'paid' | 'partial' | 'failed'. Each variant uses a
+  // distinct color so a glance at the dropdown tells the user the
+  // outcome without reading. The pulsing orange dot is reserved for
+  // the active state to match the banner above.
+  if (status === 'paid') {
+    return (
+      <span className="text-green-400 text-[10px] flex-shrink-0 inline-flex items-center gap-1">
+        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M3 8.5l3.5 3.5L13 5" />
+        </svg>
+        Paid
+      </span>
+    )
+  }
+  if (status === 'partial') {
+    return (
+      <span className="text-amber-400 text-[10px] flex-shrink-0 inline-flex items-center gap-1">
+        <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500" aria-hidden="true" />
+        Partial
+      </span>
+    )
+  }
+  if (status === 'failed') {
+    return (
+      <span className="text-red-400 text-[10px] flex-shrink-0 inline-flex items-center gap-1">
+        <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500" aria-hidden="true" />
+        Failed
+      </span>
+    )
+  }
+  // Default = 'in-flight'
+  return (
+    <span className="text-orange-400 text-[10px] flex-shrink-0 inline-flex items-center gap-1">
+      <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" aria-hidden="true" />
+      Sending…
+    </span>
   )
 }
 
