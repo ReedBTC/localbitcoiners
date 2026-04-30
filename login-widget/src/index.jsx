@@ -10,14 +10,17 @@ import BoostModal from './components/BoostModal.jsx'
 import IdentityWidget from './components/IdentityWidget.jsx'
 import WalletConnectModal from './components/WalletConnectModal.jsx'
 import ToastHost from './components/ToastHost.jsx'
+import BoostProgressBanner from './components/BoostProgressBanner.jsx'
 import {
   loadSession, restoreSession, clearSession,
   saveProfile, loadCachedProfile, clearProfile,
+  verifySignerMatches,
 } from './lib/sessionPersistence.js'
 import { markStubUser, isStubUser } from './lib/stubUser.js'
 import { getNDK, resetNDK, connectAndWait } from './lib/ndk.js'
 import * as nwc from './lib/nwc.js'
 import { applyRecipientOverrides } from './lib/recipientOverrides.js'
+import { pushToast } from './lib/toast.js'
 
 // ── Shared user state ────────────────────────────────────────────────────
 // Tri-state:
@@ -59,11 +62,18 @@ function initialUser() {
   const cached = loadCachedProfile()
   // Cache is only valid if it matches the session's pubkey. A mismatch
   // means the user logged in as someone else from another tab — drop
-  // the cache and fall back to the shimmer state until restore runs.
+  // the cache and fall through to the session-only stub.
   if (cached && cached.pubkey === session.pubkey) {
     return buildStubUser(cached)
   }
-  return undefined
+  // No matching profile cache — fall back to a session-only stub
+  // (pubkey + npub, no display name yet). The IdentityWidget shows a
+  // generic avatar instead of a perpetual shimmer. fetchUserProfile in
+  // the background restore will fill in the name/image when it lands.
+  if (session.pubkey) {
+    return buildStubUser({ pubkey: session.pubkey, npub: session.npub })
+  }
+  return null
 }
 
 let currentUser = initialUser()
@@ -99,6 +109,107 @@ function setUser(u) {
 let activeRestore = null
 function abortRestore() {
   if (activeRestore) activeRestore.cancelled = true
+}
+
+// Cap on-demand restore retries per page load. Without this, a session
+// that can't be restored (extension uninstalled, bunker unreachable,
+// etc.) drives an infinite loop: queued action fires → still a stub →
+// queues again → triggers another restore → fails → repeat. Two attempts
+// is enough to cover a one-off relay flake; beyond that we treat the
+// session as broken and force re-auth so the user gets a clear next
+// step instead of a silently-stuck UI.
+const MAX_STUB_RESTORE_ATTEMPTS = 2
+let stubRestoreAttempts = 0
+
+// One-shot signer verification per in-memory session. Set true once we
+// confirm the attached signer reports the same pubkey our saved record
+// claims (either via verifySignerMatches before an action, or implicitly
+// via a fresh login flow that produced the pubkey from the signer).
+// Reset on logout / force-logout / each new restore attempt — anywhere
+// the signer instance changes.
+let signerVerified = false
+
+// Force a clean logout from any code path that detects the saved session
+// can no longer be honored (permanent restore failure, signer/account
+// mismatch). Mirrors api.logout()'s teardown plus a user-facing toast
+// and re-opens the login modal so the next step is obvious.
+function forceLogoutWithMessage(message) {
+  clearSession()
+  clearProfile()
+  resetNDK()
+  try { nwc.lockOnLogout() } catch {}
+  cancelPendingAction()
+  signerVerified = false
+  setUser(null)
+  if (message) {
+    try { pushToast({ kind: 'error', message }) } catch {}
+  }
+  setLoginOpen(true)
+}
+
+// On-demand restore. Called when a user-initiated action (boost, wallet
+// unlock) discovers we're still on a stub — the ambient page-load
+// restore may have failed silently or never completed. Idempotent: if a
+// restore is already in flight, just lets it resolve. If we already have
+// a real user, no-op. The pending-action queue will flush when this
+// resolves, so the action that triggered the retry runs once we land.
+function ensureRealRestore() {
+  if (activeRestore) return
+  if (currentUser && !isStubUser(currentUser)) return
+  const saved = loadSession()
+  if (!saved) return
+  if (stubRestoreAttempts >= MAX_STUB_RESTORE_ATTEMPTS) {
+    forceLogoutWithMessage('Session expired — please sign in again.')
+    return
+  }
+  const token = { cancelled: false }
+  activeRestore = token
+  stubRestoreAttempts += 1
+  signerVerified = false   // fresh signer instance after resetNDK in restoreSession
+  restoreSession(saved)
+    .then((result) => {
+      if (token.cancelled) return
+      if (result?.kind === 'ok' && result.user) {
+        stubRestoreAttempts = 0
+        setUser(result.user)
+        consumePendingAction()
+      } else if (result?.kind === 'permanent') {
+        forceLogoutWithMessage('Session expired — please sign in again.')
+      } else {
+        // transient — keep the stub. Next user action that re-queues
+        // will increment the attempt counter; once it caps, the branch
+        // above force-logs out instead of looping.
+        consumePendingAction()
+      }
+    })
+    .catch(() => {
+      if (token.cancelled) return
+      consumePendingAction()
+    })
+    .finally(() => { if (activeRestore === token) activeRestore = null })
+}
+
+// Lazy account-change check. Run once per page load just before the
+// first sign-gated action so we catch "extension is now signed in as
+// someone else" before we sign / encrypt under the wrong pubkey. No-op
+// after the first success. Treats transient failures as "probably fine,
+// let the action proceed" — the action's own sign call will surface
+// real errors.
+async function ensureSignerVerified() {
+  if (signerVerified) return true
+  const saved = loadSession()
+  if (!saved) return true
+  if (!currentUser || isStubUser(currentUser)) return true
+  const result = await verifySignerMatches(getNDK(), saved)
+  if (result.kind === 'ok') {
+    signerVerified = true
+    return true
+  }
+  if (result.kind === 'permanent') {
+    forceLogoutWithMessage('Your signer is set to a different account. Please sign in again.')
+    return false
+  }
+  return true
 }
 
 // Tiny hook every internal component uses to track the shared user.
@@ -194,6 +305,11 @@ function LoginPromptHost() {
     <LoginModal
       onLogin={(u) => {
         abortRestore()
+        // Fresh login — pubkey came from the signer itself, so we can
+        // skip the ensureSignerVerified prompt on the first sign-gated
+        // action this session.
+        signerVerified = true
+        stubRestoreAttempts = 0
         setUser(u)
         setLoginOpen(false)
         // If a boost or wallet-connect was waiting on login, run it now.
@@ -345,6 +461,7 @@ const api = {
     createRoot(makeHost('lb-show-boost-host')).render(<ShowBoostHost />)
     createRoot(makeHost('lb-wallet-connect-host')).render(<WalletConnectHost />)
     createRoot(makeHost('lb-toast-host')).render(<ToastHost />)
+    createRoot(makeHost('lb-boost-progress-host')).render(<BoostProgressBanner />)
 
     // Kick off async session restore in the background. The identity
     // widget already renders the cached avatar/name as a stub at this
@@ -356,15 +473,27 @@ const api = {
     if (saved) {
       const token = { cancelled: false }
       activeRestore = token
+      signerVerified = false
       restoreSession(saved)
-        .then((u) => {
+        .then((result) => {
           if (token.cancelled) return
-          setUser(u || null)
+          // 'ok'        → upgrade stub to real user
+          // 'transient' → keep the stub; a later action will retry via
+          //               ensureRealRestore (capped to avoid loops) and
+          //               eventually force re-auth if it never lands
+          // 'permanent' → saved record is structurally bad; clear it
+          //               and surface the login modal so the user
+          //               isn't stuck staring at a phantom identity
+          if (result?.kind === 'ok' && result.user) {
+            setUser(result.user)
+          } else if (result?.kind === 'permanent') {
+            forceLogoutWithMessage('Saved session was invalid — please sign in again.')
+          }
           consumePendingAction()
         })
         .catch(() => {
           if (token.cancelled) return
-          setUser(null)
+          // Treat as transient — keep the stub.
           consumePendingAction()
         })
         .finally(() => { if (activeRestore === token) activeRestore = null })
@@ -394,7 +523,7 @@ const api = {
 
   /** Open the wallet-connect modal. No-op if not signed in (the
    *  identity dropdown should hide the option in that case). */
-  openWalletConnect() {
+  async openWalletConnect() {
     if (!currentUser || currentUser === undefined) {
       // Pending action so connecting requires login first.
       setPendingAction(() => api.openWalletConnect())
@@ -404,10 +533,16 @@ const api = {
     if (isStubUser(currentUser)) {
       // Restore still running — encrypting the URI needs the real
       // signer. Queue the action; consumePendingAction fires when
-      // restoreSession completes.
+      // restoreSession completes. ensureRealRestore guards against
+      // the case where the ambient restore failed silently and we'd
+      // otherwise be stuck waiting forever.
       setPendingAction(() => api.openWalletConnect())
+      ensureRealRestore()
       return
     }
+    // Catches "extension is now signed in as someone else" before we
+    // encrypt an NWC URI under the wrong pubkey. No-op after first ok.
+    if (!await ensureSignerVerified()) return
     setWalletConnectOpen(true)
   },
 
@@ -429,11 +564,16 @@ const api = {
     resetNDK()
     nwc.lockOnLogout()
     cancelPendingAction()
+    signerVerified = false
+    stubRestoreAttempts = 0
     setUser(null)
   },
 
   /** Open the show-boost modal directly. */
-  openShowBoost() {
+  async openShowBoost() {
+    if (currentUser && !isStubUser(currentUser)) {
+      if (!await ensureSignerVerified()) return
+    }
     setShowBoostOpen(true)
   },
 
@@ -449,7 +589,7 @@ const api = {
    * @param {object}  args.episode  - { number, title, guid }
    * @param {object}  args.splits   - { recipients, totalWeight, source }
    */
-  openEpisodeBoost({ episode, splits }) {
+  async openEpisodeBoost({ episode, splits }) {
     if (!episode || !splits || !Array.isArray(splits.recipients)) {
       console.warn('[LBLogin] openEpisodeBoost: missing episode/splits payload')
       return
@@ -465,11 +605,20 @@ const api = {
 
     // Gate 1.5: signed in but only as a stub — wait for real restore
     // to land before reaching the NWC gate, since unlocking the NWC
-    // blob needs the real signer.
+    // blob needs the real signer. ensureRealRestore covers the case
+    // where the ambient page-load restore quietly failed.
     if (isStubUser(currentUser)) {
       setPendingAction(() => api.openEpisodeBoost(args))
+      ensureRealRestore()
       return
     }
+
+    // Gate 1.75: signer-account match. Boostagram payloads embed the
+    // sender's pubkey from currentUser; if the extension's active
+    // account changed under us, we'd publish a payload claiming
+    // currentUser.pubkey while the signature came from a different
+    // key. Force re-auth before that can happen. No-op after first ok.
+    if (!await ensureSignerVerified()) return
 
     // Gate 2: NWC connected?
     if (!nwc.isReady()) {
@@ -514,6 +663,8 @@ const api = {
    */
   async signEvent(template) {
     if (!currentUser || currentUser === undefined) throw new Error('Not signed in')
+    if (isStubUser(currentUser)) throw new Error('Session still restoring')
+    if (!await ensureSignerVerified()) throw new Error('Signer account mismatch')
     const ndk = getNDK()
     if (!ndk.signer) throw new Error('No signer available')
     const ev = new NDKEvent(ndk)

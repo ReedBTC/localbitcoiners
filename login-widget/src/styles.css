@@ -1,3 +1,22 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Slow ambient glow on the boost-in-progress banner — slower than
+   animate-pulse (which reads as a status spinner) so the banner feels
+   like a calm "we're working" indicator, not an alert. */
+@keyframes lb-boost-banner-glow {
+  0%, 100% {
+    box-shadow:
+      0 8px 30px -4px rgba(247, 147, 26, 0.45),
+      0 0 0 1px rgba(255, 255, 255, 0.06);
+  }
+  50% {
+    box-shadow:
+      0 12px 40px -4px rgba(247, 147, 26, 0.85),
+      0 0 0 1px rgba(255, 255, 255, 0.12);
+  }
+}
+.lb-boost-banner-glow {
+  animation: lb-boost-banner-glow 2.4s ease-in-out infinite;
+}

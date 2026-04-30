@@ -127,40 +127,59 @@ async function waitForExtension(maxMs = 2000) {
   return !!window.nostr
 }
 
-// Restore a saved session. Returns the hydrated user object on success,
-// null on failure (caller falls back to anonymous mode).
+// Restore a saved session. Tagged result so the caller can tell apart:
+//   { kind: 'ok', user }   — success; user is the hydrated NDKUser
+//   { kind: 'transient' }  — recoverable hiccup (extension still loading,
+//                            relay flake, network); keep the cached stub
+//                            and let a later retry escalate
+//   { kind: 'permanent' }  — the saved record is unusable as-is (malformed
+//                            fields); caller should clearSession + drop
+//                            to logged-out
 export async function restoreSession(record) {
-  if (!record?.method || !isHex64(record.pubkey)) return null
+  if (!record?.method || !isHex64(record?.pubkey)) return { kind: 'permanent' }
 
   resetNDK()
   const ndk = getNDK()
 
   if (record.method === 'extension') {
     const ok = await waitForExtension(2000)
-    if (!ok) return null
+    if (!ok) return { kind: 'transient' }
     try {
+      // Wire up the signer but DO NOT call blockUntilReady() here.
+      // blockUntilReady invokes window.nostr.getPublicKey(), which on most
+      // extensions (nos2x, keys.band, Alby with strict mode) triggers a
+      // permission prompt — and doing that on every page load both spams
+      // the user with prompts and creates a "shimmer until 10s timeout
+      // then flip to Sign-in" race when the prompt isn't approved
+      // immediately (e.g. cross-page navigation, prompt dismissed, etc).
+      //
+      // The signer being attached is enough — NDKEvent.sign() will trigger
+      // blockUntilReady internally on the first actual sign call, which is
+      // the right moment to ask the user to approve. Identity / profile
+      // rendering only needs the saved pubkey, not a live signer.
+      //
+      // Account-change detection moved to verifySignerMatches() — the
+      // caller invokes it lazily before the first sign-gated action so
+      // we still catch "extension is now signed in as someone else"
+      // before signing under the wrong pubkey.
       const signer = new NDKNip07Signer()
       ndk.signer = signer
-      await withTimeout(signer.blockUntilReady(), 10000, '__timeout__')
-      const ndkUser = await signer.user()
-      // Extension account may have changed since we saved — bail so the user
-      // sees the login button again as whoever the extension is now set to.
-      if (ndkUser.pubkey !== record.pubkey) return null
       await connectAndWait(ndk)
-      await ensureUserWriteRelays(ndk, ndkUser.pubkey)
-      return await fetchUserProfile(ndk, ndkUser.pubkey)
+      await ensureUserWriteRelays(ndk, record.pubkey)
+      const user = await fetchUserProfile(ndk, record.pubkey)
+      return { kind: 'ok', user }
     } catch {
-      return null
+      return { kind: 'transient' }
     }
   }
 
   if (record.method === 'nip46') {
     const { clientSecret, bunkerPointer, userPubkey } = record
-    if (!isHex64(userPubkey)) return null
-    if (typeof clientSecret !== 'string' || !/^[0-9a-f]{64}$/i.test(clientSecret)) return null
-    if (!bunkerPointer || !isHex64(bunkerPointer.pubkey)) return null
+    if (!isHex64(userPubkey)) return { kind: 'permanent' }
+    if (typeof clientSecret !== 'string' || !/^[0-9a-f]{64}$/i.test(clientSecret)) return { kind: 'permanent' }
+    if (!bunkerPointer || !isHex64(bunkerPointer.pubkey)) return { kind: 'permanent' }
     const safeRelays = sanitizeRelayUrls(bunkerPointer.relays)
-    if (safeRelays.length === 0) return null
+    if (safeRelays.length === 0) return { kind: 'permanent' }
     try {
       const signer = restoreFromSession({
         ndk,
@@ -180,13 +199,40 @@ export async function restoreSession(record) {
       ndk.signer = signer
       await connectAndWait(ndk)
       await ensureUserWriteRelays(ndk, userPubkey)
-      return await fetchUserProfile(ndk, userPubkey)
+      const user = await fetchUserProfile(ndk, userPubkey)
+      return { kind: 'ok', user }
     } catch {
-      return null
+      return { kind: 'transient' }
     }
   }
 
-  return null
+  return { kind: 'permanent' }
+}
+
+// Verify the attached signer actually controls the saved record's pubkey.
+// Calls signer.user(), which on NIP-07 may trigger a permission prompt and
+// on NIP-46 round-trips the bunker — call this lazily right before the
+// first sign-gated action, NOT on page load.
+//
+// Returns:
+//   { kind: 'ok' }
+//   { kind: 'transient' }   — signer not ready / call timed out; treat
+//                             as "probably fine, let the action proceed
+//                             and surface any sign error there"
+//   { kind: 'permanent' }   — signer reports a different pubkey from the
+//                             saved record; caller should force logout
+export async function verifySignerMatches(ndk, record) {
+  if (!ndk?.signer) return { kind: 'transient' }
+  if (!isHex64(record?.pubkey)) return { kind: 'transient' }
+  try {
+    const signerUser = await withTimeout(ndk.signer.user(), 10000, '__timeout__')
+    const reported = signerUser?.pubkey
+    if (typeof reported !== 'string' || !isHex64(reported)) return { kind: 'transient' }
+    if (reported !== record.pubkey) return { kind: 'permanent' }
+    return { kind: 'ok' }
+  } catch {
+    return { kind: 'transient' }
+  }
 }
 
 // ── Helpers for the LoginScreen save path ──────────────────────────────────
