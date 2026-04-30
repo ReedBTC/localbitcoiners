@@ -10,25 +10,34 @@
  */
 import { useEffect } from 'react'
 import LoginScreen from './LoginScreen.jsx'
+import { lockBodyScroll, unlockBodyScroll } from '../lib/scrollLock.js'
+import { useModalTransition, EXIT_DURATION_MS } from '../lib/useModalTransition.js'
 
 export default function LoginModal({ onLogin, onClose }) {
+  const { visible, requestClose } = useModalTransition(onClose)
+
   // Escape to close.
   useEffect(() => {
-    function onKey(e) { if (e.key === 'Escape') onClose() }
+    function onKey(e) { if (e.key === 'Escape') requestClose() }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [requestClose])
 
-  // Lock page scroll while open.
+  // Lock page scroll while open. Ref-counted so nesting (LoginModal on
+  // top of BoostModal) doesn't release the lock when only the inner
+  // modal closes.
   useEffect(() => {
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prev }
+    lockBodyScroll()
+    return () => unlockBodyScroll()
   }, [])
 
   function handleLogin(user) {
+    // Run the exit animation in parallel with the parent learning about
+    // the new user. The parent (BoostModal) still re-renders with the
+    // updated user prop while we fade out, so the underlying view shows
+    // the new state by the time the login modal is gone.
     onLogin(user)
-    onClose()
+    setTimeout(() => onClose(), EXIT_DURATION_MS)
   }
 
   return (
@@ -36,19 +45,19 @@ export default function LoginModal({ onLogin, onClose }) {
     // modal (z-[70/71]) when launched from inside it via the inline
     // Sign-in button. Standalone use is unaffected.
     <div
-      className="fixed inset-0 bg-black/70 flex items-start sm:items-center justify-center z-[80] p-3 sm:p-4 overflow-y-auto overflow-x-hidden"
-      onMouseDown={onClose}
+      className={`fixed inset-0 bg-black/70 flex items-start sm:items-center justify-center z-[80] p-3 sm:p-4 overflow-y-auto overflow-x-hidden transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}
+      onMouseDown={requestClose}
       role="dialog"
       aria-modal="true"
       aria-label="Login"
     >
       <div
-        className="relative bg-neutral-950 border border-neutral-800 rounded-lg shadow-2xl w-full max-w-md my-4 sm:my-8"
+        className={`relative bg-neutral-950 border border-neutral-700 rounded-lg shadow-[0_25px_60px_-12px_rgba(0,0,0,0.8),0_0_0_1px_rgba(255,255,255,0.04)] w-full max-w-md my-4 sm:my-8 transition-[opacity,transform] duration-200 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}
         onMouseDown={e => e.stopPropagation()}
       >
         <button
           type="button"
-          onClick={onClose}
+          onClick={requestClose}
           className="absolute top-2 right-2 z-10 text-neutral-400 hover:text-neutral-100 p-2 rounded transition-colors"
           aria-label="Close login"
         >

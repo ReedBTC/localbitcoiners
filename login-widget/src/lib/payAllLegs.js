@@ -2,9 +2,9 @@
  * Multi-leg episode boost orchestrator.
  *
  * Given the recipients pulled from an RSS <podcast:value> block plus a
- * total amount, fan out N parallel LNURL+pay legs:
+ * total amount, run N legs sequentially:
  *   1. Compute weight-proportional msats for each recipient.
- *   2. For each leg in parallel:
+ *   2. For each leg in order:
  *      a. Resolve the recipient's lud16 → LNURL endpoint (.well-known/lnurlp).
  *      b. Request a bolt11 invoice with comment = LocalBitcoinersEpNNN.
  *      c. Extract payment_hash from the bolt11.
@@ -12,14 +12,25 @@
  *         per-leg tags (recipient, amount, leg N/total) plus the shared
  *         episode + boost_session context tags. Publish to the V4V 2.0
  *         relay set.
- *      e. Pay the invoice via NWC.
+ *      e. Pay the invoice via NWC. Wait for completion before starting
+ *         the next leg.
  *   3. Per-leg status callback fires after each transition (resolving →
  *      requesting → publishing → paying → paid|failed) so the modal can
  *      render live progress dots.
  *
+ * Why sequential: NWC sends one encrypted request per payInvoice over
+ * the wallet relay. Five parallel requests created contention in
+ * production — a wallet processing a slow leg (e.g. minibits Cashu
+ * mint) caused later legs' reply events to time out at the SDK's 60s
+ * default. Serializing trades a few seconds of total latency for
+ * meaningfully higher reliability. The SDK's `multi_pay_invoice` is
+ * not used because the SDK currently fails the whole batch if any
+ * single payment fails (per a TODO in the SDK source), which is
+ * strictly worse than per-leg error handling.
+ *
  * Best-effort semantics:
  *   - Splits aren't atomic in Lightning. If one leg fails (lud16 down,
- *     wallet rejects, relay error), other legs still proceed. Caller
+ *     wallet rejects, relay error), subsequent legs still run. Caller
  *     reports per-leg outcomes and decides whether to surface a retry.
  *   - The whole orchestrator never throws on partial failure; it returns
  *     an array of per-leg results. Throwing would abort the modal and
@@ -121,6 +132,7 @@ async function runLeg({
   burnerSk,
   nwcClient,
   message,
+  lnurlCache,
   onStatus,
 }) {
   const baseResult = {
@@ -141,7 +153,14 @@ async function runLeg({
 
   try {
     update({ status: STATUSES.RESOLVING })
-    const meta = await fetchLnurlMeta(leg.recipient.address)
+    // Prefer the modal's prefetched LNURL meta over a fresh fetch. The
+    // modal kicks off all resolves in parallel on mount, so by boost
+    // time most legs already have their metadata in hand. Cache miss
+    // (or null = previous fetch failed) falls through to a live fetch.
+    let meta = lnurlCache?.[leg.recipient.address] || null
+    if (!meta) {
+      meta = await fetchLnurlMeta(leg.recipient.address)
+    }
 
     // Per-leg minSendable check. If our weighted msats fall below this
     // recipient's minimum, we have to fail this leg early — no graceful
@@ -203,10 +222,23 @@ async function runLeg({
     // NWC's payInvoice. Wallet relay round-trip: wallet receives
     // encrypted request, attempts payment, returns response. Anywhere
     // from a few hundred ms (warm Alby Hub) to ~10s (cold mobile
-    // wallet). The SDK enforces its own timeout internally; we don't
-    // wrap further here since adding a second timeout layer can race
-    // with the SDK's response decoding.
-    const payRes = await nwcClient.payInvoice({ invoice: pr })
+    // wallet). The SDK enforces its own 60s reply timeout internally.
+    //
+    // Translate the SDK's terse "reply timeout: event <hex>" error
+    // into something actionable — a 60s timeout almost always means
+    // either the wallet was slow under contention or the payment
+    // actually settled but the reply event got lost. Either way, the
+    // user should check their wallet before retrying.
+    let payRes
+    try {
+      payRes = await nwcClient.payInvoice({ invoice: pr })
+    } catch (e) {
+      const msg = String(e?.message || e)
+      if (/reply timeout|publish timeout|timeout/i.test(msg)) {
+        throw new Error('Wallet didn\'t reply in time — the payment may have actually gone through. Check your wallet before retrying.')
+      }
+      throw e
+    }
     if (!payRes || !payRes.preimage) {
       throw new Error('Wallet didn\'t return a preimage — payment may not have settled.')
     }
@@ -262,6 +294,7 @@ export async function payAllLegs({
   pageUrl,
   episodeMeta,
   nwcClient,
+  lnurlCache,
   onStatus,
 }) {
   const boostSession = uuid4()
@@ -269,21 +302,26 @@ export async function payAllLegs({
   const legs = distributeMsats(totalMsats, recipients, totalWeight)
   const comment = formatEpisodeComment(episodeMeta?.number)
 
-  let results
+  const results = []
   try {
-    results = await Promise.all(legs.map((leg) => runLeg({
-      leg,
-      comment,
-      donorNpub,
-      pageUrl,
-      episodeMeta,
-      boostSession,
-      legCount: legs.length,
-      burnerSk,
-      nwcClient,
-      message,
-      onStatus,
-    })))
+    for (const leg of legs) {
+      // eslint-disable-next-line no-await-in-loop -- intentional serialization
+      const r = await runLeg({
+        leg,
+        comment,
+        donorNpub,
+        pageUrl,
+        episodeMeta,
+        boostSession,
+        legCount: legs.length,
+        burnerSk,
+        nwcClient,
+        message,
+        lnurlCache,
+        onStatus,
+      })
+      results.push(r)
+    }
   } finally {
     // Burner key never leaves this function. Zero before returning so
     // memory dumps post-boost don't reveal it.

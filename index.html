@@ -9,6 +9,10 @@
   <link rel="canonical" href="https://localbitcoiners.com" />
   <link rel="icon" type="image/png" href="assets/LocalBitcoiners.png" />
 
+  <!-- Preload above-the-fold banner so it lands in parallel with fonts +
+       CSS rather than waiting for the parser to discover the <img> tag. -->
+  <link rel="preload" as="image" href="assets/LocalBitcoiners_banner_YT.jpg" fetchpriority="high" />
+
   <!-- PWA -->
   <link rel="manifest" href="/manifest.webmanifest" />
   <meta name="theme-color" content="#1e3a5f" />
@@ -26,12 +30,12 @@
   <meta property="og:title" content="Local Bitcoiners — The Bitcoin Meetup Podcast" />
   <meta property="og:description" content="Local Bitcoiners is a Bitcoin podcast about meetup culture. Hosts Reed and Rev Hodl talk with organizers about finding, building, and growing grassroots Bitcoin communities." />
   <meta property="og:site_name" content="Local Bitcoiners" />
-  <meta property="og:image" content="https://localbitcoiners.com/assets/LocalBitcoiners_banner_YT.png" />
+  <meta property="og:image" content="https://localbitcoiners.com/assets/LocalBitcoiners_banner_YT.jpg" />
   <meta property="og:audio" content="https://feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Local Bitcoiners — The Bitcoin Meetup Podcast" />
   <meta name="twitter:description" content="Local Bitcoiners is a Bitcoin podcast about meetup culture. Hosts Reed and Rev Hodl talk with organizers about finding, building, and growing grassroots Bitcoin communities." />
-  <meta name="twitter:image" content="https://localbitcoiners.com/assets/LocalBitcoiners_banner_YT.png" />
+  <meta name="twitter:image" content="https://localbitcoiners.com/assets/LocalBitcoiners_banner_YT.jpg" />
 
   <!-- Structured data: WebSite -->
   <script type="application/ld+json">
@@ -54,7 +58,7 @@
     "alternateName": "Local Bitcoiners Podcast",
     "description": "Local Bitcoiners is a Bitcoin podcast about Bitcoin meetup culture. Hosts Reed and Rev Hodl talk with meetup organizers about finding, building, and growing grassroots Bitcoin communities.",
     "url": "https://localbitcoiners.com",
-    "image": "https://localbitcoiners.com/assets/LocalBitcoiners_banner_YT.png",
+    "image": "https://localbitcoiners.com/assets/LocalBitcoiners_banner_YT.jpg",
     "webFeed": "https://feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU",
     "author": [
       { "@type": "Person", "name": "Reed", "url": "http://westernmassbitcoin.com" },
@@ -78,12 +82,42 @@
   }
   </script>
 
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet" />
+  <!-- Self-hosted fonts. Variable WOFF2s — one file per family per
+       style covers all needed weights. Eliminates the third-party
+       round-trip to fonts.googleapis.com that was render-blocking. -->
+  <link rel="preload" as="font" type="font/woff2" href="assets/fonts/source-serif-4.woff2" crossorigin />
+  <link rel="preload" as="font" type="font/woff2" href="assets/fonts/playfair-display.woff2" crossorigin />
 
   <style>
+    @font-face {
+      font-family: 'Playfair Display';
+      font-style: normal;
+      font-weight: 400 700;
+      font-display: swap;
+      src: url('assets/fonts/playfair-display.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Playfair Display';
+      font-style: italic;
+      font-weight: 400;
+      font-display: swap;
+      src: url('assets/fonts/playfair-display-italic.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Source Serif 4';
+      font-style: normal;
+      font-weight: 300 600;
+      font-display: swap;
+      src: url('assets/fonts/source-serif-4.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Source Serif 4';
+      font-style: italic;
+      font-weight: 300 400;
+      font-display: swap;
+      src: url('assets/fonts/source-serif-4-italic.woff2') format('woff2');
+    }
+
     /* ── Reset & Base ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -189,6 +223,75 @@
       display: flex;
       align-items: center;
       min-height: 32px;
+    }
+    /* Identity slot — sits next to the boost button in the nav. */
+    #lb-identity-slot {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      min-height: 32px;
+    }
+    /* Sign-in placeholder pill (logged-out users). Neutral colored on
+       the navy nav so it defers visually to the orange boost CTA. */
+    .lb-identity-placeholder {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--cream);
+      border: 1px solid rgba(255, 255, 255, 0.20);
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 0.35rem 0.85rem;
+      border-radius: 6px;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .lb-identity-placeholder:hover {
+      background: rgba(255, 255, 255, 0.16);
+      border-color: rgba(255, 255, 255, 0.34);
+    }
+    /* Restoring placeholder — circle shimmer for returning users. Tuned
+       for the navy nav background; lighter shimmer reads on dark. */
+    .lb-identity-restoring {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(90deg,
+        rgba(255,255,255,0.06) 0%,
+        rgba(255,255,255,0.18) 50%,
+        rgba(255,255,255,0.06) 100%);
+      background-size: 200% 100%;
+      animation: skeleton-shimmer 1.4s ease-in-out infinite;
+    }
+
+    /* Static placeholder button — visible immediately on page load,
+       triggers the lazy-load of the widget bundle on first click. The
+       widget's mount() replaces the placeholder once loaded.
+       White SVG bolt rather than the ⚡ emoji because OS-rendered
+       emoji bolts are yellow/golden and clash visually against the
+       orange button. */
+    .lb-boost-placeholder {
+      background: #f7931a;
+      color: #ffffff;
+      border: none;
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.3rem 0.65rem;
+      border-radius: 5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: background 0.15s;
+    }
+    .lb-boost-placeholder:hover { background: #d97b0e; }
+    .lb-boost-placeholder:disabled { opacity: 0.6; cursor: wait; }
+    .lb-boost-placeholder svg { width: 11px; height: 11px; flex-shrink: 0; }
+    .lb-boost-placeholder .lb-label-long { display: inline; }
+    .lb-boost-placeholder .lb-label-short { display: none; }
+    @media (max-width: 640px) {
+      .lb-boost-placeholder .lb-label-long { display: none; }
+      .lb-boost-placeholder .lb-label-short { display: inline; }
     }
 
     /* ── Hero ── */
@@ -373,6 +476,37 @@
 
     #episodes-list { margin-top: 2rem; }
 
+    /* Skeleton placeholder card. Matches .episode-card's outer geometry
+       so the swap to real cards doesn't reflow the page. The shimmering
+       bars give visible activity while RSS resolves. */
+    .episode-skeleton {
+      background: var(--cream);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.75rem 2rem;
+      margin-bottom: 1.5rem;
+    }
+    .skeleton-bar {
+      background: linear-gradient(90deg,
+        rgba(0,0,0,0.04) 0%,
+        rgba(0,0,0,0.10) 50%,
+        rgba(0,0,0,0.04) 100%);
+      background-size: 200% 100%;
+      border-radius: 4px;
+      animation: skeleton-shimmer 1.4s ease-in-out infinite;
+    }
+    @keyframes skeleton-shimmer {
+      0% { background-position: 100% 0; }
+      100% { background-position: -100% 0; }
+    }
+    .skeleton-title { height: 1.4rem; width: 70%; margin-bottom: 0.6rem; }
+    .skeleton-date  { height: 0.85rem; width: 30%; margin-bottom: 1.4rem; }
+    .skeleton-desc  { height: 0.85rem; width: 100%; margin-bottom: 0.5rem; }
+    .skeleton-desc.s2 { width: 92%; }
+    .skeleton-desc.s3 { width: 78%; margin-bottom: 1.4rem; }
+    .skeleton-actions { display: flex; gap: 0.75rem; }
+    .skeleton-btn { height: 2rem; width: 9rem; border-radius: 5px; }
+
     .episode-card {
       background: var(--cream);
       border: 1px solid var(--border);
@@ -472,11 +606,17 @@
       background: var(--orange);
       color: var(--white);
       font-family: inherit;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
     }
     .btn-boost:hover {
       background: var(--orange-d);
       color: var(--white);
     }
+    /* White SVG bolt instead of the ⚡ emoji — emoji renders golden on
+       most platforms and clashes against the orange background. */
+    .btn-boost svg { width: 12px; height: 12px; flex-shrink: 0; }
     .btn-disabled {
       background: transparent;
       color: var(--border);
@@ -629,13 +769,31 @@
         <li><a href="#links">Links</a></li>
       </ul>
     </nav>
-    <div id="lb-boost-slot" aria-label="Boost the Show"></div>
+    <div id="lb-boost-slot" aria-label="Boost the Show">
+      <button
+        type="button"
+        class="lb-boost-placeholder"
+        data-lb-boost-trigger="show"
+        aria-label="Boost the Show"
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M14.615 1.595a.75.75 0 0 1 .359.852L12.982 9.75h7.268a.75.75 0 0 1 .548 1.262l-10.5 11.25a.75.75 0 0 1-1.272-.71l1.992-7.302H3.75a.75.75 0 0 1-.548-1.262l10.5-11.25a.75.75 0 0 1 .913-.143Z" clip-rule="evenodd"/>
+        </svg>
+        <span class="lb-label-long">Boost the Show</span>
+        <span class="lb-label-short">Boost</span>
+      </button>
+    </div>
+    <div id="lb-identity-slot" aria-label="Account">
+      <!-- Static placeholder swapped out by IdentityWidget once the
+           bundle loads. Picks shimmer vs sign-in based on whether a
+           saved session exists; populated by inline script below. -->
+    </div>
   </div>
 </header>
 
 <!-- ══════════════════════════════ HERO ══════════════════════════════ -->
 <section id="hero" aria-label="Hero">
-  <img src="assets/LocalBitcoiners_banner_YT.png" alt="Local Bitcoiners — a Bitcoin meetup culture podcast hosted by Reed and Rev Hodl" />
+  <img src="assets/LocalBitcoiners_banner_YT.jpg" alt="Local Bitcoiners — a Bitcoin meetup culture podcast hosted by Reed and Rev Hodl" />
   <div class="hero-overlay">
     <div class="hero-text">
       <h1>Local Bitcoiners Podcast</h1>
@@ -932,84 +1090,249 @@
     // recipients, the boost button is hidden rather than failing on click.
     const splits = parseSplitsFor(item, channelEl);
 
+    // Build the card via createElement + textContent rather than
+    // innerHTML interpolation. RSS-derived strings (title, description,
+    // pubDate) flow through textContent, so a tampered feed (or a
+    // compromised proxy in dev) can't inject HTML or scripts.
     const card = document.createElement('article');
     card.className = 'episode-card';
 
-    const boostBtnHtml = splits
-      ? `<button type="button" class="btn btn-boost" data-action="boost-episode">⚡ Boost Episode</button>`
-      : '';
+    const header = document.createElement('div');
+    header.className = 'episode-header';
+    const numSpan = document.createElement('span');
+    numSpan.className = 'episode-num';
+    numSpan.textContent = `Ep. ${epNum}`;
+    header.appendChild(numSpan);
+    const titleEl = document.createElement('h3');
+    titleEl.className = 'episode-title';
+    titleEl.textContent = title;
+    header.appendChild(titleEl);
+    card.appendChild(header);
 
-    card.innerHTML = `
-      <div class="episode-header">
-        <span class="episode-num">Ep. ${epNum}</span>
-        <h3 class="episode-title">${title}</h3>
-      </div>
-      <p class="episode-date">${fmtDate(pubDate)}</p>
-      ${shortDesc ? `<p class="episode-desc">${shortDesc}</p>` : ''}
-      ${mp3 ? `<audio class="episode-player" controls preload="none" src="${mp3}"></audio>` : ''}
-      <div class="episode-actions">
-        ${mp3 ? `<a class="btn btn-primary" href="${mp3}" download>↓ Download MP3</a>` : ''}
-        <a class="btn btn-outline" href="transcripts/localbitcoiners-ep${pad(epNum)}.txt" download>↓ Download Transcript</a>
-        ${boostBtnHtml}
-      </div>
-    `;
+    const dateP = document.createElement('p');
+    dateP.className = 'episode-date';
+    dateP.textContent = fmtDate(pubDate);
+    card.appendChild(dateP);
 
-    if (splits) {
-      const btn = card.querySelector('[data-action="boost-episode"]');
-      btn.addEventListener('click', () => {
-        if (!window.LBLogin?.openEpisodeBoost) {
-          // Widget bundle hasn't loaded yet (defer on the script tag) —
-          // unlikely on a real page load, but possible on flaky networks.
-          // Fail silently rather than crash; the user can retry.
-          console.warn('Episode boost requested before login widget loaded');
-          return;
-        }
-        window.LBLogin.openEpisodeBoost({
-          episode: { number: epNum, title, guid },
-          splits,
-        });
-      });
+    if (shortDesc) {
+      const descP = document.createElement('p');
+      descP.className = 'episode-desc';
+      descP.textContent = shortDesc;
+      card.appendChild(descP);
     }
 
+    if (mp3) {
+      const audio = document.createElement('audio');
+      audio.className = 'episode-player';
+      audio.controls = true;
+      audio.preload = 'none';
+      // Reject anything that isn't http(s) — a tampered feed could
+      // otherwise place a javascript: or data: URL here. setAttribute
+      // alone wouldn't run script, but better to block at the gate.
+      try {
+        const u = new URL(mp3);
+        if (u.protocol === 'http:' || u.protocol === 'https:') {
+          audio.src = mp3;
+        }
+      } catch {}
+      card.appendChild(audio);
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'episode-actions';
+
+    if (mp3) {
+      const dl = document.createElement('a');
+      dl.className = 'btn btn-primary';
+      try {
+        const u = new URL(mp3);
+        if (u.protocol === 'http:' || u.protocol === 'https:') {
+          dl.href = mp3;
+        }
+      } catch {}
+      dl.download = '';
+      dl.textContent = '↓ Download MP3';
+      actions.appendChild(dl);
+    }
+
+    // Transcript: button instead of a plain anchor so a missing file
+    // can degrade gracefully. On click we HEAD-check the URL; if the
+    // transcript exists we trigger the download, otherwise the button
+    // becomes a "Transcript coming soon" disabled state for the rest
+    // of the session. Avoids 404 navigations for episodes that haven't
+    // been transcribed yet.
+    const txUrl = `transcripts/localbitcoiners-ep${pad(epNum)}.txt`;
+    const tx = document.createElement('button');
+    tx.type = 'button';
+    tx.className = 'btn btn-outline';
+    tx.textContent = '↓ Download Transcript';
+    tx.addEventListener('click', async () => {
+      const prevLabel = tx.textContent;
+      tx.disabled = true;
+      tx.textContent = 'Checking…';
+      try {
+        const res = await fetch(txUrl, { method: 'HEAD' });
+        if (res.ok) {
+          // File exists — trigger the download via a temporary anchor
+          // so the click is treated as a user-initiated download.
+          const a = document.createElement('a');
+          a.href = txUrl;
+          a.download = '';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          tx.textContent = prevLabel;
+          tx.disabled = false;
+        } else {
+          // 404 — transcript not posted yet. Replace the button with a
+          // disabled "coming soon" state for the rest of the session.
+          tx.textContent = 'Transcript coming soon';
+          tx.classList.remove('btn-outline');
+          tx.classList.add('btn-disabled');
+        }
+      } catch {
+        // Network error — restore so the user can retry.
+        tx.textContent = prevLabel;
+        tx.disabled = false;
+      }
+    });
+    actions.appendChild(tx);
+
+    if (splits) {
+      const boostBtn = document.createElement('button');
+      boostBtn.type = 'button';
+      boostBtn.className = 'btn btn-boost';
+      // White SVG bolt + label. The default-rendered ⚡ emoji is gold on
+      // most platforms and clashes with the orange background.
+      boostBtn.innerHTML =
+        '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
+          '<path fill-rule="evenodd" d="M14.615 1.595a.75.75 0 0 1 .359.852L12.982 9.75h7.268a.75.75 0 0 1 .548 1.262l-10.5 11.25a.75.75 0 0 1-1.272-.71l1.992-7.302H3.75a.75.75 0 0 1-.548-1.262l10.5-11.25a.75.75 0 0 1 .913-.143Z" clip-rule="evenodd"/>' +
+        '</svg>' +
+        '<span class="lb-boost-label">Boost Episode</span>';
+      const labelEl = boostBtn.querySelector('.lb-boost-label');
+      boostBtn.addEventListener('click', async () => {
+        // Lazy-load the widget on first click. After load (cached for
+        // the rest of the session) the widget exposes openEpisodeBoost.
+        const prevLabel = labelEl.textContent;
+        labelEl.textContent = 'Loading…';
+        boostBtn.disabled = true;
+        try {
+          if (!window.LBLogin?.openEpisodeBoost) {
+            await window.__lbEnsureWidgetLoaded?.();
+          }
+          if (window.LBLogin?.openEpisodeBoost) {
+            window.LBLogin.openEpisodeBoost({
+              episode: { number: epNum, title, guid },
+              splits,
+            });
+          }
+        } catch (e) {
+          console.warn('[lb] failed to load boost widget', e);
+        } finally {
+          labelEl.textContent = prevLabel;
+          boostBtn.disabled = false;
+        }
+      });
+      actions.appendChild(boostBtn);
+    }
+
+    card.appendChild(actions);
     $list.appendChild(card);
+  }
+
+  /* Skeleton placeholder cards — rendered immediately on page load so
+     the page never sits empty while RSS resolves. Shape mirrors the
+     real card so the swap is reflow-quiet. */
+  function renderSkeletons(n) {
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < n; i++) {
+      const card = document.createElement('article');
+      card.className = 'episode-skeleton';
+      card.innerHTML =
+        '<div class="skeleton-bar skeleton-title"></div>' +
+        '<div class="skeleton-bar skeleton-date"></div>' +
+        '<div class="skeleton-bar skeleton-desc"></div>' +
+        '<div class="skeleton-bar skeleton-desc s2"></div>' +
+        '<div class="skeleton-bar skeleton-desc s3"></div>' +
+        '<div class="skeleton-actions">' +
+          '<div class="skeleton-bar skeleton-btn"></div>' +
+          '<div class="skeleton-bar skeleton-btn"></div>' +
+          '<div class="skeleton-bar skeleton-btn"></div>' +
+        '</div>';
+      frag.appendChild(card);
+    }
+    $list.appendChild(frag);
+  }
+
+  /* Cache the raw RSS XML in localStorage so returning visitors render
+     yesterday's episodes synchronously — no network round-trip required
+     for first paint. The async fetch behind the scenes still updates
+     the cache for next time. ~50KB, well under any quota. */
+  const RSS_CACHE_KEY = 'lb_rss_xml_v1';
+  function loadCachedRss() {
+    try {
+      const xml = localStorage.getItem(RSS_CACHE_KEY);
+      return (xml && xml.includes('<item>')) ? xml : null;
+    } catch { return null; }
+  }
+  function saveCachedRss(xml) {
+    try { localStorage.setItem(RSS_CACHE_KEY, xml); } catch {}
+  }
+
+  /* Take parsed XML and render the episode list. Wipes any prior content
+     in $list (skeletons OR previously rendered cards) before drawing. */
+  function renderFromXml(rawXml) {
+    let doc;
+    try {
+      doc = new DOMParser().parseFromString(rawXml, 'text/xml');
+    } catch { return false; }
+
+    channelEl = doc.querySelector('channel');
+    const items = Array.from(doc.querySelectorAll('item'));
+    if (items.length === 0) return false;
+
+    $list.replaceChildren();
+    for (let i = 0; i < items.length; i++) {
+      renderCard(items[i], i, items.length);
+    }
+    return true;
   }
 
   /* ── main ── */
   async function init() {
-    const rawXml = await fetchRss();
-
-    if (!rawXml) {
-      $loading.style.display = 'none';
-      $error.style.display = 'block';
-      return;
-    }
-
-    let doc;
-    try {
-      doc = new DOMParser().parseFromString(rawXml, 'text/xml');
-    } catch {
-      $loading.style.display = 'none';
-      $error.style.display = 'block';
-      return;
-    }
-
-    // Capture the channel element so renderCard can fall back to
-    // channel-level <podcast:value> splits when an item lacks its own.
-    channelEl = doc.querySelector('channel');
-
-    const items = Array.from(doc.querySelectorAll('item'));
-
-    if (items.length === 0) {
-      $loading.style.display = 'none';
-      $error.style.display = 'block';
-      return;
-    }
-
+    // Show skeletons immediately and hide the spinner — the page no
+    // longer needs a "Loading episodes…" message because the structure
+    // is visible from the moment of paint.
     $loading.style.display = 'none';
+    renderSkeletons(4);
 
-    // Render cards — newest first (RSS feed order)
-    for (let i = 0; i < items.length; i++) {
-      renderCard(items[i], i, items.length);
+    // Sync render from cache if we have one. Returning visitors see
+    // real episodes before the network responds.
+    const cachedXml = loadCachedRss();
+    let renderedFromCache = false;
+    if (cachedXml) {
+      renderedFromCache = renderFromXml(cachedXml);
+    }
+
+    // Fresh fetch in the background. Replace the rendered list only if
+    // the new XML is different from cache — avoids unnecessary re-render.
+    const rawXml = await fetchRss();
+    if (!rawXml) {
+      // No network and no cache → show error. With cache we just keep
+      // showing yesterday's episodes silently.
+      if (!renderedFromCache) {
+        $list.replaceChildren();
+        $error.style.display = 'block';
+      }
+      return;
+    }
+
+    if (rawXml === cachedXml) return;
+    saveCachedRss(rawXml);
+    const ok = renderFromXml(rawXml);
+    if (!ok && !renderedFromCache) {
+      $list.replaceChildren();
+      $error.style.display = 'block';
     }
   }
 
@@ -1017,8 +1340,126 @@
 })();
 </script>
 
-<!-- ══════════════════════════════ NOSTR LOGIN WIDGET ══════════════════════════════ -->
-<script src="assets/widgets/login-widget.js" defer></script>
+<!-- ══════════════════════════════ NOSTR LOGIN WIDGET (lazy) ═══════════
+     The widget is ~250KB gzipped — bigger than everything else on the
+     page combined. Most homepage visits never need it, so we delay
+     downloading it until the user actually clicks a boost-related
+     button. The placeholder in #lb-boost-slot and the per-episode
+     buttons all funnel through ensureWidgetLoaded() below. ════════ -->
+<script>
+(function () {
+  'use strict';
+
+  let widgetPromise = null;
+  function ensureWidgetLoaded() {
+    if (widgetPromise) return widgetPromise;
+    widgetPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'assets/widgets/login-widget.js';
+      s.async = true;
+      s.onload = () => {
+        // window.LBLogin is populated synchronously when the IIFE runs;
+        // mount() also runs synchronously since DOMContentLoaded has
+        // long since fired. By the time onload calls back, the React
+        // render has been scheduled — wait one microtask so the new
+        // BoostButton has actually mounted before resolving.
+        Promise.resolve().then(resolve);
+      };
+      s.onerror = () => {
+        widgetPromise = null;
+        reject(new Error('Failed to load boost widget'));
+      };
+      document.head.appendChild(s);
+    });
+    return widgetPromise;
+  }
+
+  // Show-boost placeholder — clicked, the widget loads, then we open
+  // the modal directly via the LBLogin API. The widget's mount() also
+  // replaces this placeholder with the real React-rendered button, so
+  // subsequent clicks go through the real button.
+  const placeholder = document.querySelector('[data-lb-boost-trigger="show"]');
+  if (placeholder) {
+    placeholder.addEventListener('click', async () => {
+      placeholder.disabled = true;
+      const long = placeholder.querySelector('.lb-label-long');
+      const short = placeholder.querySelector('.lb-label-short');
+      const prevLong = long ? long.textContent : '';
+      const prevShort = short ? short.textContent : '';
+      if (long) long.textContent = 'Loading…';
+      if (short) short.textContent = '…';
+      try {
+        await ensureWidgetLoaded();
+        if (window.LBLogin?.openShowBoost) {
+          window.LBLogin.openShowBoost();
+        }
+      } catch (e) {
+        // Restore label on failure so the user can retry.
+        if (long) long.textContent = prevLong;
+        if (short) short.textContent = prevShort;
+        placeholder.disabled = false;
+        console.error('[lb] widget load failed', e);
+      }
+    });
+  }
+
+  // Per-episode boost buttons in renderCard fall through to LBLogin
+  // via this same loader. We re-export ensureWidgetLoaded on a global
+  // so the inline RSS script (which wires the per-card click handlers)
+  // can await it without re-implementing the loader.
+  window.__lbEnsureWidgetLoaded = ensureWidgetLoaded;
+
+  // Identity slot — populated based on whether a saved Nostr session
+  // record exists in localStorage. Returning users get the shimmer
+  // placeholder + an eager bundle load so their avatar appears as soon
+  // as session restore completes. New users get a static "Sign in"
+  // pill that lazy-loads the bundle on click.
+  const identitySlot = document.getElementById('lb-identity-slot');
+  if (identitySlot) {
+    let hasSession = false;
+    try { hasSession = !!localStorage.getItem('lb_nostr_session'); } catch {}
+
+    if (hasSession) {
+      identitySlot.innerHTML = '<div class="lb-identity-restoring" aria-label="Loading account"></div>';
+      // Eager-load — don't wait for user interaction, the avatar should
+      // appear within a second of the bundle landing.
+      ensureWidgetLoaded().catch((e) => {
+        console.warn('[lb] eager widget load failed', e);
+        // Fall back to the sign-in pill so the user has something to
+        // interact with even if the load fails.
+        renderIdentitySignIn();
+      });
+    } else {
+      renderIdentitySignIn();
+    }
+  }
+
+  function renderIdentitySignIn() {
+    if (!identitySlot) return;
+    identitySlot.innerHTML =
+      '<button type="button" class="lb-identity-placeholder" aria-label="Sign in with Nostr">Sign in</button>';
+    const btn = identitySlot.querySelector('button');
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      const prev = btn.textContent;
+      btn.textContent = '…';
+      try {
+        await ensureWidgetLoaded();
+        // After load, IdentityWidget has replaced the placeholder. The
+        // user clicked "Sign in" — open the login modal so the action
+        // they expected actually happens.
+        if (window.LBLogin?.requestLogin) {
+          window.LBLogin.requestLogin();
+        }
+      } catch (e) {
+        btn.textContent = prev;
+        btn.disabled = false;
+        console.error('[lb] widget load failed', e);
+      }
+    });
+  }
+})();
+</script>
 
 <!-- PWA service worker -->
 <script>

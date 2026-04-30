@@ -6,37 +6,102 @@ import { NDKEvent } from '@nostr-dev-kit/ndk'
 import BoostButton from './components/BoostButton.jsx'
 import LoginModal from './components/LoginModal.jsx'
 import EpisodeBoostModal from './components/EpisodeBoostModal.jsx'
-import { loadSession, restoreSession, clearSession } from './lib/sessionPersistence.js'
+import BoostModal from './components/BoostModal.jsx'
+import IdentityWidget from './components/IdentityWidget.jsx'
+import WalletConnectModal from './components/WalletConnectModal.jsx'
+import ToastHost from './components/ToastHost.jsx'
+import {
+  loadSession, restoreSession, clearSession,
+  saveProfile, loadCachedProfile, clearProfile,
+} from './lib/sessionPersistence.js'
+import { markStubUser, isStubUser } from './lib/stubUser.js'
 import { getNDK, resetNDK, connectAndWait } from './lib/ndk.js'
 import * as nwc from './lib/nwc.js'
 import { applyRecipientOverrides } from './lib/recipientOverrides.js'
 
-// Module-level subscriber list and current user — separated from React
-// state so callers outside the widget (boost button, future features)
-// can read getUser() / onChange() without touching React.
+// ── Shared user state ────────────────────────────────────────────────────
+// Tri-state:
+//   undefined — restore in flight on initial page load (only set when a
+//               saved session record exists but no cached profile).
+//               The IdentityWidget renders a shimmering placeholder.
+//   null      — logged out. Default when no saved session, or after a
+//               failed restore, or after explicit logout.
+//   {object}  — Either a stub built from the localStorage profile cache
+//               (rendered immediately at page boot for fast cross-page
+//               navigation) or a real NDKUser after restoreSession
+//               finishes. Stub membership is tracked via the WeakSet
+//               below + the isStubUser() helper so consumers that
+//               need the real signer can wait or fail gracefully.
+//
+// Why the stub: every page navigation re-mounts NDK from scratch,
+// which means a fresh handshake to relays + a kind 0 fetch — that's
+// the ~1-2s lag the user used to see. Caching the profile fields lets
+// us render the avatar instantly while the real restore runs async.
+
 const listeners = new Set()
-let currentUser = null
+
+function buildStubUser(cachedProfile) {
+  if (!cachedProfile?.pubkey) return null
+  return markStubUser({
+    pubkey: cachedProfile.pubkey,
+    npub: cachedProfile.npub,
+    profile: {
+      displayName: cachedProfile.displayName,
+      name: cachedProfile.name,
+      image: cachedProfile.image,
+    },
+  })
+}
+
+function initialUser() {
+  const session = loadSession()
+  if (!session) return null
+  const cached = loadCachedProfile()
+  // Cache is only valid if it matches the session's pubkey. A mismatch
+  // means the user logged in as someone else from another tab — drop
+  // the cache and fall back to the shimmer state until restore runs.
+  if (cached && cached.pubkey === session.pubkey) {
+    return buildStubUser(cached)
+  }
+  return undefined
+}
+
+let currentUser = initialUser()
 
 function setUser(u) {
-  currentUser = u
+  // Coerce any falsy non-undefined value to null so consumers can
+  // discriminate "restoring" (undefined) from "logged out" (null).
+  currentUser = (u === undefined) ? undefined : (u || null)
   for (const fn of listeners) {
-    try { fn(u) } catch {}
+    try { fn(currentUser) } catch {}
+  }
+  // Refresh the cached profile snapshot whenever a real user lands —
+  // keeps next page boot's stub data current with relay state. Skip
+  // stubs (they came from the cache to begin with) and clear on
+  // explicit logout.
+  if (u && !isStubUser(u)) {
+    saveProfile({
+      pubkey: u.pubkey,
+      npub: u.npub,
+      displayName: u.profile?.displayName || '',
+      name: u.profile?.name || '',
+      image: u.profile?.image || '',
+    })
+  } else if (u === null) {
+    clearProfile()
   }
 }
 
 // Per-attempt cancellation token. Each call to mount() creates a fresh
 // token; abortRestore() flips the *current* token's cancelled flag. The
-// token-object pattern (vs. a module-level boolean) means future restore
-// re-attempts each get a clean slate, and a stale `cancelled = true`
-// from a prior attempt can't accidentally suppress the next one.
+// token-object pattern means a stale cancellation can't suppress future
+// restore attempts.
 let activeRestore = null
 function abortRestore() {
   if (activeRestore) activeRestore.cancelled = true
 }
 
 // Tiny hook every internal component uses to track the shared user.
-// Lets BoostButton (and any future consumer) subscribe to login/logout
-// without each one wiring up its own listener.
 function useSharedUser() {
   const [user, setLocal] = useState(currentUser)
   useEffect(() => {
@@ -47,26 +112,67 @@ function useSharedUser() {
   return user
 }
 
+// ── Pending-action queue ─────────────────────────────────────────────────
+// FIFO queue of actions deferred until the next gate completes.
+// Multiple slots so a user clicking "Boost Episode" then "Connect
+// Wallet" in quick succession during the stub window doesn't lose
+// the first click. Each action runs in order on consume.
+const pendingActions = []
+function setPendingAction(fn) {
+  if (typeof fn !== 'function') return
+  pendingActions.push(fn)
+}
+function consumePendingAction() {
+  if (pendingActions.length === 0) return
+  // Drain into a local copy so callbacks that re-enqueue (e.g. an
+  // openEpisodeBoost that re-hits another gate) don't race with this
+  // loop. Defer one tick so React state from the gate completion has
+  // a chance to settle before each action checks currentUser / nwc.
+  const drained = pendingActions.splice(0, pendingActions.length)
+  setTimeout(() => {
+    for (const fn of drained) {
+      try { fn() } catch (e) { console.warn('[lb] pendingAction failed', e) }
+    }
+  }, 0)
+}
+function cancelPendingAction() {
+  pendingActions.length = 0
+}
+
+// ── Show-boost modal signal ──────────────────────────────────────────────
+const showBoostOpenListeners = new Set()
+let showBoostIsOpen = false
+function setShowBoostOpen(v) {
+  showBoostIsOpen = !!v
+  for (const fn of showBoostOpenListeners) {
+    try { fn(showBoostIsOpen) } catch {}
+  }
+}
+
 function BoostApp() {
+  return <BoostButton onOpen={() => setShowBoostOpen(true)} />
+}
+
+function ShowBoostHost() {
   const user = useSharedUser()
-  // The boost modal hosts the login UI inline (sign-in button replaces
-  // the "Boost as me" half of the attribution toggle when logged out),
-  // so onUserChange has to propagate to the same module-level setUser
-  // the login-from-the-nav button used to. abortRestore() stops a
-  // background session restore from racing the user's manual action.
-  return (
-    <BoostButton
-      user={user}
+  const [open, setOpenLocal] = useState(showBoostIsOpen)
+  useEffect(() => {
+    const fn = (v) => setOpenLocal(v)
+    showBoostOpenListeners.add(fn)
+    return () => { showBoostOpenListeners.delete(fn) }
+  }, [])
+  if (!open) return null
+  return createPortal(
+    <BoostModal
+      user={user || null}
       onUserChange={(u) => { abortRestore(); setUser(u) }}
-    />
+      onClose={() => setShowBoostOpen(false)}
+    />,
+    document.body,
   )
 }
 
-// ── Standalone login prompt ────────────────────────────────────────────────
-// Module-level open/close signal so any consumer (e.g. the boosts page
-// banner) can call api.requestLogin() to surface the login UI without
-// going through the boost modal. The host below is mounted once at
-// startup; the modal renders via portal directly to document.body.
+// ── Standalone login prompt ──────────────────────────────────────────────
 const loginOpenListeners = new Set()
 let loginIsOpen = false
 function setLoginOpen(v) {
@@ -87,22 +193,63 @@ function LoginPromptHost() {
   return createPortal(
     <LoginModal
       onLogin={(u) => {
-        // Same propagation contract as BoostModal's inline login.
         abortRestore()
         setUser(u)
         setLoginOpen(false)
+        // If a boost or wallet-connect was waiting on login, run it now.
+        consumePendingAction()
       }}
-      onClose={() => setLoginOpen(false)}
+      onClose={() => {
+        setLoginOpen(false)
+        // User dismissed the login modal — abandon any pending action
+        // so they're not surprised by a modal opening minutes later.
+        cancelPendingAction()
+      }}
+    />,
+    document.body,
+  )
+}
+
+// ── Wallet connect host ──────────────────────────────────────────────────
+const walletConnectOpenListeners = new Set()
+let walletConnectIsOpen = false
+function setWalletConnectOpen(v) {
+  walletConnectIsOpen = !!v
+  for (const fn of walletConnectOpenListeners) {
+    try { fn(walletConnectIsOpen) } catch {}
+  }
+}
+
+function WalletConnectHost() {
+  const user = useSharedUser()
+  const [open, setOpenLocal] = useState(walletConnectIsOpen)
+  useEffect(() => {
+    const fn = (v) => setOpenLocal(v)
+    walletConnectOpenListeners.add(fn)
+    return () => { walletConnectOpenListeners.delete(fn) }
+  }, [])
+  if (!open) return null
+  return createPortal(
+    <WalletConnectModal
+      user={user || null}
+      onConnected={() => {
+        // NWC successfully connected. Run any pending action that was
+        // gated on having a wallet (e.g. an episode boost the user
+        // initiated before connecting).
+        consumePendingAction()
+      }}
+      onClose={() => {
+        setWalletConnectOpen(false)
+        // If user dismissed the wallet modal mid-pending, drop the
+        // queued action so a stray click later doesn't surprise them.
+        cancelPendingAction()
+      }}
     />,
     document.body,
   )
 }
 
 // ── Episode boost host ───────────────────────────────────────────────────
-// Module-level signal so the home page (or any consumer) can call
-// api.openEpisodeBoost({ episode, splits }) without needing a React ref
-// into the widget. The host below is mounted once at startup and listens
-// for the signal; the modal renders via portal directly to document.body.
 const episodeBoostListeners = new Set()
 let episodeBoostState = null   // { episode, splits } or null when closed
 function setEpisodeBoostState(v) {
@@ -123,7 +270,7 @@ function EpisodeBoostHost() {
   if (!state) return null
   return createPortal(
     <EpisodeBoostModal
-      user={user}
+      user={user || null}
       onUserChange={(u) => { abortRestore(); setUser(u) }}
       onClose={() => setEpisodeBoostState(null)}
       episode={state.episode}
@@ -133,58 +280,99 @@ function EpisodeBoostHost() {
   )
 }
 
+// ── Identity slot host ───────────────────────────────────────────────────
+// Mounted into #lb-identity-slot. Reads user state + NWC state and
+// renders the persistent identity widget. All actions wired through the
+// API (sign in / connect wallet / disconnect / sign out) so the widget
+// itself doesn't need to know about module-level signals.
+function IdentityHost() {
+  const user = useSharedUser()
+  const [walletStatus, setWalletStatus] = useState(() => nwc.getStatus())
+  useEffect(() => nwc.onChange(setWalletStatus), [])
+
+  return (
+    <IdentityWidget
+      user={user}
+      walletStatus={walletStatus}
+      onSignInClick={() => api.requestLogin()}
+      onConnectWallet={() => api.openWalletConnect()}
+      onDisconnectWallet={() => api.disconnectWallet()}
+      onSignOut={() => api.logout()}
+    />
+  )
+}
+
 let mounted = false
 
 const api = {
   /**
-   * Mount the boost button into its slot. Login UI is now inline inside
-   * the boost modal, so there's no separate nav slot for it.
-   * Idempotent — safe to call once on page load.
+   * Mount the React surfaces into their slots. Idempotent — safe to
+   * call multiple times. Triggered automatically on module load via
+   * DOMContentLoaded or immediately when imported after the page is
+   * already interactive (the lazy-load path).
    */
   mount() {
     if (mounted) return
     mounted = true
-    const boostEl = document.getElementById('lb-boost-slot')
 
+    // Boost-the-show button
+    const boostEl = document.getElementById('lb-boost-slot')
     if (boostEl) {
+      // Wipe any static placeholder before rendering the React tree.
+      boostEl.replaceChildren()
       createRoot(boostEl).render(<BoostApp />)
     }
 
-    // Always-mounted host for the standalone login modal. We attach a
-    // hidden div to the body so requestLogin() works even on pages that
-    // don't have an #lb-boost-slot.
-    const promptHost = document.createElement('div')
-    promptHost.id = 'lb-login-prompt-host'
-    promptHost.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;'
-    document.body.appendChild(promptHost)
-    createRoot(promptHost).render(<LoginPromptHost />)
+    // Identity widget
+    const identityEl = document.getElementById('lb-identity-slot')
+    if (identityEl) {
+      identityEl.replaceChildren()
+      createRoot(identityEl).render(<IdentityHost />)
+    }
 
-    // Same pattern for the episode boost modal — page calls
-    // api.openEpisodeBoost(...) and the host renders the modal via portal.
-    const epHost = document.createElement('div')
-    epHost.id = 'lb-episode-boost-host'
-    epHost.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;'
-    document.body.appendChild(epHost)
-    createRoot(epHost).render(<EpisodeBoostHost />)
+    // Always-mounted hosts for portal modals. We attach hidden divs
+    // to the body so they work even on pages that don't have the
+    // boost slot or identity slot.
+    function makeHost(id) {
+      const el = document.createElement('div')
+      el.id = id
+      el.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;'
+      document.body.appendChild(el)
+      return el
+    }
+    createRoot(makeHost('lb-login-prompt-host')).render(<LoginPromptHost />)
+    createRoot(makeHost('lb-episode-boost-host')).render(<EpisodeBoostHost />)
+    createRoot(makeHost('lb-show-boost-host')).render(<ShowBoostHost />)
+    createRoot(makeHost('lb-wallet-connect-host')).render(<WalletConnectHost />)
+    createRoot(makeHost('lb-toast-host')).render(<ToastHost />)
 
-    // Kick off async session restore in the background — the buttons
-    // render immediately in their logged-out state, and flip to the
-    // logged-in view when (and if) restore succeeds. If the user
-    // clicks Login before restore completes, abortRestore() flips
-    // this attempt's cancellation token and we discard the result.
+    // Kick off async session restore in the background. The identity
+    // widget already renders the cached avatar/name as a stub at this
+    // point (see initialUser()), so this just refreshes signer state
+    // + relay pool + latest profile data. When it completes we fire
+    // any pendingAction queued during the stub window — e.g. a user
+    // who clicked "Boost Episode" before the signer was ready.
     const saved = loadSession()
     if (saved) {
       const token = { cancelled: false }
       activeRestore = token
       restoreSession(saved)
-        .then((u) => { if (!token.cancelled) setUser(u || null) })
-        .catch(() => { if (!token.cancelled) setUser(null) })
+        .then((u) => {
+          if (token.cancelled) return
+          setUser(u || null)
+          consumePendingAction()
+        })
+        .catch(() => {
+          if (token.cancelled) return
+          setUser(null)
+          consumePendingAction()
+        })
         .finally(() => { if (activeRestore === token) activeRestore = null })
     }
   },
 
   /** Currently logged-in NDKUser, or null. */
-  getUser() { return currentUser },
+  getUser() { return currentUser || null },
 
   /** Subscribe to login/logout. Returns an unsubscribe fn. */
   onChange(fn) {
@@ -196,55 +384,117 @@ const api = {
   getNDK() { return getNDK() },
 
   /**
-   * Open the standalone login modal. No-op if already logged in — the
-   * banner on consumer pages should hide its sign-in CTA in that case
-   * anyway, but we guard here too.
+   * Open the standalone login modal. No-op if already logged in.
    */
   requestLogin() {
-    if (currentUser) return
+    if (currentUser && currentUser !== undefined) return
     abortRestore()
     setLoginOpen(true)
   },
 
-  /**
-   * Sign the current user out. Mirrors BoostModal's handleLogout: clear
-   * persisted session, reset the NDK instance (drops the signer + relay
-   * pool), lock the NWC client (in-memory teardown — the encrypted blob
-   * stays at rest, ready to unlock on next login as the same npub), then
-   * notify listeners so consumers re-render as logged-out.
-   */
-  logout() {
-    if (!currentUser) return
-    clearSession()
-    resetNDK()
-    nwc.lockOnLogout()
-    setUser(null)
+  /** Open the wallet-connect modal. No-op if not signed in (the
+   *  identity dropdown should hide the option in that case). */
+  openWalletConnect() {
+    if (!currentUser || currentUser === undefined) {
+      // Pending action so connecting requires login first.
+      setPendingAction(() => api.openWalletConnect())
+      api.requestLogin()
+      return
+    }
+    if (isStubUser(currentUser)) {
+      // Restore still running — encrypting the URI needs the real
+      // signer. Queue the action; consumePendingAction fires when
+      // restoreSession completes.
+      setPendingAction(() => api.openWalletConnect())
+      return
+    }
+    setWalletConnectOpen(true)
+  },
+
+  /** Disconnect the user's NWC wallet — wipes the encrypted blob
+   *  and tears down the in-memory client. */
+  disconnectWallet() {
+    nwc.disconnect()
   },
 
   /**
-   * Open the episode boost modal for a given RSS item.
+   * Sign the current user out. Clears persisted session, drops the
+   * NDK instance, locks the in-memory NWC client (the encrypted blob
+   * stays at rest, ready to unlock when they sign back in as the
+   * same npub).
+   */
+  logout() {
+    if (!currentUser || currentUser === undefined) return
+    clearSession()
+    resetNDK()
+    nwc.lockOnLogout()
+    cancelPendingAction()
+    setUser(null)
+  },
+
+  /** Open the show-boost modal directly. */
+  openShowBoost() {
+    setShowBoostOpen(true)
+  },
+
+  /**
+   * Open the episode boost modal for a given RSS item. Walks the
+   * gating chain — if the user isn't logged in we save the call and
+   * open the login modal first; if they are logged in but have no
+   * NWC connected we open the wallet-connect modal first. Either
+   * gate completing fires the saved action and the boost modal
+   * eventually opens.
    *
    * @param {object}  args
    * @param {object}  args.episode  - { number, title, guid }
    * @param {object}  args.splits   - { recipients, totalWeight, source }
-   *                                  (use lib/episodeData.js helpers to
-   *                                  build these from a parsed <item>).
-   *
-   * Reentrant-safe: opening with a new episode while one is already
-   * open replaces the in-flight modal's contents. Boost-in-progress
-   * scenarios won't hit this since the modal blocks Esc + backdrop
-   * close while paying.
    */
   openEpisodeBoost({ episode, splits }) {
     if (!episode || !splits || !Array.isArray(splits.recipients)) {
       console.warn('[LBLogin] openEpisodeBoost: missing episode/splits payload')
       return
     }
-    // Apply LB's per-host substitutions (e.g. Fountain's boostbot →
-    // aquafox30@primal.net) before the modal sees the recipient list.
-    // Single chokepoint keeps the override invisible to the home page
-    // parser and ensures every downstream consumer (UI, LNURL, kind
-    // 30078) reflects the swap.
+    const args = { episode, splits }
+
+    // Gate 1: signed in?
+    if (!currentUser || currentUser === undefined) {
+      setPendingAction(() => api.openEpisodeBoost(args))
+      api.requestLogin()
+      return
+    }
+
+    // Gate 1.5: signed in but only as a stub — wait for real restore
+    // to land before reaching the NWC gate, since unlocking the NWC
+    // blob needs the real signer.
+    if (isStubUser(currentUser)) {
+      setPendingAction(() => api.openEpisodeBoost(args))
+      return
+    }
+
+    // Gate 2: NWC connected?
+    if (!nwc.isReady()) {
+      // Try to unlock from a saved blob. If that succeeds, fall
+      // straight through. If it fails (no blob, wrong account, signer
+      // hung, etc.) we open the connect modal.
+      nwc.ensureReady(currentUser)
+        .then((ok) => {
+          if (ok) {
+            // Re-call openEpisodeBoost — Gate 2 will pass now.
+            api.openEpisodeBoost(args)
+          } else {
+            setPendingAction(() => api.openEpisodeBoost(args))
+            api.openWalletConnect()
+          }
+        })
+        .catch(() => {
+          setPendingAction(() => api.openEpisodeBoost(args))
+          api.openWalletConnect()
+        })
+      return
+    }
+
+    // Both gates pass — open the form. Apply LB's per-host substitutions
+    // before the modal sees the recipient list.
     const normalizedRecipients = applyRecipientOverrides(splits.recipients)
     setEpisodeBoostState({
       episode,
@@ -259,16 +509,11 @@ const api = {
   onNwcChange(fn) { return nwc.onChange(fn) },
 
   /**
-   * Sign a raw event template using the current user's signer. Returns a
-   * complete signed event (id, pubkey, sig, created_at) suitable for
-   * publishing to relays OR for sending to a non-relay endpoint (e.g.
-   * a NIP-57 LNURL callback).
-   *
-   * Throws if no user is logged in. Caller is responsible for catching
-   * signer-cancelled errors (e.g. the user denied the prompt).
+   * Sign a raw event template using the current user's signer.
+   * Throws if no user is logged in.
    */
   async signEvent(template) {
-    if (!currentUser) throw new Error('Not signed in')
+    if (!currentUser || currentUser === undefined) throw new Error('Not signed in')
     const ndk = getNDK()
     if (!ndk.signer) throw new Error('No signer available')
     const ev = new NDKEvent(ndk)
@@ -281,32 +526,20 @@ const api = {
   },
 
   /**
-   * Publish a pre-signed event to the user's outbox. The signedEvent
-   * object must already have id + sig populated (i.e. came from
-   * signEvent above, or another signer).
-   *
-   * Returns a Set of relays that ack'd the event. May be empty if no
-   * relay confirmed within NDK's internal timeout — callers usually
-   * ignore the return and treat the publish as best-effort.
+   * Publish a pre-signed event to the user's outbox. Returns a Set of
+   * relays that ack'd the event.
    */
   async publishEvent(signedEvent) {
     if (!signedEvent?.id || !signedEvent?.sig) {
       throw new Error('Event is not signed')
     }
     const ndk = getNDK()
-    // Make sure relays are connected before we try to broadcast — on
-    // pages where signEvent was called immediately after login the pool
-    // can still be mid-handshake.
     await connectAndWait(ndk).catch(() => {})
     const ev = new NDKEvent(ndk, signedEvent)
     return ev.publish()
   },
 
-  /**
-   * Convenience: sign + publish in one call. Returns the signed raw
-   * event so callers can render the result optimistically (e.g. insert
-   * into a feed).
-   */
+  /** Convenience: sign + publish in one call. */
   async signAndPublish(template) {
     const signed = await this.signEvent(template)
     await this.publishEvent(signed)

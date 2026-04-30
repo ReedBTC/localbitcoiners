@@ -22,6 +22,12 @@ function isHex64(s) {
 // read-only flow: you're either logged in with a usable signer or anonymous.
 
 const SESSION_KEY = 'lb_nostr_session'
+// Cached profile snapshot — separate key from the session record so the
+// shape of the session can change without invalidating profile cache.
+// Used to render the IdentityWidget avatar/name *synchronously* on page
+// boot while the real session restore runs in the background, avoiding
+// the 1-2s flash of "Sign in" / shimmer on every cross-page navigation.
+const PROFILE_KEY = 'lb_nostr_profile_v1'
 
 export function saveSession(record) {
   if (!record?.method || !record?.pubkey) return
@@ -42,6 +48,45 @@ export function loadSession() {
 
 export function clearSession() {
   try { localStorage.removeItem(SESSION_KEY) } catch {}
+}
+
+/**
+ * Persist a snapshot of the user's display profile so the next page
+ * load can render the identity widget instantly. Caller passes a
+ * plain object — we don't store NDKUser instances or signer state,
+ * just the bits the UI reads.
+ *
+ * Refreshed every time setUser is called with a real user, so it
+ * stays current with whatever the relays last returned.
+ */
+export function saveProfile({ pubkey, npub, displayName, name, image }) {
+  if (typeof pubkey !== 'string' || !pubkey) return
+  try {
+    localStorage.setItem(PROFILE_KEY, JSON.stringify({
+      pubkey,
+      npub: typeof npub === 'string' ? npub : '',
+      displayName: typeof displayName === 'string' ? displayName : '',
+      name: typeof name === 'string' ? name : '',
+      image: typeof image === 'string' ? image : '',
+      savedAt: Date.now(),
+    }))
+  } catch {}
+}
+
+export function loadCachedProfile() {
+  try {
+    const raw = localStorage.getItem(PROFILE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (typeof parsed?.pubkey !== 'string' || !parsed.pubkey) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+export function clearProfile() {
+  try { localStorage.removeItem(PROFILE_KEY) } catch {}
 }
 
 // Drop nonsense relay URLs before handing them to NDK on restore. wss:// only,

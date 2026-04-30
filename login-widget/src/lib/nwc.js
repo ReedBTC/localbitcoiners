@@ -24,6 +24,7 @@ import {
   clearEncrypted,
 } from './nwcStore.js'
 import { getNDK } from './ndk.js'
+import { withTimeout } from './utils.js'
 
 // In-memory client + the npub it belongs to. Reset on logout or wrong
 // account. We hold the NWCClient instead of the URI so once it's open
@@ -87,12 +88,12 @@ async function probe(nwcUri) {
   // getBalance is the cheapest method that covers connectivity + auth.
   // 12s budget — wallet relay handshake plus signer round-trip on the
   // wallet's side; mobile wallets in the background can take a moment.
-  const balanceP = client.getBalance()
-  const timeout = new Promise((_, rej) =>
-    setTimeout(() => rej(new Error('Wallet didn\'t respond within 12 seconds. Is your wallet online?')), 12000),
-  )
   try {
-    await Promise.race([balanceP, timeout])
+    await withTimeout(
+      client.getBalance(),
+      12000,
+      'Wallet didn\'t respond within 12 seconds. Is your wallet online?',
+    )
   } catch (e) {
     try { client.close() } catch {}
     throw e
@@ -100,10 +101,7 @@ async function probe(nwcUri) {
   // Best-effort alias lookup (some wallets don't implement get_info).
   let alias = null
   try {
-    const info = await Promise.race([
-      client.getInfo(),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('info-timeout')), 6000)),
-    ])
+    const info = await withTimeout(client.getInfo(), 6000, 'info-timeout')
     if (info && typeof info.alias === 'string') alias = info.alias
   } catch {}
   return { client, alias }
@@ -134,12 +132,26 @@ export async function connect(nwcUri, currentUser) {
     throw new Error('Signer unavailable — please re-log-in.')
   }
 
+  // Same 8 s bound as ensureReady's decrypt path. Remote signers can
+  // hang on NIP-44 encrypt the same way they hang on decrypt; a fresh
+  // connect shouldn't trap the user any longer than a re-unlock would.
   let ciphertext
   try {
-    ciphertext = await encryptForSelf(ndk.signer, ndk.getUser({ pubkey: currentUser.pubkey }), nwcUri)
+    ciphertext = await withTimeout(
+      encryptForSelf(ndk.signer, ndk.getUser({ pubkey: currentUser.pubkey }), nwcUri),
+      8000,
+      'Your signer didn\'t respond. If you use a remote signer (bunker/Amber), check that it\'s online and try again.',
+    )
   } catch (e) {
+    // Log full error for debugging; surface a generic message to the
+    // user. SDK / bunker errors can include relay URLs and internal
+    // event ids that aren't useful in a UI string.
+    console.warn('[lb-nwc] encrypt failed', e?.message || e)
     try { client.close() } catch {}
-    throw new Error(`Failed to encrypt connection: ${e.message || e}`)
+    if (/timeout/i.test(String(e?.message || ''))) {
+      throw new Error('Your signer didn\'t respond. Check that your bunker / signer app is online and try again.')
+    }
+    throw new Error('Couldn\'t secure your wallet connection. Check that your signer is responsive and try again.')
   }
 
   const ownerNpub = currentUser.npub || nip19.npubEncode(currentUser.pubkey)
@@ -181,30 +193,52 @@ export async function ensureReady(currentUser) {
   const ndk = getNDK()
   if (!ndk?.signer) return false
 
+  // Some signers (notably remote bunkers with broken relay sets and
+  // older extension builds) silently hang on NIP-44 / NIP-04 decrypt
+  // instead of surfacing a rejection. Bound the call so the modal
+  // can't get stuck on "Unlocking wallet…" forever. 8 s is plenty for
+  // a healthy signer round-trip; anything longer and the signer is
+  // effectively broken and we shouldn't wait further.
+  //
+  // On timeout we wipe the encrypted blob — keeping it would just
+  // make the next modal open hit the same wall. The user falls
+  // through to the connect form and can paste a fresh URI; if their
+  // signer is still broken, encrypt-self will hit a similar timeout
+  // there with the same clear error.
+  console.info('[lb-nwc] ensureReady: decrypting blob…')
   let nwcUri
   try {
-    nwcUri = await decryptFromSelf(
-      ndk.signer,
-      ndk.getUser({ pubkey: currentUser.pubkey }),
-      blob.ciphertext,
+    nwcUri = await withTimeout(
+      decryptFromSelf(
+        ndk.signer,
+        ndk.getUser({ pubkey: currentUser.pubkey }),
+        blob.ciphertext,
+      ),
+      8000,
+      'Your signer didn\'t respond. If you use a remote signer (bunker/Amber), check that it\'s online and try again.',
     )
+    console.info('[lb-nwc] ensureReady: decrypt ok')
   } catch (e) {
-    // Decryption failed — most likely the user pasted a different nsec
-    // than originally, or the signer's encryption changed. Treat as
-    // "needs reconnect", don't silently delete in case they want to
-    // troubleshoot manually.
-    throw new Error(`Couldn't unlock wallet connection: ${e.message || e}`)
+    console.warn('[lb-nwc] ensureReady: decrypt failed', e?.message || e)
+    // Don't auto-clear the blob — the failure may be transient (signer
+    // app momentarily backgrounded, relay blip). The modal surfaces a
+    // generic error and shows a "Reset saved wallet" option if the
+    // user wants to wipe and start fresh. Original error logged above.
+    if (/timeout/i.test(String(e?.message || ''))) {
+      throw new Error('Your signer didn\'t respond. Check that your bunker / signer app is online and try again.')
+    }
+    throw new Error('Couldn\'t unlock your wallet connection. Reconnect to keep boosting.')
   }
 
   const client = new NWCClient({ nostrWalletConnectUrl: nwcUri })
   // Verify the connection is still alive — wallet may have revoked the
   // budget, the relay may have rotated, etc. Cheap getBalance round-trip.
+  console.info('[lb-nwc] ensureReady: probing getBalance…')
   try {
-    await Promise.race([
-      client.getBalance(),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('wallet-unreachable')), 8000)),
-    ])
+    await withTimeout(client.getBalance(), 8000, 'wallet-unreachable')
+    console.info('[lb-nwc] ensureReady: getBalance ok')
   } catch (e) {
+    console.warn('[lb-nwc] ensureReady: getBalance failed', e?.message || e)
     try { client.close() } catch {}
     throw new Error('Saved wallet connection is no longer reachable. Reconnect to keep boosting.')
   }
@@ -213,14 +247,12 @@ export async function ensureReady(currentUser) {
   activeOwnerNpub = currentNpub
   // Best-effort alias refresh.
   try {
-    const info = await Promise.race([
-      client.getInfo(),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('info-timeout')), 5000)),
-    ])
+    const info = await withTimeout(client.getInfo(), 5000, 'info-timeout')
     activeWalletAlias = info?.alias || null
   } catch {
     activeWalletAlias = null
   }
+  console.info('[lb-nwc] ensureReady: connected')
   notify()
   return true
 }

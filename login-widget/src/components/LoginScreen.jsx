@@ -612,7 +612,7 @@ export default function LoginScreen({ onLogin, embedded = false }) {
           inputMode="text"
           autoCapitalize="none"
           autoCorrect="off"
-          className="w-full px-4 py-3 rounded-lg bg-neutral-900 border border-neutral-700 text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-orange-500 font-mono text-sm"
+          className="w-full px-4 py-3 rounded-lg bg-neutral-900 border border-neutral-700 text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/30 font-mono text-sm"
           aria-label="Nostr nsec input"
         />
       </div>
@@ -774,7 +774,7 @@ export default function LoginScreen({ onLogin, embedded = false }) {
               inputMode="text"
               autoCapitalize="none"
               autoCorrect="off"
-              className="w-full px-4 py-3 rounded-lg bg-neutral-900 border border-neutral-700 text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-orange-500 font-mono text-sm"
+              className="w-full px-4 py-3 rounded-lg bg-neutral-900 border border-neutral-700 text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/30 font-mono text-sm"
             />
             <button
               onClick={loginWithBunker}
@@ -889,7 +889,7 @@ export default function LoginScreen({ onLogin, embedded = false }) {
               inputMode="text"
               autoCapitalize="none"
               autoCorrect="off"
-              className="w-full px-4 py-3 rounded-lg bg-neutral-900 border border-neutral-700 text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-orange-500 font-mono text-sm"
+              className="w-full px-4 py-3 rounded-lg bg-neutral-900 border border-neutral-700 text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/30 font-mono text-sm"
             />
           </div>
           <p className="text-xs text-neutral-500 leading-relaxed">

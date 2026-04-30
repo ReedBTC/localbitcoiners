@@ -22,15 +22,44 @@
   <meta property="og:title" content="Podcast Boosts — Local Bitcoiners" />
   <meta property="og:description" content="The Local Bitcoiners boost wall — read the latest boost messages and zaps from listeners on Nostr." />
   <meta property="og:site_name" content="Local Bitcoiners" />
-  <meta property="og:image" content="https://localbitcoiners.com/assets/LocalBitcoiners_banner_YT.png" />
+  <meta property="og:image" content="https://localbitcoiners.com/assets/LocalBitcoiners_banner_YT.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
 
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet" />
+  <!-- Self-hosted fonts. Variable WOFF2s — one file per family per
+       style covers all needed weights. -->
+  <link rel="preload" as="font" type="font/woff2" href="assets/fonts/source-serif-4.woff2" crossorigin />
+  <link rel="preload" as="font" type="font/woff2" href="assets/fonts/playfair-display.woff2" crossorigin />
 
   <style>
+    @font-face {
+      font-family: 'Playfair Display';
+      font-style: normal;
+      font-weight: 400 700;
+      font-display: swap;
+      src: url('assets/fonts/playfair-display.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Playfair Display';
+      font-style: italic;
+      font-weight: 400;
+      font-display: swap;
+      src: url('assets/fonts/playfair-display-italic.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Source Serif 4';
+      font-style: normal;
+      font-weight: 300 600;
+      font-display: swap;
+      src: url('assets/fonts/source-serif-4.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Source Serif 4';
+      font-style: italic;
+      font-weight: 300 400;
+      font-display: swap;
+      src: url('assets/fonts/source-serif-4-italic.woff2') format('woff2');
+    }
+
     /* ── Reset & Base ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { overflow-x: hidden; max-width: 100vw; }
@@ -119,6 +148,73 @@
       align-items: center;
       min-height: 32px;
     }
+    /* Static placeholder button — visible immediately on page load,
+       replaced by the React widget on first interaction. White SVG
+       bolt rather than the ⚡ emoji to avoid the yellow-on-orange
+       clash from OS-rendered emoji. */
+    .lb-boost-placeholder {
+      background: #f7931a;
+      color: #ffffff;
+      border: none;
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.3rem 0.65rem;
+      border-radius: 5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: background 0.15s;
+    }
+    .lb-boost-placeholder:hover { background: #d97b0e; }
+    .lb-boost-placeholder:disabled { opacity: 0.6; cursor: wait; }
+    .lb-boost-placeholder svg { width: 11px; height: 11px; flex-shrink: 0; }
+    .lb-boost-placeholder .lb-label-long { display: inline; }
+    .lb-boost-placeholder .lb-label-short { display: none; }
+    @media (max-width: 640px) {
+      .lb-boost-placeholder .lb-label-long { display: none; }
+      .lb-boost-placeholder .lb-label-short { display: inline; }
+    }
+
+    /* Identity slot — sits next to the boost button in the nav. */
+    #lb-identity-slot {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      min-height: 32px;
+    }
+    .lb-identity-placeholder {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--cream);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 0.35rem 0.85rem;
+      border-radius: 6px;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .lb-identity-placeholder:hover {
+      background: rgba(255, 255, 255, 0.16);
+      border-color: rgba(255, 255, 255, 0.32);
+    }
+    .lb-identity-restoring {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(90deg,
+        rgba(255,255,255,0.05) 0%,
+        rgba(255,255,255,0.15) 50%,
+        rgba(255,255,255,0.05) 100%);
+      background-size: 200% 100%;
+      animation: skeleton-shimmer 1.4s ease-in-out infinite;
+    }
+    @keyframes skeleton-shimmer {
+      0% { background-position: 100% 0; }
+      100% { background-position: -100% 0; }
+    }
 
     /* ── Page header ── */
     .page-header {
@@ -197,59 +293,6 @@
       margin-bottom: 1.8rem;
     }
     .note-card.is-root .note-body { font-size: 1.05rem; }
-
-    /* ── Login banner ── */
-    .login-banner {
-      background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 1.1rem 1.3rem;
-      margin-bottom: 1.6rem;
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      flex-wrap: wrap;
-      box-shadow: 0 2px 8px rgba(30,58,95,0.06);
-    }
-    .login-banner .lb-msg {
-      flex: 1;
-      min-width: 200px;
-      font-size: 0.95rem;
-      color: var(--text);
-    }
-    .login-banner .lb-msg strong { color: var(--navy); font-weight: 700; }
-    .login-banner .lb-msg .muted { color: var(--muted); display: block; font-size: 0.85rem; margin-top: 0.15rem; }
-    .login-banner .lb-cta {
-      background: var(--orange);
-      color: var(--white);
-      border: none;
-      padding: 0.55rem 1.15rem;
-      font-family: 'Source Serif 4', Georgia, serif;
-      font-size: 0.95rem;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background 0.15s;
-      flex-shrink: 0;
-    }
-    .login-banner .lb-cta:hover { background: var(--orange-d); }
-    .login-banner .lb-cta:disabled { opacity: 0.6; cursor: default; }
-    .login-banner.is-logged-in .lb-cta {
-      background: transparent;
-      color: var(--navy);
-      border: 1.5px solid var(--navy);
-    }
-    .login-banner.is-logged-in .lb-cta:hover {
-      background: var(--navy); color: var(--white);
-    }
-    .login-banner img.lb-pfp {
-      width: 36px; height: 36px;
-      border-radius: 50%;
-      object-fit: cover;
-      flex-shrink: 0;
-      background: var(--cream-d);
-    }
 
     .note-author {
       display: flex;
@@ -742,14 +785,31 @@
         <li><a href="/#links">Links</a></li>
       </ul>
     </nav>
-    <div id="lb-boost-slot" aria-label="Boost the Show"></div>
+    <div id="lb-boost-slot" aria-label="Boost the Show">
+      <button
+        type="button"
+        class="lb-boost-placeholder"
+        data-lb-boost-trigger="show"
+        aria-label="Boost the Show"
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M14.615 1.595a.75.75 0 0 1 .359.852L12.982 9.75h7.268a.75.75 0 0 1 .548 1.262l-10.5 11.25a.75.75 0 0 1-1.272-.71l1.992-7.302H3.75a.75.75 0 0 1-.548-1.262l10.5-11.25a.75.75 0 0 1 .913-.143Z" clip-rule="evenodd"/>
+        </svg>
+        <span class="lb-label-long">Boost the Show</span>
+        <span class="lb-label-short">Boost</span>
+      </button>
+    </div>
+    <div id="lb-identity-slot" aria-label="Account">
+      <!-- Static placeholder swapped out by IdentityWidget once the
+           bundle loads. Picks shimmer vs sign-in based on whether a
+           saved session exists; populated by inline script below. -->
+    </div>
   </div>
 </header>
 
 <!-- ══════════════════════════════ PAGE HEADER ══════════════════════════════ -->
 <section class="page-header">
   <h1>Podcast Boosts</h1>
-  <p>Boost messages and replies from listeners on Nostr — newest first.</p>
 </section>
 
 <!-- ══════════════════════════════ FEED ══════════════════════════════ -->
@@ -1276,7 +1336,8 @@
     $loading.style.display = 'none'
     $content.innerHTML = ''
 
-    $content.appendChild(buildLoginBanner())
+    // Login banner removed — the persistent identity widget in the nav
+    // is now the canonical sign-in / sign-out surface across the site.
 
     const repliesHeading = document.createElement('h2')
     repliesHeading.className = 'replies-heading'
@@ -1957,73 +2018,6 @@
     }, 3000)
   }
 
-  // ── Login banner (uses existing window.LBLogin widget) ─────────────
-  function buildLoginBanner() {
-    const banner = document.createElement('div')
-    banner.className = 'login-banner'
-
-    const renderState = () => {
-      banner.innerHTML = ''
-      const user = window.LBLogin?.getUser?.() || null
-      if (user) {
-        banner.classList.add('is-logged-in')
-        const pic = user?.profile?.image || user?.profile?.picture
-        if (pic && isSafeUrl(pic)) {
-          const img = document.createElement('img')
-          img.className = 'lb-pfp'
-          img.src = pic
-          img.alt = ''
-          img.referrerPolicy = 'no-referrer'
-          banner.appendChild(img)
-        }
-        const msg = document.createElement('div')
-        msg.className = 'lb-msg'
-        const name = user?.profile?.displayName || user?.profile?.name || (user?.npub || '').slice(0, 12) + '…'
-        msg.innerHTML = `<strong>Signed in as ${escapeHtml(name)}</strong><span class="muted">Comment, like, zap, or bookmark any boost below.</span>`
-        banner.appendChild(msg)
-
-        const btn = document.createElement('button')
-        btn.type = 'button'
-        btn.className = 'lb-cta'
-        btn.textContent = 'Sign out'
-        btn.addEventListener('click', () => {
-          try { window.LBLogin?.logout?.() } catch {}
-        })
-        banner.appendChild(btn)
-      } else {
-        banner.classList.remove('is-logged-in')
-        const msg = document.createElement('div')
-        msg.className = 'lb-msg'
-        msg.innerHTML = `<strong>Sign in with Nostr</strong><span class="muted">Sign in to comment, like, zap, or bookmark each boost.</span>`
-        banner.appendChild(msg)
-
-        const btn = document.createElement('button')
-        btn.type = 'button'
-        btn.className = 'lb-cta'
-        btn.textContent = 'Sign in with Nostr'
-        btn.addEventListener('click', () => {
-          try { window.LBLogin?.requestLogin?.() } catch {}
-        })
-        banner.appendChild(btn)
-      }
-    }
-
-    renderState()
-    if (window.LBLogin?.onChange) {
-      window.LBLogin.onChange(() => renderState())
-    } else {
-      // Widget not yet mounted — re-render once it lands.
-      const wait = setInterval(() => {
-        if (window.LBLogin?.onChange) {
-          clearInterval(wait)
-          window.LBLogin.onChange(() => renderState())
-          renderState()
-        }
-      }, 200)
-    }
-    return banner
-  }
-
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => (
       { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
@@ -2138,6 +2132,52 @@
     console.error('[boosts] init failed', err)
     showError()
   })
+</script>
+
+<!-- Identity slot placeholder. Populated synchronously on page load so
+     returning users see a shimmering circle until the widget script
+     replaces it with their avatar. New users get a static "Sign in"
+     pill that opens the login modal once the widget script finishes
+     loading. The widget is eager-loaded on this page (boosts uses
+     LBLogin extensively for replies/likes/zaps), so the swap is fast. -->
+<script>
+(function () {
+  var slot = document.getElementById('lb-identity-slot');
+  if (!slot) return;
+  var hasSession = false;
+  try { hasSession = !!localStorage.getItem('lb_nostr_session'); } catch (e) {}
+  if (hasSession) {
+    slot.innerHTML = '<div class="lb-identity-restoring" aria-label="Loading account"></div>';
+  } else {
+    slot.innerHTML = '<button type="button" class="lb-identity-placeholder" aria-label="Sign in with Nostr">Sign in</button>';
+    var btn = slot.querySelector('button');
+    btn.addEventListener('click', function () {
+      // The widget defer-loads alongside this page; by the time a user
+      // can click, window.LBLogin is usually defined. Optional chain
+      // for safety in case of really slow scripts.
+      if (window.LBLogin && typeof window.LBLogin.requestLogin === 'function') {
+        window.LBLogin.requestLogin();
+      }
+    });
+  }
+})();
+</script>
+
+<!-- Boost-the-show placeholder click handler — same pattern as the
+     home page so the lazy-load behavior matches. The widget here is
+     eager-loaded by the defer script below, so the placeholder is
+     replaced quickly; this handler is the fallback for the brief
+     window before that happens. -->
+<script>
+(function () {
+  var ph = document.querySelector('[data-lb-boost-trigger="show"]');
+  if (!ph) return;
+  ph.addEventListener('click', function () {
+    if (window.LBLogin && typeof window.LBLogin.openShowBoost === 'function') {
+      window.LBLogin.openShowBoost();
+    }
+  });
+})();
 </script>
 
 <!-- Login widget (shared) -->

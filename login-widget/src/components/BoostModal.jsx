@@ -13,14 +13,20 @@ import {
   pollVerify,
 } from '../lib/boostagram.js'
 import { isSafeUrl } from '../lib/utils.js'
-import { clearSession } from '../lib/sessionPersistence.js'
-import { resetNDK } from '../lib/ndk.js'
+import { lockBodyScroll, unlockBodyScroll } from '../lib/scrollLock.js'
+import { useModalTransition } from '../lib/useModalTransition.js'
+import { isStubUser } from '../lib/stubUser.js'
+import * as nwc from '../lib/nwc.js'
 import LoginModal from './LoginModal.jsx'
 
 const POLL_INTERVAL_MS = 2500
 const PRESETS = [21, 210, 2100, 21000]
 
 export default function BoostModal({ user, onUserChange, onClose }) {
+  // Enter / exit transition. requestClose runs the exit animation
+  // before invoking the parent's onClose.
+  const { visible, requestClose } = useModalTransition(onClose)
+
   const [amount, setAmount] = useState('21')
   const [message, setMessage] = useState('')
 
@@ -34,42 +40,64 @@ export default function BoostModal({ user, onUserChange, onClose }) {
   const [lnurlMeta, setLnurlMeta] = useState(null)
   const [initError, setInitError] = useState('')
 
-  // Invoice + event state
-  const [invoice, setInvoice] = useState('')
-  const [eventId, setEventId] = useState('')
-  const [verifyUrl, setVerifyUrl] = useState(null)
-  // payment_hash from the bolt11. Used for the optional LUD-21 preimage
-  // cross-check during verify polling.
-  const [paymentHash, setPaymentHash] = useState('')
-  // Whether the kind 30078 metadata event reached at least one boost relay.
-  // Surfaced in the success view so the user knows if their boost will be
-  // visible to a future bot watching the metadata stream.
-  const [metaPublished, setMetaPublished] = useState(true)
+  // Invoice + event state. Bundled into one object because every field
+  // is set together when handleGenerate succeeds and cleared together
+  // by handleReset — five separate useStates were just bookkeeping noise.
+  //   pr             — the bolt11 invoice string ('' before generation)
+  //   eventId        — the kind 30078 event id ('' before generation)
+  //   verifyUrl      — LUD-21 verify endpoint URL (null when absent)
+  //   paymentHash    — extracted bolt11 hash, used by pollVerify
+  //   metaPublished  — whether kind 30078 reached at least one relay
+  const [inv, setInv] = useState({
+    pr: '', eventId: '', verifyUrl: null, paymentHash: '', metaPublished: true,
+  })
 
   // Default: attributed when logged in, anonymous when not. An anonymous
   // donor cannot publish a kind 30078 with their identity — the burner
   // path applies. A logged-in donor opts into anonymous explicitly.
   const donorNpub = user?.npub || ''
   const [anonymous, setAnonymous] = useState(!donorNpub)
-  const [loading, setLoading] = useState(false)
-  // Mid-flow loading sub-state — tells the user *what* we're waiting on.
-  // Especially useful during the signer round-trip in attributed mode (a
-  // NIP-07 / bunker prompt may pop up in another window/app and the user
-  // wouldn't otherwise know to look for it).
-  const [loadingStep, setLoadingStep] = useState('')
-  const [error, setError] = useState('')
-  const [copied, setCopied] = useState(false)
-  const [paid, setPaid] = useState(false)
 
-  // Share-to-feed (optional kind 1 note) — only available when the donor
+  // Mid-flow flow state. phase ∈ 'idle'|'loading'|'paid'; step is a
+  // sub-label rendered while loading; error is the last surfaced error.
+  // Replaces three separate useStates that always changed together.
+  const [flow, setFlow] = useState({ phase: 'idle', step: '', error: '' })
+
+  const [copied, setCopied] = useState(false)
+
+  // NWC connection status — when set, the show-boost flow pays the
+  // invoice via the user's connected wallet instead of falling through
+  // to the QR display. The QR remains a fallback if the wallet pay
+  // fails or times out, so the user always has a path to settle.
+  const [nwcStatus, setNwcStatus] = useState(() => nwc.getStatus())
+  useEffect(() => nwc.onChange(setNwcStatus), [])
+  const [payingViaNwc, setPayingViaNwc] = useState(false)
+
+  // Share-to-feed (optional kind 1 note). Only available when the donor
   // has a real Nostr signer (logged in + not opting out via anonymous).
-  const [shareToFeed, setShareToFeed] = useState(false)
-  const [shareAttempted, setShareAttempted] = useState(false)
-  const [sharePublished, setSharePublished] = useState(false)
-  const [shareError, setShareError] = useState('')
+  // Bundled because the four fields move as a unit through the share
+  // lifecycle (enabled → attempted → published|error).
+  const [share, setShare] = useState({
+    enabled: false, attempted: false, published: false, error: '',
+  })
 
   const stopPollRef = useRef(null)
   const profile = user?.profile
+
+  // Destructure the bundled state objects back into the names the render
+  // JSX already uses. Lets the consolidation stay invisible at the read
+  // path; only the setters live in the new shape.
+  const { pr: invoice, eventId, verifyUrl, paymentHash, metaPublished } = inv
+  const loading = flow.phase === 'loading'
+  const paid = flow.phase === 'paid'
+  const error = flow.error
+  const loadingStep = flow.step
+  const {
+    enabled: shareToFeed,
+    attempted: shareAttempted,
+    published: sharePublished,
+    error: shareError,
+  } = share
 
   const canShareToFeed = !anonymous && !!donorNpub
 
@@ -95,7 +123,7 @@ export default function BoostModal({ user, onUserChange, onClose }) {
     stopPollRef.current = pollVerify(
       verifyUrl,
       POLL_INTERVAL_MS,
-      () => setPaid(true),
+      () => setFlow(f => ({ ...f, phase: 'paid' })),
       paymentHash || null,
     )
     return () => stopPollRef.current?.()
@@ -103,7 +131,7 @@ export default function BoostModal({ user, onUserChange, onClose }) {
 
   // Force shareToFeed off when anonymous flips on — mutually exclusive.
   useEffect(() => {
-    if (anonymous && shareToFeed) setShareToFeed(false)
+    if (anonymous && shareToFeed) setShare(s => ({ ...s, enabled: false }))
   }, [anonymous, shareToFeed])
 
   // When the user logs in mid-modal (via the inline Sign-in button), flip
@@ -118,12 +146,31 @@ export default function BoostModal({ user, onUserChange, onClose }) {
     prevDonorRef.current = donorNpub
   }, [donorNpub])
 
-  function handleLogout() {
-    clearSession()
-    resetNDK()
-    onUserChange?.(null)
-    setAnonymous(true)
-  }
+  // Profile loading skeleton. The brief window between login completing
+  // and the user's kind 0 profile arriving used to flash 'Your npub'
+  // before swapping to the real name. Show a placeholder for ~800 ms
+  // after donorNpub appears, then fall through to whatever's available
+  // (real name if it loaded, 'Your npub' if the user has no kind 0).
+  const PROFILE_PLACEHOLDER_MS = 800
+  const [profilePending, setProfilePending] = useState(false)
+  useEffect(() => {
+    if (!donorNpub) { setProfilePending(false); return }
+    setProfilePending(true)
+    const id = setTimeout(() => setProfilePending(false), PROFILE_PLACEHOLDER_MS)
+    return () => clearTimeout(id)
+  }, [donorNpub])
+
+  // Once the profile actually arrives we can drop the placeholder
+  // immediately rather than waiting out the timer.
+  useEffect(() => {
+    if (profile?.displayName || profile?.name || profile?.image) {
+      setProfilePending(false)
+    }
+  }, [profile?.displayName, profile?.name, profile?.image])
+
+  // Logout used to live in this modal as a small "Log out" link below
+  // the attribution toggle. It moved to the persistent identity dropdown
+  // in the nav, so this modal no longer needs to handle the action.
 
   // Publish the kind 1 share note once payment confirms — only if the
   // donor opted in, has a signer, and we haven't already attempted.
@@ -131,7 +178,7 @@ export default function BoostModal({ user, onUserChange, onClose }) {
   useEffect(() => {
     if (!paid || !shareToFeed || shareAttempted) return
     if (!canShareToFeed) return
-    setShareAttempted(true)
+    setShare(s => ({ ...s, attempted: true }))
     let cancelled = false
     ;(async () => {
       try {
@@ -141,48 +188,68 @@ export default function BoostModal({ user, onUserChange, onClose }) {
           amountSats: parseInt(amount, 10) || 0,
         })
         if (cancelled) return
-        if (r.published) setSharePublished(true)
-        else setShareError('Couldn\'t reach your relays.')
+        if (r.published) setShare(s => ({ ...s, published: true }))
+        else setShare(s => ({ ...s, error: 'Couldn\'t reach your relays.' }))
       } catch (e) {
         if (cancelled) return
-        setShareError(e?.message || 'Failed to publish to your feed.')
+        setShare(s => ({ ...s, error: e?.message || 'Failed to publish to your feed.' }))
       }
     })()
     return () => { cancelled = true }
   }, [paid, shareToFeed, shareAttempted, canShareToFeed, message, amount])
 
-  // Esc closes the modal — but only if a layered LoginModal isn't open
-  // on top of us. Both modals attach their own keydown listener; without
-  // this guard, hitting Esc to back out of the login flow would close the
-  // boost form too and lose whatever the user had typed.
-  useEffect(() => {
-    function handleKey(e) {
-      if (loginOpen) return
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [onClose, loginOpen])
+  // Esc-to-close intentionally NOT bound here — losing a half-typed
+  // boost message to a stray keystroke is too easy. The X button is
+  // the explicit close path.
 
-  // Lock page scroll while the modal is open so swipes inside the modal
-  // don't scroll the page underneath (especially on mobile where the
-  // modal becomes a full-viewport sheet).
+  // Lock page scroll while the modal is open. Uses position:fixed body
+  // pinning rather than overflow:hidden so iOS Safari + mobile keyboards
+  // don't shift the page underneath on each keystroke.
   useEffect(() => {
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prev }
+    lockBodyScroll()
+    return () => unlockBodyScroll()
   }, [])
 
+  // When the user clicks Boost during the stub-user window (page just
+  // loaded, restoreSession hasn't completed), we can't sign a kind
+  // 30078 yet — the NDK signer isn't on the instance. Defer the call
+  // and re-fire when the real user lands so attribution mode doesn't
+  // produce a payment without metadata.
+  const pendingSubmitRef = useRef(false)
+  useEffect(() => {
+    if (!pendingSubmitRef.current) return
+    if (!user || isStubUser(user)) return
+    pendingSubmitRef.current = false
+    setFlow(f => ({ ...f, error: '' }))
+    handleGenerate()
+    // handleGenerate is defined in this same render scope; reading it
+    // via the closure captures the latest amount/message/anonymous
+    // state. Effect intentionally re-runs on user transitions only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
+
   async function handleGenerate() {
-    setError('')
+    const fail = (msg) => setFlow({ phase: 'idle', step: '', error: msg })
+    setFlow({ phase: 'idle', step: '', error: '' })
+
+    // Stub-user gate: signer round-trip required for attributed
+    // mode (kind 30078 signing). Anon mode uses a burner key so it
+    // would technically work, but we gate uniformly to keep the flow
+    // simple and predictable.
+    if (isStubUser(user)) {
+      pendingSubmitRef.current = true
+      fail('Hang on — finishing sign-in. Your boost will fire once that\'s done.')
+      return
+    }
+
     const sats = parseInt(amount, 10)
-    if (!sats || sats < 1) { setError('Enter a valid amount.'); return }
-    if (!lnurlMeta) { setError('Lightning address not ready — try again.'); return }
+    if (!sats || sats < 1) { fail('Enter a valid amount.'); return }
+    if (!lnurlMeta) { fail('Lightning address not ready — try again.'); return }
 
     const minSats = Math.ceil((lnurlMeta.minSendable || 1000) / 1000)
     const maxSats = Math.floor((lnurlMeta.maxSendable || 1_000_000_000) / 1000)
     if (sats < minSats || sats > maxSats) {
-      setError(`Amount must be between ${minSats.toLocaleString()} and ${maxSats.toLocaleString()} sats.`)
+      fail(`Amount must be between ${minSats.toLocaleString()} and ${maxSats.toLocaleString()} sats.`)
       return
     }
 
@@ -193,8 +260,7 @@ export default function BoostModal({ user, onUserChange, onClose }) {
     const maxLen = lnurlMeta.commentAllowed || 0
     const trimmedComment = maxLen > 0 ? comment.slice(0, maxLen) : comment
 
-    setLoading(true)
-    setLoadingStep('Fetching invoice…')
+    setFlow({ phase: 'loading', step: 'Fetching invoice…', error: '' })
     try {
       // 1. Fetch invoice
       const { pr, verify } = await fetchLnurlInvoice(lnurlMeta.callback, sats * 1000, trimmedComment)
@@ -202,16 +268,14 @@ export default function BoostModal({ user, onUserChange, onClose }) {
       // 2. Extract payment hash — links the kind 30078 to this specific invoice.
       const realPaymentHash = bolt11PaymentHash(pr)
       const paymentHashTag = realPaymentHash || crypto.randomUUID().replace(/-/g, '')
-      setPaymentHash(realPaymentHash || '')
 
       // 3. Sign + publish kind 30078. Anonymous → single-use burner key
       //    (zeroed immediately after); attributed → donor's real signer.
-      setLoadingStep(anonymous
-        ? 'Publishing receipt…'
-        : 'Approve in your signer app…')
+      setFlow(f => ({ ...f, step: anonymous ? 'Publishing receipt…' : 'Approve in your signer app…' }))
       const burner = anonymous ? generateBurnerKeypair() : null
+      let eid, metaOk
       try {
-        const { eventId: eid, published } = await publishDonationBoostagram({
+        const result = await publishDonationBoostagram({
           burnerSk: burner?.sk || null,
           paymentHash: paymentHashTag,
           donorNpub: anonymous ? '' : donorNpub,
@@ -220,19 +284,66 @@ export default function BoostModal({ user, onUserChange, onClose }) {
           message: message.trim(),
           pageUrl: SITE_URL,
         })
-
-        setInvoice(pr)
-        setEventId(eid)
-        setVerifyUrl(verify)
-        setMetaPublished(!!published)
+        eid = result.eventId
+        metaOk = result.published
       } finally {
         if (burner?.sk) burner.sk.fill(0)
       }
+
+      // 4. Stamp the invoice + receipt into state. Both the NWC and
+      //    QR paths read from `inv`; the difference is which view the
+      //    user lands on (success directly vs the QR display).
+      setInv({
+        pr,
+        eventId: eid,
+        verifyUrl: verify,
+        paymentHash: realPaymentHash || '',
+        metaPublished: !!metaOk,
+      })
+
+      // 5. Pay path. If the user has a connected NWC wallet, fire
+      //    payInvoice and skip the QR entirely. On success the modal
+      //    flips to the paid state. On failure (timeout, rejection)
+      //    the QR fallback shows so the user can pay with any wallet.
+      if (nwc.isReady()) {
+        setPayingViaNwc(true)
+        setFlow({ phase: 'idle', step: '', error: '' })
+        try {
+          const payRes = await nwc.getClient().payInvoice({ invoice: pr })
+          if (payRes && payRes.preimage) {
+            setFlow({ phase: 'paid', step: '', error: '' })
+            return
+          }
+          setFlow({
+            phase: 'idle',
+            step: '',
+            error: 'Wallet didn\'t return a preimage — pay via the QR below to finish.',
+          })
+        } catch (e) {
+          const msg = String(e?.message || e)
+          const friendly = /timeout/i.test(msg)
+            ? 'Wallet didn\'t reply in time — check your wallet, the payment may have already gone through. Or pay via the QR below.'
+            : `Wallet pay failed: ${msg}. Pay via the QR below if you want to retry.`
+          setFlow({ phase: 'idle', step: '', error: friendly })
+        } finally {
+          setPayingViaNwc(false)
+        }
+      } else {
+        // No NWC — drop loading state. Phase stays 'idle' until
+        // pollVerify flips it to 'paid' once the bolt11 settles.
+        setFlow({ phase: 'idle', step: '', error: '' })
+      }
     } catch (e) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
-      setLoadingStep('')
+      // Log full error for debugging; surface a generic message.
+      // SDK / signer errors often include relay URLs and internal
+      // event ids that don't help a non-technical user.
+      console.warn('[lb] show-boost flow error', e?.message || e)
+      const msg = String(e?.message || '')
+      // Allow our own pre-validated user-facing messages through
+      // (they're already short, friendly, and actionable). Generic
+      // anything that looks SDK-shaped or has stack noise.
+      const looksFriendly = msg.length > 0 && msg.length < 160 && !/Error:|stack|undefined/i.test(msg)
+      fail(looksFriendly ? msg : 'Something went wrong preparing your boost. Try again in a moment.')
     }
   }
 
@@ -259,16 +370,10 @@ export default function BoostModal({ user, onUserChange, onClose }) {
 
   function handleReset() {
     stopPollRef.current?.()
-    setInvoice('')
-    setEventId('')
-    setVerifyUrl(null)
-    setPaymentHash('')
-    setMetaPublished(true)
-    setPaid(false)
-    setError('')
-    setShareAttempted(false)
-    setSharePublished(false)
-    setShareError('')
+    setInv({ pr: '', eventId: '', verifyUrl: null, paymentHash: '', metaPublished: true })
+    setFlow({ phase: 'idle', step: '', error: '' })
+    setShare(s => ({ enabled: s.enabled, attempted: false, published: false, error: '' }))
+    setPayingViaNwc(false)
   }
 
   // Centered-card layout at all sizes. p-3 outer leaves 12px margins on
@@ -277,20 +382,25 @@ export default function BoostModal({ user, onUserChange, onClose }) {
   // bouncing around when content height changes (presets → invoice → paid).
   return (
     <>
-      <div className="fixed inset-0 bg-black/70 z-[70]" onClick={onClose} aria-hidden="true" />
+      {/* Backdrop is purely visual — no click-to-close. The X button
+          is the explicit close path so a misclick won't lose typed
+          input or interrupt an in-flight boost. */}
+      <div
+        className={`fixed inset-0 bg-black/70 z-[70] transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}
+        aria-hidden="true"
+      />
 
       <div
         className="fixed inset-0 z-[71] flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto overflow-x-hidden"
         role="dialog"
         aria-label="Send us a Boost"
-        onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
       >
-        <div className="bg-neutral-900 border border-neutral-800 rounded-lg w-full max-w-sm flex flex-col shadow-2xl my-4 sm:my-8">
+        <div className={`bg-neutral-900 border border-neutral-700 rounded-lg w-full max-w-sm flex flex-col shadow-[0_25px_60px_-12px_rgba(0,0,0,0.8),0_0_0_1px_rgba(255,255,255,0.04)] my-4 sm:my-8 transition-[opacity,transform] duration-200 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
 
           {/* Header */}
           <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-neutral-800">
             <h2 className="text-sm font-semibold text-neutral-200">⚡ Boost the Show</h2>
-            <button onClick={onClose} className="text-neutral-500 hover:text-neutral-300 transition-colors text-lg leading-none" aria-label="Close">✕</button>
+            <button onClick={requestClose} className="text-neutral-500 hover:text-neutral-300 transition-colors text-lg leading-none" aria-label="Close">✕</button>
           </div>
 
           <div className="px-4 sm:px-6 py-5 space-y-4 flex-1">
@@ -328,7 +438,7 @@ export default function BoostModal({ user, onUserChange, onClose }) {
                     min="1"
                     value={amount}
                     onChange={e => setAmount(e.target.value)}
-                    className="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-orange-500"
+                    className="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/30"
                     placeholder="Custom amount"
                   />
                 </div>
@@ -340,25 +450,39 @@ export default function BoostModal({ user, onUserChange, onClose }) {
                     mode (handled by the donorNpub effect above). */}
                 <div>
                   <label className="block text-xs text-neutral-400 mb-1.5">Boost as</label>
-                  <div className="flex rounded-md overflow-hidden border border-neutral-700 text-xs">
+                  <div className="flex gap-2 text-xs">
                     {donorNpub ? (
                       <button
                         onClick={() => setAnonymous(false)}
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-3 px-3 transition-colors ${
-                          !anonymous ? 'bg-neutral-700 text-neutral-100' : 'bg-neutral-800 text-neutral-500 hover:text-neutral-300'
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-3 px-3 rounded-md border transition-colors ${
+                          !anonymous
+                            ? 'bg-orange-500/15 border-orange-500 text-orange-200 font-semibold'
+                            : 'bg-neutral-800 border-neutral-700 text-neutral-500 hover:text-neutral-300 hover:border-neutral-600'
                         }`}
+                        aria-pressed={!anonymous}
                       >
-                        {profile?.image && isSafeUrl(profile.image) && (
-                          <img src={profile.image} alt="" className="w-4 h-4 rounded-full object-cover" onError={e => { e.target.style.display = 'none' }} />
+                        {profilePending ? (
+                          // Profile fetch in flight — placeholder avoids the
+                          // 'Your npub' → real-name flash on fresh logins.
+                          <>
+                            <span className="inline-block w-4 h-4 rounded-full bg-neutral-700 animate-pulse" aria-hidden="true" />
+                            <span className="inline-block h-3 w-20 rounded bg-neutral-700 animate-pulse" aria-hidden="true" />
+                          </>
+                        ) : (
+                          <>
+                            {profile?.image && isSafeUrl(profile.image) && (
+                              <img src={profile.image} alt="" className="w-4 h-4 rounded-full object-cover" onError={e => { e.target.style.display = 'none' }} />
+                            )}
+                            <span className="truncate max-w-[140px]">
+                              {profile?.displayName || profile?.name || 'Your npub'}
+                            </span>
+                          </>
                         )}
-                        <span className="truncate max-w-[140px]">
-                          {profile?.displayName || profile?.name || 'Your npub'}
-                        </span>
                       </button>
                     ) : (
                       <button
                         onClick={() => setLoginOpen(true)}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-3 px-3 transition-colors bg-orange-500 hover:bg-orange-600 text-white font-medium"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-3 px-3 rounded-md border border-orange-500 transition-colors bg-orange-500 hover:bg-orange-600 text-white font-medium"
                       >
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                           <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
@@ -370,24 +494,16 @@ export default function BoostModal({ user, onUserChange, onClose }) {
                     )}
                     <button
                       onClick={() => setAnonymous(true)}
-                      className={`flex-1 py-3 px-3 border-l border-neutral-700 transition-colors ${
-                        anonymous ? 'bg-neutral-700 text-neutral-100' : 'bg-neutral-800 text-neutral-500 hover:text-neutral-300'
+                      className={`flex-1 py-3 px-3 rounded-md border transition-colors ${
+                        anonymous
+                          ? 'bg-orange-500/15 border-orange-500 text-orange-200 font-semibold'
+                          : 'bg-neutral-800 border-neutral-700 text-neutral-500 hover:text-neutral-300 hover:border-neutral-600'
                       }`}
+                      aria-pressed={anonymous}
                     >
                       Anon
                     </button>
                   </div>
-                  {/* Logout escape hatch — only shown when logged in. The
-                      nav doesn't have a logout button anymore (login lives
-                      inside the boost flow), so this is the only exit. */}
-                  {donorNpub && (
-                    <button
-                      onClick={handleLogout}
-                      className="mt-1.5 text-[10px] text-neutral-600 hover:text-neutral-400 transition-colors"
-                    >
-                      Log out
-                    </button>
-                  )}
                 </div>
 
                 <div>
@@ -397,7 +513,7 @@ export default function BoostModal({ user, onUserChange, onClose }) {
                     value={message}
                     onChange={e => setMessage(e.target.value)}
                     maxLength={140}
-                    className="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-orange-500"
+                    className="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/30"
                     placeholder="Leave a note with your boost"
                   />
                 </div>
@@ -410,7 +526,7 @@ export default function BoostModal({ user, onUserChange, onClose }) {
                     <input
                       type="checkbox"
                       checked={shareToFeed}
-                      onChange={e => setShareToFeed(e.target.checked)}
+                      onChange={e => setShare(s => ({ ...s, enabled: e.target.checked }))}
                       className="accent-orange-500 mt-0.5"
                     />
                     <span className="leading-snug">
@@ -437,15 +553,37 @@ export default function BoostModal({ user, onUserChange, onClose }) {
                 <button
                   onClick={handleGenerate}
                   disabled={loading || !!initError || !lnurlMeta}
-                  className="w-full py-3 rounded bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium text-white transition-colors"
+                  className="w-full inline-flex items-center justify-center gap-2 py-3 rounded bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium text-white transition-colors"
                 >
-                  {loading ? 'Preparing boost…' : !lnurlMeta && !initError ? 'Checking lightning address…' : 'Boost ⚡'}
+                  {loading ? (
+                    'Preparing boost…'
+                  ) : !lnurlMeta && !initError ? (
+                    'Checking lightning address…'
+                  ) : (
+                    <>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path fillRule="evenodd" d="M14.615 1.595a.75.75 0 0 1 .359.852L12.982 9.75h7.268a.75.75 0 0 1 .548 1.262l-10.5 11.25a.75.75 0 0 1-1.272-.71l1.992-7.302H3.75a.75.75 0 0 1-.548-1.262l10.5-11.25a.75.75 0 0 1 .913-.143Z" clipRule="evenodd"/>
+                      </svg>
+                      Boost
+                    </>
+                  )}
                 </button>
               </>
             )}
 
-            {/* ── QR / waiting ── */}
-            {invoice && !paid && (
+            {/* ── Paying via NWC (skips the QR entirely on success) ── */}
+            {invoice && payingViaNwc && (
+              <div className="flex flex-col items-center gap-3 py-6 text-center">
+                <span className="inline-block w-2 h-2 rounded-full bg-orange-500 animate-pulse" aria-hidden="true" />
+                <p className="text-sm text-neutral-300">Paying with your wallet…</p>
+                <p className="text-[11px] text-neutral-500 max-w-[240px] leading-snug">
+                  {parseInt(amount, 10).toLocaleString()} sats to {RECIPIENT_LUD16}
+                </p>
+              </div>
+            )}
+
+            {/* ── QR / waiting (fallback when no NWC, or NWC failed) ── */}
+            {invoice && !paid && !payingViaNwc && (
               <>
                 <div className="flex justify-center py-2">
                   <div className="bg-white p-3 rounded-lg">
@@ -528,7 +666,7 @@ export default function BoostModal({ user, onUserChange, onClose }) {
                   </p>
                 )}
                 <button
-                  onClick={onClose}
+                  onClick={requestClose}
                   className="mt-1 px-6 py-2 rounded bg-green-800 hover:bg-green-700 text-sm text-green-200 transition-colors"
                 >
                   Close
