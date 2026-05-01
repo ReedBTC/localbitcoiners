@@ -1603,7 +1603,7 @@
     if (parent.pubkey && !seenP.has(parent.pubkey)) {
       tags.push(['p', parent.pubkey])
     }
-    tags.push(['client', 'localbitcoiners'])
+    tags.push(['client', 'localbitcoiners.com'])
     return tags
   }
 
@@ -1666,6 +1666,7 @@
           ['e', ev.id],
           ['p', ev.pubkey],
           ['k', '1'],
+          ['client', 'localbitcoiners.com'],
         ],
       })
     } catch (e) {
@@ -1716,6 +1717,7 @@
           ['e', ev.id, ''],            // [name, id, relay-hint]
           ['p', ev.pubkey],
           ['k', String(ev.kind || 1)], // signal that we're reposting a kind 1
+          ['client', 'localbitcoiners.com'],
         ],
       })
       showToast('Reposted')
@@ -1973,6 +1975,10 @@
         ['amount', String(msats)],
         ['p', recipientPubkey],
         ['e', targetEvent.id],
+        // Propagates into the recipient's kind 9735 zap receipt's
+        // `description` tag (NIP-57 stuffs the full 9734 in there),
+        // which is how aggregators see the zap was sent from us.
+        ['client', 'localbitcoiners.com'],
       ],
     })
 

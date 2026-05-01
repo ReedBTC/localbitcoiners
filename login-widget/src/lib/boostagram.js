@@ -189,6 +189,7 @@ export function buildDonationBoostagramTemplate({
   const baseTags = [
     ['d', paymentHash],
     ['app', 'localbitcoiners.com', '1.0.0'],
+    ['client', 'localbitcoiners.com'],
     ['type', 'donation_boostagram'],
     ['sender', donorNpub],
     ['recipient', recipientLud16],
