@@ -170,30 +170,14 @@ export async function fetchLnurlInvoice(callbackUrl, amountMsats, comment) {
 
 // ─── Kind 30078 donation boostagram ─────────────────────────────────────────
 /**
- * Build, sign, and publish a kind 30078 donation_boostagram event.
+ * Build the unsigned event template for a kind 30078 donation_boostagram.
  *
- * Two signing paths controlled by `burnerSk`:
- *   • Burner key supplied → signed with that single-use key (anonymous mode).
- *     Caller is expected to zero the bytes immediately after this returns.
- *   • Burner key not supplied → signed with the NDK session signer (the
- *     donor's real Nostr key). Used when the donor wants the event
- *     attributed to them.
- *
- * @param {object}      params
- * @param {?Uint8Array} params.burnerSk       - Optional. If supplied, sign with this; else use session signer.
- * @param {string}      params.paymentHash    - Hex payment hash from the bolt11 invoice
- * @param {string}      params.donorNpub      - Full npub of the donor — '' for anonymous
- * @param {string}      params.recipientLud16 - lud16 of the recipient (for the recipient tag)
- * @param {number}      params.amountMsats    - Amount in millisatoshis
- * @param {string}      params.message        - Donor's message (may be empty)
- * @param {string}      params.pageUrl        - Site URL for the url tag
- * @param {Array}       [params.extraTags]    - Optional additional kind 30078 tags (appended verbatim).
- *                                              Used by per-episode boost flow to carry episode/leg/session
- *                                              context the bot consumes alongside the spec-required tags.
- * @returns {Promise<{eventId: string, published: boolean}>}
+ * Pure: returns a fresh template each call, no I/O. Same shape both the
+ * burner-signing path and the user-signer path consume — keeps the
+ * tag layout in one place so a refactor of either signing path can't
+ * silently drift from the other.
  */
-export async function publishDonationBoostagram({
-  burnerSk = null,
+export function buildDonationBoostagramTemplate({
   paymentHash,
   donorNpub,
   recipientLud16,
@@ -218,25 +202,37 @@ export async function publishDonationBoostagram({
   const safeExtras = Array.isArray(extraTags)
     ? extraTags.filter(t => Array.isArray(t) && typeof t[0] === 'string' && !reservedKeys.has(t[0]))
     : []
-  const eventTemplate = {
+  return {
     kind: 30078,
     created_at: Math.floor(Date.now() / 1000),
     content: message || '',
     tags: [...baseTags, ...safeExtras],
   }
+}
 
-  // Burner path is synchronous (raw key + nostr-tools); session path is
-  // async (round-trip through NIP-07 / bunker via NDK signer).
-  let signedEvent
-  if (burnerSk) {
-    signedEvent = finalizeEvent(eventTemplate, burnerSk)
-  } else {
-    const ndk = getNDK()
-    const ev = new NDKEvent(ndk, eventTemplate)
-    await signWithTimeout(ev)
-    signedEvent = await ev.toNostrEvent()
-  }
+/**
+ * Sign a pre-built kind 30078 template with the user's NDK session
+ * signer. Throws on signer failure — caller decides whether to fall
+ * back to a burner key or surface the error. Bounded by signWithTimeout
+ * so a hung remote signer can't stall the boost flow forever.
+ */
+export async function signDonationBoostagramWithUser(template) {
+  const ndk = getNDK()
+  const ev = new NDKEvent(ndk, template)
+  await signWithTimeout(ev)
+  return ev.toNostrEvent()
+}
 
+/** Sign a pre-built kind 30078 template with a single-use burner key. */
+export function signDonationBoostagramWithBurner(template, burnerSk) {
+  return finalizeEvent(template, burnerSk)
+}
+
+/**
+ * Publish an already-signed kind 30078 to the boostagram relay set.
+ * Returns whether at least one relay ack'd. Never throws.
+ */
+export async function publishSignedBoostagram(signedEvent) {
   const pool = new SimplePool()
   let published = false
   try {
@@ -247,8 +243,160 @@ export async function publishDonationBoostagram({
   } finally {
     pool.close(BOOSTAGRAM_RELAYS)
   }
-
   return { eventId: signedEvent.id, published }
+}
+
+/**
+ * Build, sign, and publish a kind 30078 donation_boostagram event in
+ * one call. Convenience wrapper retained for the show-boost flow,
+ * which still wants a single-call build+sign+publish.
+ *
+ * Two signing paths controlled by `burnerSk`:
+ *   • Burner key supplied → signed with that single-use key (anonymous mode).
+ *     Caller is expected to zero the bytes immediately after this returns.
+ *   • Burner key not supplied → signed with the NDK session signer (the
+ *     donor's real Nostr key). Used when the donor wants the event
+ *     attributed to them.
+ *
+ * @param {object}      params
+ * @param {?Uint8Array} params.burnerSk       - Optional. If supplied, sign with this; else use session signer.
+ * @param {string}      params.paymentHash    - Hex payment hash from the bolt11 invoice
+ * @param {string}      params.donorNpub      - Full npub of the donor — '' for anonymous
+ * @param {string}      params.recipientLud16 - lud16 of the recipient (for the recipient tag)
+ * @param {number}      params.amountMsats    - Amount in millisatoshis
+ * @param {string}      params.message        - Donor's message (may be empty)
+ * @param {string}      params.pageUrl        - Site URL for the url tag
+ * @param {Array}       [params.extraTags]    - Optional additional kind 30078 tags (appended verbatim).
+ * @returns {Promise<{eventId: string, published: boolean}>}
+ */
+export async function publishDonationBoostagram({
+  burnerSk = null,
+  paymentHash,
+  donorNpub,
+  recipientLud16,
+  amountMsats,
+  message,
+  pageUrl,
+  extraTags = [],
+}) {
+  const template = buildDonationBoostagramTemplate({
+    paymentHash, donorNpub, recipientLud16, amountMsats, message, pageUrl, extraTags,
+  })
+  const signedEvent = burnerSk
+    ? signDonationBoostagramWithBurner(template, burnerSk)
+    : await signDonationBoostagramWithUser(template)
+  return publishSignedBoostagram(signedEvent)
+}
+
+// ─── Kind 1 episode-boost share — donor's per-episode feed note ─────────────
+// Defensive caps for RSS-derived fields. The episode title and Fountain
+// URL come from a third-party feed — a compromised proxy or upstream
+// could inject pathological content (megabyte-long titles, weird URLs)
+// that bloat the kind 1 past relay-side size limits or look broken in
+// the donor's followers' feeds. These bounds are loose enough to fit
+// any realistic value and tight enough to make abuse uninteresting.
+const MAX_TITLE_LEN = 200
+const MAX_FOUNTAIN_URL_LEN = 256
+
+/**
+ * Build the unsigned event template for an episode-boost kind 1.
+ *
+ * Mirrors `publishBoostShareNote` (the show-level share) but with
+ * episode metadata folded into the visible content — episode number +
+ * quoted title — and a Fountain page link surfaced when the RSS
+ * feed has it.
+ *
+ * The Fountain link comes from `<podcast:contentLink>` and is
+ * backfilled a few days after a fresh episode publishes; when absent,
+ * the line is omitted entirely rather than guessed at.
+ */
+export function buildEpisodeBoostShareTemplate({
+  amountSats,
+  message,
+  episode,        // { number, title, guid?, fountainUrl? }
+  pageUrl,
+}) {
+  const epNum = episode?.number != null ? String(episode.number) : ''
+  const rawTitle = (episode?.title || '').trim()
+  const title = rawTitle.length > MAX_TITLE_LEN
+    ? rawTitle.slice(0, MAX_TITLE_LEN - 1) + '…'
+    : rawTitle
+  const rawFountain = (episode?.fountainUrl || '').trim()
+  // Drop the URL entirely if it's suspiciously long. Real Fountain
+  // page URLs are ~50 chars; anything over 256 is either a malformed
+  // feed or a hostile injection — better to omit the line than to
+  // ship a broken link to followers.
+  const fountainUrl = rawFountain.length > 0 && rawFountain.length <= MAX_FOUNTAIN_URL_LEN
+    ? rawFountain
+    : ''
+
+  const lines = [
+    epNum
+      ? `Just boosted ⚡ ${amountSats.toLocaleString()} sats to nostr:${RECIPIENT_NPUB} for Ep. ${epNum}`
+      : `Just boosted ⚡ ${amountSats.toLocaleString()} sats to nostr:${RECIPIENT_NPUB}`,
+  ]
+  if (title) {
+    lines.push('')
+    lines.push(`"${title}"`)
+  }
+  if (message && message.trim()) {
+    lines.push('')
+    lines.push(message.trim())
+  }
+  lines.push('')
+  if (fountainUrl) lines.push(fountainUrl)
+  lines.push(pageUrl)
+  const content = lines.join('\n')
+
+  const tags = [
+    ['t', 'localbitcoiners'],
+    ['t', 'boost'],
+    ['t', 'podcast'],
+    ['r', pageUrl],
+    ['client', 'localbitcoiners.com'],
+  ]
+  if (RECIPIENT_PUBKEY_HEX) tags.push(['p', RECIPIENT_PUBKEY_HEX])
+  if (fountainUrl) tags.push(['r', fountainUrl])
+
+  return {
+    kind: 1,
+    created_at: Math.floor(Date.now() / 1000),
+    content,
+    tags,
+  }
+}
+
+/**
+ * Sign a kind 1 boost share template with the user's NDK session
+ * signer. Returns the signed raw event. Throws on signer failure —
+ * caller decides whether to skip the share or surface the error.
+ *
+ * Used by the episode-boost flow's pre-sign step so the signer prompt
+ * happens while the modal is still open, rather than as a surprise
+ * after the modal closes and `payAllLegs` runs in the background.
+ */
+export async function signKindOneShareWithUser(template) {
+  const ndk = getNDK()
+  const ev = new NDKEvent(ndk, template)
+  await signWithTimeout(ev)
+  return ev.toNostrEvent()
+}
+
+/**
+ * Publish an already-signed kind 1 share note via NDK to the user's
+ * outbox relays. Best-effort: returns whether at least one relay
+ * ack'd. Never throws.
+ */
+export async function publishSignedKindOne(signedEvent) {
+  if (!signedEvent?.id || !signedEvent?.sig) return { published: false }
+  const ndk = getNDK()
+  try {
+    const ev = new NDKEvent(ndk, signedEvent)
+    const ackd = await ev.publish()
+    return { published: !!(ackd && ackd.size > 0) }
+  } catch {
+    return { published: false }
+  }
 }
 
 // ─── Kind 1 boost share — donor's "I just boosted X" feed note ─────────────

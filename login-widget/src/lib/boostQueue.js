@@ -21,7 +21,7 @@
  */
 
 import { payAllLegs } from './payAllLegs.js'
-import { SITE_URL } from './boostagram.js'
+import { SITE_URL, publishSignedKindOne } from './boostagram.js'
 import { pushToast } from './toast.js'
 
 const MIN_TOTAL_SATS = 1   // floor; modals enforce a higher minimum
@@ -107,6 +107,8 @@ export function submitBoost({
   donorNpub,
   lnurlCache,
   nwcClient,
+  presigned,        // optional { boostSession, byAddress } from presignAllowlistedLegs
+  signedKindOne,    // optional pre-signed kind 1 share-to-feed event
 }) {
   // Defensive validation. The modal already checks these, but if a
   // future caller passes garbage we'd rather refuse than crash inside
@@ -152,6 +154,7 @@ export function submitBoost({
         episodeMeta: episode,
         nwcClient,
         lnurlCache,
+        presigned,
       })
     } catch (e) {
       // payAllLegs is documented as never-throws; this is belt-and-
@@ -184,6 +187,17 @@ export function submitBoost({
       pushToast({
         kind: 'error',
         message: 'Couldn\'t deliver your boost. Check that your wallet is connected and has a balance.',
+      })
+    }
+
+    // Publish the donor's optional kind 1 share-to-feed only if at
+    // least one leg actually paid. A "Just boosted!" feed note for a
+    // boost that didn't go through would be misleading. Failures here
+    // are silent — the donor opted in but their relays may be flaky;
+    // the boost itself already succeeded and the share is best-effort.
+    if (signedKindOne && (status === 'paid' || status === 'partial')) {
+      publishSignedKindOne(signedKindOne).catch((e) => {
+        console.warn('[boostQueue] kind 1 share publish failed', e?.message || e)
       })
     }
   })()

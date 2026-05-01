@@ -270,20 +270,49 @@ export default function BoostModal({ user, onUserChange, onClose }) {
       const paymentHashTag = realPaymentHash || crypto.randomUUID().replace(/-/g, '')
 
       // 3. Sign + publish kind 30078. Anonymous → single-use burner key
-      //    (zeroed immediately after); attributed → donor's real signer.
+      //    (zeroed immediately after); attributed → donor's real signer,
+      //    with a burner fallback if the signer rejects or times out.
       setFlow(f => ({ ...f, step: anonymous ? 'Publishing receipt…' : 'Approve in your signer app…' }))
       const burner = anonymous ? generateBurnerKeypair() : null
       let eid, metaOk
       try {
-        const result = await publishDonationBoostagram({
-          burnerSk: burner?.sk || null,
-          paymentHash: paymentHashTag,
-          donorNpub: anonymous ? '' : donorNpub,
-          recipientLud16: RECIPIENT_LUD16,
-          amountMsats: sats * 1000,
-          message: message.trim(),
-          pageUrl: SITE_URL,
-        })
+        let result
+        try {
+          result = await publishDonationBoostagram({
+            burnerSk: burner?.sk || null,
+            paymentHash: paymentHashTag,
+            donorNpub: anonymous ? '' : donorNpub,
+            recipientLud16: RECIPIENT_LUD16,
+            amountMsats: sats * 1000,
+            message: message.trim(),
+            pageUrl: SITE_URL,
+          })
+        } catch (signErr) {
+          // Anon mode is already burner-signed — nothing to fall back to.
+          if (anonymous) throw signErr
+          // Attributed mode and the signer rejected/timed out. Retry
+          // with a single-use burner so the boost still goes through.
+          // Strip the donor's npub from the `sender` tag — a burner key
+          // can't cryptographically vouch for it, and keeping it would
+          // let a hostile signer publish receipts claiming arbitrary
+          // identities. Receipt becomes effectively anonymous.
+          console.warn('[lb] show-boost user-sign failed; falling back to burner', signErr?.message || signErr)
+          setFlow(f => ({ ...f, step: 'Publishing receipt…' }))
+          const fb = generateBurnerKeypair()
+          try {
+            result = await publishDonationBoostagram({
+              burnerSk: fb.sk,
+              paymentHash: paymentHashTag,
+              donorNpub: '',
+              recipientLud16: RECIPIENT_LUD16,
+              amountMsats: sats * 1000,
+              message: message.trim(),
+              pageUrl: SITE_URL,
+            })
+          } finally {
+            fb.sk.fill(0)
+          }
+        }
         eid = result.eventId
         metaOk = result.published
       } finally {

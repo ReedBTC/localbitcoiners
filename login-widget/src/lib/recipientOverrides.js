@@ -34,6 +34,36 @@ export const LNADDRESS_OVERRIDES = {
 }
 
 /**
+ * Lightning addresses whose recipients run the LB podcast boost bot
+ * (i.e. care about kind 30078 metadata events). For every other
+ * recipient — Fountain, Albyhub end users, guest personal addresses —
+ * the kind 30078 publish is skipped: they don't subscribe to our
+ * boost relays for it, so it would just be relay noise.
+ *
+ * Boosts to addresses in this set:
+ *   - Always publish a kind 30078 (so the bot has a record).
+ *   - When the donor is signed in and attributed, the event is signed
+ *     with their real Nostr key for cryptographic provenance the bot
+ *     can verify; if the signer rejects or times out, the modal falls
+ *     back to a single-use burner key so the boost still goes through.
+ *   - In anonymous mode, the event is burner-signed.
+ *
+ * Address comparison is case-insensitive — lud16 is technically
+ * case-sensitive but in practice every Lightning wallet treats it as
+ * insensitive, and a stray uppercase from RSS shouldn't cause us to
+ * miss the metadata publish.
+ */
+export const META_PUBLISH_ALLOWLIST = new Set([
+  'localbitcoiners@getalby.com',
+  'reed@getalby.com',
+])
+
+export function shouldPublishMetadata(address) {
+  if (typeof address !== 'string' || !address) return false
+  return META_PUBLISH_ALLOWLIST.has(address.toLowerCase())
+}
+
+/**
  * Apply the override map to a recipient list. Pure — returns a new
  * array; original is unmodified.
  *

@@ -191,10 +191,18 @@ export default function IdentityDropdown({
 }
 
 function BoostStatusBadge({ status }) {
-  // 'in-flight' | 'paid' | 'partial' | 'failed'. Each variant uses a
-  // distinct color so a glance at the dropdown tells the user the
-  // outcome without reading. The pulsing orange dot is reserved for
-  // the active state to match the banner above.
+  // Known statuses get a distinct color + label so a glance at the
+  // dropdown tells the user the outcome without reading. The pulsing
+  // orange dot is reserved for the active state to match the banner
+  // above.
+  if (status === 'in-flight') {
+    return (
+      <span className="text-orange-400 text-[10px] flex-shrink-0 inline-flex items-center gap-1">
+        <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" aria-hidden="true" />
+        Sending…
+      </span>
+    )
+  }
   if (status === 'paid') {
     return (
       <span className="text-green-400 text-[10px] flex-shrink-0 inline-flex items-center gap-1">
@@ -221,13 +229,10 @@ function BoostStatusBadge({ status }) {
       </span>
     )
   }
-  // Default = 'in-flight'
-  return (
-    <span className="text-orange-400 text-[10px] flex-shrink-0 inline-flex items-center gap-1">
-      <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" aria-hidden="true" />
-      Sending…
-    </span>
-  )
+  // Unknown / future status — render nothing rather than fall through
+  // to a misleading "Sending…" label that would lie about the entry's
+  // real state.
+  return null
 }
 
 function computePosition(triggerRect) {

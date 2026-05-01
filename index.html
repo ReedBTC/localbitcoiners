@@ -1080,6 +1080,22 @@
     const epNum       = itunesEp ? parseInt(itunesEp, 10) : (total - index);
     const guid        = item.querySelector('guid')?.textContent?.trim() ?? '';
 
+    // Fountain per-episode page URL. Lives in <podcast:contentLink>
+    // (an opaque page id, distinct from the enclosure's audio-file id —
+    // do NOT derive it from the mp3 URL). Multiple <podcast:contentLink>
+    // entries may exist for different services; we filter for fountain.fm.
+    // Backfilled by Fountain a few days after publish, so for the latest
+    // episode this can be missing — in which case we just don't surface
+    // a Fountain link in the share-to-feed kind 1.
+    let fountainUrl = '';
+    for (const cl of allChildrenByLocalName(item, 'contentLink')) {
+      const href = cl.getAttribute('href') || '';
+      if (href.startsWith('https://fountain.fm/episode/')) {
+        fountainUrl = href;
+        break;
+      }
+    }
+
     // Description: prefer itunes:summary, then description
     const descEl    = item.querySelector('summary') ?? item.querySelector('description');
     const descText  = descEl ? stripHtml(descEl.textContent).trim() : '';
@@ -1222,7 +1238,7 @@
           }
           if (window.LBLogin?.openEpisodeBoost) {
             window.LBLogin.openEpisodeBoost({
-              episode: { number: epNum, title, guid },
+              episode: { number: epNum, title, guid, fountainUrl },
               splits,
             });
           }

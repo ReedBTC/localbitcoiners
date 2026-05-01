@@ -5,13 +5,19 @@
  * total amount, run N legs sequentially:
  *   1. Compute weight-proportional msats for each recipient.
  *   2. For each leg in order:
- *      a. Resolve the recipient's lud16 → LNURL endpoint (.well-known/lnurlp).
- *      b. Request a bolt11 invoice with comment = LocalBitcoinersEpNNN.
+ *      a. Resolve the recipient's lud16 → LNURL endpoint (.well-known/lnurlp)
+ *         (or skip if the modal pre-fetched the invoice during presign).
+ *      b. Request a bolt11 invoice with comment = LocalBitcoinersEpNNN
+ *         (skipped for pre-fetched legs).
  *      c. Extract payment_hash from the bolt11.
- *      d. Build + sign a kind 30078 with the burner key, including the
- *         per-leg tags (recipient, amount, leg N/total) plus the shared
- *         episode + boost_session context tags. Publish to the V4V 2.0
- *         relay set.
+ *      d. Maybe publish a kind 30078 metadata event:
+ *           - Pre-signed event provided → publish that.
+ *           - Recipient is in the META_PUBLISH_ALLOWLIST → build + sign
+ *             with a single-use burner key, then publish.
+ *           - Otherwise → skip the publish entirely. Recipients outside
+ *             the allowlist (Fountain, guest personal addresses, etc.)
+ *             don't run a bot that watches our boost relays, so the
+ *             event would just be relay noise.
  *      e. Pay the invoice via NWC. Wait for completion before starting
  *         the next leg.
  *   3. Per-leg status callback fires after each transition (resolving →
@@ -37,12 +43,15 @@
  *     leave the donor wondering whether anything was paid.
  *
  * Key reuse:
- *   - One burner secret key signs all legs of a single boost session.
- *     This intentionally lets a recipient bot enumerate "all legs of
- *     the same boost" by author pubkey — useful for analytics — without
- *     leaking donor identity (the pubkey is throwaway and never resaved).
+ *   - One burner secret key signs the burner-signed legs of a single
+ *     boost session (anonymous boosts, or attributed boosts where the
+ *     user-signer fallback fired). This intentionally lets the recipient
+ *     bot enumerate "all burner-signed legs of the same boost" by author
+ *     pubkey — useful for analytics — without leaking donor identity.
  *   - One UUID4 in boost_session ties legs together for the boost wall's
- *     session-level dedup.
+ *     session-level dedup. Generated here, or injected by the modal's
+ *     presign step so a pre-signed event and the eventual payment carry
+ *     a matching boost_session tag.
  */
 
 import { generateBurnerKeypair } from './boostagram.js'
@@ -50,9 +59,13 @@ import {
   fetchLnurlMeta,
   fetchLnurlInvoice,
   bolt11PaymentHash,
-  publishDonationBoostagram,
+  buildDonationBoostagramTemplate,
+  signDonationBoostagramWithUser,
+  signDonationBoostagramWithBurner,
+  publishSignedBoostagram,
 } from './boostagram.js'
 import { formatEpisodeComment } from './episodeData.js'
+import { shouldPublishMetadata } from './recipientOverrides.js'
 
 /**
  * Compute weight-proportional msats for each recipient.
@@ -117,9 +130,27 @@ const STATUSES = {
   FAILED: 'failed',
 }
 
+/** Build the per-leg extraTags shared between the presign step and the
+ *  inline burner-signed publish. Centralized so the two paths stay in
+ *  sync; if the bot ever cares about a new tag, add it here once. */
+function buildLegExtraTags({ episodeMeta, boostSession, legIndex, legCount }) {
+  return [
+    ['episode', String(episodeMeta?.number ?? '')],
+    ['episode_title', episodeMeta?.title || ''],
+    ['item_guid', episodeMeta?.guid || ''],
+    ['show', 'Local Bitcoiners'],
+    ['boost_session', boostSession],
+    ['leg', `${legIndex + 1}/${legCount}`],
+  ]
+}
+
 /**
  * Run a single leg end-to-end. Reports status via `onStatus(legIndex, patch)`.
  * Returns the leg result (resolved or failed) — never throws.
+ *
+ * `prefetched`, when supplied, lets the caller skip the LNURL+invoice
+ * round-trip and the metadata sign: the modal already did both during
+ * its presign step. Shape: `{ invoice, signedEvent }`.
  */
 async function runLeg({
   leg,
@@ -134,6 +165,7 @@ async function runLeg({
   message,
   lnurlCache,
   onStatus,
+  prefetched,   // optional { invoice, signedEvent }
 }) {
   const baseResult = {
     index: leg.index,
@@ -153,41 +185,47 @@ async function runLeg({
 
   try {
     update({ status: STATUSES.RESOLVING })
-    // Prefer the modal's prefetched LNURL meta over a fresh fetch. The
-    // modal kicks off all resolves in parallel on mount, so by boost
-    // time most legs already have their metadata in hand. Cache miss
-    // (or null = previous fetch failed) falls through to a live fetch.
-    let meta = lnurlCache?.[leg.recipient.address] || null
-    if (!meta) {
-      meta = await fetchLnurlMeta(leg.recipient.address)
+
+    let invoice = prefetched?.invoice || null
+
+    if (!invoice) {
+      // Prefer the modal's prefetched LNURL meta over a fresh fetch. The
+      // modal kicks off all resolves in parallel on mount, so by boost
+      // time most legs already have their metadata in hand. Cache miss
+      // (or null = previous fetch failed) falls through to a live fetch.
+      let meta = lnurlCache?.[leg.recipient.address] || null
+      if (!meta) {
+        meta = await fetchLnurlMeta(leg.recipient.address)
+      }
+
+      // Per-leg minSendable check. If our weighted msats fall below this
+      // recipient's minimum, we have to fail this leg early — no graceful
+      // recovery available without changing the total amount, which is
+      // the donor's call. Surface a clear message so the modal can show
+      // "this leg's minimum is X sats; bump your boost".
+      if (typeof meta.minSendable === 'number' && leg.msats < meta.minSendable) {
+        const minSats = Math.ceil(meta.minSendable / 1000)
+        throw new Error(`This leg requires at least ${minSats.toLocaleString()} sats — bump the boost amount.`)
+      }
+      if (typeof meta.maxSendable === 'number' && leg.msats > meta.maxSendable) {
+        const maxSats = Math.floor(meta.maxSendable / 1000)
+        throw new Error(`This leg accepts at most ${maxSats.toLocaleString()} sats per payment.`)
+      }
+
+      // Trim comment if the LNURL endpoint advertises a shorter limit.
+      // commentAllowed=0 means comments are not supported; we skip rather
+      // than send a comment the endpoint will refuse on. The bot can still
+      // pick this boost up via the kind 30078 lookup keyed on payment_hash;
+      // it just won't have the LocalBitcoinersEp prefix as a fast filter.
+      const allowed = meta.commentAllowed || 0
+      const sendComment = allowed > 0 ? comment.slice(0, allowed) : ''
+
+      update({ status: STATUSES.REQUESTING })
+      const { pr } = await fetchLnurlInvoice(meta.callback, leg.msats, sendComment)
+      invoice = pr
     }
 
-    // Per-leg minSendable check. If our weighted msats fall below this
-    // recipient's minimum, we have to fail this leg early — no graceful
-    // recovery available without changing the total amount, which is
-    // the donor's call. Surface a clear message so the modal can show
-    // "this leg's minimum is X sats; bump your boost".
-    if (typeof meta.minSendable === 'number' && leg.msats < meta.minSendable) {
-      const minSats = Math.ceil(meta.minSendable / 1000)
-      throw new Error(`This leg requires at least ${minSats.toLocaleString()} sats — bump the boost amount.`)
-    }
-    if (typeof meta.maxSendable === 'number' && leg.msats > meta.maxSendable) {
-      const maxSats = Math.floor(meta.maxSendable / 1000)
-      throw new Error(`This leg accepts at most ${maxSats.toLocaleString()} sats per payment.`)
-    }
-
-    // Trim comment if the LNURL endpoint advertises a shorter limit.
-    // commentAllowed=0 means comments are not supported; we skip rather
-    // than send a comment the endpoint will refuse on. The bot can still
-    // pick this boost up via the kind 30078 lookup keyed on payment_hash;
-    // it just won't have the LocalBitcoinersEp prefix as a fast filter.
-    const allowed = meta.commentAllowed || 0
-    const sendComment = allowed > 0 ? comment.slice(0, allowed) : ''
-
-    update({ status: STATUSES.REQUESTING })
-    const { pr } = await fetchLnurlInvoice(meta.callback, leg.msats, sendComment)
-
-    const paymentHash = bolt11PaymentHash(pr)
+    const paymentHash = bolt11PaymentHash(invoice)
     if (!paymentHash) {
       // V4V 2.0 spec requirement: don't publish a kind 30078 with a
       // placeholder d-tag. If we can't decode the payment_hash, we have
@@ -197,26 +235,45 @@ async function runLeg({
     }
     update({ paymentHash })
 
-    update({ status: STATUSES.PUBLISHING })
-    const extraTags = [
-      ['episode', String(episodeMeta.number)],
-      ['episode_title', episodeMeta.title],
-      ['item_guid', episodeMeta.guid],
-      ['show', 'Local Bitcoiners'],
-      ['boost_session', boostSession],
-      ['leg', `${leg.index + 1}/${legCount}`],
-    ]
-    const { eventId, published } = await publishDonationBoostagram({
-      burnerSk,
-      paymentHash,
-      donorNpub,
-      recipientLud16: leg.recipient.address,
-      amountMsats: leg.msats,
-      message: message || '',
-      pageUrl,
-      extraTags,
-    })
-    update({ eventId, metadataPublished: !!published })
+    // ── kind 30078 publish step ──
+    // Three branches:
+    //   1. Pre-signed event from presign → publish it as-is.
+    //   2. No pre-signed event but recipient is in the LB bot allowlist
+    //      → build + burner-sign + publish (the anon-mode path, or the
+    //      attributed-mode-with-no-presign edge).
+    //   3. Recipient outside the allowlist → skip publish entirely. The
+    //      payment still happens; we just don't litter relays with a
+    //      metadata event no bot will read.
+    if (prefetched?.signedEvent) {
+      update({ status: STATUSES.PUBLISHING })
+      const { eventId, published } = await publishSignedBoostagram(prefetched.signedEvent)
+      update({ eventId, metadataPublished: !!published })
+    } else if (shouldPublishMetadata(leg.recipient.address)) {
+      update({ status: STATUSES.PUBLISHING })
+      const extraTags = buildLegExtraTags({
+        episodeMeta, boostSession, legIndex: leg.index, legCount,
+      })
+      // Burner-signed → strip the donor's npub from the `sender` tag.
+      // Same rationale as the presign fallback: a burner key can't
+      // cryptographically vouch for any user identity, so claiming one
+      // would let any client publish receipts under arbitrary npubs.
+      // Anon mode already passes donorNpub='' here; this also covers
+      // the attributed-mode-but-presign-skipped edge (e.g. LNURL fetch
+      // failed during presign so this leg fell through to legacy).
+      const template = buildDonationBoostagramTemplate({
+        paymentHash,
+        donorNpub: '',
+        recipientLud16: leg.recipient.address,
+        amountMsats: leg.msats,
+        message: message || '',
+        pageUrl,
+        extraTags,
+      })
+      const signed = signDonationBoostagramWithBurner(template, burnerSk)
+      const { eventId, published } = await publishSignedBoostagram(signed)
+      update({ eventId, metadataPublished: !!published })
+    }
+    // else: deliberately no metadata publish — leg pays without a 30078.
 
     update({ status: STATUSES.PAYING })
     // NWC's payInvoice. Wallet relay round-trip: wallet receives
@@ -231,7 +288,7 @@ async function runLeg({
     // user should check their wallet before retrying.
     let payRes
     try {
-      payRes = await nwcClient.payInvoice({ invoice: pr })
+      payRes = await nwcClient.payInvoice({ invoice })
     } catch (e) {
       const msg = String(e?.message || e)
       if (/reply timeout|publish timeout|timeout/i.test(msg)) {
@@ -252,6 +309,135 @@ async function runLeg({
 }
 
 /**
+ * Pre-resolve LNURL + fetch invoice + sign kind 30078 for every
+ * recipient in the META_PUBLISH_ALLOWLIST. Called by the boost modal
+ * before submitBoost so the user-signer prompts happen while the modal
+ * is still open (rather than as a surprise after it closes).
+ *
+ * If the user's signer rejects or times out for any leg, that leg
+ * falls back to a burner-signed event so the boost still goes through.
+ * If LNURL or invoice fetch fails for a leg, the leg is omitted from
+ * the presigned map — payAllLegs will fall through to its legacy
+ * resolve+invoice path and either succeed or fail loudly there.
+ *
+ * Anon mode (donorNpub === '') skips presign entirely; the legacy
+ * burner path inside payAllLegs handles allowlisted legs in that case.
+ *
+ * Returns:
+ *   {
+ *     boostSession: string,                  // shared by every event in the boost
+ *     byAddress: { [address]: { invoice, signedEvent } },
+ *   }
+ *
+ * Never throws — best-effort. A return value of `{ boostSession,
+ * byAddress: {} }` is valid (e.g. anon mode, or all presign attempts
+ * fell through) and instructs payAllLegs to handle every leg via the
+ * legacy path.
+ */
+export async function presignAllowlistedLegs({
+  recipients,
+  totalWeight,
+  totalMsats,
+  message,
+  donorNpub,
+  pageUrl,
+  episodeMeta,
+  lnurlCache,
+}) {
+  const boostSession = uuid4()
+  const byAddress = {}
+
+  if (!Array.isArray(recipients) || recipients.length === 0) {
+    return { boostSession, byAddress }
+  }
+  if (!donorNpub) {
+    // No signer to attribute to — payAllLegs handles allowlisted legs
+    // with its inline burner path.
+    return { boostSession, byAddress }
+  }
+
+  const legs = distributeMsats(totalMsats, recipients, totalWeight)
+  const comment = formatEpisodeComment(episodeMeta?.number)
+  // Lazy-init: only allocated on the first user-sign failure that
+  // needs a burner-fallback receipt. The happy path (every legacy
+  // signer round-trip succeeds) skips the allocation + the zero-out
+  // entirely. Captured in the `finally` via closure so the cleanup
+  // path doesn't have to know whether allocation happened.
+  let burnerSk = null
+
+  try {
+    for (const leg of legs) {
+      const r = leg.recipient
+      if (!r?.address) continue
+      if (!shouldPublishMetadata(r.address)) continue
+
+      try {
+        let meta = lnurlCache?.[r.address] || null
+        if (!meta) meta = await fetchLnurlMeta(r.address)
+        if (typeof meta.minSendable === 'number' && leg.msats < meta.minSendable) continue
+        if (typeof meta.maxSendable === 'number' && leg.msats > meta.maxSendable) continue
+        const allowed = meta.commentAllowed || 0
+        const sendComment = allowed > 0 ? comment.slice(0, allowed) : ''
+
+        const { pr } = await fetchLnurlInvoice(meta.callback, leg.msats, sendComment)
+        const paymentHash = bolt11PaymentHash(pr)
+        if (!paymentHash) continue
+
+        const extraTags = buildLegExtraTags({
+          episodeMeta, boostSession, legIndex: leg.index, legCount: legs.length,
+        })
+        const userTemplate = buildDonationBoostagramTemplate({
+          paymentHash,
+          donorNpub,
+          recipientLud16: r.address,
+          amountMsats: leg.msats,
+          message: message || '',
+          pageUrl,
+          extraTags,
+        })
+
+        let signedEvent = null
+        try {
+          signedEvent = await signDonationBoostagramWithUser(userTemplate)
+        } catch (e) {
+          // Burner fallback: signer rejected/timed out. The receipt
+          // becomes effectively anonymous — we strip the donor's npub
+          // from the `sender` tag because a burner key can't
+          // cryptographically vouch for it, and keeping the npub here
+          // would let any client with a hostile signer publish events
+          // claiming arbitrary identities. The boost itself still goes
+          // through; the bot just sees an anon receipt.
+          console.warn('[lb] presign user-sign failed for', r.address, e?.message || e)
+          if (!burnerSk) burnerSk = generateBurnerKeypair().sk
+          const burnerTemplate = buildDonationBoostagramTemplate({
+            paymentHash,
+            donorNpub: '',
+            recipientLud16: r.address,
+            amountMsats: leg.msats,
+            message: message || '',
+            pageUrl,
+            extraTags,
+          })
+          signedEvent = signDonationBoostagramWithBurner(burnerTemplate, burnerSk)
+        }
+
+        byAddress[r.address] = { invoice: pr, signedEvent }
+      } catch (e) {
+        // LNURL or invoice fetch failed for this leg. Skip the presign
+        // entry and let payAllLegs's legacy path retry the network
+        // round-trip — it'll either succeed or fail with the same
+        // kind of error visible to the donor.
+        console.warn('[lb] presign skipped for', r.address, e?.message || e)
+      }
+    }
+  } finally {
+    if (burnerSk) burnerSk.fill(0)
+  }
+
+  return { boostSession, byAddress }
+}
+
+/**
  * Run a full multi-leg boost. Returns an array of per-leg results in
  * input order — same length as `recipients`. Never throws.
  *
@@ -269,6 +455,11 @@ async function runLeg({
  * @param {object} params.nwcClient            Live @getalby/sdk NWCClient.
  * @param {function} [params.onStatus]         (legIndex, legState) — fires
  *                                             on every per-leg state change.
+ * @param {{boostSession:string, byAddress:object}} [params.presigned]
+ *        Optional pre-signed events + pre-fetched invoices, produced by
+ *        `presignAllowlistedLegs`. Each entry's invoice replaces the
+ *        per-leg LNURL+invoice round-trip; each signedEvent replaces
+ *        the burner-signed metadata publish.
  * @returns {Promise<{
  *   boostSession: string,
  *   legs: Array<{
@@ -296,11 +487,13 @@ export async function payAllLegs({
   nwcClient,
   lnurlCache,
   onStatus,
+  presigned,
 }) {
-  const boostSession = uuid4()
+  const boostSession = presigned?.boostSession || uuid4()
   const burnerSk = generateBurnerKeypair().sk
   const legs = distributeMsats(totalMsats, recipients, totalWeight)
   const comment = formatEpisodeComment(episodeMeta?.number)
+  const presignByAddress = presigned?.byAddress || {}
 
   const results = []
   try {
@@ -319,6 +512,7 @@ export async function payAllLegs({
         message,
         lnurlCache,
         onStatus,
+        prefetched: presignByAddress[leg.recipient?.address] || null,
       })
       results.push(r)
     }
@@ -333,7 +527,3 @@ export async function payAllLegs({
 
   return { boostSession, legs: results, anySucceeded, allSucceeded }
 }
-
-// Re-export so the modal can render status names as labels without
-// duplicating the constants.
-export const LEG_STATUS = STATUSES
