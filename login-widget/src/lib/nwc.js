@@ -48,18 +48,20 @@ export function onChange(fn) {
 }
 
 /**
- * Snapshot of NWC state. Three shapes:
- *   { connected: false, hasStoredBlob: false }                          // never connected
- *   { connected: false, hasStoredBlob: true, ownerNpub }                // blob exists but not unlocked yet
- *   { connected: true, ownerNpub, alias? }                              // ready to pay
+ * Snapshot of NWC state. Three shapes (each carries `kind: 'nwc'` so
+ * the wallet manager's status objects discriminate cleanly when both
+ * adapters are in play):
+ *   { connected: false, kind: 'nwc', hasStoredBlob: false }              // never connected
+ *   { connected: false, kind: 'nwc', hasStoredBlob: true, ownerNpub }    // blob exists but not unlocked yet
+ *   { connected: true,  kind: 'nwc', ownerNpub, alias? }                 // ready to pay
  */
 export function getStatus() {
   if (activeClient && activeOwnerNpub) {
-    return { connected: true, ownerNpub: activeOwnerNpub, alias: activeWalletAlias || null }
+    return { connected: true, kind: 'nwc', ownerNpub: activeOwnerNpub, alias: activeWalletAlias || null }
   }
   const blob = loadEncrypted()
-  if (!blob) return { connected: false, hasStoredBlob: false }
-  return { connected: false, hasStoredBlob: true, ownerNpub: blob.ownerNpub }
+  if (!blob) return { connected: false, kind: 'nwc', hasStoredBlob: false }
+  return { connected: false, kind: 'nwc', hasStoredBlob: true, ownerNpub: blob.ownerNpub }
 }
 
 /** Quick sync check used by the boost button to decide whether to

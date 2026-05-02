@@ -16,7 +16,7 @@ import { isSafeUrl } from '../lib/utils.js'
 import { lockBodyScroll, unlockBodyScroll } from '../lib/scrollLock.js'
 import { useModalTransition } from '../lib/useModalTransition.js'
 import { isStubUser } from '../lib/stubUser.js'
-import * as nwc from '../lib/nwc.js'
+import * as wallet from '../lib/wallet.js'
 import LoginModal from './LoginModal.jsx'
 
 const POLL_INTERVAL_MS = 2500
@@ -65,13 +65,14 @@ export default function BoostModal({ user, onUserChange, onClose }) {
 
   const [copied, setCopied] = useState(false)
 
-  // NWC connection status — when set, the show-boost flow pays the
-  // invoice via the user's connected wallet instead of falling through
-  // to the QR display. The QR remains a fallback if the wallet pay
-  // fails or times out, so the user always has a path to settle.
-  const [nwcStatus, setNwcStatus] = useState(() => nwc.getStatus())
-  useEffect(() => nwc.onChange(setNwcStatus), [])
-  const [payingViaNwc, setPayingViaNwc] = useState(false)
+  // Wallet status — when ready (WebLN authorized or NWC unlocked), the
+  // show-boost flow pays the invoice via the active wallet instead of
+  // falling through to the QR display. The QR remains a fallback if
+  // the wallet pay fails or times out, so the user always has a path
+  // to settle.
+  const [walletStatus, setWalletStatus] = useState(() => wallet.getStatus())
+  useEffect(() => wallet.onChange(setWalletStatus), [])
+  const [payingViaWallet, setPayingViaWallet] = useState(false)
 
   // Share-to-feed (optional kind 1 note). Only available when the donor
   // has a real Nostr signer (logged in + not opting out via anonymous).
@@ -319,7 +320,7 @@ export default function BoostModal({ user, onUserChange, onClose }) {
         if (burner?.sk) burner.sk.fill(0)
       }
 
-      // 4. Stamp the invoice + receipt into state. Both the NWC and
+      // 4. Stamp the invoice + receipt into state. Both the wallet and
       //    QR paths read from `inv`; the difference is which view the
       //    user lands on (success directly vs the QR display).
       setInv({
@@ -330,15 +331,15 @@ export default function BoostModal({ user, onUserChange, onClose }) {
         metaPublished: !!metaOk,
       })
 
-      // 5. Pay path. If the user has a connected NWC wallet, fire
-      //    payInvoice and skip the QR entirely. On success the modal
-      //    flips to the paid state. On failure (timeout, rejection)
+      // 5. Pay path. If the user has a connected wallet (WebLN or NWC),
+      //    fire payInvoice and skip the QR entirely. On success the
+      //    modal flips to the paid state. On failure (timeout, rejection)
       //    the QR fallback shows so the user can pay with any wallet.
-      if (nwc.isReady()) {
-        setPayingViaNwc(true)
+      if (wallet.isReady()) {
+        setPayingViaWallet(true)
         setFlow({ phase: 'idle', step: '', error: '' })
         try {
-          const payRes = await nwc.getClient().payInvoice({ invoice: pr })
+          const payRes = await wallet.getClient().payInvoice({ invoice: pr })
           if (payRes && payRes.preimage) {
             setFlow({ phase: 'paid', step: '', error: '' })
             return
@@ -355,11 +356,11 @@ export default function BoostModal({ user, onUserChange, onClose }) {
             : `Wallet pay failed: ${msg}. Pay via the QR below if you want to retry.`
           setFlow({ phase: 'idle', step: '', error: friendly })
         } finally {
-          setPayingViaNwc(false)
+          setPayingViaWallet(false)
         }
       } else {
-        // No NWC — drop loading state. Phase stays 'idle' until
-        // pollVerify flips it to 'paid' once the bolt11 settles.
+        // No wallet selected — drop loading state. Phase stays 'idle'
+        // until pollVerify flips it to 'paid' once the bolt11 settles.
         setFlow({ phase: 'idle', step: '', error: '' })
       }
     } catch (e) {
@@ -402,7 +403,7 @@ export default function BoostModal({ user, onUserChange, onClose }) {
     setInv({ pr: '', eventId: '', verifyUrl: null, paymentHash: '', metaPublished: true })
     setFlow({ phase: 'idle', step: '', error: '' })
     setShare(s => ({ enabled: s.enabled, attempted: false, published: false, error: '' }))
-    setPayingViaNwc(false)
+    setPayingViaWallet(false)
   }
 
   // Centered-card layout at all sizes. p-3 outer leaves 12px margins on
@@ -600,8 +601,8 @@ export default function BoostModal({ user, onUserChange, onClose }) {
               </>
             )}
 
-            {/* ── Paying via NWC (skips the QR entirely on success) ── */}
-            {invoice && payingViaNwc && (
+            {/* ── Paying via the active wallet (skips the QR entirely on success) ── */}
+            {invoice && payingViaWallet && (
               <div className="flex flex-col items-center gap-3 py-6 text-center">
                 <span className="inline-block w-2 h-2 rounded-full bg-orange-500 animate-pulse" aria-hidden="true" />
                 <p className="text-sm text-neutral-300">Paying with your wallet…</p>
@@ -611,8 +612,8 @@ export default function BoostModal({ user, onUserChange, onClose }) {
               </div>
             )}
 
-            {/* ── QR / waiting (fallback when no NWC, or NWC failed) ── */}
-            {invoice && !paid && !payingViaNwc && (
+            {/* ── QR / waiting (fallback when no wallet ready, or wallet pay failed) ── */}
+            {invoice && !paid && !payingViaWallet && (
               <>
                 <div className="flex justify-center py-2">
                   <div className="bg-white p-3 rounded-lg">
