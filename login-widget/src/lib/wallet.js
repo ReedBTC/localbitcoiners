@@ -47,6 +47,12 @@ function writeKind(kind) {
       localStorage.removeItem(KIND_KEY)
     }
   } catch {}
+  // Active-adapter selection just changed, so any cached status held by
+  // subscribers is stale. The wired adapter notify that ran during
+  // connect() fired BEFORE this write, with the old kind, so on its own
+  // it produces a "disconnected" emit. Re-emit here so subscribers see
+  // the post-write state. Same applies on disconnect (kind cleared).
+  notify()
 }
 
 function activeAdapter() {
