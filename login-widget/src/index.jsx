@@ -18,7 +18,7 @@ import {
 } from './lib/sessionPersistence.js'
 import { markStubUser, isStubUser } from './lib/stubUser.js'
 import { getNDK, resetNDK, connectAndWait } from './lib/ndk.js'
-import * as nwc from './lib/nwc.js'
+import * as wallet from './lib/wallet.js'
 import { applyRecipientOverrides } from './lib/recipientOverrides.js'
 import { pushToast } from './lib/toast.js'
 // Side-effect import: installs a same-origin click interceptor that
@@ -142,7 +142,7 @@ function forceLogoutWithMessage(message) {
   clearSession()
   clearProfile()
   resetNDK()
-  try { nwc.lockOnLogout() } catch {}
+  try { wallet.lockOnLogout() } catch {}
   cancelPendingAction()
   signerVerified = false
   setUser(null)
@@ -177,12 +177,12 @@ function ensureRealRestore() {
       if (result?.kind === 'ok' && result.user) {
         stubRestoreAttempts = 0
         setUser(result.user)
-        // Pre-warm NWC: opens the relay socket + handshake now so the
-        // next boost publishes instantly instead of paying the unlock
-        // cost on the click. ensureReady is idempotent and short-
-        // circuits when there's no stored blob, so this is a safe
-        // fire-and-forget.
-        nwc.ensureReady(result.user).catch(() => {})
+        // Pre-warm the active wallet: NWC opens its relay socket +
+        // decrypts the stored blob; WebLN does a silent re-enable for
+        // the authorized origin. Either way the next boost click pays
+        // without paying handshake cost. No-op when no wallet is
+        // selected, so this is a safe fire-and-forget.
+        wallet.ensureReady(result.user).catch(() => {})
         consumePendingAction()
       } else if (result?.kind === 'permanent') {
         forceLogoutWithMessage('Session expired — please sign in again.')
@@ -249,7 +249,7 @@ function consumePendingAction() {
   // Drain into a local copy so callbacks that re-enqueue (e.g. an
   // openEpisodeBoost that re-hits another gate) don't race with this
   // loop. Defer one tick so React state from the gate completion has
-  // a chance to settle before each action checks currentUser / nwc.
+  // a chance to settle before each action checks currentUser / wallet.
   const drained = pendingActions.splice(0, pendingActions.length)
   setTimeout(() => {
     for (const fn of drained) {
@@ -323,10 +323,10 @@ function LoginPromptHost() {
         stubRestoreAttempts = 0
         setUser(u)
         setLoginOpen(false)
-        // Pre-warm NWC in case this account already has a stored blob
-        // from a previous session (logged out then back in as same npub).
-        // No-op for fresh accounts that haven't connected a wallet yet.
-        nwc.ensureReady(u).catch(() => {})
+        // Pre-warm the wallet in case this account already has a saved
+        // wallet from a previous session (NWC blob, or a previously-
+        // authorized WebLN origin). No-op when no wallet is selected.
+        wallet.ensureReady(u).catch(() => {})
         // If a boost or wallet-connect was waiting on login, run it now.
         consumePendingAction()
       }}
@@ -418,8 +418,8 @@ function EpisodeBoostHost() {
 // itself doesn't need to know about module-level signals.
 function IdentityHost() {
   const user = useSharedUser()
-  const [walletStatus, setWalletStatus] = useState(() => nwc.getStatus())
-  useEffect(() => nwc.onChange(setWalletStatus), [])
+  const [walletStatus, setWalletStatus] = useState(() => wallet.getStatus())
+  useEffect(() => wallet.onChange(setWalletStatus), [])
 
   return (
     <IdentityWidget
@@ -501,9 +501,9 @@ const api = {
           //               isn't stuck staring at a phantom identity
           if (result?.kind === 'ok' && result.user) {
             setUser(result.user)
-            // Pre-warm NWC — see the equivalent call in
+            // Pre-warm the active wallet — see the equivalent call in
             // ensureRealRestore for the rationale.
-            nwc.ensureReady(result.user).catch(() => {})
+            wallet.ensureReady(result.user).catch(() => {})
           } else if (result?.kind === 'permanent') {
             forceLogoutWithMessage('Saved session was invalid — please sign in again.')
           }
@@ -564,23 +564,27 @@ const api = {
     setWalletConnectOpen(true)
   },
 
-  /** Disconnect the user's NWC wallet — wipes the encrypted blob
-   *  and tears down the in-memory client. */
+  /** Disconnect the active Lightning wallet. NWC: wipes the encrypted
+   *  blob and tears down the client. WebLN: drops the in-memory enabled
+   *  flag (the per-origin extension grant stays — only the user's
+   *  extension settings can fully revoke it). Either way clears the
+   *  active-wallet preference; user picks a wallet again to reconnect. */
   disconnectWallet() {
-    nwc.disconnect()
+    wallet.disconnect()
   },
 
   /**
    * Sign the current user out. Clears persisted session, drops the
-   * NDK instance, locks the in-memory NWC client (the encrypted blob
+   * NDK instance, locks the in-memory wallet (NWC's encrypted blob
    * stays at rest, ready to unlock when they sign back in as the
-   * same npub).
+   * same npub; WebLN's session flag drops but the extension grant
+   * persists per-origin).
    */
   logout() {
     if (!currentUser || currentUser === undefined) return
     clearSession()
     resetNDK()
-    nwc.lockOnLogout()
+    wallet.lockOnLogout()
     cancelPendingAction()
     signerVerified = false
     stubRestoreAttempts = 0
@@ -638,12 +642,13 @@ const api = {
     // key. Force re-auth before that can happen. No-op after first ok.
     if (!await ensureSignerVerified()) return
 
-    // Gate 2: NWC connected?
-    if (!nwc.isReady()) {
-      // Try to unlock from a saved blob. If that succeeds, fall
-      // straight through. If it fails (no blob, wrong account, signer
-      // hung, etc.) we open the connect modal.
-      nwc.ensureReady(currentUser)
+    // Gate 2: a wallet (WebLN or NWC) ready to pay?
+    if (!wallet.isReady()) {
+      // Try to bring the active adapter back online. WebLN: silent
+      // re-enable for the authorized origin. NWC: decrypt the stored
+      // blob. If neither is selected (or the active one fails) we open
+      // the connect modal.
+      wallet.ensureReady(currentUser)
         .then((ok) => {
           if (ok) {
             // Re-call openEpisodeBoost — Gate 2 will pass now.
@@ -669,11 +674,20 @@ const api = {
     })
   },
 
-  /** NWC status snapshot for consumers that want to render wallet state. */
-  getNwcStatus() { return nwc.getStatus() },
+  /** Wallet status snapshot for consumers that want to render wallet state.
+   *  Shape: `{ connected, kind: 'webln'|'nwc'|null, alias?, ownerNpub?, ... }`.
+   *  Legacy name preserved for static-page callers that may still read
+   *  `getNwcStatus`; the field name is misleading now but the shape is
+   *  a strict superset of what they expected. */
+  getNwcStatus() { return wallet.getStatus() },
 
-  /** Subscribe to NWC connect/disconnect events. Returns unsubscribe. */
-  onNwcChange(fn) { return nwc.onChange(fn) },
+  /** Subscribe to wallet connect/disconnect events. Returns unsubscribe.
+   *  Fires for both WebLN and NWC state transitions. Legacy name kept
+   *  for the static-page lazy-load shim. */
+  onNwcChange(fn) { return wallet.onChange(fn) },
+
+  /** Currently-selected wallet kind: 'webln' | 'nwc' | null. */
+  getWalletKind() { return wallet.getKind() },
 
   /**
    * Sign a raw event template using the current user's signer.

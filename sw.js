@@ -7,7 +7,7 @@
 // - Other same-origin static assets: cache-first
 // - Cross-origin (fonts on first deploy, Nostr relays, third-party): pass through
 
-const VERSION = 'lb-v5';
+const VERSION = 'lb-v6';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

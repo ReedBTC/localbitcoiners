@@ -18,8 +18,8 @@
  *             the allowlist (Fountain, guest personal addresses, etc.)
  *             don't run a bot that watches our boost relays, so the
  *             event would just be relay noise.
- *      e. Pay the invoice via NWC. Wait for completion before starting
- *         the next leg.
+ *      e. Pay the invoice via the active wallet (NWC or WebLN). Wait
+ *         for completion before starting the next leg.
  *   3. Per-leg status callback fires after each transition (resolving →
  *      requesting → publishing → paying → paid|failed) so the modal can
  *      render live progress dots.
@@ -161,7 +161,7 @@ async function runLeg({
   boostSession,
   legCount,
   burnerSk,
-  nwcClient,
+  walletClient,
   message,
   lnurlCache,
   onStatus,
@@ -276,19 +276,20 @@ async function runLeg({
     // else: deliberately no metadata publish — leg pays without a 30078.
 
     update({ status: STATUSES.PAYING })
-    // NWC's payInvoice. Wallet relay round-trip: wallet receives
-    // encrypted request, attempts payment, returns response. Anywhere
-    // from a few hundred ms (warm Alby Hub) to ~10s (cold mobile
-    // wallet). The SDK enforces its own 60s reply timeout internally.
+    // Wallet client's payInvoice. NWC: wallet relay round-trip (encrypted
+    // request, wallet attempts payment, returns response — anywhere from
+    // a few hundred ms on a warm Alby Hub to ~10s on a cold mobile
+    // wallet, with an internal 60s reply timeout). WebLN: direct
+    // extension RPC, typically sub-second once the user approves.
     //
-    // Translate the SDK's terse "reply timeout: event <hex>" error
+    // Translate the NWC SDK's terse "reply timeout: event <hex>" error
     // into something actionable — a 60s timeout almost always means
     // either the wallet was slow under contention or the payment
     // actually settled but the reply event got lost. Either way, the
     // user should check their wallet before retrying.
     let payRes
     try {
-      payRes = await nwcClient.payInvoice({ invoice })
+      payRes = await walletClient.payInvoice({ invoice })
     } catch (e) {
       const msg = String(e?.message || e)
       if (/reply timeout|publish timeout|timeout/i.test(msg)) {
@@ -452,7 +453,11 @@ export async function presignAllowlistedLegs({
  *                                             or '' for anonymous.
  * @param {string} params.pageUrl              Site root URL for the url tag.
  * @param {{number:number,title:string,guid:string}} params.episodeMeta
- * @param {object} params.nwcClient            Live @getalby/sdk NWCClient.
+ * @param {object} params.walletClient         Live wallet client — either
+ *                                             a @getalby/sdk NWCClient or a
+ *                                             WebLN wrapper. Must expose
+ *                                             `payInvoice({invoice})` →
+ *                                             `{preimage}`.
  * @param {function} [params.onStatus]         (legIndex, legState) — fires
  *                                             on every per-leg state change.
  * @param {{boostSession:string, byAddress:object}} [params.presigned]
@@ -484,7 +489,7 @@ export async function payAllLegs({
   donorNpub,
   pageUrl,
   episodeMeta,
-  nwcClient,
+  walletClient,
   lnurlCache,
   onStatus,
   presigned,
@@ -508,7 +513,7 @@ export async function payAllLegs({
         boostSession,
         legCount: legs.length,
         burnerSk,
-        nwcClient,
+        walletClient,
         message,
         lnurlCache,
         onStatus,

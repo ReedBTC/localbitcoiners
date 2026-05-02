@@ -25,7 +25,7 @@ export default function IdentityDropdown({
   triggerRef,           // ref to the trigger button, so a click on it
                         // is recognized as the toggle (not "outside")
   user,
-  walletStatus,         // { connected, alias }
+  walletStatus,         // { connected, kind, alias }
   onConnectWallet,
   onDisconnectWallet,
   onSignOut,
@@ -104,6 +104,16 @@ export default function IdentityDropdown({
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5 align-middle" />
               Connected{walletStatus.alias ? ` · ${walletStatus.alias}` : ''}
             </p>
+            {/* Kind subtitle — tells the user which adapter is active.
+                "via Alby" reads better than "via WebLN" for the common
+                case; the underlying provider could technically be a
+                non-Alby WebLN extension, but Alby is dominant enough
+                that the friendlier label is worth the small inaccuracy. */}
+            {walletStatus.kind && (
+              <p className="text-[10px] text-neutral-500 -mt-1">
+                {walletStatus.kind === 'webln' ? 'via Alby (browser extension)' : 'via NWC'}
+              </p>
+            )}
             <button
               type="button"
               role="menuitem"

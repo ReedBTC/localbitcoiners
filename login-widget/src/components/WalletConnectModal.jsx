@@ -1,30 +1,45 @@
 import { useState, useEffect } from 'react'
-import * as nwc from '../lib/nwc.js'
+import * as wallet from '../lib/wallet.js'
+import { useIsMobile } from '../hooks/useIsMobile.js'
 import { lockBodyScroll, unlockBodyScroll } from '../lib/scrollLock.js'
 import { useModalTransition } from '../lib/useModalTransition.js'
 
 /**
- * Standalone NWC connect modal — extracted from EpisodeBoostModal's
+ * Standalone wallet-connect modal — extracted from EpisodeBoostModal's
  * inline gate panel so connecting a wallet is a first-class action
  * triggered from the identity dropdown rather than a side-effect of
  * trying to boost.
  *
- * Behavior:
- *   1. Validate URI shape ('nostr+walletconnect://')
- *   2. Probe the wallet via getBalance (8s timeout)
- *   3. Encrypt the URI to the user's Nostr key (NIP-44 → NIP-04, 8s timeout)
- *   4. Persist + activate, fire onConnected so any pending action runs
+ * Two paths:
+ *   - WebLN (browser-extension wallet, e.g. Alby): one-click connect
+ *     via the extension's permission prompt. Hidden entirely on mobile
+ *     and on desktop browsers without a WebLN provider — no disabled
+ *     state, no "Install Alby" nudge.
+ *   - NWC (Nostr Wallet Connect URI paste): cross-platform fallback,
+ *     works on mobile and desktop. Validates the URI by probing the
+ *     wallet, then encrypts to the user's Nostr key before saving.
  *
- * If the user is signed out when this opens, fail fast — wallet
- * encryption requires a signer. The dropdown only surfaces this option
- * when logged in, so this is a safety guard.
+ * If the user is signed out when this opens, fail fast — both paths
+ * benefit from a Nostr identity (NWC needs it for encrypt-to-self;
+ * WebLN doesn't strictly need it but the rest of the boost flow does).
+ * The dropdown only surfaces this option when logged in, so this is a
+ * safety guard.
  */
 export default function WalletConnectModal({ user, onClose, onConnected }) {
   const { visible, requestClose } = useModalTransition(onClose)
+  const isMobile = useIsMobile()
 
   const [uri, setUri] = useState('')
   const [connecting, setConnecting] = useState(false)
   const [error, setError] = useState('')
+
+  // Whether to render the WebLN button at all. Detected once at mount —
+  // window.webln is injected synchronously by the extension before the
+  // page script runs, so a static check suffices. Mobile users get the
+  // NWC-only UI regardless of whether some mobile build of an extension
+  // happens to inject webln, since the per-payment confirmation flow
+  // hasn't been a viable mobile experience.
+  const showWebln = wallet.isWeblnAvailable() && !isMobile
 
   useEffect(() => {
     function onKey(e) {
@@ -40,7 +55,28 @@ export default function WalletConnectModal({ user, onClose, onConnected }) {
     return () => unlockBodyScroll()
   }, [])
 
-  async function handleConnect() {
+  async function handleConnectWebln() {
+    setError('')
+    if (!user) {
+      setError('Sign in with Nostr first — the boost flow needs your identity.')
+      return
+    }
+    setConnecting(true)
+    try {
+      await wallet.connectWebln()
+      onConnected?.()
+      requestClose()
+    } catch (e) {
+      console.warn('[lb-webln] connect failed', e?.message || e)
+      const msg = String(e?.message || '')
+      const looksFriendly = msg.length > 0 && msg.length < 200 && !/Error:|stack|undefined/i.test(msg)
+      setError(looksFriendly ? msg : 'Couldn\'t connect to your Lightning extension.')
+    } finally {
+      setConnecting(false)
+    }
+  }
+
+  async function handleConnectNwc() {
     setError('')
     if (!user) {
       setError('Sign in with Nostr first — your wallet connection is encrypted with your account.')
@@ -50,15 +86,15 @@ export default function WalletConnectModal({ user, onClose, onConnected }) {
     if (!trimmed) { setError('Paste your NWC connection string above.'); return }
     setConnecting(true)
     try {
-      await nwc.connect(trimmed, user)
+      await wallet.connectNwc(trimmed, user)
       setUri('')
       onConnected?.()
       requestClose()
     } catch (e) {
-      // Log full error to console; surface a clean message. nwc.connect
-      // already wraps SDK / signer errors generically, so most messages
-      // here are already user-friendly — but anything that slipped
-      // through gets normalized.
+      // Log full error to console; surface a clean message. wallet.connectNwc
+      // delegates to nwc.connect which already wraps SDK / signer errors
+      // generically, so most messages here are already user-friendly — but
+      // anything that slipped through gets normalized.
       console.warn('[lb-nwc] connect failed', e?.message || e)
       const msg = String(e?.message || '')
       const looksFriendly = msg.length > 0 && msg.length < 200 && !/Error:|stack|undefined/i.test(msg)
@@ -98,11 +134,52 @@ export default function WalletConnectModal({ user, onClose, onConnected }) {
           </div>
 
           <div className="px-4 sm:px-6 py-5 space-y-4 flex-1">
+
+            {/* WebLN — desktop with extension only. Hidden entirely on
+                mobile and when no provider is detected (no disabled
+                state, no install nudge). */}
+            {showWebln && (
+              <>
+                <div>
+                  <p className="text-xs text-neutral-400 leading-snug mb-3">
+                    Use your installed Lightning extension. Your
+                    extension prompts you for each payment — no
+                    connection string to copy or store.
+                  </p>
+                  <button
+                    onClick={handleConnectWebln}
+                    disabled={connecting}
+                    className="w-full py-3 rounded bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium text-white transition-colors inline-flex items-center justify-center gap-2"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M14.615 1.595a.75.75 0 0 1 .359.852L12.982 9.75h7.268a.75.75 0 0 1 .548 1.262l-10.5 11.25a.75.75 0 0 1-1.272-.71l1.992-7.302H3.75a.75.75 0 0 1-.548-1.262l10.5-11.25a.75.75 0 0 1 .913-.143Z" clipRule="evenodd"/>
+                    </svg>
+                    {connecting ? 'Connecting…' : 'Use Lightning extension (WebLN)'}
+                  </button>
+                </div>
+
+                {/* Divider — visually separates the two paths so it's
+                    clear they're alternatives, not a sequence. */}
+                <div className="relative py-2">
+                  <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                    <div className="w-full border-t border-neutral-800" />
+                  </div>
+                  <div className="relative flex justify-center">
+                    <span className="bg-neutral-900 px-2 text-[10px] uppercase tracking-wider text-neutral-600">
+                      or paste a connection string
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* NWC paste — always visible. Cross-platform; works on
+                mobile and on desktop browsers without an extension. */}
             <p className="text-xs text-neutral-400 leading-snug">
-              Connecting a Lightning wallet via NWC unlocks one-tap
-              episode boosts that pay all of an episode's split
-              recipients in one shot. Your connection string is
-              encrypted with your Nostr key before saving.
+              Connect a Lightning wallet via NWC for one-tap episode
+              boosts that pay all of an episode's split recipients in
+              one shot. Your connection string is encrypted with your
+              Nostr key before saving.
             </p>
 
             <div>
@@ -125,11 +202,11 @@ export default function WalletConnectModal({ user, onClose, onConnected }) {
             )}
 
             <button
-              onClick={handleConnect}
+              onClick={handleConnectNwc}
               disabled={connecting}
-              className="w-full py-3 rounded bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium text-white transition-colors"
+              className={`w-full py-3 rounded ${showWebln ? 'bg-neutral-700 hover:bg-neutral-600' : 'bg-orange-500 hover:bg-orange-600'} disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium text-white transition-colors`}
             >
-              {connecting ? 'Connecting…' : 'Connect Wallet'}
+              {connecting ? 'Connecting…' : 'Connect via NWC'}
             </button>
           </div>
         </div>

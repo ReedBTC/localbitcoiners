@@ -32,7 +32,7 @@ import {
   buildEpisodeBoostShareTemplate,
   signKindOneShareWithUser,
 } from '../lib/boostagram.js'
-import * as nwc from '../lib/nwc.js'
+import * as wallet from '../lib/wallet.js'
 import { submitBoost } from '../lib/boostQueue.js'
 import { presignAllowlistedLegs } from '../lib/payAllLegs.js'
 import { shouldPublishMetadata } from '../lib/recipientOverrides.js'
@@ -64,11 +64,11 @@ export default function EpisodeBoostModal({
   const donorNpub = user?.npub || ''
   const profile = user?.profile
 
-  // Live NWC status — if the wallet drops between gate-pass and modal
-  // open (rare race), we want to surface a notice instead of letting
-  // a Boost click fail silently.
-  const [nwcStatus, setNwcStatus] = useState(() => nwc.getStatus())
-  useEffect(() => nwc.onChange(setNwcStatus), [])
+  // Live wallet status — if the active wallet drops between gate-pass
+  // and modal open (rare race), we want to surface a notice instead of
+  // letting a Boost click fail silently.
+  const [walletStatus, setWalletStatus] = useState(() => wallet.getStatus())
+  useEffect(() => wallet.onChange(setWalletStatus), [])
 
   // Resolve every recipient's LNURL endpoint in parallel as soon as
   // the modal opens. By the time the user finishes typing the amount,
@@ -130,7 +130,7 @@ export default function EpisodeBoostModal({
       setError(`Minimum boost is ${MIN_SATS} sats (covers splits + fees).`)
       return
     }
-    if (!nwc.isReady()) {
+    if (!wallet.isReady()) {
       setError('Wallet not connected — connect a Lightning wallet from your account menu.')
       return
     }
@@ -209,7 +209,7 @@ export default function EpisodeBoostModal({
       message: trimmedMessage,
       donorNpub: senderNpub,
       lnurlCache,
-      nwcClient: nwc.getClient(),
+      walletClient: wallet.getClient(),
       presigned,
       signedKindOne,
     })
@@ -228,7 +228,7 @@ export default function EpisodeBoostModal({
   const epLabel = episode?.number ? `Ep. ${String(episode.number).padStart(3, '0')}` : 'Episode'
   const headerTitle = `⚡ Boost ${epLabel}`
   const splitsCount = splitsBundle?.recipients?.length || 0
-  const walletGone = !nwcStatus.connected
+  const walletGone = !walletStatus.connected
 
   return (
     <>
@@ -267,7 +267,7 @@ export default function EpisodeBoostModal({
             )}
 
             {/* Wallet-disconnected fallback. Rare — the API gate
-                checks NWC before opening this modal, but a wallet
+                checks the wallet before opening this modal, but a wallet
                 can drop between gate-pass and mount. */}
             {walletGone && (
               <div className="space-y-3 text-center py-2">
