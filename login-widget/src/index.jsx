@@ -18,7 +18,7 @@ import {
 } from './lib/sessionPersistence.js'
 import { markStubUser, isStubUser } from './lib/stubUser.js'
 import { getNDK, resetNDK, connectAndWait } from './lib/ndk.js'
-import * as nwc from './lib/nwc.js'
+import * as wallet from './lib/wallet.js'
 import { applyRecipientOverrides } from './lib/recipientOverrides.js'
 import { pushToast } from './lib/toast.js'
 // Side-effect import: installs a same-origin click interceptor that
@@ -142,7 +142,7 @@ function forceLogoutWithMessage(message) {
   clearSession()
   clearProfile()
   resetNDK()
-  try { nwc.lockOnLogout() } catch {}
+  try { wallet.lockOnLogout() } catch {}
   cancelPendingAction()
   signerVerified = false
   setUser(null)
@@ -177,12 +177,12 @@ function ensureRealRestore() {
       if (result?.kind === 'ok' && result.user) {
         stubRestoreAttempts = 0
         setUser(result.user)
-        // Pre-warm NWC: opens the relay socket + handshake now so the
-        // next boost publishes instantly instead of paying the unlock
-        // cost on the click. ensureReady is idempotent and short-
-        // circuits when there's no stored blob, so this is a safe
-        // fire-and-forget.
-        nwc.ensureReady(result.user).catch(() => {})
+        // Pre-warm wallet: NWC opens its relay socket + handshake; WebLN
+        // re-enables silently against the browser extension. Either
+        // path makes the next boost publish instantly instead of
+        // paying the unlock cost on the click. ensureReady is
+        // idempotent and short-circuits when nothing is configured.
+        wallet.ensureReady(result.user).catch(() => {})
         consumePendingAction()
       } else if (result?.kind === 'permanent') {
         forceLogoutWithMessage('Session expired — please sign in again.')
@@ -272,7 +272,10 @@ function setShowBoostOpen(v) {
 }
 
 function BoostApp() {
-  return <BoostButton onOpen={() => setShowBoostOpen(true)} />
+  // Route through the gated api wrapper rather than flipping the
+  // signal directly, so the show-boost flow honours the same
+  // login → wallet gates the episode-boost flow does.
+  return <BoostButton onOpen={() => api.openShowBoost()} />
 }
 
 function ShowBoostHost() {
@@ -287,7 +290,6 @@ function ShowBoostHost() {
   return createPortal(
     <BoostModal
       user={user || null}
-      onUserChange={(u) => { abortRestore(); setUser(u) }}
       onClose={() => setShowBoostOpen(false)}
     />,
     document.body,
@@ -323,10 +325,11 @@ function LoginPromptHost() {
         stubRestoreAttempts = 0
         setUser(u)
         setLoginOpen(false)
-        // Pre-warm NWC in case this account already has a stored blob
-        // from a previous session (logged out then back in as same npub).
-        // No-op for fresh accounts that haven't connected a wallet yet.
-        nwc.ensureReady(u).catch(() => {})
+        // Pre-warm wallet: NWC may have a stored blob for this npub;
+        // WebLN re-enables silently if the user previously enabled it
+        // here. No-op for fresh accounts that haven't connected
+        // either.
+        wallet.ensureReady(u).catch(() => {})
         // If a boost or wallet-connect was waiting on login, run it now.
         consumePendingAction()
       }}
@@ -418,8 +421,8 @@ function EpisodeBoostHost() {
 // itself doesn't need to know about module-level signals.
 function IdentityHost() {
   const user = useSharedUser()
-  const [walletStatus, setWalletStatus] = useState(() => nwc.getStatus())
-  useEffect(() => nwc.onChange(setWalletStatus), [])
+  const [walletStatus, setWalletStatus] = useState(() => wallet.getStatus())
+  useEffect(() => wallet.onChange(setWalletStatus), [])
 
   return (
     <IdentityWidget
@@ -501,9 +504,9 @@ const api = {
           //               isn't stuck staring at a phantom identity
           if (result?.kind === 'ok' && result.user) {
             setUser(result.user)
-            // Pre-warm NWC — see the equivalent call in
+            // Pre-warm wallet — see the equivalent call in
             // ensureRealRestore for the rationale.
-            nwc.ensureReady(result.user).catch(() => {})
+            wallet.ensureReady(result.user).catch(() => {})
           } else if (result?.kind === 'permanent') {
             forceLogoutWithMessage('Saved session was invalid — please sign in again.')
           }
@@ -564,34 +567,77 @@ const api = {
     setWalletConnectOpen(true)
   },
 
-  /** Disconnect the user's NWC wallet — wipes the encrypted blob
-   *  and tears down the in-memory client. */
+  /** Disconnect whichever wallet is active — NWC wipes the encrypted
+   *  blob, WebLN clears its enabled-flag (extension's per-domain
+   *  permission grant is outside our control). */
   disconnectWallet() {
-    nwc.disconnect()
+    wallet.disconnect()
   },
 
   /**
    * Sign the current user out. Clears persisted session, drops the
-   * NDK instance, locks the in-memory NWC client (the encrypted blob
-   * stays at rest, ready to unlock when they sign back in as the
-   * same npub).
+   * NDK instance, soft-locks the wallet (NWC's encrypted blob and
+   * WebLN's enabled-flag both stay at rest, ready to silently
+   * resume when the same user signs back in).
    */
   logout() {
     if (!currentUser || currentUser === undefined) return
     clearSession()
     resetNDK()
-    nwc.lockOnLogout()
+    wallet.lockOnLogout()
     cancelPendingAction()
     signerVerified = false
     stubRestoreAttempts = 0
     setUser(null)
   },
 
-  /** Open the show-boost modal directly. */
+  /**
+   * Open the show-boost modal. Mirrors openEpisodeBoost's gate chain
+   * because the show boost now uses the same multi-leg payment flow:
+   * needs login (allowlisted leg metadata is donor-signed), needs the
+   * real signer (not a stub), needs the signer to match the saved
+   * pubkey, and needs a wallet connected (NWC or WebLN). The wallet
+   * gate auto-engages WebLN when the browser provides it, so a user
+   * with the Alby extension boosts in a single tap (one-time
+   * permission prompt the first time, silent thereafter).
+   */
   async openShowBoost() {
-    if (currentUser && !isStubUser(currentUser)) {
-      if (!await ensureSignerVerified()) return
+    // Gate 1: signed in?
+    if (!currentUser || currentUser === undefined) {
+      setPendingAction(() => api.openShowBoost())
+      api.requestLogin()
+      return
     }
+
+    // Gate 1.5: real user (not a stub)?
+    if (isStubUser(currentUser)) {
+      setPendingAction(() => api.openShowBoost())
+      ensureRealRestore()
+      return
+    }
+
+    // Gate 1.75: signer-account match.
+    if (!await ensureSignerVerified()) return
+
+    // Gate 2: wallet connected? Auto-engages WebLN as a last resort
+    // when the extension is present — see wallet.ensureReady.
+    if (!wallet.isReady()) {
+      wallet.ensureReady(currentUser, { attemptWeblnEnable: true })
+        .then((ok) => {
+          if (ok) {
+            api.openShowBoost()
+          } else {
+            setPendingAction(() => api.openShowBoost())
+            api.openWalletConnect()
+          }
+        })
+        .catch(() => {
+          setPendingAction(() => api.openShowBoost())
+          api.openWalletConnect()
+        })
+      return
+    }
+
     setShowBoostOpen(true)
   },
 
@@ -638,12 +684,13 @@ const api = {
     // key. Force re-auth before that can happen. No-op after first ok.
     if (!await ensureSignerVerified()) return
 
-    // Gate 2: NWC connected?
-    if (!nwc.isReady()) {
-      // Try to unlock from a saved blob. If that succeeds, fall
-      // straight through. If it fails (no blob, wrong account, signer
-      // hung, etc.) we open the connect modal.
-      nwc.ensureReady(currentUser)
+    // Gate 2: wallet connected?
+    if (!wallet.isReady()) {
+      // Try to restore from at-rest state (NWC encrypted blob, or
+      // WebLN's enabled-flag plus a still-installed extension). If
+      // that succeeds, fall straight through. Otherwise open the
+      // connect modal.
+      wallet.ensureReady(currentUser, { attemptWeblnEnable: true })
         .then((ok) => {
           if (ok) {
             // Re-call openEpisodeBoost — Gate 2 will pass now.
@@ -669,11 +716,13 @@ const api = {
     })
   },
 
-  /** NWC status snapshot for consumers that want to render wallet state. */
-  getNwcStatus() { return nwc.getStatus() },
+  /** Wallet status snapshot for consumers that want to render wallet
+   *  state. Now includes a `kind` field ('nwc' | 'webln' | null). */
+  getNwcStatus() { return wallet.getStatus() },
 
-  /** Subscribe to NWC connect/disconnect events. Returns unsubscribe. */
-  onNwcChange(fn) { return nwc.onChange(fn) },
+  /** Subscribe to wallet connect/disconnect events (either backend).
+   *  Returns unsubscribe. */
+  onNwcChange(fn) { return wallet.onChange(fn) },
 
   /**
    * Sign a raw event template using the current user's signer.

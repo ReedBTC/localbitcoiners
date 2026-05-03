@@ -32,14 +32,17 @@ import {
   buildEpisodeBoostShareTemplate,
   signKindOneShareWithUser,
 } from '../lib/boostagram.js'
-import * as nwc from '../lib/nwc.js'
+import * as wallet from '../lib/wallet.js'
 import { submitBoost } from '../lib/boostQueue.js'
 import { presignAllowlistedLegs } from '../lib/payAllLegs.js'
 import { shouldPublishMetadata } from '../lib/recipientOverrides.js'
 import { lockBodyScroll, unlockBodyScroll } from '../lib/scrollLock.js'
 import { useModalTransition } from '../lib/useModalTransition.js'
+import BoostExpectations from './BoostExpectations.jsx'
 
 const MIN_SATS = 100
+// 5M sats hard ceiling — see BoostModal for rationale.
+const MAX_SATS = 5_000_000
 
 export default function EpisodeBoostModal({
   user,
@@ -67,8 +70,8 @@ export default function EpisodeBoostModal({
   // Live NWC status — if the wallet drops between gate-pass and modal
   // open (rare race), we want to surface a notice instead of letting
   // a Boost click fail silently.
-  const [nwcStatus, setNwcStatus] = useState(() => nwc.getStatus())
-  useEffect(() => nwc.onChange(setNwcStatus), [])
+  const [walletStatus, setWalletStatus] = useState(() => wallet.getStatus())
+  useEffect(() => wallet.onChange(setWalletStatus), [])
 
   // Resolve every recipient's LNURL endpoint in parallel as soon as
   // the modal opens. By the time the user finishes typing the amount,
@@ -130,7 +133,11 @@ export default function EpisodeBoostModal({
       setError(`Minimum boost is ${MIN_SATS} sats (covers splits + fees).`)
       return
     }
-    if (!nwc.isReady()) {
+    if (sats > MAX_SATS) {
+      setError(`Max ${MAX_SATS.toLocaleString()} sats per boost — split a larger gift across multiple boosts.`)
+      return
+    }
+    if (!wallet.isReady()) {
       setError('Wallet not connected — connect a Lightning wallet from your account menu.')
       return
     }
@@ -209,7 +216,7 @@ export default function EpisodeBoostModal({
       message: trimmedMessage,
       donorNpub: senderNpub,
       lnurlCache,
-      nwcClient: nwc.getClient(),
+      wallet: wallet.getActiveWallet(),
       presigned,
       signedKindOne,
     })
@@ -228,7 +235,7 @@ export default function EpisodeBoostModal({
   const epLabel = episode?.number ? `Ep. ${String(episode.number).padStart(3, '0')}` : 'Episode'
   const headerTitle = `⚡ Boost ${epLabel}`
   const splitsCount = splitsBundle?.recipients?.length || 0
-  const walletGone = !nwcStatus.connected
+  const walletGone = !walletStatus.connected
 
   return (
     <>
@@ -291,6 +298,7 @@ export default function EpisodeBoostModal({
                   <input
                     type="number"
                     min={MIN_SATS}
+                    max={MAX_SATS}
                     value={amount}
                     onChange={e => setAmount(e.target.value)}
                     className="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/30"
@@ -372,6 +380,15 @@ export default function EpisodeBoostModal({
                     </span>
                   </label>
                 )}
+
+                <BoostExpectations
+                  walletKind={walletStatus.kind}
+                  anonymous={anonymous}
+                  allowlistedCount={allowlistedCount}
+                  shareToFeed={shareToFeed}
+                  canShareToFeed={canShareToFeed}
+                  splitsCount={splitsCount}
+                />
 
                 {error && <p className="text-xs text-red-400">{error}</p>}
 

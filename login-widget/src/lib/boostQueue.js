@@ -106,7 +106,7 @@ export function submitBoost({
   message,
   donorNpub,
   lnurlCache,
-  nwcClient,
+  wallet,           // { kind, payInvoice } — NWC client or WebLN adapter
   presigned,        // optional { boostSession, byAddress } from presignAllowlistedLegs
   signedKindOne,    // optional pre-signed kind 1 share-to-feed event
 }) {
@@ -126,8 +126,8 @@ export function submitBoost({
     console.warn('[boostQueue] submitBoost: totalSats below minimum')
     return false
   }
-  if (!nwcClient || typeof nwcClient.payInvoice !== 'function') {
-    console.warn('[boostQueue] submitBoost: NWC client unavailable')
+  if (!wallet || typeof wallet.payInvoice !== 'function') {
+    console.warn('[boostQueue] submitBoost: wallet adapter unavailable')
     return false
   }
 
@@ -152,7 +152,7 @@ export function submitBoost({
         donorNpub,
         pageUrl: SITE_URL,
         episodeMeta: episode,
-        nwcClient,
+        wallet,
         lnurlCache,
         presigned,
       })

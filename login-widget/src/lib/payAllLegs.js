@@ -161,7 +161,7 @@ async function runLeg({
   boostSession,
   legCount,
   burnerSk,
-  nwcClient,
+  wallet,        // { kind, payInvoice } — NWC client or WebLN adapter
   message,
   lnurlCache,
   onStatus,
@@ -276,19 +276,21 @@ async function runLeg({
     // else: deliberately no metadata publish — leg pays without a 30078.
 
     update({ status: STATUSES.PAYING })
-    // NWC's payInvoice. Wallet relay round-trip: wallet receives
-    // encrypted request, attempts payment, returns response. Anywhere
-    // from a few hundred ms (warm Alby Hub) to ~10s (cold mobile
-    // wallet). The SDK enforces its own 60s reply timeout internally.
+    // Hand the bolt11 to the active wallet adapter. NWC routes through
+    // an encrypted wallet-relay round-trip (a few hundred ms warm to
+    // ~10s cold; the SDK enforces a 60s reply-timeout ceiling).
+    // WebLN goes straight to the browser extension and is typically
+    // sub-second when the extension's auto-pay budget covers the
+    // amount, otherwise it waits on user approval.
     //
-    // Translate the SDK's terse "reply timeout: event <hex>" error
-    // into something actionable — a 60s timeout almost always means
-    // either the wallet was slow under contention or the payment
-    // actually settled but the reply event got lost. Either way, the
-    // user should check their wallet before retrying.
+    // Translate either backend's terse timeout into something
+    // actionable — a timeout almost always means either the wallet
+    // was slow under contention or the payment actually settled but
+    // the reply got lost. Either way the user should check their
+    // wallet before retrying.
     let payRes
     try {
-      payRes = await nwcClient.payInvoice({ invoice })
+      payRes = await wallet.payInvoice({ invoice })
     } catch (e) {
       const msg = String(e?.message || e)
       if (/reply timeout|publish timeout|timeout/i.test(msg)) {
@@ -452,7 +454,9 @@ export async function presignAllowlistedLegs({
  *                                             or '' for anonymous.
  * @param {string} params.pageUrl              Site root URL for the url tag.
  * @param {{number:number,title:string,guid:string}} params.episodeMeta
- * @param {object} params.nwcClient            Live @getalby/sdk NWCClient.
+ * @param {{kind:string,payInvoice:Function}} params.wallet
+ *        Active wallet adapter (NWC client or WebLN). Must expose
+ *        payInvoice({ invoice }) → { preimage }.
  * @param {function} [params.onStatus]         (legIndex, legState) — fires
  *                                             on every per-leg state change.
  * @param {{boostSession:string, byAddress:object}} [params.presigned]
@@ -484,7 +488,7 @@ export async function payAllLegs({
   donorNpub,
   pageUrl,
   episodeMeta,
-  nwcClient,
+  wallet,
   lnurlCache,
   onStatus,
   presigned,
@@ -508,7 +512,7 @@ export async function payAllLegs({
         boostSession,
         legCount: legs.length,
         burnerSk,
-        nwcClient,
+        wallet,
         message,
         lnurlCache,
         onStatus,

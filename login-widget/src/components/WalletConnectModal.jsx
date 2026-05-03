@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import * as nwc from '../lib/nwc.js'
+import * as wallet from '../lib/wallet.js'
 import { lockBodyScroll, unlockBodyScroll } from '../lib/scrollLock.js'
 import { useModalTransition } from '../lib/useModalTransition.js'
 
@@ -25,6 +25,10 @@ export default function WalletConnectModal({ user, onClose, onConnected }) {
   const [uri, setUri] = useState('')
   const [connecting, setConnecting] = useState(false)
   const [error, setError] = useState('')
+  // window.webln is provided by browser extensions like Alby and
+  // Mutiny. Surfacing this option only when the extension is actually
+  // installed avoids a dead button on every other browser.
+  const [weblnAvailable] = useState(() => wallet.isWeblnAvailable())
 
   useEffect(() => {
     function onKey(e) {
@@ -40,6 +44,23 @@ export default function WalletConnectModal({ user, onClose, onConnected }) {
     return () => unlockBodyScroll()
   }, [])
 
+  async function handleConnectWebln() {
+    setError('')
+    setConnecting(true)
+    try {
+      await wallet.connectWebln()
+      onConnected?.()
+      requestClose()
+    } catch (e) {
+      console.warn('[lb-webln] enable failed', e?.message || e)
+      const msg = String(e?.message || '')
+      const looksFriendly = msg.length > 0 && msg.length < 200 && !/Error:|stack|undefined/i.test(msg)
+      setError(looksFriendly ? msg : 'Couldn\'t enable your browser extension. Make sure it\'s unlocked and try again.')
+    } finally {
+      setConnecting(false)
+    }
+  }
+
   async function handleConnect() {
     setError('')
     if (!user) {
@@ -50,7 +71,7 @@ export default function WalletConnectModal({ user, onClose, onConnected }) {
     if (!trimmed) { setError('Paste your NWC connection string above.'); return }
     setConnecting(true)
     try {
-      await nwc.connect(trimmed, user)
+      await wallet.connectNwc(trimmed, user)
       setUri('')
       onConnected?.()
       requestClose()
@@ -99,11 +120,38 @@ export default function WalletConnectModal({ user, onClose, onConnected }) {
 
           <div className="px-4 sm:px-6 py-5 space-y-4 flex-1">
             <p className="text-xs text-neutral-400 leading-snug">
-              Connecting a Lightning wallet via NWC unlocks one-tap
-              episode boosts that pay all of an episode's split
-              recipients in one shot. Your connection string is
-              encrypted with your Nostr key before saving.
+              Connect a Lightning wallet to enable one-tap boosts on
+              the show and on every episode (each episode boost pays
+              all of its split recipients in one shot).
             </p>
+
+            {/* WebLN button — surfaced only when the browser actually
+                provides window.webln. One tap, no copy/paste, no
+                signer round-trip. */}
+            {weblnAvailable && (
+              <>
+                <button
+                  onClick={handleConnectWebln}
+                  disabled={connecting}
+                  className="w-full inline-flex items-center justify-center gap-2 py-3 rounded bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium text-white transition-colors"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path fillRule="evenodd" d="M14.615 1.595a.75.75 0 0 1 .359.852L12.982 9.75h7.268a.75.75 0 0 1 .548 1.262l-10.5 11.25a.75.75 0 0 1-1.272-.71l1.992-7.302H3.75a.75.75 0 0 1-.548-1.262l10.5-11.25a.75.75 0 0 1 .913-.143Z" clipRule="evenodd"/>
+                  </svg>
+                  {connecting ? 'Connecting…' : 'Use my browser extension'}
+                </button>
+                <p className="text-[10px] text-neutral-600 leading-snug -mt-2">
+                  Detected a Lightning extension (Alby, Mutiny, etc.) —
+                  one tap to enable, no copy/paste required.
+                </p>
+
+                <div className="flex items-center gap-3 my-1">
+                  <div className="flex-1 h-px bg-neutral-800" />
+                  <span className="text-[10px] uppercase tracking-wider text-neutral-600">or</span>
+                  <div className="flex-1 h-px bg-neutral-800" />
+                </div>
+              </>
+            )}
 
             <div>
               <label className="block text-xs text-neutral-400 mb-1.5">NWC connection string</label>
@@ -115,8 +163,10 @@ export default function WalletConnectModal({ user, onClose, onConnected }) {
                 className="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-xs text-neutral-100 font-mono focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/30"
               />
               <p className="mt-1.5 text-[10px] text-neutral-600 leading-snug">
-                Get a connection string from Alby Hub, Primal, Mutiny,
-                Coinos, or any wallet that supports NIP-47.
+                Cross-device option. Get a connection string from Alby
+                Hub, Primal, Mutiny, Coinos, or any wallet that
+                supports NIP-47. Encrypted to your Nostr key before
+                saving.
               </p>
             </div>
 
@@ -127,9 +177,9 @@ export default function WalletConnectModal({ user, onClose, onConnected }) {
             <button
               onClick={handleConnect}
               disabled={connecting}
-              className="w-full py-3 rounded bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium text-white transition-colors"
+              className="w-full py-3 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium text-neutral-200 transition-colors"
             >
-              {connecting ? 'Connecting…' : 'Connect Wallet'}
+              {connecting ? 'Connecting…' : 'Connect via NWC'}
             </button>
           </div>
         </div>

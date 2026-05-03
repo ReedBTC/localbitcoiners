@@ -25,7 +25,7 @@ export default function IdentityDropdown({
   triggerRef,           // ref to the trigger button, so a click on it
                         // is recognized as the toggle (not "outside")
   user,
-  walletStatus,         // { connected, alias }
+  walletStatus,         // { connected, kind, alias }
   onConnectWallet,
   onDisconnectWallet,
   onSignOut,
@@ -102,7 +102,7 @@ export default function IdentityDropdown({
           <>
             <p className="text-xs text-neutral-300 truncate">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5 align-middle" />
-              Connected{walletStatus.alias ? ` · ${walletStatus.alias}` : ''}
+              {walletKindLabel(walletStatus)}
             </p>
             <button
               type="button"
@@ -139,9 +139,15 @@ export default function IdentityDropdown({
           <p className="text-[11px] text-neutral-500 uppercase tracking-wide">In Progress</p>
           <ul className="space-y-1.5">
             {pending.map((p) => {
-              const epLabel = p.episode?.number
-                ? `Ep. ${String(p.episode.number).padStart(3, '0')}`
-                : 'Episode'
+              // `kind: 'show'` is set by BoostModal so a site-wide
+              // boost reads "Show" here instead of falling through to
+              // the "Episode" defensive default. Per-episode boosts
+              // don't set the kind and always have a number.
+              const epLabel = p.episode?.kind === 'show'
+                ? 'Show'
+                : p.episode?.number
+                  ? `Ep. ${String(p.episode.number).padStart(3, '0')}`
+                  : 'Episode'
               return (
                 <li key={p.sessionId} className="text-xs">
                   <div className="flex items-center justify-between gap-2">
@@ -188,6 +194,36 @@ export default function IdentityDropdown({
     </div>,
     document.body,
   )
+}
+
+// Surface which wallet backend is active. WebLN connections come from
+// a browser extension and rarely report a useful alias, so we use a
+// generic "Browser extension" label rather than risk an empty trailing
+// "Connected · ". NWC almost always has an alias when the wallet
+// implements get_info; if not, fall through to a plain "Connected".
+function walletKindLabel(status) {
+  const alias = sanitizeAlias(status.alias)
+  if (status.kind === 'webln') {
+    return alias ? `Browser extension · ${alias}` : 'Browser extension'
+  }
+  if (alias) return `Connected · ${alias}`
+  return 'Connected'
+}
+
+// Strip Unicode bidi-override and isolate marks before rendering an
+// alias the wallet sent us. React already escapes HTML, but bidi
+// controls can flip the visible character order — a hostile or
+// misconfigured wallet could ship `"‮…"` and reorder the entire
+// dropdown line. The wallet is technically inside our trust boundary
+// (NWC URI was user-pasted; WebLN extension was user-installed) but
+// the cost of cleaning is one regex and the failure mode is real.
+//
+// Range covers U+202A..U+202E (LRE/RLE/PDF/LRO/RLO) and U+2066..U+2069
+// (LRI/RLI/FSI/PDI). Escaped via \u so the source stays grep-friendly.
+const BIDI_CONTROLS = /[\u202A-\u202E\u2066-\u2069]/g
+function sanitizeAlias(s) {
+  if (typeof s !== 'string' || !s) return ''
+  return s.replace(BIDI_CONTROLS, '')
 }
 
 function BoostStatusBadge({ status }) {

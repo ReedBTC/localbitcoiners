@@ -15,19 +15,19 @@
  */
 
 /**
- * Format the episode tag we send in the LNURL comment. Three-digit
- * zero-padded so bots can match on a fixed regex:
- *   /^LocalBitcoinersEp(\d{3})$/
+ * Format the episode tag we send in the LNURL comment. Bots can
+ * match on a fixed regex:
+ *   /^LocalBitcoiners(Show|Ep\d{3})$/
  *
  * Examples:
- *   8   -> "LocalBitcoinersEp008"
- *   42  -> "LocalBitcoinersEp042"
- *   0/null -> "LocalBitcoinersEp000" (defensive default; payment still
- *   succeeds and the kind 30078 carries the real number, but the bot's
- *   fast filter won't fire — caller should always pass a real number).
+ *   8       -> "LocalBitcoinersEp008"
+ *   42      -> "LocalBitcoinersEp042"
+ *   null    -> "LocalBitcoinersShow"   (show-level boost from the
+ *              site's "Boost the Show" button; no episode context)
  */
 export function formatEpisodeComment(episodeNumber) {
+  if (episodeNumber == null) return 'LocalBitcoinersShow'
   const n = parseInt(episodeNumber, 10)
-  if (!Number.isFinite(n) || n <= 0) return 'LocalBitcoinersEp000'
+  if (!Number.isFinite(n) || n <= 0) return 'LocalBitcoinersShow'
   return `LocalBitcoinersEp${String(n).padStart(3, '0')}`
 }
