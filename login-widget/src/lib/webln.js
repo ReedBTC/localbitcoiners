@@ -25,16 +25,33 @@
  *                      ({ preimage }) so payAllLegs is wallet-agnostic.
  *
  * Persistence is intentionally minimal — a single flag in localStorage
- * marks "user previously enabled WebLN on this site". On next page
- * load the wallet facade re-checks both `window.webln` and the flag
- * and silently re-enables if both are present. No URI to encrypt, no
- * signer round-trip, no per-account binding (the extension manages
- * that itself).
+ * marks "this pubkey previously enabled WebLN on this site". The flag
+ * is keyed per-pubkey so a shared browser can't leak User A's enabled
+ * state to User B. On next page load the wallet facade re-checks both
+ * `window.webln` and the flag (for the currently signed-in pubkey)
+ * and silently re-enables only if both are present.
+ *
+ * Why per-pubkey: an Alby (or Mutiny) extension grants a per-domain
+ * permission that survives any in-page logout. Without per-pubkey
+ * scoping, User A enables WebLN here, logs out, User B logs in, and
+ * the silent restore quietly connects User B to User A's Alby — a
+ * payment that B initiates would debit A. Per-pubkey storage closes
+ * that path: B's flag is unset, so nothing auto-restores. (B can
+ * still explicitly connect via the connect modal — but that's an
+ * informed user choice, not a silent leak.)
  */
 
 import { withTimeout } from './utils.js'
 
-const STORAGE_KEY = 'lb_webln_active'
+// One-shot migration: clear the legacy global flag from before the
+// per-pubkey rewrite. Existing users get bumped to "connect once" the
+// next time they boost, which is the safe direction. Cheap; runs once
+// at module load.
+try { localStorage.removeItem('lb_webln_active') } catch {}
+
+function keyFor(pubkey) {
+  return `lb_webln_active_${pubkey}`
+}
 
 let activeAlias = null
 let isActive = false
@@ -72,15 +89,18 @@ export function getStatus() {
   }
 }
 
-/** True if the user previously enabled WebLN on this site. */
-export function hasStoredFlag() {
-  try { return localStorage.getItem(STORAGE_KEY) === '1' } catch { return false }
+/** True if the given pubkey previously enabled WebLN on this site.
+ *  Returns false when called without a pubkey (logged-out branch). */
+export function hasStoredFlag(pubkey) {
+  if (!pubkey) return false
+  try { return localStorage.getItem(keyFor(pubkey)) === '1' } catch { return false }
 }
 
-function setStoredFlag(on) {
+function setStoredFlag(on, pubkey) {
+  if (!pubkey) return
   try {
-    if (on) localStorage.setItem(STORAGE_KEY, '1')
-    else localStorage.removeItem(STORAGE_KEY)
+    if (on) localStorage.setItem(keyFor(pubkey), '1')
+    else localStorage.removeItem(keyFor(pubkey))
   } catch {}
 }
 
@@ -89,11 +109,19 @@ function setStoredFlag(on) {
  * via getInfo. Bounded by `timeoutMs` so a misbehaving extension that
  * never resolves doesn't lock the connect modal forever.
  *
- * Throws on unavailable / refused / timeout. The caller (wallet
- * facade or WalletConnectModal) translates these into UI-level
- * messages.
+ * Requires `pubkey` so the success flag can be written under the
+ * current user's storage scope (see file header). Without it we'd
+ * regress the cross-user leak the per-pubkey rewrite was meant to
+ * fix, so this throws rather than silently writing nothing.
+ *
+ * Throws on missing pubkey / unavailable / refused / timeout. The
+ * caller (wallet facade or WalletConnectModal) translates these into
+ * UI-level messages.
  */
-export async function enable({ timeoutMs = 15000 } = {}) {
+export async function enable({ pubkey, timeoutMs = 15000 } = {}) {
+  if (!pubkey) {
+    throw new Error('Sign in before connecting your browser extension.')
+  }
   if (!isAvailable()) {
     throw new Error('No WebLN provider detected — install a browser extension like Alby first.')
   }
@@ -116,7 +144,7 @@ export async function enable({ timeoutMs = 15000 } = {}) {
   } catch {}
   isActive = true
   activeAlias = alias
-  setStoredFlag(true)
+  setStoredFlag(true, pubkey)
   notify()
   return { alias }
 }
@@ -143,14 +171,15 @@ export async function payInvoice({ invoice }) {
   return { preimage: res.preimage }
 }
 
-/** Forget the WebLN connection. Clears the stored flag so it won't
- *  silently re-enable on next page load. The browser extension itself
- *  retains its per-domain permission grant (we have no API to revoke
- *  that). */
-export function disconnect() {
+/** Forget the WebLN connection for a specific user. Clears the
+ *  pubkey-scoped flag so it won't silently re-enable on next page
+ *  load for that user. Other users on the same browser are
+ *  unaffected. The browser extension itself retains its per-domain
+ *  permission grant (we have no API to revoke that). */
+export function disconnect(pubkey) {
   isActive = false
   activeAlias = null
-  setStoredFlag(false)
+  setStoredFlag(false, pubkey)
   notify()
 }
 

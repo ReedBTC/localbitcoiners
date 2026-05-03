@@ -3,6 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Pragmatic baseline CSP. See index.html for the rationale; both
+       pages share the same policy intentionally so future tightening
+       happens in lockstep. -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' 'unsafe-inline';
+    style-src 'self' 'unsafe-inline';
+    img-src 'self' data: https:;
+    font-src 'self' data:;
+    connect-src 'self' https: wss:;
+    frame-ancestors 'none';
+    base-uri 'self';
+    form-action 'self';
+    object-src 'none';
+  " />
+
   <title>Podcast Boosts — Local Bitcoiners</title>
   <meta name="description" content="The Local Bitcoiners boost wall — read the latest boost messages and zaps from listeners on Nostr." />
   <link rel="canonical" href="https://localbitcoiners.com/boosts.html" />
@@ -835,7 +852,11 @@
 
 <!-- ══════════════════════════════ BOOSTS FEED (Nostr) ══════════════════════════════ -->
 <script type="module">
-  import { SimplePool, nip19 } from 'https://esm.sh/nostr-tools@2.7.2'
+  // Vendored bundle — was `https://esm.sh/nostr-tools@2.7.2` until we
+  // moved off CDN imports. CDN compromise / MITM gave attacker JS in
+  // our origin; the strict script-src CSP added in the same change
+  // closes that class. Bundle is built by login-widget/vite.nostr-tools.config.js.
+  import { SimplePool, nip19, verifyEvent } from '/assets/widgets/nostr-tools.js'
 
   // ── Config ─────────────────────────────────────────────────────────
   const ROOT_NEVENT = 'nevent1qvzqqqqqqypzpses3q0zsa5rs8wchh7jws6pmjsvtzpv9xuxgt4yhjp0w43jv3vjqyd8wumn8ghj7urewfsk66ty9enxjct5dfskvtnrdakj7qgwwaehxw309ahx7uewd3hkctcqyr3keved458q3n7x7839r86vj4dx0s4xh0p8j7fzvf4nq7824ulagy77tpj'
@@ -882,6 +903,31 @@
   // referenced event ids before we paint.
   const profileCache = new Map()  // pubkey hex → { pubkey, name, picture, nip05 }
   const embedCache   = new Map()  // event id hex → kind-1 event (or null = not found)
+
+  // Single chokepoint for any profile entering the cache. Re-applies
+  // isSafeUrl to picture (defense-in-depth — most callers go through
+  // parseProfileEvent which already does this, but the optimistic
+  // self-insert at signAndPublish time would otherwise trust whatever
+  // shape the widget returned). Strips bidi-control chars from
+  // displayable text so a hostile profile can't visually impersonate
+  // another user via RLO/LRI tricks. Drop entries whose pubkey isn't
+  // a 64-char hex string — defends against malformed callers.
+  const PROFILE_BIDI = /[‪-‮⁦-⁩]/g
+  function cleanProfileText(s) {
+    if (typeof s !== 'string' || !s) return s || ''
+    return s.replace(PROFILE_BIDI, '')
+  }
+  function setCachedProfile(pubkey, raw) {
+    if (typeof pubkey !== 'string' || !/^[0-9a-f]{64}$/i.test(pubkey)) return
+    const safe = {
+      pubkey,
+      name:    cleanProfileText(raw?.name)    || null,
+      picture: isSafeUrl(raw?.picture) ? raw.picture : null,
+      nip05:   cleanProfileText(raw?.nip05)   || null,
+      lud16:   typeof raw?.lud16 === 'string' ? raw.lud16 : null,
+    }
+    profileCache.set(pubkey, safe)
+  }
 
   function parseSegments(content) {
     if (!content) return [{ type: 'text', value: '' }]
@@ -1190,6 +1236,20 @@
   }
 
   // ── Direct-relay fallback (used only if Primal didn't return root) ─
+  // Hostile relays can return events claiming any e-tag they like —
+  // including spam or attacker-owned content masquerading as replies
+  // under our root. Two guards before we accept anything: verify the
+  // event signature, and (for replies) confirm an actual e-tag
+  // referencing rootId. Primal is trusted on the happy path so we
+  // skip these checks there; this fallback is the untrusted source.
+  function eventReferencesRoot(ev, rootId) {
+    if (!Array.isArray(ev?.tags)) return false
+    for (const t of ev.tags) {
+      if (Array.isArray(t) && t[0] === 'e' && t[1] === rootId) return true
+    }
+    return false
+  }
+
   async function fetchThreadFromRelays(rootId, relays) {
     const pool = new SimplePool()
     try {
@@ -1198,15 +1258,25 @@
         pool.querySync(relays, { kinds: [1], '#e': [rootId], limit: 500 }).catch(() => []),
       ])
       const notes = []
-      if (root) notes.push(root)
-      for (const ev of replies) if (ev?.id && ev.id !== rootId) notes.push(ev)
+      if (root && root.id === rootId && verifyEvent(root)) notes.push(root)
+      for (const ev of replies) {
+        if (!ev?.id || ev.id === rootId) continue
+        if (!eventReferencesRoot(ev, rootId)) continue
+        if (!verifyEvent(ev)) continue
+        notes.push(ev)
+      }
 
       // Pull missing profiles for everyone in the thread, parallel.
+      // Profile events are also signature-verified — a hostile relay
+      // could otherwise inject a kind 0 to spoof an author's display
+      // name + picture under their pubkey.
       const pubkeys = [...new Set(notes.map(n => n.pubkey))]
       const profiles = new Map()
       await Promise.all(pubkeys.map(async (pk) => {
         const ev = await pool.get(relays, { kinds: [0], authors: [pk] }).catch(() => null)
-        if (ev) profiles.set(pk, parseProfileEvent(ev))
+        if (ev && ev.pubkey === pk && verifyEvent(ev)) {
+          profiles.set(pk, parseProfileEvent(ev))
+        }
       }))
       return { notes, profiles }
     } finally {
@@ -1284,6 +1354,32 @@
     return card
   }
 
+  // ── Card cache for incremental paints ──────────────────────────────
+  // Caches the rendered DOM node per event id so a `rerenderBoosts`
+  // (fired after a reply optimistic-insert) doesn't have to throw
+  // away every card and rebuild from scratch — the new card is
+  // built once, every existing card is reused. Like/repost button
+  // state (aria-pressed, icon) is patched in place by the hydration
+  // pass via querySelector against `data-note-id`, so cached cards
+  // stay correct across login changes too.
+  //
+  // Trade-off: if an event's content ever changes mid-session
+  // (relay sends a corrected version), the cache will hold the old
+  // body. Today no such update path exists for kind 1 — the only
+  // mutations are children added under parents — so the cache is
+  // safe. If/when edits become a thing, evict on update.
+  const cardCache = new Map()  // event id (lowercased) → cached card node
+
+  function getOrRenderCard(ev, profile, opts) {
+    const key = ev.id.toLowerCase()
+    let card = cardCache.get(key)
+    if (!card) {
+      card = renderNoteCard(ev, profile, opts)
+      cardCache.set(key, card)
+    }
+    return card
+  }
+
   // ── Recursive descendant tree (mirrors mynostr's NoteThreadView) ───
   function renderRepliesTree(parentId, childrenOf, profiles, container) {
     const kids = childrenOf.get(parentId) || []
@@ -1292,7 +1388,7 @@
     ul.className = 'reply-children'
     for (const ev of kids) {
       const li = document.createElement('li')
-      li.appendChild(renderNoteCard(ev, profiles.get(ev.pubkey)))
+      li.appendChild(getOrRenderCard(ev, profiles.get(ev.pubkey)))
       renderRepliesTree(ev.id, childrenOf, profiles, li)
       ul.appendChild(li)
     }
@@ -1483,8 +1579,21 @@
         hydrateUserReposts()
       }
     } else {
+      // Bounded poll — give the widget bundle ~10s to evaluate (covers
+      // a slow connection or a CDN blip), then give up. Without this
+      // cap the interval ran every 200ms for the page lifetime if the
+      // widget script never loaded (404, AdBlock removing it, etc.) —
+      // a slow drip of CPU + wakeups on backgrounded mobile tabs.
+      let attempts = 0
+      const MAX_ATTEMPTS = 50  // 50 × 200ms = 10s
       const wait = setInterval(() => {
-        if (window.LBLogin?.onChange) { clearInterval(wait); bindUserStateHydration() }
+        if (window.LBLogin?.onChange) {
+          clearInterval(wait)
+          bindUserStateHydration()
+        } else if (++attempts >= MAX_ATTEMPTS) {
+          clearInterval(wait)
+          console.warn('[boosts] login widget never appeared; like/repost hydration disabled')
+        }
       }, 200)
     }
   }
@@ -1619,16 +1728,33 @@
         content: text,
         tags: buildReplyTags(parent),
       })
+      // Defence-in-depth: validate the widget actually returned a
+      // well-formed signed event before we splice it into the thread
+      // and cache it. A future widget bug returning a forged event
+      // (wrong kind, alien pubkey, missing id) would otherwise paint
+      // attacker content under the user's npub.
+      const expectedPubkey = window.LBLogin.getUser?.()?.pubkey
+      if (
+        !signed
+        || typeof signed.id !== 'string'
+        || !/^[0-9a-f]{64}$/i.test(signed.id)
+        || typeof signed.sig !== 'string'
+        || signed.kind !== 1
+        || typeof signed.content !== 'string'
+        || (expectedPubkey && signed.pubkey !== expectedPubkey)
+      ) {
+        throw new Error('signed event from widget failed shape validation')
+      }
       // Make sure the user's profile is in the cache for the new card.
+      // Goes through setCachedProfile so the same isSafeUrl + bidi
+      // sanitisation runs as on relay-sourced profiles.
       const user = window.LBLogin.getUser?.()
       if (user?.pubkey && !profileCache.has(user.pubkey)) {
-        profileCache.set(user.pubkey, {
-          pubkey:  user.pubkey,
+        setCachedProfile(user.pubkey, {
           name:    user?.profile?.displayName || user?.profile?.name || '',
           picture: user?.profile?.image || user?.profile?.picture || null,
           nip05:   user?.profile?.nip05 || '',
           lud16:   user?.profile?.lud16 || '',
-          lud06:   user?.profile?.lud06 || '',
         })
       }
       // Optimistic insert under the parent — newest first.
@@ -1747,8 +1873,8 @@
         const more = await fetchProfilesFromPrimal([targetEvent.pubkey])
         const fresh = more.get(targetEvent.pubkey)
         if (fresh) {
-          profileCache.set(targetEvent.pubkey, fresh)
-          profile = fresh
+          setCachedProfile(targetEvent.pubkey, fresh)
+          profile = profileCache.get(targetEvent.pubkey) || fresh
         }
       } catch {}
     }
@@ -1799,9 +1925,25 @@
     pic.referrerPolicy = 'no-referrer'
     pic.onerror = () => { pic.src = 'assets/LocalBitcoiners.png' }
     recRow.appendChild(pic)
+    // Build the recipient row with createElement + textContent — no
+    // innerHTML touching attacker-controlled strings (display name,
+    // lud16). Previously used escapeHtml(...) inside an innerHTML
+    // template literal; the pattern was XSS-fragile because any future
+    // field added between the backticks without escaping would be a
+    // stored-XSS hole. Direct DOM construction makes that class
+    // impossible.
     const recName = document.createElement('div')
     const dispName = recipientProfile.name || (targetEvent.pubkey.slice(0, 8) + '…')
-    recName.innerHTML = `<strong style="color:var(--navy);">${escapeHtml(dispName)}</strong><br><span style="font-size:0.78rem;color:var(--muted);">${escapeHtml(recipientProfile.lud16)}</span>`
+    const nameStrong = document.createElement('strong')
+    nameStrong.style.color = 'var(--navy)'
+    nameStrong.textContent = dispName
+    recName.appendChild(nameStrong)
+    recName.appendChild(document.createElement('br'))
+    const lnSpan = document.createElement('span')
+    lnSpan.style.fontSize = '0.78rem'
+    lnSpan.style.color = 'var(--muted)'
+    lnSpan.textContent = recipientProfile.lud16 || ''
+    recName.appendChild(lnSpan)
     recRow.appendChild(recName)
     modal.appendChild(recRow)
 
@@ -1901,6 +2043,17 @@
     return backdrop
   }
 
+  // Defence against a hostile lud16 returning a non-bolt11 string
+  // (e.g. `javascript:alert(1)//`, `https://evil/...`) that we'd
+  // otherwise concatenate into the lightning: href verbatim. BOLT11
+  // HRP is `lnbc` (mainnet), `lntb` (testnet), `lnbcrt` (regtest),
+  // `lnsb` (simnet). Anything else: refuse to expose as a clickable
+  // wallet link — the textarea still shows it, but the "Open in
+  // wallet" anchor is suppressed.
+  function isBolt11Invoice(s) {
+    return typeof s === 'string' && /^ln(bc|tb|bcrt|sb)[0-9a-z]+$/i.test(s)
+  }
+
   function buildInvoiceBlock(invoice) {
     const wrap = document.createElement('div')
     wrap.className = 'zap-invoice'
@@ -1927,10 +2080,12 @@
     })
     actions.appendChild(copyBtn)
 
-    const open = document.createElement('a')
-    open.href = `lightning:${invoice}`
-    open.textContent = 'Open in wallet'
-    actions.appendChild(open)
+    if (isBolt11Invoice(invoice)) {
+      const open = document.createElement('a')
+      open.href = `lightning:${invoice}`
+      open.textContent = 'Open in wallet'
+      actions.appendChild(open)
+    }
 
     wrap.appendChild(actions)
     return wrap
@@ -2024,12 +2179,6 @@
     }, 3000)
   }
 
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, c => (
-      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
-    ))
-  }
-
   async function init() {
     let rootId, hintRelays = []
     try {
@@ -2074,7 +2223,7 @@
     state.childrenOf = childrenOf
 
     // Seed module-level caches with everything the thread already gave us.
-    for (const [pk, p] of profiles) profileCache.set(pk, p)
+    for (const [pk, p] of profiles) setCachedProfile(pk, p)
     for (const ev of notes) embedCache.set(ev.id, ev)
 
     // Scan every note body for nostr: entities and figure out which
@@ -2103,9 +2252,9 @@
         fetchProfilesFromPrimal(missingPubkeys),
         fetchEventsFromPrimal(missingEventIds),
       ])
-      for (const [pk, p] of extraProfiles) profileCache.set(pk, p)
+      for (const [pk, p] of extraProfiles) setCachedProfile(pk, p)
       for (const [id, ev] of extraEvents.notes) embedCache.set(id, ev)
-      for (const [pk, p] of extraEvents.profiles) profileCache.set(pk, p)
+      for (const [pk, p] of extraEvents.profiles) setCachedProfile(pk, p)
       // Mark unresolvable ids so the renderer shows the "not available"
       // fallback instead of a perpetual skeleton.
       for (const id of missingEventIds) {
@@ -2121,7 +2270,7 @@
       }
       if (embedAuthorPubkeys.length) {
         const more = await fetchProfilesFromPrimal(embedAuthorPubkeys)
-        for (const [pk, p] of more) profileCache.set(pk, p)
+        for (const [pk, p] of more) setCachedProfile(pk, p)
       }
     }
 

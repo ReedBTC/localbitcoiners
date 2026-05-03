@@ -15,13 +15,32 @@ function isHex64(s) {
 //
 // Record shape by method:
 //   extension — { method, pubkey, npub }
-//   nip46     — { method, pubkey, npub, clientSecret, bunkerPointer, userPubkey }
+//   nip46     — { method, pubkey, npub, bunkerPointer, userPubkey }   (in localStorage)
+//             + { clientSecret }                                      (in sessionStorage only)
+//
+// Why split: clientSecret is the local NIP-46 client identity's hex private
+// key — a bearer credential that, combined with bunkerPointer, lets anyone
+// reconnect to the user's bunker and request signatures forever. Putting
+// it in localStorage made it readable by any same-origin script (XSS, hostile
+// extension, supply-chain compromise of any vendor JS). Moving it to
+// sessionStorage means an exfiltrated localStorage dump is useless on its
+// own, and the secret only persists for the lifetime of the browser tab.
+// Cost: closing the browser forces a NIP-46 re-handshake on next visit
+// (same UX as most NIP-46 clients ship by default).
+//
+// NB: this can't be fixed by encrypting clientSecret with selfEncrypt —
+// for nip46 sessions the signer IS the bunker, which requires clientSecret
+// to talk to. Chicken-and-egg. WebCrypto-wrapped non-extractable keys in
+// IndexedDB would buy back persistence but only defend against offline
+// dumps, not active XSS — the asymmetric improvement isn't worth the
+// complexity until we have a concrete need.
 //
 // nsec logins are deliberately NOT persisted — the LoginScreen warns the key
 // is in-memory only. The site's "no npub-only mode" choice means there is no
 // read-only flow: you're either logged in with a usable signer or anonymous.
 
 const SESSION_KEY = 'lb_nostr_session'
+const NIP46_SECRET_KEY = 'lb_nostr_nip46_clientsecret'
 // Cached profile snapshot — separate key from the session record so the
 // shape of the session can change without invalidating profile cache.
 // Used to render the IdentityWidget avatar/name *synchronously* on page
@@ -29,8 +48,28 @@ const SESSION_KEY = 'lb_nostr_session'
 // the 1-2s flash of "Sign in" / shimmer on every cross-page navigation.
 const PROFILE_KEY = 'lb_nostr_profile_v1'
 
+// One-shot migration: any pre-split records still carry clientSecret in
+// localStorage. Move it to sessionStorage on first read, then strip it
+// from the localStorage record so reloads don't keep healing the leak.
+function migrateInlineClientSecret(parsed) {
+  if (parsed?.method !== 'nip46') return parsed
+  if (typeof parsed.clientSecret !== 'string') return parsed
+  try { sessionStorage.setItem(NIP46_SECRET_KEY, parsed.clientSecret) } catch {}
+  const { clientSecret: _drop, ...stripped } = parsed
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify(stripped)) } catch {}
+  return stripped
+}
+
 export function saveSession(record) {
   if (!record?.method || !record?.pubkey) return
+  // For nip46, peel clientSecret off into sessionStorage and persist
+  // only the long-lived bits to localStorage. Other methods pass through.
+  if (record.method === 'nip46' && typeof record.clientSecret === 'string') {
+    const { clientSecret, ...stripped } = record
+    try { sessionStorage.setItem(NIP46_SECRET_KEY, clientSecret) } catch {}
+    try { localStorage.setItem(SESSION_KEY, JSON.stringify(stripped)) } catch {}
+    return
+  }
   try { localStorage.setItem(SESSION_KEY, JSON.stringify(record)) } catch {}
 }
 
@@ -40,7 +79,18 @@ export function loadSession() {
     if (!raw) return null
     const parsed = JSON.parse(raw)
     if (!parsed?.method || !parsed?.pubkey) return null
-    return parsed
+    const migrated = migrateInlineClientSecret(parsed)
+    if (migrated.method === 'nip46') {
+      // Re-attach clientSecret from sessionStorage if present so the
+      // returned record shape is unchanged for callers. Missing is OK
+      // — restoreSession surfaces a clean 'permanent' result and the
+      // user re-handshakes through the LoginModal.
+      try {
+        const cs = sessionStorage.getItem(NIP46_SECRET_KEY)
+        if (typeof cs === 'string' && cs) migrated.clientSecret = cs
+      } catch {}
+    }
+    return migrated
   } catch {
     return null
   }
@@ -48,6 +98,7 @@ export function loadSession() {
 
 export function clearSession() {
   try { localStorage.removeItem(SESSION_KEY) } catch {}
+  try { sessionStorage.removeItem(NIP46_SECRET_KEY) } catch {}
 }
 
 /**
@@ -111,9 +162,27 @@ export function sanitizeRelayUrls(urls) {
 // Hydrate the profile for a user record using NDK's own fetchProfile. The
 // header badge displays whatever name + avatar comes back; failure just leaves
 // the profile null and the UI falls back to a truncated npub.
+//
+// Strips Unicode bidi-override characters from displayName / name BEFORE
+// the profile fans out to every UI consumer (IdentityWidget, dropdown,
+// boost modal, etc.). Without this, a hostile profile (`displayName:
+// "‮kingadmin"`) could visually re-order the rendered name and
+// impersonate someone else in the nav. React escapes HTML but not bidi
+// controls. Centralising the strip here means we don't have to remember
+// at every render call site — same chokepoint pattern as the wallet
+// alias sanitization.
+const PROFILE_BIDI = /[‪-‮⁦-⁩]/g
+function stripBidi(s) {
+  return typeof s === 'string' ? s.replace(PROFILE_BIDI, '') : s
+}
 export async function fetchUserProfile(ndk, pubkey) {
   const user = ndk.getUser({ pubkey })
   try { await withTimeout(user.fetchProfile(), 5000) } catch {}
+  if (user.profile) {
+    if (typeof user.profile.displayName === 'string') user.profile.displayName = stripBidi(user.profile.displayName)
+    if (typeof user.profile.name === 'string')        user.profile.name        = stripBidi(user.profile.name)
+    if (typeof user.profile.about === 'string')       user.profile.about       = stripBidi(user.profile.about)
+  }
   return user
 }
 
@@ -253,7 +322,10 @@ export function buildNip46Record({ clientSecret, bunkerPointer, userPubkey }) {
     bunkerPointer: {
       pubkey: bunkerPointer.pubkey,
       relays: bunkerPointer.relays,
-      secret: bunkerPointer.secret ?? null,
+      // Coerce to string-or-null; a corrupted record carrying an
+      // object would otherwise propagate downstream into nostr-tools
+      // and surface as a confusing decode error far from the source.
+      secret: typeof bunkerPointer.secret === 'string' ? bunkerPointer.secret : null,
     },
     userPubkey,
   }

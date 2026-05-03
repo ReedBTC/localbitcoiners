@@ -4,7 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && vite build --config vite.nostr-tools.config.js",
+    "build:widget": "vite build",
+    "build:nostr-tools": "vite build --config vite.nostr-tools.config.js",
     "dev": "vite"
   },
   "dependencies": {

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import * as wallet from '../lib/wallet.js'
 import { lockBodyScroll, unlockBodyScroll } from '../lib/scrollLock.js'
 import { useModalTransition } from '../lib/useModalTransition.js'
+import { scrubSecrets } from '../lib/utils.js'
 
 /**
  * Standalone NWC connect modal — extracted from EpisodeBoostModal's
@@ -46,13 +47,20 @@ export default function WalletConnectModal({ user, onClose, onConnected }) {
 
   async function handleConnectWebln() {
     setError('')
+    if (!user) {
+      // Defence-in-depth: the modal's own gate guarantees a logged-in
+      // user, but the WebLN at-rest flag is per-pubkey now and would
+      // throw further down without one. Fail clearly here instead.
+      setError('Sign in with Nostr first — your browser-extension wallet is tied to your account on this device.')
+      return
+    }
     setConnecting(true)
     try {
-      await wallet.connectWebln()
+      await wallet.connectWebln(user)
       onConnected?.()
       requestClose()
     } catch (e) {
-      console.warn('[lb-webln] enable failed', e?.message || e)
+      console.warn('[lb-webln] enable failed', scrubSecrets(String(e?.message || e)))
       const msg = String(e?.message || '')
       const looksFriendly = msg.length > 0 && msg.length < 200 && !/Error:|stack|undefined/i.test(msg)
       setError(looksFriendly ? msg : 'Couldn\'t enable your browser extension. Make sure it\'s unlocked and try again.')
@@ -80,7 +88,7 @@ export default function WalletConnectModal({ user, onClose, onConnected }) {
       // already wraps SDK / signer errors generically, so most messages
       // here are already user-friendly — but anything that slipped
       // through gets normalized.
-      console.warn('[lb-nwc] connect failed', e?.message || e)
+      console.warn('[lb-nwc] connect failed', scrubSecrets(String(e?.message || e)))
       const msg = String(e?.message || '')
       const looksFriendly = msg.length > 0 && msg.length < 200 && !/Error:|stack|undefined/i.test(msg)
       setError(looksFriendly ? msg : 'Couldn\'t connect to your wallet. Check the connection string and that your wallet is online.')

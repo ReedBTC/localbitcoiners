@@ -139,10 +139,18 @@ let signerVerified = false
 // mismatch). Mirrors api.logout()'s teardown plus a user-facing toast
 // and re-opens the login modal so the next step is obvious.
 function forceLogoutWithMessage(message) {
+  // HARD disconnect — not lockOnLogout. lockOnLogout is the "user
+  // clicked Sign Out and might log back in as the same npub" path,
+  // which deliberately preserves at-rest credentials. forceLogout
+  // is "the saved session is BROKEN" (account mismatch, structural
+  // failure) — the credentials encrypted to the now-defunct pubkey
+  // must be wiped, not preserved for whoever signs in next on this
+  // browser. Same shape as the WebLN cross-user leak fixed earlier.
+  const userBeforeWipe = currentUser || null
   clearSession()
   clearProfile()
   resetNDK()
-  try { wallet.lockOnLogout() } catch {}
+  try { wallet.disconnect(userBeforeWipe) } catch {}
   cancelPendingAction()
   signerVerified = false
   setUser(null)
@@ -568,10 +576,12 @@ const api = {
   },
 
   /** Disconnect whichever wallet is active — NWC wipes the encrypted
-   *  blob, WebLN clears its enabled-flag (extension's per-domain
-   *  permission grant is outside our control). */
+   *  blob, WebLN clears its per-pubkey enabled-flag (extension's
+   *  per-domain permission grant is outside our control). Passes the
+   *  current user so the WebLN flag is wiped under the right scope
+   *  on a shared browser. */
   disconnectWallet() {
-    wallet.disconnect()
+    wallet.disconnect(currentUser || null)
   },
 
   /**
@@ -593,13 +603,16 @@ const api = {
 
   /**
    * Open the show-boost modal. Mirrors openEpisodeBoost's gate chain
-   * because the show boost now uses the same multi-leg payment flow:
+   * because the show boost uses the same multi-leg payment flow:
    * needs login (allowlisted leg metadata is donor-signed), needs the
    * real signer (not a stub), needs the signer to match the saved
-   * pubkey, and needs a wallet connected (NWC or WebLN). The wallet
-   * gate auto-engages WebLN when the browser provides it, so a user
-   * with the Alby extension boosts in a single tap (one-time
-   * permission prompt the first time, silent thereafter).
+   * pubkey, and needs a wallet connected (NWC or WebLN).
+   *
+   * No auto-engage — a user without a wallet is routed through the
+   * connect modal, which surfaces both the WebLN extension button
+   * and the NWC paste field. Auto-engage was removed because Alby's
+   * per-domain permission can silently re-grant on a shared browser,
+   * leaking one user's wallet to another's first boost click.
    */
   async openShowBoost() {
     // Gate 1: signed in?
@@ -619,10 +632,11 @@ const api = {
     // Gate 1.75: signer-account match.
     if (!await ensureSignerVerified()) return
 
-    // Gate 2: wallet connected? Auto-engages WebLN as a last resort
-    // when the extension is present — see wallet.ensureReady.
+    // Gate 2: wallet connected? Try the at-rest restore (NWC blob or
+    // per-pubkey WebLN flag); if neither lands, route through the
+    // connect modal where the user picks a wallet explicitly.
     if (!wallet.isReady()) {
-      wallet.ensureReady(currentUser, { attemptWeblnEnable: true })
+      wallet.ensureReady(currentUser)
         .then((ok) => {
           if (ok) {
             api.openShowBoost()
@@ -687,10 +701,10 @@ const api = {
     // Gate 2: wallet connected?
     if (!wallet.isReady()) {
       // Try to restore from at-rest state (NWC encrypted blob, or
-      // WebLN's enabled-flag plus a still-installed extension). If
-      // that succeeds, fall straight through. Otherwise open the
-      // connect modal.
-      wallet.ensureReady(currentUser, { attemptWeblnEnable: true })
+      // per-pubkey WebLN flag + still-installed extension). If that
+      // succeeds, fall straight through. Otherwise open the connect
+      // modal — auto-engage was removed, see wallet.ensureReady.
+      wallet.ensureReady(currentUser)
         .then((ok) => {
           if (ok) {
             // Re-call openEpisodeBoost — Gate 2 will pass now.

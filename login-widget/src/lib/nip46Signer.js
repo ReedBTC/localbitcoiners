@@ -195,8 +195,19 @@ export async function connectViaBunkerUrl({ ndk, bunkerUrl, clientSecretKey, onA
 // reference client does it this way; replaying connect on restore is what
 // was causing our prior hangs).
 export function restoreFromSession({ ndk, clientSecret, bunkerPointer, userPubkey, onAuthUrl }) {
+  // Defence-in-depth: re-validate the relay URL set even though the
+  // primary caller (sessionPersistence.restoreSession) already does.
+  // A future code path that reaches restoreFromSession with a poisoned
+  // localStorage record (e.g. XSS-written relay URLs pointing at an
+  // attacker-logged WebSocket) would otherwise route the bunker
+  // handshake through hostile relays.
+  const safeRelays = sanitizeRelayUrls(bunkerPointer?.relays)
+  if (!safeRelays.length) {
+    throw new Error('bunker pointer has no usable relays after sanitization')
+  }
+  const safePointer = { ...bunkerPointer, relays: safeRelays }
   const clientSecretKey = hexToBytes(clientSecret)
-  const bs = BunkerSigner.fromBunker(clientSecretKey, bunkerPointer, {
+  const bs = BunkerSigner.fromBunker(clientSecretKey, safePointer, {
     onauth: (url) => { try { onAuthUrl?.(url) } catch {} },
   })
   return new Nip46BunkerSigner({
@@ -204,8 +215,27 @@ export function restoreFromSession({ ndk, clientSecret, bunkerPointer, userPubke
     bunkerSigner: bs,
     clientSecretKey,
     userPubkey,
-    bunkerPointer,
+    bunkerPointer: safePointer,
   })
+}
+
+// Local copy to avoid a circular import between nip46Signer.js and
+// sessionPersistence.js. wss:// only, no whitespace, no userinfo.
+function sanitizeRelayUrls(urls) {
+  if (!Array.isArray(urls)) return []
+  const out = []
+  for (const u of urls) {
+    if (typeof u !== 'string') continue
+    const trimmed = u.trim()
+    if (!/^wss:\/\//i.test(trimmed)) continue
+    if (/\s/.test(trimmed)) continue
+    try {
+      const parsed = new URL(trimmed)
+      if (parsed.username || parsed.password) continue
+      out.push(trimmed)
+    } catch { continue }
+  }
+  return out
 }
 
 // nostrconnect:// path. Client publishes the URI (QR/deeplink), bunker

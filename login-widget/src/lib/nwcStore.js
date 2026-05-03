@@ -26,6 +26,8 @@
  *   })
  */
 
+import { pushToast } from './toast.js'
+
 const STORAGE_KEY = 'lb_nwc_v1'
 
 /**
@@ -63,7 +65,21 @@ export function saveEncrypted({ ciphertext, ownerNpub }) {
       ownerNpub,
       savedAt: Date.now(),
     }))
-  } catch {}
+  } catch (e) {
+    // Surface storage failures to the user — silent quota-exceeded
+    // would let them think their wallet is connected when it isn't,
+    // and they'd find out next page load when the unlock prompt
+    // never appears. Common in Safari Private Mode and embedded
+    // webviews with tiny quota.
+    if (e?.name === 'QuotaExceededError' || /quota/i.test(String(e?.message || ''))) {
+      try {
+        pushToast({
+          kind: 'error',
+          message: 'Browser storage is full — wallet won\'t persist across reloads. Free up storage and reconnect to fix.',
+        })
+      } catch {}
+    }
+  }
 }
 
 /** Wipe the at-rest NWC blob. Called on disconnect or wrong-account. */

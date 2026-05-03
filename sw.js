@@ -92,8 +92,16 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(HTML_CACHE).then((cache) => cache.put(request, copy));
+          // Only cache real successful same-origin responses. Without
+          // this guard, a 5xx page or Cloudflare challenge HTML would
+          // get cached and served as the offline fallback for that
+          // URL until the next successful fetch — returning visitors
+          // could land on a stuck error page. Mirrors the guard the
+          // static-asset branch already has below.
+          if (response.ok && response.type === 'basic') {
+            const copy = response.clone();
+            caches.open(HTML_CACHE).then((cache) => cache.put(request, copy));
+          }
           return response;
         })
         .catch(() =>

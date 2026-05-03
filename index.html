@@ -3,6 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Pragmatic baseline CSP. `unsafe-inline` for script/style is
+       there to keep the existing inline blocks working without a
+       refactor; the harder wins are (a) `script-src 'self'` (no more
+       remote CDN imports — the vendored nostr-tools bundle replaced
+       esm.sh), and (b) `frame-ancestors 'none'` (no clickjacking).
+       Trim `unsafe-inline` later by hashing the inline blocks.
+       connect-src is permissive (`https:` + `wss:`) because LNURL
+       endpoints + Nostr relays are arbitrary by design. -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' 'unsafe-inline';
+    style-src 'self' 'unsafe-inline';
+    img-src 'self' data: https:;
+    font-src 'self' data:;
+    connect-src 'self' https: wss:;
+    frame-ancestors 'none';
+    base-uri 'self';
+    form-action 'self';
+    object-src 'none';
+  " />
+
   <title>Local Bitcoiners — The Bitcoin Meetup Podcast</title>
   <meta name="description" content="Local Bitcoiners is a Bitcoin podcast about Bitcoin meetup culture. Hosts Reed and Rev Hodl talk with meetup organizers about finding, building, and growing grassroots Bitcoin communities." />
   <meta name="keywords" content="Local Bitcoiners, Local Bitcoiners Podcast, Bitcoin podcast, Bitcoin meetup, Bitcoin meetup podcast, Bitcoin community, grassroots Bitcoin, Bitcoin culture, start a Bitcoin meetup" />

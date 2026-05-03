@@ -54,8 +54,21 @@ export const RECIPIENT_PUBKEY_HEX = (() => {
 // on the live site, not localhost / preview env.
 export const SITE_URL = 'https://localbitcoiners.com'
 
-// Validate that a lud16 looks like a valid lightning address.
-const LUD16_RE = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9.-]+$/
+// Validate that a lud16 looks like a valid lightning address. Tightened
+// from `[a-zA-Z0-9.-]+` for the host to a real(ish) hostname rule —
+// rejects leading dot, trailing dot, double-dot, and bare TLDs. The
+// local part is also URL-safe (no slashes) so direct interpolation
+// into the .well-known path won't escape it; encodeURIComponent in
+// fetchLnurlMeta is belt-and-braces.
+const LUD16_RE = /^[a-zA-Z0-9_.+-]+@([a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/
+
+// Hard cap on LNURL response bodies. Real LNURL meta + callback
+// payloads are <2 KB; 64 KB is generous headroom for a wallet that
+// returns a verbose `metadata` JSON-string. A hostile lud16 host
+// could otherwise stream multi-MB JSON to OOM the donor's tab,
+// especially under episode boosts which fan out to N recipients in
+// parallel from EpisodeBoostModal's mount-time prefetch.
+const LNURL_BODY_BYTE_CAP = 64 * 1024
 
 // Relays used for kind 30078 publishing. Same set the rest of the Nostr
 // boost ecosystem watches; broad enough for any future bot subscribing
@@ -105,7 +118,13 @@ export function bolt11PaymentHash(invoice) {
           bytes.push((acc >> bits) & 0xff)
         }
       }
-      return bytes.map(b => b.toString(16).padStart(2, '0')).join('')
+      const hex = bytes.map(b => b.toString(16).padStart(2, '0')).join('')
+      // Belt-and-braces: even though len === 52 above implies 32
+      // bytes implies 64 hex chars, validate explicitly so a
+      // future refactor of the loop can't slip a malformed string
+      // out into the kind 30078 `d` tag where a hostile lnurl
+      // server could pollute downstream dedup.
+      return /^[0-9a-f]{64}$/.test(hex) ? hex : null
     }
     i += len
   }
@@ -127,19 +146,94 @@ export function generateBurnerKeypair() {
 // otherwise leak undefined values into downstream code paths.
 const LNURL_FETCH_TIMEOUT_MS = 10_000
 
+/**
+ * fetch + read + JSON parse with a hard byte cap. Read the body
+ * incrementally via the response stream and abort once cumulative
+ * bytes exceed the cap. The 10s `withTimeout` doesn't bound bytes —
+ * a slow trickle of 1 MB/s for 9.9 s passes cleanly — so this guard
+ * is the actual DoS defence.
+ */
+async function fetchJsonCapped(url, errLabel) {
+  const ctrl = new AbortController()
+  const res = await withTimeout(
+    fetch(url, { signal: ctrl.signal }),
+    LNURL_FETCH_TIMEOUT_MS,
+    errLabel,
+  )
+  if (!res.ok) throw new Error(`Request failed (${res.status})`)
+  // Pre-flight check on Content-Length when present. Hostile servers
+  // can lie or omit this; the streamed read below is the real guard.
+  const cl = parseInt(res.headers.get('content-length') || '', 10)
+  if (Number.isFinite(cl) && cl > LNURL_BODY_BYTE_CAP) {
+    ctrl.abort()
+    throw new Error('Response too large')
+  }
+  if (!res.body || typeof res.body.getReader !== 'function') {
+    // Older runtimes without streaming bodies — fall back to text()
+    // which has no per-call size knob, but the timeout still applies.
+    const text = await res.text()
+    if (text.length > LNURL_BODY_BYTE_CAP) throw new Error('Response too large')
+    try { return JSON.parse(text) } catch { throw new Error('Response was not valid JSON') }
+  }
+  const reader = res.body.getReader()
+  const chunks = []
+  let total = 0
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    if (!value) continue
+    total += value.byteLength
+    if (total > LNURL_BODY_BYTE_CAP) {
+      try { ctrl.abort() } catch {}
+      try { reader.cancel() } catch {}
+      throw new Error('Response too large')
+    }
+    chunks.push(value)
+  }
+  // Reassemble + decode + parse. Small enough at the cap that one
+  // more allocation is negligible.
+  const buf = new Uint8Array(total)
+  let off = 0
+  for (const c of chunks) { buf.set(c, off); off += c.byteLength }
+  const text = new TextDecoder('utf-8').decode(buf)
+  try { return JSON.parse(text) } catch { throw new Error('Response was not valid JSON') }
+}
+
 export async function fetchLnurlMeta(lud16) {
   if (!LUD16_RE.test(lud16)) throw new Error('Invalid lightning address format')
   const [name, domain] = lud16.split('@')
-  const res = await withTimeout(
-    fetch(`https://${domain}/.well-known/lnurlp/${name}`),
-    LNURL_FETCH_TIMEOUT_MS,
-    'lnurl-meta-timeout',
-  )
-  if (!res.ok) throw new Error(`Failed to reach lightning address (${res.status})`)
-  const data = await res.json()
+  // encodeURIComponent the local part so a future relaxed regex (or
+  // a payload someone forgot to validate) can't smuggle path traversal
+  // into the .well-known/lnurlp/ URL. Also reject any domain whose
+  // URL-parse normalises differently — defends against bare-IP /
+  // unicode-confusable hosts even if they slip past LUD16_RE.
+  let metaUrl
+  try {
+    metaUrl = new URL(`https://${domain}/.well-known/lnurlp/${encodeURIComponent(name)}`)
+    if (metaUrl.hostname !== domain.toLowerCase()) {
+      throw new Error('hostname mismatch')
+    }
+  } catch {
+    throw new Error('Invalid lightning address host')
+  }
+  const data = await fetchJsonCapped(metaUrl.toString(), 'lnurl-meta-timeout')
   if (!data || typeof data !== 'object') throw new Error('LNURL metadata response was not an object')
   if (typeof data.callback !== 'string' || !data.callback.startsWith('https://')) {
     throw new Error('LNURL metadata missing valid https callback URL')
+  }
+  // Constrain the callback host to the lud16 domain (or a subdomain
+  // of it). Without this, a compromised lud16 server can return a
+  // `callback` pointing at any HTTPS URL — internal corp endpoints,
+  // attacker logging endpoints, hangs — and we'd happily issue the
+  // request from the donor's origin.
+  try {
+    const cbHost = new URL(data.callback).hostname.toLowerCase()
+    const lud16Host = domain.toLowerCase()
+    if (cbHost !== lud16Host && !cbHost.endsWith('.' + lud16Host)) {
+      throw new Error(`callback host ${cbHost} does not belong to ${lud16Host}`)
+    }
+  } catch (e) {
+    throw new Error(`LNURL callback host check failed: ${e.message}`)
   }
   if (typeof data.minSendable !== 'number' || typeof data.maxSendable !== 'number') {
     throw new Error('LNURL metadata missing min/maxSendable')
@@ -153,13 +247,7 @@ export async function fetchLnurlInvoice(callbackUrl, amountMsats, comment) {
   const url = new URL(callbackUrl)
   url.searchParams.set('amount', String(amountMsats))
   if (comment) url.searchParams.set('comment', comment)
-  const res = await withTimeout(
-    fetch(url.toString()),
-    LNURL_FETCH_TIMEOUT_MS,
-    'lnurl-invoice-timeout',
-  )
-  if (!res.ok) throw new Error(`Invoice request failed (${res.status})`)
-  const data = await res.json()
+  const data = await fetchJsonCapped(url.toString(), 'lnurl-invoice-timeout')
   if (!data || typeof data !== 'object') throw new Error('Invoice response was not an object')
   if (data.status === 'ERROR') throw new Error(data.reason || 'Unknown error from server')
   if (typeof data.pr !== 'string' || !data.pr.toLowerCase().startsWith('lnbc')) {
@@ -177,6 +265,12 @@ export async function fetchLnurlInvoice(callbackUrl, amountMsats, comment) {
  * tag layout in one place so a refactor of either signing path can't
  * silently drift from the other.
  */
+// Hard cap on `content` length at the trust boundary. The textarea's
+// maxLength is the only guard today — DOM tampering or a future
+// caller bypassing the modal could push multi-MB into a kind 30078,
+// causing relays to drop the event and rate-limit the burner key.
+const MAX_BOOSTAGRAM_MESSAGE_CHARS = 10_000
+
 export function buildDonationBoostagramTemplate({
   paymentHash,
   donorNpub,
@@ -186,6 +280,9 @@ export function buildDonationBoostagramTemplate({
   pageUrl,
   extraTags = [],
 }) {
+  const safeMessage = typeof message === 'string'
+    ? message.slice(0, MAX_BOOSTAGRAM_MESSAGE_CHARS)
+    : ''
   const baseTags = [
     ['d', paymentHash],
     ['app', 'localbitcoiners.com', '1.0.0'],
@@ -206,7 +303,7 @@ export function buildDonationBoostagramTemplate({
   return {
     kind: 30078,
     created_at: Math.floor(Date.now() / 1000),
-    content: message || '',
+    content: safeMessage,
     tags: [...baseTags, ...safeExtras],
   }
 }
@@ -467,79 +564,8 @@ export async function publishBoostShareNote({
   return { eventId: ev.id, published }
 }
 
-// ─── LUD-21 payment verify poller ────────────────────────────────────────────
-// Returns a cancel function. Calls onSettled() once when the invoice is paid.
-//
-// `expectedPaymentHash` (optional, hex) enables cryptographic verification
-// of the server's "settled" claim: when the verify response includes a
-// `preimage` field (LUD-21 marks it optional), we sha256 it and confirm
-// the digest equals the expected payment_hash. If it doesn't, the server
-// is either lying or buggy, and we keep polling rather than firing the
-// onSettled callback. When the response has no preimage, we fall back to
-// trusting the boolean.
-//
-// Without this check, a malicious LNURL server could falsely report
-// settled=true and trick the modal into showing the success state for a
-// payment that never happened.
-// Hard cap on poll iterations. Bolt11 invoices typically expire in 1
-// hour; well before that the user has either paid (resolves the poll)
-// or abandoned the modal (cancel handle stops the poll). The cap exists
-// only to backstop bugs — if the cancel handle is somehow lost (modal
-// remount during HMR, stray ref leak), polling self-terminates instead
-// of running forever.
-const POLL_VERIFY_MAX_ITERATIONS = 720  // 720 × 2.5s = 30 min
-
-export function pollVerify(verifyUrl, intervalMs, onSettled, expectedPaymentHash = null) {
-  if (!verifyUrl.startsWith('https://')) return () => {}
-  let active = true
-  let iter = 0
-  async function tick() {
-    if (!active) return
-    if (iter++ >= POLL_VERIFY_MAX_ITERATIONS) {
-      active = false
-      return
-    }
-    try {
-      const res = await fetch(verifyUrl)
-      if (res.ok) {
-        const data = await res.json()
-        if (data.settled) {
-          if (expectedPaymentHash && typeof data.preimage === 'string' && data.preimage.length > 0) {
-            const ok = await verifyPreimageMatches(data.preimage, expectedPaymentHash)
-            if (!ok) {
-              if (active) setTimeout(tick, intervalMs)
-              return
-            }
-          }
-          onSettled()
-          return
-        }
-      }
-    } catch { /* network blip — keep polling */ }
-    if (active) setTimeout(tick, intervalMs)
-  }
-  tick()
-  return () => { active = false }
-}
-
-// Compute sha256(preimage_bytes) and compare to expected payment_hash.
-// Both inputs are hex strings. Returns false on any malformed input or
-// missing crypto.subtle (graceful fallback to "treat as unverifiable,
-// keep polling" rather than blocking the boost flow).
-async function verifyPreimageMatches(preimageHex, expectedHashHex) {
-  if (!crypto?.subtle) return true
-  const hexRe = /^[0-9a-f]{64}$/i
-  if (!hexRe.test(preimageHex) || !hexRe.test(expectedHashHex)) return false
-  try {
-    const bytes = new Uint8Array(32)
-    for (let i = 0; i < 32; i++) {
-      bytes[i] = parseInt(preimageHex.slice(i * 2, i * 2 + 2), 16)
-    }
-    const hashBuf = await crypto.subtle.digest('SHA-256', bytes)
-    const hashHex = Array.from(new Uint8Array(hashBuf))
-      .map(b => b.toString(16).padStart(2, '0')).join('')
-    return hashHex.toLowerCase() === expectedHashHex.toLowerCase()
-  } catch {
-    return false
-  }
-}
+// (LUD-21 verify poller removed — was dead code after the multi-leg
+// rewrite, and had a fail-open bug where a missing crypto.subtle made
+// verifyPreimageMatches return true. The boost flow now relies on
+// wallet-side payment confirmation via the wallet adapter's
+// payInvoice() preimage instead of polling LNURL verify endpoints.)

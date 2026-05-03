@@ -24,7 +24,7 @@ import {
   clearEncrypted,
 } from './nwcStore.js'
 import { getNDK } from './ndk.js'
-import { withTimeout } from './utils.js'
+import { withTimeout, scrubSecrets } from './utils.js'
 
 // In-memory client + the npub it belongs to. Reset on logout or wrong
 // account. We hold the NWCClient instead of the URI so once it's open
@@ -146,7 +146,7 @@ export async function connect(nwcUri, currentUser) {
     // Log full error for debugging; surface a generic message to the
     // user. SDK / bunker errors can include relay URLs and internal
     // event ids that aren't useful in a UI string.
-    console.warn('[lb-nwc] encrypt failed', e?.message || e)
+    console.warn('[lb-nwc] encrypt failed', scrubSecrets(String(e?.message || e)))
     try { client.close() } catch {}
     if (/timeout/i.test(String(e?.message || ''))) {
       throw new Error('Your signer didn\'t respond. Check that your bunker / signer app is online and try again.')
@@ -219,7 +219,7 @@ export async function ensureReady(currentUser) {
     )
     console.info('[lb-nwc] ensureReady: decrypt ok')
   } catch (e) {
-    console.warn('[lb-nwc] ensureReady: decrypt failed', e?.message || e)
+    console.warn('[lb-nwc] ensureReady: decrypt failed', scrubSecrets(String(e?.message || e)))
     // Don't auto-clear the blob — the failure may be transient (signer
     // app momentarily backgrounded, relay blip). The modal surfaces a
     // generic error and shows a "Reset saved wallet" option if the
@@ -238,7 +238,7 @@ export async function ensureReady(currentUser) {
     await withTimeout(client.getBalance(), 8000, 'wallet-unreachable')
     console.info('[lb-nwc] ensureReady: getBalance ok')
   } catch (e) {
-    console.warn('[lb-nwc] ensureReady: getBalance failed', e?.message || e)
+    console.warn('[lb-nwc] ensureReady: getBalance failed', scrubSecrets(String(e?.message || e)))
     try { client.close() } catch {}
     throw new Error('Saved wallet connection is no longer reachable. Reconnect to keep boosting.')
   }

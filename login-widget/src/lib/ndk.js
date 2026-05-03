@@ -69,6 +69,19 @@ export async function ensureUserWriteRelays(ndk, pubkey, { timeoutMs = 4000 } = 
       .filter(t => t[0] === 'r' && (!t[2] || t[2] === 'write'))
       .map(t => t[1])
       .filter(u => typeof u === 'string' && /^wss:\/\//i.test(u))
+      // Cap at 16 to bound pool size. A user's 10002 with hundreds of
+      // entries (poisoned or pathological) would otherwise flood the
+      // pool with sockets we never close. NIP-65 reference implementations
+      // typically cap around this number too.
+      .slice(0, 16)
+      // Reject userinfo-bearing URLs — same hygiene as
+      // sessionPersistence.sanitizeRelayUrls.
+      .filter(u => {
+        try {
+          const parsed = new URL(u)
+          return !parsed.username && !parsed.password
+        } catch { return false }
+      })
     for (const url of writeRelays) {
       try { ndk.addExplicitRelay(url) } catch {}
     }

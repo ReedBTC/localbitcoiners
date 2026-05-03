@@ -523,7 +523,6 @@ export default function LoginScreen({ onLogin, embedded = false }) {
         ndk,
         bunkerUrl: token,
         clientSecretKey,
-        clientSecret,
         onAuthUrl: (url) => {
           authRequested = true
           try {
