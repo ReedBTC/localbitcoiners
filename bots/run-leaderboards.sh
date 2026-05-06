@@ -7,28 +7,29 @@
 #   2. boost-leaders   — listeners ranked by number of shows boosted
 #   3. top-boosts      — single largest boosts of all time
 #
-# Each step waits for the previous one to finish (Type=oneshot blocks).
-# After each unit completes, its journal output for this run is printed.
+# No systemd, no sudo — invokes the bot scripts directly. Set -e bails
+# out on the first failing publish so the next bot doesn't fire mid-error.
+# Every successful publish appends a row to ../data/leaderboards.csv via
+# record_published_leaderboard().
 
 set -e
 
+DIR="$(cd "$(dirname "$0")" && pwd)"
+
 run_one() {
-    local unit="$1"
-    local label="$2"
+    local label="$1"
+    local script="$2"
     echo
     echo "=============================================================="
-    echo "  $label  ($unit)"
+    echo "  $label"
     echo "=============================================================="
-    local started
-    started=$(date '+%Y-%m-%d %H:%M:%S')
-    sudo systemctl start "$unit"
-    journalctl -u "$unit" --since "$started" --no-pager
-    echo "--- $unit done ---"
+    python3 "$DIR/$script"
+    echo "--- done ---"
 }
 
-run_one weekly-recap.service   "1/3  episodesats — top episodes by all-time sats"
-run_one boost-leaders.service  "2/3  boost-leaders — most shows boosted"
-run_one top-boosts.service     "3/3  top-boosts — largest boosts of all time"
+run_one "1/3  episodesats — top episodes by all-time sats" "weekly-recap/local_bitcoiners_episodesats.py"
+run_one "2/3  boost-leaders — most shows boosted"         "boost-leaders/local_bitcoiners_boostleaders.py"
+run_one "3/3  top-boosts — largest boosts of all time"    "top-boosts/local_bitcoiners_topboosts.py"
 
 echo
 echo "All three leaderboards published."
