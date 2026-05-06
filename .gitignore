@@ -1,2 +1,28 @@
 CLAUDE_CODE_HANDOFF.md
 .DS_Store
+
+# --- Bots: operational state (regenerable from Alby Hub / Nostr) ---
+bots/**/state.json
+bots/**/state.json.bak
+bots/**/state.json.before-*
+bots/**/last_seen.txt
+bots/**/last_seen.txt.bak
+bots/**/published_events.json
+bots/**/published_events.json.bak
+bots/**/donation_events.json
+bots/**/boostleaders_by_episode.csv
+bots/shared/lb_episode_ids.json
+
+# --- Bots: testing artifacts (contain payment hashes) ---
+bots/dry-run/
+
+# --- Bots: working files (private docs, scratch, leaderboard publish log) ---
+bots/tmp/
+
+# --- Bots: private docs ---
+bots/CLAUDE.md
+
+# --- Python ---
+bots/**/__pycache__/
+bots/**/*.pyc
+bots/.claude/
