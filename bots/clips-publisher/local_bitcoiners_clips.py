@@ -3,8 +3,6 @@
 import sys
 import csv
 import random
-import io
-import requests
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "shared"))
@@ -12,26 +10,27 @@ from nostr_utils import load_config, publish_to_nostr, write_dry_run_event
 
 # --- Config ---
 CREDENTIALS_FILE = Path.home() / ".config/nostr-bots/credentials.env"
-CLIPS_SHEET_URL  = "https://docs.google.com/spreadsheets/d/1sMg_hVbAcTZpuGUfgCUW_JTkWd8FuEXBC6ErG8YIlwY/export?format=csv"
+CLIPS_FILE       = Path(__file__).resolve().parent.parent.parent / "data/clips.csv"
 
 DRY_RUN = False
 
 
 def fetch_clips():
-    resp = requests.get(CLIPS_SHEET_URL, timeout=30, allow_redirects=True)
-    resp.raise_for_status()
-    reader = csv.DictReader(io.StringIO(resp.text))
-    clips  = []
-    for row in reader:
-        event_id   = row.get("Event ID", "").strip()
-        clip_title = row.get("Clip Title", "").strip()
-        episode    = row.get("Episode", "").strip()
-        if event_id and clip_title:
-            clips.append({
-                "episode":    episode,
-                "clip_title": clip_title,
-                "event_id":   event_id,
-            })
+    """Load the clip catalog from <repo>/data/clips.csv. Each row is a
+    pre-existing Nostr clip note (Event ID = nostr:nevent1...) that the bot
+    surfaces by quoting it in a daily wrapper note."""
+    clips = []
+    with CLIPS_FILE.open(encoding="utf-8-sig") as f:
+        for row in csv.DictReader(f):
+            event_id   = row.get("Event ID", "").strip()
+            clip_title = row.get("Clip Title", "").strip()
+            episode    = row.get("Episode", "").strip()
+            if event_id and clip_title:
+                clips.append({
+                    "episode":    episode,
+                    "clip_title": clip_title,
+                    "event_id":   event_id,
+                })
     return clips
 
 
@@ -48,10 +47,10 @@ def main():
     config = load_config(CREDENTIALS_FILE)
     nsec   = config["NSEC_LOCAL_BITCOINERS"]
 
-    print("Fetching clips from Google Sheets...")
+    print(f"Loading clips from {CLIPS_FILE}...")
     clips = fetch_clips()
     if not clips:
-        print("[error] No clips found in sheet.")
+        print(f"[error] No clips found in {CLIPS_FILE}.")
         return
 
     print(f"Found {len(clips)} clips.")

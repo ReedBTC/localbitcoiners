@@ -10,9 +10,8 @@ formatted kind-1 notes to Nostr crediting the senders.
 
 | Bot | Purpose | Schedule |
 |---|---|---|
-| `boost-publisher/` | Publishes a Nostr note for every incoming podcast boost (Fountain BOLT11, keysend, Castamatic, etc.) | every 10 min |
-| `localbitcoiners-publisher/` | Publishes a note for every donation to localbitcoiners.com | every 10 min |
-| `clips-publisher/` | Publishes a daily episode clip pulled from a shared sheet | weekdays, 1 PM ET |
+| `boost-publisher/` | Publishes a Nostr note for every incoming boost — Fountain BOLT11, keysend, website V4V 2.0, Castamatic, etc. | every 10 min |
+| `clips-publisher/` | Publishes a daily episode clip pulled from `data/clips.csv` | weekdays, 1 PM ET |
 | `boost-leaders/` | Leaderboard: who has boosted the most distinct episodes | manual |
 | `top-boosts/` | Leaderboard: biggest single boosts of all time | manual |
 | `weekly-recap/` | Leaderboard: most-sat episodes (a.k.a. "episodesats") | manual |
