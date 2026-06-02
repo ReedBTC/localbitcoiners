@@ -54,6 +54,12 @@ export const RECIPIENT_PUBKEY_HEX = (() => {
 // on the live site, not localhost / preview env.
 export const SITE_URL = 'https://localbitcoiners.com'
 
+// RSS <podcast:guid> for the Local Bitcoiners feed. Used for NIP-73
+// external-content identity tags (i/k) on the kind 1 boost share notes so
+// GUID-aware podcast clients (Fountain, Primal, BoostMeBitch) can associate
+// the note with the show / episode.
+export const FEED_GUID = '56fbb1aa-da79-5e4b-bebc-3b934ab8914c'
+
 // Validate that a lud16 looks like a valid lightning address. Tightened
 // from `[a-zA-Z0-9.-]+` for the host to a real(ish) hostname rule —
 // rejects leading dot, trailing dot, double-dot, and bare TLDs. The
@@ -455,6 +461,14 @@ export function buildEpisodeBoostShareTemplate({
   ]
   if (RECIPIENT_PUBKEY_HEX) tags.push(['p', RECIPIENT_PUBKEY_HEX])
   if (fountainUrl) tags.push(['r', fountainUrl])
+  // NIP-73 external-content tags: feed GUID always, episode item GUID when known.
+  tags.push(['i', `podcast:guid:${FEED_GUID}`])
+  tags.push(['k', 'podcast:guid'])
+  const epGuid = (episode?.guid || '').trim()
+  if (epGuid) {
+    tags.push(['i', `podcast:item:guid:${epGuid}`])
+    tags.push(['k', 'podcast:item:guid'])
+  }
 
   return {
     kind: 1,
@@ -541,6 +555,9 @@ export async function publishBoostShareNote({
     ['client', 'localbitcoiners.com'],
   ]
   if (RECIPIENT_PUBKEY_HEX) tags.push(['p', RECIPIENT_PUBKEY_HEX])
+  // NIP-73 external-content tags. Show-level share: feed GUID only.
+  tags.push(['i', `podcast:guid:${FEED_GUID}`])
+  tags.push(['k', 'podcast:guid'])
 
   const ev = new NDKEvent(ndk, {
     kind: 1,
