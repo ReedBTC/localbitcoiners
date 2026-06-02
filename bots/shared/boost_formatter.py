@@ -96,6 +96,12 @@ LB_SHOW_ID    = "Q48WBr6nT3mrbwMZ8ydY"
 LB_SHOW_TITLE = "Local Bitcoiners"
 LB_SHOW_URL   = f"https://fountain.fm/show/{LB_SHOW_ID}"
 
+# RSS <podcast:guid> for the Local Bitcoiners feed. Used for NIP-73
+# external-content identity tags (i/k) on the published boost note so
+# GUID-aware podcast clients (Fountain, Primal, BoostMeBitch) can associate
+# the note with the show / episode. See build_podcast_guid_tags.
+LB_FEED_GUID  = "56fbb1aa-da79-5e4b-bebc-3b934ab8914c"
+
 # Production gate for the website-boost path. While True, every bot that
 # detects a `source=website` BoostInfo routes its publish through write_dry_run_event
 # regardless of the bot's own DRY_RUN setting. Flip to False only after eyeballing
@@ -579,6 +585,7 @@ def _new_info(source, payment_hash, settled_at, our_msats, total_msats, divisor)
         "episode_title":  None,
         "episode_url":    None,
         "episode_number": None,
+        "item_guid":      None,
         "guests":         [],
         "app_name":       "",
         "boostagram":     None,
@@ -695,6 +702,7 @@ def _classify_website(tx, ep_num_padded, payment_hash, settled_at, our_msats, ca
         "episode_title":  episode_title,
         "episode_url":    episode_url,
         "episode_number": ep_num_padded,
+        "item_guid":      item_guid or None,
         "guests":         guests,
         "app_name":       "localbitcoiners.com",
         "raw_tx":         tx,
@@ -877,6 +885,7 @@ def _classify_castamatic_boost(tx, parsed, payment_hash, settled_at, our_msats, 
         "episode_title":  item_title,
         "episode_url":    episode_url,
         "episode_number": episode_number,
+        "item_guid":      item_guid or None,
         "guests":         guests,
         "app_name":       app_name,
         "raw_tx":         tx,
@@ -1093,6 +1102,12 @@ def _classify_keysend(tx, boostagram, payment_hash, settled_at, our_msats, cache
     value_msat  = boostagram.get("valueMsatTotal") or boostagram.get("value_msat_total") or 0
     total_msats = int(value_msat) if value_msat else our_msats
 
+    # RSS item GUID for the episode, if the boostagram TLV carries it. Key name
+    # varies by app (Podcasting 2.0 spec uses `episode_guid`; some send camelCase
+    # or `item_guid`). Feeds the NIP-73 podcast:item:guid tag.
+    item_guid = (boostagram.get("episode_guid") or boostagram.get("episodeGuid")
+                 or boostagram.get("item_guid") or boostagram.get("itemGuid") or "")
+
     info = _new_info("keysend", payment_hash, settled_at, our_msats, total_msats, 1.0)
     info.update({
         "sender_npub":    sender_npub,
@@ -1102,6 +1117,7 @@ def _classify_keysend(tx, boostagram, payment_hash, settled_at, our_msats, cache
         "episode_title":  episode_title_raw or None,
         "episode_url":    episode_url or None,
         "episode_number": _extract_episode_number(episode_title_raw),
+        "item_guid":      item_guid or None,
         "guests":         guests or [],
         "app_name":       app_name,
         "boostagram":     boostagram,
@@ -1144,6 +1160,21 @@ def _classify_lb_donation(tx, payment_hash, settled_at, our_msats, cache):
 # ─────────────────────────────────────────────────────────────────────────────
 # Note formatting
 # ─────────────────────────────────────────────────────────────────────────────
+
+def build_podcast_guid_tags(info):
+    """NIP-73 external-content identity tags for a boost note.
+
+    Feed-level GUID is always present (every boost is for Local Bitcoiners);
+    the episode-level item GUID is added when the BoostInfo carries one
+    (website / Castamatic / keysend boosts). Fountain-only boosts resolve to a
+    Fountain page id rather than the RSS item GUID, so they get just the feed
+    pair. Mirrors the i/k pairs BoostMeBitch emits."""
+    tags = [["i", f"podcast:guid:{LB_FEED_GUID}"], ["k", "podcast:guid"]]
+    item_guid = info.get("item_guid")
+    if item_guid:
+        tags.append(["i", f"podcast:item:guid:{item_guid}"])
+        tags.append(["k", "podcast:item:guid"])
+    return tags
 
 def _sender_display(info):
     """Map a BoostInfo's sender fields to the display string used after the
