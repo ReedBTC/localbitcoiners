@@ -236,6 +236,81 @@ def strip_fountain_trailer(message):
         return message
     return message[:m.start()].rstrip()
 
+# NIP-52 calendar event kinds: 31922 date-based, 31923 time-based. (sats-log's
+# meetups pass imports these so the two paths agree on what counts as a meetup.)
+NIP52_KINDS = {31922, 31923}
+
+# Match an naddr1 bech32 token anywhere — bare, nostr:-prefixed, or embedded in
+# a URL (njump.me/naddr1..., etc.). The lookbehind skips naddr1 glued to a
+# preceding word char. Data charset excludes bech32's 1/b/i/o.
+_NADDR_RE = re.compile(r'(?<!\w)naddr1[02-9ac-hj-np-z]+', re.IGNORECASE)
+
+# plektos.app (NIP-52 calendar client) per-event URL. createEventUrl in the
+# plektos source builds `${origin}/event/${naddr}` for addressable events.
+PLEKTOS_EVENT_URL = "https://plektos.app/event/{naddr}"
+
+def decode_naddr(entity):
+    """Decode a NIP-19 naddr1... into {kind, pubkey, identifier, relays}, or
+    None if it isn't a well-formed naddr. Decodes without a length cap — the
+    stdlib bech32_decode rejects strings over 90 chars, which naddrs exceed.
+
+    naddr TLV: type 0 = identifier / d-tag (UTF-8, variable), type 1 = relay
+    (UTF-8), type 2 = author pubkey (32 bytes), type 3 = kind (4-byte BE int).
+    kind, pubkey and identifier are all required for a valid naddr."""
+    try:
+        s = entity.lower()
+        if not s.startswith("naddr1"):
+            return None
+        five = [_BECH32_CHARSET.find(c) for c in s[s.rfind("1") + 1:]]
+        if len(five) < 7 or any(v < 0 for v in five):
+            return None
+        data = bech32.convertbits(five[:-6], 5, 8, False)  # drop 6-char checksum
+        if data is None:
+            return None
+        kind = pubkey = identifier = None
+        relays = []
+        i = 0
+        while i + 1 < len(data):
+            t, ln = data[i], data[i + 1]
+            val = bytes(data[i + 2:i + 2 + ln])
+            if len(val) != ln:
+                return None
+            if t == 0:
+                identifier = val.decode("utf-8", "replace")
+            elif t == 1:
+                relays.append(val.decode("utf-8", "replace"))
+            elif t == 2:
+                pubkey = val.hex()
+            elif t == 3:
+                kind = int.from_bytes(val, "big")
+            i += 2 + ln
+        if kind is None or pubkey is None or identifier is None or len(pubkey) != 64:
+            return None
+        return {"kind": kind, "pubkey": pubkey, "identifier": identifier, "relays": relays}
+    except Exception:
+        return None
+
+def plektos_links_for_message(message):
+    """plektos.app view URLs for each distinct NIP-52 calendar-event naddr in
+    `message`, in first-seen order. Many Nostr clients don't render NIP-52
+    calendar events, so the boost note carries a web link too. Non-calendar
+    naddrs (kind not in NIP52_KINDS) and malformed tokens are skipped; an event
+    referenced twice in one message yields one link."""
+    if not message or "naddr1" not in message.lower():
+        return []
+    links, seen = [], set()
+    for m in _NADDR_RE.finditer(message):
+        token = m.group(0).lower()
+        decoded = decode_naddr(token)
+        if not decoded or decoded["kind"] not in NIP52_KINDS:
+            continue
+        coordinate = f'{decoded["kind"]}:{decoded["pubkey"]}:{decoded["identifier"]}'
+        if coordinate in seen:
+            continue
+        seen.add(coordinate)
+        links.append(PLEKTOS_EVENT_URL.format(naddr=token))
+    return links
+
 def parse_description(description):
     pattern = r"^rss::payment::(\w+)\s+(https://[^\s?]+)(?:\?payment=\S+)?\s*(.*)?$"
     match   = re.match(pattern, description.strip(), re.DOTALL)
@@ -1458,6 +1533,13 @@ def format_note_from_info(info):
             lines.append(f'💬 {message}')
         else:
             lines.append(f'💬 {nostrify_mentions(message)}')
+
+    # Booster pasted a NIP-52 calendar event (naddr) into their message — add a
+    # plektos.app web link so clients that don't render NIP-52 events still let
+    # readers see what's being boosted. One line per distinct event. See
+    # plektos_links_for_message.
+    for plektos_url in plektos_links_for_message(message):
+        lines.append(f"📅 {plektos_url}")
 
     if info["episode_title"]:
         line = f"🎙️ {info['episode_title']}"

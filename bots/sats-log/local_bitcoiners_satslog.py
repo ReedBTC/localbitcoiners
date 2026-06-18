@@ -80,6 +80,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "shared"))
 from boost_formatter import (
     classify_lb_tx, make_cache, persist_cache,
     build_rss_item_index, _extract_episode_number,
+    NIP52_KINDS, _NADDR_RE, decode_naddr,
 )
 from nostr_utils import (
     load_config, hex_to_npub, npub_to_hex,
@@ -1686,58 +1687,11 @@ def write_zaps_json():
 # message for those naddrs and logs them to data/meetups.csv so the website
 # can build a meetups page. Pure transform of rows already in sats.csv — the
 # pipeline's full rewrite means the first run backfills the whole history.
+#
+# NIP52_KINDS / _NADDR_RE / decode_naddr live in boost_formatter (imported
+# above) so this meetups pass and the boost-publisher's plektos.app link agree
+# on what counts as a NIP-52 calendar event.
 # ---------------------------------------------------------------------------
-
-# NIP-52 calendar event kinds: 31922 date-based, 31923 time-based.
-NIP52_KINDS = {31922, 31923}
-
-# Match an naddr1 bech32 token anywhere — bare, nostr:-prefixed, or embedded in
-# a URL (njump.me/naddr1..., etc.). The lookbehind skips naddr1 glued to a
-# preceding word char. Data charset excludes bech32's 1/b/i/o.
-_NADDR_RE = re.compile(r'(?<!\w)naddr1[02-9ac-hj-np-z]+', re.IGNORECASE)
-_BECH32_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
-
-
-def decode_naddr(entity):
-    """Decode a NIP-19 naddr1... into {kind, pubkey, identifier, relays}, or
-    None if it isn't a well-formed naddr. Decodes without a length cap — the
-    stdlib bech32_decode rejects strings over 90 chars, which naddrs exceed.
-
-    naddr TLV: type 0 = identifier / d-tag (UTF-8, variable), type 1 = relay
-    (UTF-8), type 2 = author pubkey (32 bytes), type 3 = kind (4-byte BE int).
-    kind, pubkey and identifier are all required for a valid naddr."""
-    try:
-        s = entity.lower()
-        if not s.startswith("naddr1"):
-            return None
-        five = [_BECH32_CHARSET.find(c) for c in s[s.rfind("1") + 1:]]
-        if len(five) < 7 or any(v < 0 for v in five):
-            return None
-        data = bech32.convertbits(five[:-6], 5, 8, False)  # drop 6-char checksum
-        if data is None:
-            return None
-        kind = pubkey = identifier = None
-        relays = []
-        i = 0
-        while i + 1 < len(data):
-            t, ln = data[i], data[i + 1]
-            val = bytes(data[i + 2:i + 2 + ln])
-            if len(val) != ln:
-                return None
-            if t == 0:
-                identifier = val.decode("utf-8", "replace")
-            elif t == 1:
-                relays.append(val.decode("utf-8", "replace"))
-            elif t == 2:
-                pubkey = val.hex()
-            elif t == 3:
-                kind = int.from_bytes(val, "big")
-            i += 2 + ln
-        if kind is None or pubkey is None or identifier is None or len(pubkey) != 64:
-            return None
-        return {"kind": kind, "pubkey": pubkey, "identifier": identifier, "relays": relays}
-    except Exception:
-        return None
 
 
 def extract_meetup_rows(boost_rows):
