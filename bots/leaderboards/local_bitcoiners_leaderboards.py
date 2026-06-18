@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "shared"))
 from nostr_utils import (
     load_config, publish_to_nostr, hex_to_npub, npub_to_hex, get_lud16,
     build_zap_splits_for_note, write_dry_run_event, scrape_fountain_episode,
-    event_id_to_nevent, record_published_leaderboard,
+    event_id_to_nevent, record_published_leaderboard, with_header_image,
 )
 from boost_formatter import load_published_events, load_donation_events
 
@@ -265,7 +265,7 @@ def run_episodesats(rows, nsec):
 
     if DRY_RUN:
         main_path, main_event_id = write_dry_run_event(
-            note, nsec, prefix="episodesats", extra_tags=extra_tags,
+            with_header_image(note), nsec, prefix="episodesats", extra_tags=extra_tags,
         )
         print(f"\n[dry-run] Main event → {main_path}")
         print(f"  Main event id: {main_event_id}")
@@ -282,7 +282,7 @@ def run_episodesats(rows, nsec):
         return
 
     print("\nPublishing main leaderboard note...")
-    main_event_id = publish_to_nostr(note, nsec, extra_tags=extra_tags)
+    main_event_id = publish_to_nostr(with_header_image(note), nsec, extra_tags=extra_tags)
     if not main_event_id:
         print("[error] Main note publish failed; skipping reply chain.")
         return
@@ -401,13 +401,13 @@ def run_boostleaders(rows, nsec):
 
     if DRY_RUN:
         path, _ = write_dry_run_event(
-            note, nsec, prefix="boostleaders", extra_tags=zap_tags,
+            with_header_image(note), nsec, prefix="boostleaders", extra_tags=zap_tags,
         )
         print(f"\n[dry-run] standalone → {path}")
         return
 
     print("\nPublishing standalone note...")
-    standalone_id = publish_to_nostr(note, nsec, extra_tags=zap_tags)
+    standalone_id = publish_to_nostr(with_header_image(note), nsec, extra_tags=zap_tags)
     if standalone_id:
         record_published_leaderboard(
             "local_bitcoiners_boostleaders", standalone_id, author_hex,
@@ -563,12 +563,12 @@ def run_topboosts(rows, nsec):
 
     if DRY_RUN:
         path, main_event_id = write_dry_run_event(
-            note, nsec, prefix="topboosts", extra_tags=zap_tags,
+            with_header_image(note), nsec, prefix="topboosts", extra_tags=zap_tags,
         )
         print(f"[dry-run] Main event → {path}")
     else:
         print("Publishing main leaderboard note...")
-        main_event_id = publish_to_nostr(note, nsec, extra_tags=zap_tags)
+        main_event_id = publish_to_nostr(with_header_image(note), nsec, extra_tags=zap_tags)
 
     if not main_event_id:
         print("[error] Main note publish failed; skipping reply chain.")

@@ -311,6 +311,22 @@ def build_zap_splits_for_v4v(sender_npub, nsec, relays=None):
     npubs       = [sender_npub, author_npub] if sender_npub else [author_npub]
     return build_zap_split_tags(npubs, relays)
 
+# Banner image prepended to STANDALONE notes so Nostr clients render it as a
+# header above the text. Applied to the boost-publisher standalone note and
+# the three leaderboard main notes ONLY — never to megathread/board replies
+# or leaderboard reply chains. Most clients (Damus, Primal, Amethyst) detect a
+# bare image URL in content and render it inline; putting it first → top.
+STANDALONE_NOTE_IMAGE = "https://i.nostr.build/NvbXgnChkuL9X9XP.png"
+
+def with_header_image(note_text, image_url=STANDALONE_NOTE_IMAGE):
+    """Prepend the banner image URL on its own line so clients render it as a
+    header image above the note. No-op if image_url is falsy. The URL adds no
+    nostr: mentions or #hashtags, so build zap-split / note tags from the
+    plain note text and wrap with this only at publish time."""
+    if not image_url:
+        return note_text
+    return f"{image_url}\n\n{note_text}"
+
 def write_dry_run_event(note_text, nsec, prefix, extra_tags=None, reply_to_event_id=None, suffix=None, kind=1, created_at=None):
     """Build an unsigned event preview and write it to <repo>/bots/dry-run/.
     Mirrors the tag assembly of publish_to_nostr so the preview reflects what would

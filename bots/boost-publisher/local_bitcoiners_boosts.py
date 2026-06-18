@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "shared"))
 from nostr_utils import (
     load_config, publish_to_nostr, build_zap_splits_for_note,
-    write_dry_run_event, follow_all,
+    write_dry_run_event, follow_all, with_header_image,
 )
 from boost_formatter import (
     build_note_from_tx, load_published_events, save_published_events,
@@ -169,7 +169,10 @@ def main():
             all_tags = zap_tags + build_podcast_guid_tags(info)
 
             print("  Publishing standalone note...")
-            standalone_id = publish_to_nostr(note, nsec, extra_tags=all_tags)
+            # Banner image on the STANDALONE note only; the board reply below
+            # stays plain text (it's the same text from the same npub, and the
+            # megathread/website render it without the header).
+            standalone_id = publish_to_nostr(with_header_image(note), nsec, extra_tags=all_tags)
             if standalone_id:
                 record_published_event(published_events, payment_hash, standalone_id, settled_at)
 
@@ -182,7 +185,7 @@ def main():
             all_tags = zap_tags + build_podcast_guid_tags(info)
             suffix   = payment_hash[:12] or None
             path, standalone_id = write_dry_run_event(
-                note, nsec, prefix="boosts", extra_tags=all_tags, suffix=suffix,
+                with_header_image(note), nsec, prefix="boosts", extra_tags=all_tags, suffix=suffix,
             )
             print(f"  [dry-run] standalone → {path}")
             # Deliberately NOT recording standalone_id to published_events in
