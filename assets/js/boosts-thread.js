@@ -37,6 +37,21 @@ const STATIC_RELAYS = [
 ]
 export { STATIC_RELAYS }
 
+// Hardcoded boost-note exclusions. kind-1 notes can't be deleted from
+// relays, so when boost-publisher emits a note that's wrong (e.g. the
+// Castamatic-message-dropping bug fixed in boost_formatter), we leave the
+// bad note on relays but suppress it here and republish a corrected reply
+// to the megathread. Keyed by event id (hex). This is the going-forward
+// mitigation pattern for boost-publisher mistakes.
+//   2026-06-17: 4 ChadF / Ep.016 Castamatic boosts published without their
+//   💬 message line; corrected replies republished to the megathread.
+const EXCLUDED_NOTE_IDS = new Set([
+  '3d37e26095d46e844f4ad80ed00ce6bec94e9ba39b5b25278d3b1a8acfe20afc',
+  '82d715867ce36bcf121eb8ef3b9844b42b6b9e9151b255328f98534bb30619ef',
+  'bdf30ffae16bab70291733961931d95ca2bd73ed16341a236d9025bac26009a4',
+  'a1e400e578c1cd78fecd5348a533c487ca57b85723968e66cb3567b93c6f8dfd',
+])
+
 // ── Module state ─────────────────────────────────────────────────────
 // Caches survive multiple `fetchBoostThread` calls so subsequent paints
 // (e.g. after an optimistic reply insert) skip re-fetching profiles.
@@ -581,6 +596,7 @@ export function buildThread(rootId, allNotes) {
   const childrenOf = new Map()
   for (const ev of allNotes) {
     if (!ev?.id || ev.id === rootId) continue
+    if (EXCLUDED_NOTE_IDS.has(ev.id)) continue
     const eTags = (ev.tags || []).filter(t => t[0] === 'e')
     if (!eTags.length) continue
     const replyTag = eTags.find(t => t[3] === 'reply') || eTags[eTags.length - 1]

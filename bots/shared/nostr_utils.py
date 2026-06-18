@@ -311,12 +311,14 @@ def build_zap_splits_for_v4v(sender_npub, nsec, relays=None):
     npubs       = [sender_npub, author_npub] if sender_npub else [author_npub]
     return build_zap_split_tags(npubs, relays)
 
-def write_dry_run_event(note_text, nsec, prefix, extra_tags=None, reply_to_event_id=None, suffix=None, kind=1):
+def write_dry_run_event(note_text, nsec, prefix, extra_tags=None, reply_to_event_id=None, suffix=None, kind=1, created_at=None):
     """Build an unsigned event preview and write it to <repo>/bots/dry-run/.
     Mirrors the tag assembly of publish_to_nostr so the preview reflects what would
     be published. Returns (path, event_id) — event_id is the deterministic NIP-01
     sha256 over the canonical serialization, usable for threading replies.
-    kind defaults to 1 (text note); pass kind=3 for contact-list previews, etc."""
+    kind defaults to 1 (text note); pass kind=3 for contact-list previews, etc.
+    Pass `created_at` to override the timestamp (e.g. backdating a corrected
+    republish to its original note's time); defaults to now."""
     tags = []
     if reply_to_event_id:
         tags.append(["e", reply_to_event_id, "", "root"])
@@ -325,7 +327,8 @@ def write_dry_run_event(note_text, nsec, prefix, extra_tags=None, reply_to_event
 
     pk         = PrivateKey.from_nsec(nsec)
     pubkey     = pk.public_key.hex()
-    created_at = int(time.time())
+    if created_at is None:
+        created_at = int(time.time())
 
     event_data = [0, pubkey, created_at, kind, tags, note_text]
     event_json = json.dumps(event_data, separators=(",", ":"), ensure_ascii=False)
@@ -347,9 +350,11 @@ def write_dry_run_event(note_text, nsec, prefix, extra_tags=None, reply_to_event
     path.write_text(json.dumps(event, indent=2, ensure_ascii=False))
     return path, event_id
 
-def publish_to_nostr(note_text, nsec, reply_to_event_id=None, relays=None, extra_tags=None, kind=1):
+def publish_to_nostr(note_text, nsec, reply_to_event_id=None, relays=None, extra_tags=None, kind=1, created_at=None):
     """Sign and broadcast a Nostr event. Returns the event_id on success, None on failure.
     kind defaults to 1 (text note); pass kind=3 for a contact list, etc.
+    Pass `created_at` to override the timestamp (e.g. backdating a corrected
+    republish to its original note's time); defaults to now.
 
     When `relays` is None, the publish target is resolved per NIP-65: the author's
     kind 10002 outbox is fetched and used. If no 10002 is found, kind-1 falls back
@@ -371,7 +376,8 @@ def publish_to_nostr(note_text, nsec, reply_to_event_id=None, relays=None, extra
                         f"No kind 10002 outbox for {pubkey[:12]}... — refusing to publish "
                         f"kind {kind} (replaceable) to fallback relays. Pass relays= explicitly "
                         f"or publish a kind 10002 for this account first.")
-        created_at = int(time.time())
+        if created_at is None:
+            created_at = int(time.time())
         tags       = []
 
         if reply_to_event_id:
