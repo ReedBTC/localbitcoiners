@@ -325,7 +325,7 @@ def with_header_image(note_text, image_url=STANDALONE_NOTE_IMAGE):
     plain note text and wrap with this only at publish time."""
     if not image_url:
         return note_text
-    return f"{image_url}\n\n{note_text}"
+    return f"{image_url}\n{note_text}"
 
 def write_dry_run_event(note_text, nsec, prefix, extra_tags=None, reply_to_event_id=None, suffix=None, kind=1, created_at=None):
     """Build an unsigned event preview and write it to <repo>/bots/dry-run/.
