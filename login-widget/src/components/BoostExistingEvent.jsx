@@ -70,10 +70,10 @@ export default function BoostExistingEvent({
       setError(cls.reason)
       return
     }
-    if (!sessionUser?.pubkey) {
-      onRequestSignIn?.()
-      return
-    }
+    // No login check here on purpose: the boost handoff goes through
+    // openShowBoost, which prompts login when needed AND re-opens itself
+    // prefilled with this message after sign-in (via its pending action).
+    // Short-circuiting to onRequestSignIn here would just drop the message.
     // For naddrs, interpolateNaddr prefixes the value with `nostr:` when
     // appending; for URLs we want the URL inline as-is. Same {naddr}
     // placeholder behavior either way (replace where the user kept it,

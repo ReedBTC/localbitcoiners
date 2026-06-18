@@ -28,7 +28,7 @@ function splitFuturePast(events) {
   return { upcoming, past }
 }
 
-export default function MyMeetupsModal({ user, onClose, onBoostMeetup }) {
+export default function MyMeetupsModal({ user, onClose, onBoostMeetup, onRequestSignIn }) {
   const { events, error } = useMyMeetups(user?.pubkey)
 
   const handleBoost = (p) => {
@@ -36,6 +36,30 @@ export default function MyMeetupsModal({ user, onClose, onBoostMeetup }) {
     const msg = interpolateNaddr(BOOST_EXISTING_TEMPLATE, p.naddr)
     onClose?.()
     onBoostMeetup?.(msg)
+  }
+
+  // Logged out → the modal still opens (no login bounce), but there's
+  // nothing to list without an identity, so show a sign-in prompt rather
+  // than a misleading "no meetups yet". A stub user has a pubkey, so this
+  // only triggers when truly signed out.
+  if (!user?.pubkey) {
+    return (
+      <MeetupModalChrome
+        ariaLabel="Boost one of your meetups"
+        onClose={onClose}
+        maxWidth="34rem"
+      >
+        <div className="lb-card text-center">
+          <h2 className="lb-card-heading">Your meetups on Nostr</h2>
+          <p className="lb-muted" style={{ margin: '0.5rem 0 1.1rem' }}>
+            Sign in with Nostr to see the meetups you’ve published and boost them.
+          </p>
+          <button onClick={() => onRequestSignIn?.()} className="lb-btn lb-btn-primary">
+            Sign in
+          </button>
+        </div>
+      </MeetupModalChrome>
+    )
   }
 
   return (

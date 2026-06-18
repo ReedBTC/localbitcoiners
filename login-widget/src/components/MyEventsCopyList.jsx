@@ -16,6 +16,19 @@ export default function MyEventsCopyList({ pubkey, enabled, onCopy }) {
   // Nothing to show until the disclosure is opened.
   if (!enabled) return null
 
+  // Logged out → there's no npub to pull past meetups from. Say so plainly
+  // instead of letting useMyMeetups report an empty list as "none published".
+  // The JSON upload and naddr-paste imports above still work logged out.
+  if (!pubkey) {
+    return (
+      <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.7rem', marginTop: '0.2rem' }}>
+        <p style={{ color: 'var(--muted)', fontSize: '0.82rem', fontStyle: 'italic', margin: 0 }}>
+          Sign in to copy from meetups you’ve already published.
+        </p>
+      </div>
+    )
+  }
+
   const sorted = events
     ? [...events].sort((a, b) => (b.startUnix || 0) - (a.startUnix || 0))
     : null

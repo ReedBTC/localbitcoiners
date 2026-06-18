@@ -565,7 +565,7 @@
         <path fill-rule="evenodd" d="M14.615 1.595a.75.75 0 0 1 .359.852L12.982 9.75h7.268a.75.75 0 0 1 .548 1.262l-10.5 11.25a.75.75 0 0 1-1.272-.71l1.992-7.302H3.75a.75.75 0 0 1-.548-1.262l10.5-11.25a.75.75 0 0 1 .913-.143Z" clip-rule="evenodd"/>
       </svg>
       <span class="boost-bar-text">
-        <span class="boost-bar-label">Boost a Meetup</span>
+        <span class="boost-bar-label">Share your Meetup</span>
         <span class="boost-bar-sub">Boost an existing meetup event or create a listing here</span>
       </span>
       <span class="boost-bar-caret" aria-hidden="true">▾</span>
@@ -720,11 +720,24 @@
       btn.addEventListener('click', async () => {
         const kind = btn.getAttribute('data-lb-meetup-trigger');
         if (!kind) return;
+        // Immediate, visible feedback. The bundle may still be loading
+        // (or the widget may need a session restore before the modal
+        // opens), so without this the button looks dead and the user
+        // assumes nothing happened. Swap the title to "Loading…", keep
+        // the drawer open, and only collapse it once the action has
+        // actually been dispatched.
+        const titleEl = btn.querySelector('.boost-bar-btn-title');
+        const prevTitle = titleEl ? titleEl.textContent : '';
         btn.disabled = true;
+        btn.setAttribute('aria-busy', 'true');
+        if (titleEl) titleEl.textContent = 'Loading…';
         try {
           await ensureWidgetLoaded();
           if (window.LBLogin?.openMeetupModal) {
-            window.LBLogin.openMeetupModal(kind);
+            // Awaited so the loading state + open drawer persist through
+            // the widget's own gates (login, session restore, signer
+            // check) rather than snapping shut while nothing is visible.
+            await window.LBLogin.openMeetupModal(kind);
           }
           // Collapse the drawer once the modal is opening so it doesn't
           // sit visually behind the modal when the user dismisses it.
@@ -733,6 +746,8 @@
           console.error('[lb] meetup widget load failed', e);
         } finally {
           btn.disabled = false;
+          btn.removeAttribute('aria-busy');
+          if (titleEl) titleEl.textContent = prevTitle;
         }
       });
     });

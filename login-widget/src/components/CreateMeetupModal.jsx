@@ -14,6 +14,7 @@ export default function CreateMeetupModal({
   onClose,
   onRequestSignIn,
   onOpenShowBoostWithMessage,
+  ensureSignerOk,
 }) {
   return (
     <MeetupModalChrome
@@ -23,8 +24,12 @@ export default function CreateMeetupModal({
     >
       <EventComposer
         sessionUser={user}
-        onRequestSignIn={() => { onClose?.(); onRequestSignIn?.() }}
+        // Don't close on sign-in: the login modal stacks on top and, once
+        // the user is in, this composer is still mounted with the form they
+        // already filled out — they just click Publish again.
+        onRequestSignIn={() => { onRequestSignIn?.() }}
         onOpenShowBoostWithMessage={(msg) => { onClose?.(); onOpenShowBoostWithMessage?.(msg) }}
+        ensureSignerOk={ensureSignerOk}
       />
     </MeetupModalChrome>
   )

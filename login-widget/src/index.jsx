@@ -448,7 +448,6 @@ function setMeetupModalState(v) {
 
 function MeetupModalHost() {
   const user = useSharedUser()
-  const realUser = (user && !isStubUser(user)) ? user : null
   const [state, setLocalState] = useState(meetupModalState)
   useEffect(() => {
     const fn = (v) => setLocalState(v)
@@ -460,13 +459,19 @@ function MeetupModalHost() {
   const close = () => setMeetupModalState(null)
   const openShowBoostWithMessage = (msg) => api.openShowBoost({ prefillMessage: msg })
 
+  // Pass the stub-inclusive user so the modals render their real content
+  // (event list / composer form) during the brief background-restore
+  // window instead of flashing a sign-in gate. A stub carries the pubkey
+  // these flows need; the actual sign is gated downstream (openShowBoost
+  // for boosts, ensureSignerOk for the create publish).
   let body = null
   if (state.kind === 'my') {
     body = (
       <MyMeetupsModal
-        user={realUser}
+        user={user}
         onClose={close}
         onBoostMeetup={openShowBoostWithMessage}
+        onRequestSignIn={() => api.requestLogin()}
       />
     )
   } else if (state.kind === 'search') {
@@ -479,7 +484,7 @@ function MeetupModalHost() {
   } else if (state.kind === 'paste') {
     body = (
       <BoostExistingMeetupModal
-        user={realUser}
+        user={user}
         onClose={close}
         onRequestSignIn={() => api.requestLogin()}
         onOpenShowBoostWithMessage={openShowBoostWithMessage}
@@ -488,10 +493,11 @@ function MeetupModalHost() {
   } else if (state.kind === 'create') {
     body = (
       <CreateMeetupModal
-        user={realUser}
+        user={user}
         onClose={close}
         onRequestSignIn={() => api.requestLogin()}
         onOpenShowBoostWithMessage={openShowBoostWithMessage}
+        ensureSignerOk={ensureSignerVerified}
       />
     )
   }
@@ -853,26 +859,20 @@ const api = {
    */
   async openMeetupModal(kind) {
     if (!['my', 'search', 'paste', 'create'].includes(kind)) return
-    // Gate 1: signed in?
-    if (!currentUser || currentUser === undefined) {
-      setPendingAction(() => api.openMeetupModal(kind))
-      api.requestLogin()
-      return
-    }
-    // Gate 1.5: real user (not a stub)? The four flows all need a
-    // signer eventually — fetching the user's events needs the pubkey
-    // (a stub has it, so 'my' could technically render with just the
-    // stub) but for consistency with the show-boost chain we wait for
-    // the real restore to land before opening any of them.
-    if (isStubUser(currentUser)) {
-      setPendingAction(() => api.openMeetupModal(kind))
-      ensureRealRestore()
-      return
-    }
-    // Gate 1.75: signer-account match. The Create flow publishes an
-    // event under the user's pubkey; Search/My/Paste don't sign on
-    // open but their boost handoff eventually will. Verify once here.
-    if (!await ensureSignerVerified()) return
+    // Open IMMEDIATELY — logged in or not, stub or real. None of these four
+    // flows sign on open, so there's no reason to block on login or a full
+    // session restore (which used to make even the inert ones feel broken):
+    //   - search/paste are read-only/inert inputs, fully usable logged out;
+    //   - 'my' and create render an in-modal sign-in prompt when there's no
+    //     identity yet, instead of bouncing the user to the login modal.
+    // The actual sign is gated at the point of ACTION, which carries its own
+    // gates: boosts route through openShowBoost (login prompt with the boost
+    // message preserved + ensureSignerVerified), and the create publish runs
+    // ensureSignerOk (see MeetupModalHost). If we already have a stub user
+    // (returning visitor mid-restore), warm the real restore in the
+    // BACKGROUND so the signer is ready by the time they act — without making
+    // them wait for it just to see the modal.
+    if (currentUser && isStubUser(currentUser)) ensureRealRestore()
     setMeetupModalState({ kind })
   },
 

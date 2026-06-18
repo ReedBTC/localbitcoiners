@@ -62,6 +62,7 @@ export default function EventComposer({
   sessionUser,
   onRequestSignIn,
   onOpenShowBoostWithMessage,
+  ensureSignerOk,
 }) {
   const [form, setForm] = useState(emptyEventForm)
   const [shareToNostr, setShareToNostr] = useState(false)
@@ -201,6 +202,12 @@ export default function EventComposer({
       onRequestSignIn?.()
       return
     }
+    // Account-match gate, deferred from modal-open to publish time so the
+    // composer opens instantly. Confirms the attached signer reports the
+    // same pubkey as the saved session before we publish under it; a
+    // mismatch forces re-auth (handled inside ensureSignerOk). No-op when
+    // the prop isn't supplied (e.g. the standalone /newevent mount).
+    if (ensureSignerOk && !(await ensureSignerOk())) return
     let lowered
     try {
       lowered = formToPublishShape(form)
@@ -239,7 +246,7 @@ export default function EventComposer({
     } finally {
       setPublishing(false)
     }
-  }, [form, sessionUser, shareToNostr, shareText, boostShow, boostText, onRequestSignIn, onOpenShowBoostWithMessage])
+  }, [form, sessionUser, shareToNostr, shareText, boostShow, boostText, onRequestSignIn, onOpenShowBoostWithMessage, ensureSignerOk])
 
   const resetForNewEvent = useCallback(() => {
     setForm(emptyEventForm())
@@ -252,19 +259,11 @@ export default function EventComposer({
     setPublished(null)
   }, [])
 
-  // ── Sign-in gate ─────────────────────────────────────────────────────
-  if (!sessionUser?.pubkey) {
-    return (
-      <div className="lb-card text-center">
-        <p className="mb-4" style={{ color: 'var(--text)' }}>
-          Sign in with Nostr to post your meetup.
-        </p>
-        <button onClick={() => onRequestSignIn?.()} className="lb-btn lb-btn-primary">
-          Sign in
-        </button>
-      </div>
-    )
-  }
+  // No full-screen sign-in gate: the form is just inputs, so a logged-out
+  // user can fill it all out. Only the two things that touch their key are
+  // gated — publishing (handlePublish → onRequestSignIn, keeping the form
+  // intact) and the "copy from your meetups" import list (MyEventsCopyList).
+  const loggedOut = !sessionUser?.pubkey
 
   // ── Success panel ────────────────────────────────────────────────────
   if (published) {
@@ -588,6 +587,8 @@ export default function EventComposer({
             <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: '#fff', opacity: 0.85 }} className="animate-pulse" aria-hidden="true" />
             Publishing…
           </>
+        ) : loggedOut ? (
+          'Sign in to publish'
         ) : (
           <>
             <svg viewBox="0 0 24 24" fill="currentColor" className="lb-btn-publish-bolt" aria-hidden="true">
