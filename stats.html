@@ -336,6 +336,15 @@
     }
     .stats-chart-opt:hover { border-color: var(--green-d); }
     .stats-chart-opt input { accent-color: var(--green-d); margin: 0; cursor: pointer; }
+    /* Logged-in user's pfp inside the "My Stats" toggle. `hidden` attr keeps
+       it out of the layout when signed out; no `display` override here so the
+       attribute's display:none still wins. */
+    .stats-mine-avatar {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1px solid var(--border);
+    }
     .stats-chart-canvas {
       margin-top: 1.1rem;
       background: var(--white);
@@ -740,7 +749,8 @@
       <input type="radio" name="stats-board-view" value="supporters" /> Supporters
     </label>
     <label class="stats-chart-opt">
-      <input type="radio" name="stats-board-view" value="mine" /> My npub
+      <input type="radio" name="stats-board-view" value="mine" />
+      <img data-mine-avatar class="stats-mine-avatar" alt="" hidden /> My Stats
     </label>
   </div>
 

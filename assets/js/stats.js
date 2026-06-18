@@ -875,7 +875,7 @@
       }
     }
 
-    // "My npub" — the signed-in user's own per-episode boost totals.
+    // "My Stats" — the signed-in user's own per-episode boost totals.
     // Not logged in → show a prompt and open the login modal; the
     // onChange hook below redraws the moment they sign in (or a session
     // restore completes). Anonymous (burner-signed) boosts carry no
@@ -925,10 +925,35 @@
       });
     }
 
-    // Redraw the "My npub" view on login/logout so it reflects the
-    // current user as soon as a sign-in (or session restore) lands.
+    // Show the signed-in user's pfp inside the "My Stats" toggle. Pulls the
+    // image straight off the live LBLogin user (profile.image); hides the
+    // <img> when logged out or when no avatar is set, and on a broken URL so
+    // the pill never shows a busted-image glyph.
+    var mineAvatarEl = document.querySelector('[data-mine-avatar]');
+    if (mineAvatarEl) {
+      mineAvatarEl.addEventListener('error', function () { mineAvatarEl.hidden = true; });
+    }
+    function updateMineAvatar() {
+      if (!mineAvatarEl) return;
+      var u = window.LBLogin && typeof window.LBLogin.getUser === 'function'
+        ? window.LBLogin.getUser() : null;
+      var img = u && u.profile && u.profile.image;
+      if (img) {
+        mineAvatarEl.src = img;
+        mineAvatarEl.hidden = false;
+      } else {
+        mineAvatarEl.removeAttribute('src');
+        mineAvatarEl.hidden = true;
+      }
+    }
+    updateMineAvatar();
+
+    // Redraw the "My Stats" view on login/logout so it reflects the
+    // current user as soon as a sign-in (or session restore) lands, and
+    // refresh the toggle's avatar to match.
     if (window.LBLogin && typeof window.LBLogin.onChange === 'function') {
       window.LBLogin.onChange(function () {
+        updateMineAvatar();
         var sel = document.querySelector('input[name="stats-board-view"]:checked');
         if (sel && sel.value === 'mine') drawMine();
       });
