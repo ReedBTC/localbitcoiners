@@ -311,14 +311,17 @@ def build_zap_splits_for_v4v(sender_npub, nsec, relays=None):
     npubs       = [sender_npub, author_npub] if sender_npub else [author_npub]
     return build_zap_split_tags(npubs, relays)
 
-# Banner image prepended to STANDALONE notes so Nostr clients render it as a
-# header above the text. Applied to the boost-publisher standalone note and
-# the three leaderboard main notes ONLY — never to megathread/board replies
-# or leaderboard reply chains. Most clients (Damus, Primal, Amethyst) detect a
-# bare image URL in content and render it inline; putting it first → top.
-STANDALONE_NOTE_IMAGE = "https://i.nostr.build/2qgUriGofo4N6khd.png"
+# Banner images prepended to STANDALONE notes so Nostr clients render them as a
+# header above the text. Applied ONLY to top-level notes — never to
+# megathread/board replies or leaderboard reply chains. Most clients (Damus,
+# Primal, Amethyst) detect a bare image URL in content and render it inline;
+# putting it first → top. One image per note type:
+STANDALONE_BOOST_IMAGE = "https://i.nostr.build/a6G5FkkfTlSyfJ7z.png"  # boost-publisher standalone note
+TOPEPISODES_IMAGE      = "https://i.nostr.build/FrGf0Ed65wBNuFxF.png"  # episodesats leaderboard parent
+TOPBOOSTS_IMAGE        = "https://i.nostr.build/s9WPcUfwPI4x3n5Q.png"  # top-boosts leaderboard parent
+BOOSTLEADERS_IMAGE     = "https://i.nostr.build/O19RVXpf0P0ucdkZ.png"  # boost-leaders leaderboard parent
 
-def with_header_image(note_text, image_url=STANDALONE_NOTE_IMAGE):
+def with_header_image(note_text, image_url):
     """Prepend the banner image URL on its own line so clients render it as a
     header image above the note. No-op if image_url is falsy. The URL adds no
     nostr: mentions or #hashtags, so build zap-split / note tags from the
