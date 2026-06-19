@@ -10,7 +10,7 @@
 
 const RSS_URL = "https://feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU";
 const SITE_ORIGIN = "https://localbitcoiners.com";
-const OG_IMAGE = `${SITE_ORIGIN}/assets/LocalBitcoiners_banner_YT.jpg`;
+const OG_IMAGE = `${SITE_ORIGIN}/assets/LocalBitcoiners_banner.png`;
 const FETCH_TIMEOUT_MS = 10_000;
 const RESPONSE_MAX_BYTES = 5 * 1024 * 1024;
 

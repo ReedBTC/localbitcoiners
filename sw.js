@@ -15,7 +15,9 @@
 // /assets/widgets/nostr-tools.js — merch.js imports the new nip59 +
 // getEventHash exports, and a returning visitor's cached bundle predates
 // them, which would fail the ES module link on first merch.html load.
-const VERSION = 'lb-v13';
+// v14: hero/OG banner swapped from LocalBitcoiners_banner_YT.jpg to
+// LocalBitcoiners_banner.png. Bump evicts the precached old .jpg.
+const VERSION = 'lb-v14';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
@@ -38,7 +40,7 @@ const PRECACHE_URLS = [
   '/manifest.webmanifest',
   '/assets/LocalBitcoiners.png',
   '/assets/favicon.png',
-  '/assets/LocalBitcoiners_banner_YT.jpg',
+  '/assets/LocalBitcoiners_banner.png',
   '/assets/css/episode.css',
   '/assets/css/boosts-thread.css',
   '/assets/css/boost-actions.css',
