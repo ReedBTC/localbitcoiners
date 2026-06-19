@@ -316,7 +316,7 @@ def build_zap_splits_for_v4v(sender_npub, nsec, relays=None):
 # the three leaderboard main notes ONLY — never to megathread/board replies
 # or leaderboard reply chains. Most clients (Damus, Primal, Amethyst) detect a
 # bare image URL in content and render it inline; putting it first → top.
-STANDALONE_NOTE_IMAGE = "https://i.nostr.build/NvbXgnChkuL9X9XP.png"
+STANDALONE_NOTE_IMAGE = "https://i.nostr.build/2qgUriGofo4N6khd.png"
 
 def with_header_image(note_text, image_url=STANDALONE_NOTE_IMAGE):
     """Prepend the banner image URL on its own line so clients render it as a
