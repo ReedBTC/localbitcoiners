@@ -52,13 +52,13 @@ export default function LoginModal({ onLogin, onClose }) {
       aria-label="Login"
     >
       <div
-        className={`relative bg-neutral-950 border border-neutral-700 rounded-lg shadow-[0_25px_60px_-12px_rgba(0,0,0,0.8),0_0_0_1px_rgba(255,255,255,0.04)] w-full max-w-md my-4 sm:my-8 transition-[opacity,transform] duration-200 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}
+        className={`relative bg-neutral-950 border border-neutral-700 rounded-lg shadow-[0_25px_60px_-12px_rgba(0,0,0,0.8),0_0_0_1px_rgba(255,255,255,0.04)] w-full max-w-md my-4 sm:my-8 max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden transition-[opacity,transform] duration-200 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}
         onMouseDown={e => e.stopPropagation()}
       >
         <button
           type="button"
           onClick={requestClose}
-          className="absolute top-2 right-2 z-10 text-neutral-400 hover:text-neutral-100 p-2 rounded transition-colors"
+          className="absolute top-2 right-2 z-10 text-neutral-400 hover:text-neutral-100 bg-neutral-950/80 p-2 rounded-full transition-colors"
           aria-label="Close login"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -66,7 +66,9 @@ export default function LoginModal({ onLogin, onClose }) {
             <line x1="18" y1="6" x2="6" y2="18" />
           </svg>
         </button>
-        <div className="py-6">
+        {/* Cap to the viewport and scroll the content here so the close X
+            (pinned to the card, above this) is always reachable on mobile. */}
+        <div className="py-6 flex-1 min-h-0 overflow-y-auto">
           <LoginScreen onLogin={handleLogin} embedded />
         </div>
       </div>

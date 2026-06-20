@@ -214,22 +214,14 @@ async function build(container) {
   requestAnimationFrame(() => startMarquee(container));
 }
 
-// ── lazy init when the section nears the viewport ──────────────────────
+// ── init ── Kick the boost-thread fetch off immediately on page load (not
+// gated on scroll), so the marquee is usually rendered by the time the user
+// scrolls down to it. The cards render into the off-screen container and the
+// marquee starts whenever the fetch resolves.
 function init() {
   const container = document.getElementById('boost-marquee');
   if (!container) return;
-  const section = document.getElementById('boosts-preview') || container;
-
-  let started = false;
-  const start = () => { if (started) return; started = true; build(container); };
-
-  if (!('IntersectionObserver' in window)) { start(); return; }
-  const io = new IntersectionObserver((entries) => {
-    for (const entry of entries) {
-      if (entry.isIntersecting) { start(); io.disconnect(); break; }
-    }
-  }, { rootMargin: '300px 0px' });
-  io.observe(section);
+  build(container);
 }
 
 if (document.readyState === 'loading') {

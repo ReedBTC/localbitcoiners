@@ -239,12 +239,32 @@ function wireArrows(carousel) {
   setTimeout(update, 500);
 }
 
+// One-time "it scrolls!" cue — when the row first comes into view and it
+// actually overflows, nudge it right a touch and ease back. The motion reads
+// on mobile (where the arrows are hidden) without hijacking the user.
+function hintScroll(el) {
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce || !('IntersectionObserver' in window)) return;
+  let done = false;
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (done || !entry.isIntersecting) return;
+      if (el.scrollWidth - el.clientWidth < 24) return; // nothing to scroll
+      done = true; io.disconnect();
+      el.scrollTo({ left: 52, behavior: 'smooth' });
+      setTimeout(() => el.scrollTo({ left: 0, behavior: 'smooth' }), 650);
+    });
+  }, { threshold: 0.6 });
+  io.observe(el);
+}
+
 function renderCarousel(container, cards, npubs) {
   if (!cards.length) { emptyState(container, 'Nothing to show yet.'); return; }
   const frag = document.createDocumentFragment();
   cards.forEach((c) => frag.appendChild(c));
   container.replaceChildren(frag);
   wireArrows(container);
+  hintScroll(container);
   resolveProfiles(npubs);
 }
 

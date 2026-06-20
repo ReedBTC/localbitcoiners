@@ -340,6 +340,24 @@
         radial-gradient(circle at 50% 92%, var(--border) 0 40%, transparent 41%),
         var(--cream-d);
     }
+    /* Gold/silver/bronze pfp rings for the top three supporter tiers
+       (mirrors the homepage carousels). */
+    .sup-avatar.tier-gold {
+      border: 3px solid #ffcf33;
+      box-shadow: 0 0 0 2px rgba(255,207,51,0.85), 0 0 16px 3px rgba(255,196,0,0.65);
+    }
+    .sup-avatar.tier-silver {
+      border: 3px solid #dfe6ec;
+      box-shadow: 0 0 0 2px rgba(206,214,222,0.90), 0 0 15px 3px rgba(190,201,212,0.60);
+    }
+    .sup-avatar.tier-bronze {
+      border: 3px solid #b07d42;
+      box-shadow: 0 0 0 2px rgba(176,125,66,0.85), 0 0 15px 3px rgba(150,100,48,0.55);
+    }
+    /* Keep the tier color on hover (the generic hover turns it green). */
+    .sup-card.is-copyable:hover .sup-avatar.tier-gold { border-color: #ffcf33; }
+    .sup-card.is-copyable:hover .sup-avatar.tier-silver { border-color: #dfe6ec; }
+    .sup-card.is-copyable:hover .sup-avatar.tier-bronze { border-color: #b07d42; }
     .sup-name {
       font-size: 0.82rem;
       font-weight: 600;

@@ -171,7 +171,7 @@
     }
 
     var avatar = document.createElement('span');
-    avatar.className = 'sup-avatar';
+    avatar.className = 'sup-avatar' + (opts.ring ? ' ' + opts.ring : '');
     var img = null;
     if (picture) {
       img = document.createElement('img');
@@ -330,6 +330,9 @@
     return null;
   }
 
+  // Gold/silver/bronze pfp rings for the top three tiers.
+  var TIER_RINGS = { t100: 'tier-gold', t69: 'tier-silver', t21: 'tier-bronze' };
+
   function render(people, guestNpubs, cache) {
     var root = document.getElementById('supporters-root');
     var loading = document.getElementById('supporters-loading');
@@ -337,9 +340,9 @@
 
     function profFor(npub) { return (npub && cache[npub]) || null; }
 
-    function cardFor(npub, label) {
+    function cardFor(npub, label, ring) {
       var prof = profFor(npub);
-      return makeCard({ npub: npub, name: (prof && prof.name) || label || null, picture: prof && prof.picture });
+      return makeCard({ npub: npub, name: (prof && prof.name) || label || null, picture: prof && prof.picture, ring: ring });
     }
 
     // 1. Supporters — boost/stream tiers. One group header + note, then a tier each.
@@ -348,7 +351,7 @@
     people.forEach(function (p) {
       var tid = tierOf(p.sats);
       if (!tid) return;
-      buckets[tid].push(cardFor(p.npub, p.name));
+      buckets[tid].push(cardFor(p.npub, p.name, TIER_RINGS[tid]));
     });
     renderBoosterGroup(
       root,

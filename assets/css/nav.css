@@ -210,11 +210,11 @@
     height: auto;
     padding: 0.6rem 1rem;
   }
-  .nav-site-name { font-size: 1rem; flex: 1; min-width: 0; }
-  /* Compact the trigger to just the grid glyph to save the row. */
-  .nav-explore > summary { padding: 0.4rem 0.55rem; }
-  .nav-explore-text, .nav-explore .caret { display: none; }
-  .nav-explore-glyph { font-size: 1.1em; }
+  /* Drop the wordmark on mobile (the logo carries the brand) and let the
+     freed space hold a labeled "Explore" trigger so the compass is clear. */
+  .nav-site-name { display: none; }
+  nav { margin-right: auto; }   /* push Boost + identity to the right edge */
+  .nav-explore .caret { display: none; }
   #lb-boost-slot { flex-shrink: 0; }
 
   .nav-explore-panel {

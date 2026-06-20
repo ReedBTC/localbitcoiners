@@ -476,6 +476,11 @@
       gap: 0.75rem;
       flex-wrap: wrap;
     }
+    /* Secondary-action overflow group. Desktop: flatten inline (⋮ hidden);
+       mobile rules (a top-right ⋮ menu) live in the 600px media query. */
+    .ep-overflow { display: contents; }
+    .ep-overflow-menu { display: contents; }
+    .ep-overflow-btn { display: none; }
 
     .btn {
       display: inline-block;
@@ -671,9 +676,36 @@
       .hero-overlay { padding: 0.85rem 1rem 1.05rem; }
       .section, .section-wide { padding: 2.5rem 1.1rem; }
       .section-title { font-size: 1.5rem; }
-      .episode-card { padding: 1.25rem 1.1rem; }
+      .episode-card { padding: 1.25rem 1.1rem; position: relative; }
       .episode-title { font-size: 1.1rem; }
       .links-grid { grid-template-columns: 1fr; }
+
+      /* Mobile: secondary actions collapse into a ⋮ menu, top-right of the
+         card, leaving Boost as the only primary action in the row. */
+      .episode-header { padding-right: 2.6rem; }
+      .ep-overflow { display: block; position: absolute; top: 0.9rem; right: 1.1rem; }
+      .ep-overflow-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 34px; height: 34px; border-radius: 50%;
+        border: 1px solid var(--border); background: var(--cream);
+        color: var(--navy); font-size: 1.2rem; line-height: 1; cursor: pointer;
+      }
+      .ep-overflow-btn:hover { background: var(--cream-d); }
+      .ep-overflow-menu {
+        display: none; position: absolute; top: calc(100% + 0.35rem); right: 0;
+        z-index: 30; min-width: 12.5rem;
+        flex-direction: column; gap: 0.45rem;
+        background: var(--white); border: 1px solid var(--border);
+        border-radius: 8px; box-shadow: 0 8px 24px rgba(30,58,95,0.18);
+        padding: 0.5rem;
+      }
+      .ep-overflow.open .ep-overflow-menu { display: flex; }
+      .ep-overflow-menu .btn,
+      .ep-overflow-menu .ep-subscribe,
+      .ep-overflow-menu .btn-subscribe { width: 100%; justify-content: center; }
+      .ep-overflow-menu .ep-subscribe-menu {
+        position: static; box-shadow: none; border: none; padding: 0.25rem 0 0;
+      }
     }
   </style>
   <link rel="stylesheet" href="/assets/css/nav.css" />
@@ -1131,6 +1163,12 @@
     const actions = document.createElement('div');
     actions.className = 'episode-actions';
 
+    // Secondary actions (Download MP3 / Transcript / Subscribe) go in an
+    // overflow group: inline on desktop, tucked behind a ⋮ menu in the
+    // card's top-right on mobile. Boost stays the lone primary action.
+    const ovMenu = document.createElement('div');
+    ovMenu.className = 'ep-overflow-menu';
+
     if (mp3) {
       // Chrome ignores the <a download> attribute cross-origin when the
       // server doesn't send Content-Disposition: attachment, so the
@@ -1178,7 +1216,7 @@
           }
         });
       }
-      actions.appendChild(dl);
+      ovMenu.appendChild(dl);
     }
 
     // Transcript: button instead of a plain anchor so a missing file
@@ -1222,14 +1260,28 @@
         tx.disabled = false;
       }
     });
-    actions.appendChild(tx);
+    ovMenu.appendChild(tx);
 
     // Subscribe-in-app dropdown. Show-level URLs (don't change per
     // episode) for the top podcasting 2.0 apps. Castamatic's universal
     // link uses the show's podcast:guid; Podverse + CurioCaster don't
     // expose stable show-page URLs we could verify, so they fall back
     // to a search/homepage URL. Update verbatim if better URLs land.
-    actions.appendChild(buildSubscribeDropdown());
+    ovMenu.appendChild(buildSubscribeDropdown());
+
+    // Wrap the secondary actions + a ⋮ trigger (the trigger only shows on
+    // mobile; on desktop the group flattens inline via display:contents).
+    const overflow = document.createElement('div');
+    overflow.className = 'ep-overflow';
+    const ovBtn = document.createElement('button');
+    ovBtn.type = 'button';
+    ovBtn.className = 'ep-overflow-btn';
+    ovBtn.setAttribute('aria-label', 'More options');
+    ovBtn.textContent = '⋮';
+    ovBtn.addEventListener('click', (e) => { e.stopPropagation(); overflow.classList.toggle('open'); });
+    overflow.appendChild(ovBtn);
+    overflow.appendChild(ovMenu);
+    actions.appendChild(overflow);
 
     if (splits) {
       const boostBtn = document.createElement('button');
@@ -1376,6 +1428,10 @@
   document.addEventListener('click', (e) => {
     document.querySelectorAll('details.ep-subscribe[open]').forEach(d => {
       if (!d.contains(e.target)) d.removeAttribute('open');
+    });
+    // Same for the mobile ⋮ overflow menu on each card.
+    document.querySelectorAll('.ep-overflow.open').forEach(o => {
+      if (!o.contains(e.target)) o.classList.remove('open');
     });
   });
 

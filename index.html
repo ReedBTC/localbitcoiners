@@ -486,6 +486,11 @@
       gap: 0.75rem;
       flex-wrap: wrap;
     }
+    /* Secondary-action overflow group. Desktop: flatten inline (⋮ hidden);
+       mobile rules (a top-right ⋮ menu) live in the 600px media query. */
+    .ep-overflow { display: contents; }
+    .ep-overflow-menu { display: contents; }
+    .ep-overflow-btn { display: none; }
 
     .btn {
       display: inline-block;
@@ -663,9 +668,37 @@
       .hero-overlay { padding: 0.85rem 1rem 1.05rem; }
       .section, .section-wide { padding: 2.5rem 1.1rem; }
       .section-title { font-size: 1.5rem; }
-      .episode-card { padding: 1.25rem 1.1rem; }
+      .episode-card { padding: 1.25rem 1.1rem; position: relative; }
       .episode-title { font-size: 1.1rem; }
       .links-grid { grid-template-columns: 1fr; }
+
+      /* Mobile: secondary actions collapse into a ⋮ menu, top-right of the
+         card, leaving Boost as the only primary action in the row. */
+      .episode-header { padding-right: 2.6rem; }
+      .ep-overflow { display: block; position: absolute; top: 0.9rem; right: 1.1rem; }
+      .ep-overflow-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 34px; height: 34px; border-radius: 50%;
+        border: 1px solid var(--border); background: var(--cream);
+        color: var(--navy); font-size: 1.2rem; line-height: 1; cursor: pointer;
+      }
+      .ep-overflow-btn:hover { background: var(--cream-d); }
+      .ep-overflow-menu {
+        display: none; position: absolute; top: calc(100% + 0.35rem); right: 0;
+        z-index: 30; min-width: 12.5rem;
+        flex-direction: column; gap: 0.45rem;
+        background: var(--white); border: 1px solid var(--border);
+        border-radius: 8px; box-shadow: 0 8px 24px rgba(30,58,95,0.18);
+        padding: 0.5rem;
+      }
+      .ep-overflow.open .ep-overflow-menu { display: flex; }
+      .ep-overflow-menu .btn,
+      .ep-overflow-menu .ep-subscribe,
+      .ep-overflow-menu .btn-subscribe { width: 100%; justify-content: center; }
+      /* The Subscribe sub-dropdown expands inline inside the ⋮ menu. */
+      .ep-overflow-menu .ep-subscribe-menu {
+        position: static; box-shadow: none; border: none; padding: 0.25rem 0 0;
+      }
     }
 
     /* ════════════════════ HOMEPAGE HUB (redesign) ════════════════════
@@ -744,6 +777,9 @@
       color: var(--navy);
       margin-top: 0.15rem;
     }
+    /* Section titles double as links to their full page. */
+    .home-module-title a { color: inherit; text-decoration: none; }
+    .home-module-title a:hover { color: var(--green-d); text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1.5px; }
     .home-module-link {
       flex-shrink: 0;
       font-size: 0.9rem;
@@ -758,8 +794,9 @@
     .home-module-link:hover { border-color: var(--green-d); }
 
     /* ── Leaderboards ── Biggest Boosts full-width on top (with messages),
-       Top Episodes + Ride or Dies half-width below; all stack on mobile. */
-    #leaderboards { background: var(--white); }
+       Top Episodes + Ride or Dies half-width below; all stack on mobile.
+       Cream section so the white cards pop (sits above the community section). */
+    #leaderboards { background: var(--cream); }
     .lb-grid--two {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -768,7 +805,7 @@
     }
     /* Nostr-note-ish card: titled header band, then a ranked list. */
     .lb-card {
-      background: var(--cream);
+      background: var(--white);
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 1.25rem 1.25rem 1rem;
@@ -1144,7 +1181,7 @@
     #recent-episodes-list { margin-top: 1rem; }
 
     /* ── People section (Guests + Supporters, two tight rows) ── */
-    #people { background: var(--cream); }
+    #people { background: var(--white); }
     /* Tighter than a default module — this is two rows in one frame, kept
        close to the top per the homepage's "less distance" goal. */
     #people .home-module { padding-top: 2.5rem; padding-bottom: 2.25rem; }
@@ -1403,7 +1440,7 @@
     <div class="featured-head">
       <span class="home-eyebrow">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M14.615 1.595a.75.75 0 0 1 .359.852L12.982 9.75h7.268a.75.75 0 0 1 .548 1.262l-10.5 11.25a.75.75 0 0 1-1.272-.71l1.992-7.302H3.75a.75.75 0 0 1-.548-1.262l10.5-11.25a.75.75 0 0 1 .913-.143Z" clip-rule="evenodd"/></svg>
-        Latest Episode — Boost It
+        Latest Episode
       </span>
       <a class="home-module-link" href="/episodes.html">Browse all episodes →</a>
     </div>
@@ -1430,7 +1467,7 @@
          rendered into #recent-episodes-list by the episode script. -->
     <details class="recent-drawer">
       <summary>
-        <span>More Recent Episodes</span>
+        <span>More Episodes</span>
         <span class="caret" aria-hidden="true">▾</span>
       </summary>
       <div id="recent-episodes-list"></div>
@@ -1449,39 +1486,6 @@
   </div>
 </section>
 
-<!-- ════════════════ MEET THE COMMUNITY (guests + supporters) ════════════════
-     One section, two labeled rows (Guests / Supporters) — one frame, tighter
-     vertical footprint, both groups still distinct. Carousels render via
-     home-people.js (IDs unchanged). -->
-<section id="people" class="reveal" aria-label="The community">
-  <div class="home-module">
-    <div class="home-module-head">
-      <div>
-        <h2 class="home-module-title">Meet the Local Bitcoiners Community</h2>
-      </div>
-      <a class="home-module-link" href="/supporters">See full Community →</a>
-    </div>
-
-    <div class="people-row">
-      <span class="people-row-label">Show Guests</span>
-      <div class="carousel-wrap">
-        <button type="button" class="carousel-arrow prev" data-carousel-prev="guests-carousel" aria-label="Scroll left" hidden>‹</button>
-        <div class="people-carousel" id="guests-carousel" data-people="guests"></div>
-        <button type="button" class="carousel-arrow next" data-carousel-next="guests-carousel" aria-label="Scroll right" hidden>›</button>
-      </div>
-    </div>
-
-    <div class="people-row">
-      <span class="people-row-label">Supporters</span>
-      <div class="carousel-wrap">
-        <button type="button" class="carousel-arrow prev" data-carousel-prev="supporters-carousel" aria-label="Scroll left" hidden>‹</button>
-        <div class="people-carousel" id="supporters-carousel" data-people="supporters"></div>
-        <button type="button" class="carousel-arrow next" data-carousel-next="supporters-carousel" aria-label="Scroll right" hidden>›</button>
-      </div>
-    </div>
-  </div>
-</section>
-
 <!-- ══════════════════════════════ LEADERBOARDS ══════════════════════════════
      Live leaderboards computed from /data/sats.json (same definitions as the
      weekly bot note in bots/leaderboards/). Biggest Boosts leads full-width
@@ -1492,7 +1496,7 @@
   <div class="home-module">
     <div class="home-module-head">
       <div>
-        <h2 class="home-module-title">Leaderboards</h2>
+        <h2 class="home-module-title"><a href="/stats.html">Leaderboards</a></h2>
       </div>
       <a class="home-module-link" href="/stats.html">Full stats &amp; charts →</a>
     </div>
@@ -1518,6 +1522,39 @@
   </div>
 </section>
 
+<!-- ════════════════ MEET THE COMMUNITY (guests + supporters) ════════════════
+     One section, two labeled rows (Guests / Supporters) — one frame, tighter
+     vertical footprint, both groups still distinct. Carousels render via
+     home-people.js (IDs unchanged). -->
+<section id="people" class="reveal" aria-label="The community">
+  <div class="home-module">
+    <div class="home-module-head">
+      <div>
+        <h2 class="home-module-title"><a href="/supporters">Meet the Local Bitcoiners Community</a></h2>
+      </div>
+      <a class="home-module-link" href="/supporters">See full Community →</a>
+    </div>
+
+    <div class="people-row">
+      <span class="people-row-label">Show Guests</span>
+      <div class="carousel-wrap">
+        <button type="button" class="carousel-arrow prev" data-carousel-prev="guests-carousel" aria-label="Scroll left" hidden>‹</button>
+        <div class="people-carousel" id="guests-carousel" data-people="guests"></div>
+        <button type="button" class="carousel-arrow next" data-carousel-next="guests-carousel" aria-label="Scroll right" hidden>›</button>
+      </div>
+    </div>
+
+    <div class="people-row">
+      <span class="people-row-label">Supporters</span>
+      <div class="carousel-wrap">
+        <button type="button" class="carousel-arrow prev" data-carousel-prev="supporters-carousel" aria-label="Scroll left" hidden>‹</button>
+        <div class="people-carousel" id="supporters-carousel" data-people="supporters"></div>
+        <button type="button" class="carousel-arrow next" data-carousel-next="supporters-carousel" aria-label="Scroll right" hidden>›</button>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ══════════════════════════════ RECENT BOOSTS ══════════════════════════════
      Continuous marquee of the real Nostr boost notes (same cards as
      /boosts), flowing by like a wall of reviews. Hover/focus or tap to
@@ -1526,7 +1563,7 @@
   <div class="home-module">
     <div class="home-module-head">
       <div>
-        <h2 class="home-module-title">Recent Boosts</h2>
+        <h2 class="home-module-title"><a href="/boosts.html">Recent Boosts</a></h2>
       </div>
       <a class="home-module-link" href="/boosts.html">See all boosts →</a>
     </div>
@@ -1953,6 +1990,12 @@
     const actions = document.createElement('div');
     actions.className = 'episode-actions';
 
+    // Secondary actions (Download MP3 / Transcript / Subscribe) go in an
+    // overflow group: inline on desktop, tucked behind a ⋮ menu in the
+    // card's top-right on mobile. Boost stays the lone primary action.
+    const ovMenu = document.createElement('div');
+    ovMenu.className = 'ep-overflow-menu';
+
     if (mp3) {
       // Chrome ignores the <a download> attribute cross-origin when the
       // server doesn't send Content-Disposition: attachment, so the
@@ -2000,7 +2043,7 @@
           }
         });
       }
-      actions.appendChild(dl);
+      ovMenu.appendChild(dl);
     }
 
     // Transcript: button instead of a plain anchor so a missing file
@@ -2044,14 +2087,28 @@
         tx.disabled = false;
       }
     });
-    actions.appendChild(tx);
+    ovMenu.appendChild(tx);
 
     // Subscribe-in-app dropdown. Show-level URLs (don't change per
     // episode) for the top podcasting 2.0 apps. Castamatic's universal
     // link uses the show's podcast:guid; Podverse + CurioCaster don't
     // expose stable show-page URLs we could verify, so they fall back
     // to a search/homepage URL. Update verbatim if better URLs land.
-    actions.appendChild(buildSubscribeDropdown());
+    ovMenu.appendChild(buildSubscribeDropdown());
+
+    // Wrap the secondary actions + a ⋮ trigger (the trigger only shows on
+    // mobile; on desktop the group flattens inline via display:contents).
+    const overflow = document.createElement('div');
+    overflow.className = 'ep-overflow';
+    const ovBtn = document.createElement('button');
+    ovBtn.type = 'button';
+    ovBtn.className = 'ep-overflow-btn';
+    ovBtn.setAttribute('aria-label', 'More options');
+    ovBtn.textContent = '⋮';
+    ovBtn.addEventListener('click', (e) => { e.stopPropagation(); overflow.classList.toggle('open'); });
+    overflow.appendChild(ovBtn);
+    overflow.appendChild(ovMenu);
+    actions.appendChild(overflow);
 
     if (splits) {
       const boostBtn = document.createElement('button');
@@ -2216,6 +2273,10 @@
   document.addEventListener('click', (e) => {
     document.querySelectorAll('details.ep-subscribe[open]').forEach(d => {
       if (!d.contains(e.target)) d.removeAttribute('open');
+    });
+    // Same for the mobile ⋮ overflow menu on each card.
+    document.querySelectorAll('.ep-overflow.open').forEach(o => {
+      if (!o.contains(e.target)) o.classList.remove('open');
     });
   });
 
