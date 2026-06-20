@@ -1147,6 +1147,17 @@
     /* Collapsible "Recent Episodes" drawer below the featured card.
        The summary is a self-contained bordered pill (caret hugging the
        label) so it reads as one clickable control. */
+    /* Two pill drawers in a row; an open one grows to full width so its
+       content (episode cards / links) isn't squeezed. */
+    .featured-drawers {
+      margin-top: 0.9rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      align-items: flex-start;
+    }
+    .featured-drawers > .recent-drawer { margin-top: 0; }
+    .featured-drawers > .recent-drawer[open] { flex-basis: 100%; }
     .recent-drawer { margin-top: 0.9rem; }
     .recent-drawer > summary {
       list-style: none;
@@ -1179,6 +1190,31 @@
     }
     .recent-drawer[open] > summary .caret { transform: rotate(180deg); }
     #recent-episodes-list { margin-top: 1rem; }
+    .subscribe-drawer-links {
+      margin-top: 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+    }
+    .subscribe-drawer-links a {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: var(--navy);
+      text-decoration: none;
+      background: var(--cream);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.5rem 0.9rem;
+      transition: border-color 0.15s, background 0.15s, color 0.15s;
+    }
+    .subscribe-drawer-links a:hover {
+      border-color: var(--green);
+      background: rgba(94,125,58,0.06);
+      color: var(--green-d);
+    }
 
     /* ── People section (Guests + Supporters, two tight rows) ── */
     #people { background: var(--white); }
@@ -1309,7 +1345,14 @@
     .carousel-arrow.prev { left: -8px; }
     .carousel-arrow.next { right: -8px; }
     .carousel-arrow[hidden] { display: none; }
-    @media (hover: none), (max-width: 640px) { .carousel-arrow { display: none; } }
+    /* On touch/narrow screens keep the arrows visible (the clearest cue that
+       the row scrolls) but pull them onto the edges with a translucent bg so
+       a card still peeks behind. */
+    @media (hover: none), (max-width: 640px) {
+      .carousel-arrow { width: 30px; height: 30px; font-size: 1.1rem; background: rgba(255,253,247,0.92); }
+      .carousel-arrow.prev { left: 0; }
+      .carousel-arrow.next { right: 0; }
+    }
     /* npub-copied toast (shared by the people carousels). */
     .lb-people-toast {
       position: fixed;
@@ -1463,15 +1506,37 @@
       <p>Couldn't load the latest episode right now. Listen directly on <a href="https://fountain.fm/show/Q48WBr6nT3mrbwMZ8ydY" target="_blank" rel="noopener">Fountain →</a></p>
     </div>
 
-    <!-- Collapsible drawer: the next 3 most-recent episodes (full cards),
-         rendered into #recent-episodes-list by the episode script. -->
-    <details class="recent-drawer">
-      <summary>
-        <span>More Episodes</span>
-        <span class="caret" aria-hidden="true">▾</span>
-      </summary>
-      <div id="recent-episodes-list"></div>
-    </details>
+    <!-- Two pill drawers side by side: "More Episodes" (next 3 episodes,
+         rendered into #recent-episodes-list by the episode script) and
+         "Subscribe" (app links). An open drawer grows to full width so its
+         content isn't cramped. -->
+    <div class="featured-drawers">
+      <details class="recent-drawer">
+        <summary>
+          <span>More Episodes</span>
+          <span class="caret" aria-hidden="true">▾</span>
+        </summary>
+        <div id="recent-episodes-list"></div>
+      </details>
+
+      <details class="recent-drawer">
+        <summary>
+          <span>📡 Subscribe</span>
+          <span class="caret" aria-hidden="true">▾</span>
+        </summary>
+        <div class="subscribe-drawer-links">
+          <a href="https://fountain.fm/show/Q48WBr6nT3mrbwMZ8ydY" target="_blank" rel="noopener">🎙 Fountain</a>
+          <a href="https://podcasts.apple.com/us/podcast/local-bitcoiners/id1874589042" target="_blank" rel="noopener">🍎 Apple Podcasts</a>
+          <a href="https://open.spotify.com/show/5v5AX2C7ubaV1xjfL2EMZV" target="_blank" rel="noopener">🎵 Spotify</a>
+          <a href="https://www.youtube.com/@LocalBitcoiners" target="_blank" rel="noopener">▶️ YouTube</a>
+          <a href="https://app.podcastguru.io/podcast/local-bitcoiners-1874589042" target="_blank" rel="noopener">🎧 Podcast Guru</a>
+          <a href="https://podverse.fm/podcast/eKqrkoAVH" target="_blank" rel="noopener">🎧 Podverse</a>
+          <a href="https://curiocaster.com/podcast/pi7683299" target="_blank" rel="noopener">🎧 CurioCaster</a>
+          <a href="https://castamatic.com/guid/56fbb1aa-da79-5e4b-bebc-3b934ab8914c" target="_blank" rel="noopener">🎧 Castamatic</a>
+          <a href="https://feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU" target="_blank" rel="noopener">📡 RSS Feed</a>
+        </div>
+      </details>
+    </div>
 
     <a class="featured-all" href="/episodes.html">Browse all episodes →</a>
 
@@ -1530,7 +1595,7 @@
   <div class="home-module">
     <div class="home-module-head">
       <div>
-        <h2 class="home-module-title"><a href="/supporters">Meet the Local Bitcoiners Community</a></h2>
+        <h2 class="home-module-title"><a href="/supporters">Local Bitcoiners Community</a></h2>
       </div>
       <a class="home-module-link" href="/supporters">See full Community →</a>
     </div>

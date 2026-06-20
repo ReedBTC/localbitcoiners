@@ -136,10 +136,21 @@
       rec.eps[eid] = 1;
       if (!rec.name && name) rec.name = name;
     });
-    return Object.keys(by).map(function (k) {
+    var people = Object.keys(by).map(function (k) {
       var rec = by[k];
       return { npub: rec.npub, name: rec.name, count: Object.keys(rec.eps).length };
-    }).sort(function (a, b) { return b.count - a.count; }).slice(0, TOP_N);
+    }).sort(function (a, b) { return b.count - a.count; });
+
+    // Top THREE TIERS (distinct episode counts), ties respected — same as
+    // the weekly bot note: everyone at a top-3 count is listed (so two tied
+    // for 1st are both 🥇, etc.). tier = medal index (0/1/2).
+    var counts = [];
+    people.forEach(function (p) {
+      if (counts.indexOf(p.count) === -1 && counts.length < 3) counts.push(p.count);
+    });
+    return people
+      .filter(function (p) { return counts.indexOf(p.count) !== -1; })
+      .map(function (p) { p.tier = counts.indexOf(p.count); return p; });
   }
 
   function aggBiggestBoosts(rows) {
@@ -284,11 +295,11 @@
       return li;
     }));
 
-    // Ride or Dies.
-    fill($('lb-rideordies'), data.rideOrDies.map(function (p, i) {
+    // Ride or Dies — medal by tier (ties share a medal), not row position.
+    fill($('lb-rideordies'), data.rideOrDies.map(function (p) {
       var li = document.createElement('li');
       li.className = 'lb-row';
-      li.appendChild(rankCell(i));
+      li.appendChild(rankCell(p.tier));
       li.appendChild(avatarCell(p.npub, profiles));
       li.appendChild(mainCell(nameFor(p.npub, p.name, profiles), null));
       li.appendChild(figureCell(p.count + (p.count === 1 ? ' ep' : ' eps')));

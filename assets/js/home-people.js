@@ -251,8 +251,12 @@ function hintScroll(el) {
       if (done || !entry.isIntersecting) return;
       if (el.scrollWidth - el.clientWidth < 24) return; // nothing to scroll
       done = true; io.disconnect();
-      el.scrollTo({ left: 52, behavior: 'smooth' });
-      setTimeout(() => el.scrollTo({ left: 0, behavior: 'smooth' }), 650);
+      // A clear double-pulse so it's obvious the row slides side-to-side.
+      const peek = Math.min(120, el.clientWidth * 0.4);
+      el.scrollTo({ left: peek, behavior: 'smooth' });
+      setTimeout(() => el.scrollTo({ left: 0, behavior: 'smooth' }), 600);
+      setTimeout(() => el.scrollTo({ left: peek * 0.6, behavior: 'smooth' }), 1150);
+      setTimeout(() => el.scrollTo({ left: 0, behavior: 'smooth' }), 1650);
     });
   }, { threshold: 0.6 });
   io.observe(el);
