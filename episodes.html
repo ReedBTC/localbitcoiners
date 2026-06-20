@@ -4,11 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Mark JS-capable before paint so the reveal-on-scroll hidden state
-       (scoped under html.js) only applies when JS can un-hide it. No-JS
-       visitors + crawlers see all content. -->
-  <script>document.documentElement.classList.add('js');</script>
-
   <!-- Pragmatic baseline CSP. `unsafe-inline` for script/style is
        there to keep the existing inline blocks working without a
        refactor; `unsafe-eval` is required because NDK's event emitter
@@ -119,11 +114,6 @@
        round-trip to fonts.googleapis.com that was render-blocking. -->
   <link rel="preload" as="font" type="font/woff2" href="assets/fonts/source-serif-4.woff2" crossorigin />
   <link rel="preload" as="font" type="font/woff2" href="assets/fonts/playfair-display.woff2" crossorigin />
-
-  <!-- Styles the real boost note cards in the "Recent Boosts" marquee
-       (same cards as /boosts and /stats). Read-only here — no action-bar
-       CSS (boost-actions.css) needed. -->
-  <link rel="stylesheet" href="/assets/css/boosts-thread.css" />
 
   <style>
     @font-face {
@@ -655,7 +645,25 @@
     }
     .links-group ul li a:hover { color: var(--green-d); }
 
-    /* Footer styles (incl. .payment-code) are shared — see /assets/css/footer.css. */
+    .payment-code {
+      font-family: monospace;
+      font-size: 0.78rem;
+      color: var(--muted);
+      background: rgba(0,0,0,0.2);
+      border-radius: 4px;
+      padding: 0.3rem 0.5rem;
+      display: block;
+      margin-top: 0.3rem;
+      word-break: break-all;
+      line-height: 1.5;
+    }
+    .links-group ul li a.muted-link {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    .links-group ul li a.muted-link:hover { color: var(--green-d); }
+
+    /* Footer styles are shared — see /assets/css/footer.css. */
 
     /* ── Responsive ── */
     @media (max-width: 600px) {
@@ -667,642 +675,6 @@
       .episode-title { font-size: 1.1rem; }
       .links-grid { grid-template-columns: 1fr; }
     }
-
-    /* ════════════════════ HOMEPAGE HUB (redesign) ════════════════════
-       The homepage is a hub: a boost-forward featured episode, a live
-       "by the numbers" strip, the episode list, a recent-boosts ticker,
-       and teaser cards into the rest of the site. About / Hosts / links
-       fold into the rich footer below. */
-
-    /* Eyebrow label above module titles + on the featured hero. */
-    .home-eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--green-d);
-    }
-    .home-eyebrow svg { width: 13px; height: 13px; flex-shrink: 0; }
-
-    /* ── Featured latest episode (the lead hero card) ──
-       White bg so the cream episode card pops, and so the section run
-       below alternates cleanly: featured(white) · people(cream) ·
-       numbers(white) · boosts(cream) · explore(white). */
-    #featured { background: var(--white); padding-top: 2.5rem; }
-    .featured-wrap { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem 1rem; }
-    .featured-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      flex-wrap: wrap;
-      margin-bottom: 1rem;
-    }
-
-    /* The featured episode is rendered by the episode script with the
-       `featured` modifier — a louder version of a normal episode card:
-       orange accent rail, bigger title, boost CTA promoted to first. */
-    .episode-card.featured {
-      border-top: 4px solid var(--orange);
-      box-shadow: 0 6px 28px rgba(30,58,95,0.10);
-      padding: 2rem 2.25rem;
-      margin-bottom: 0; /* drawer sits tight under it */
-    }
-    .episode-card.featured .episode-title { font-size: 1.7rem; }
-    .episode-card.featured .episode-num { color: var(--orange-d); }
-    .episode-card.featured .episode-desc { font-size: 1.02rem; }
-    .episode-card.featured .btn-boost {
-      font-size: 1rem;
-      padding: 0.7rem 1.6rem;
-      order: -1; /* boost leads the action row */
-    }
-    .episode-card.featured .btn-boost svg { width: 15px; height: 15px; }
-    @media (max-width: 600px) {
-      .episode-card.featured { padding: 1.4rem 1.2rem; }
-      .episode-card.featured .episode-title { font-size: 1.3rem; }
-      .episode-card.featured .btn-boost { width: 100%; justify-content: center; }
-    }
-
-    /* ── Shared module scaffold (numbers / boosts / explore) ── */
-    .home-module { max-width: 1100px; margin: 0 auto; padding: 3rem 1.5rem; }
-    .home-module-head {
-      display: flex;
-      align-items: flex-end;
-      justify-content: space-between;
-      gap: 1rem;
-      flex-wrap: wrap;
-      margin-bottom: 1.6rem;
-    }
-    .home-module-title {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 1.6rem;
-      font-weight: 700;
-      color: var(--navy);
-      margin-top: 0.15rem;
-    }
-    .home-module-link {
-      flex-shrink: 0;
-      font-size: 0.9rem;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-      color: var(--green-d);
-      text-decoration: none;
-      white-space: nowrap;
-      border-bottom: 2px solid transparent;
-      transition: border-color 0.15s;
-    }
-    .home-module-link:hover { border-color: var(--green-d); }
-
-    /* ── Leaderboards ── Biggest Boosts full-width on top (with messages),
-       Top Episodes + Ride or Dies half-width below; all stack on mobile. */
-    #leaderboards { background: var(--white); }
-    .lb-grid--two {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1.25rem;
-      margin-bottom: 1.25rem;   /* episodes + ride-or-dies sit above biggest boosts */
-    }
-    /* Nostr-note-ish card: titled header band, then a ranked list. */
-    .lb-card {
-      background: var(--cream);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.25rem 1.25rem 1rem;
-      box-shadow: 0 2px 10px rgba(30,58,95,0.06);
-      display: flex;
-      flex-direction: column;
-    }
-    .lb-card-head { display: flex; align-items: center; gap: 0.55rem; }
-    .lb-card-icon { font-size: 1.25rem; line-height: 1; }
-    .lb-card-head h3 {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: var(--navy);
-    }
-    .lb-card-sub {
-      font-size: 0.8rem;
-      color: var(--muted);
-      font-style: italic;
-      margin: 0.2rem 0 1rem;
-    }
-    .lb-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.7rem; }
-    /* minmax(0,1fr) — not plain 1fr — so the name/meta column can actually
-       shrink and ellipsize instead of overflowing into the figure. */
-    .lb-row {
-      display: grid;
-      grid-template-columns: 1.4rem auto minmax(0, 1fr) auto;
-      align-items: center;
-      gap: 0.55rem;
-    }
-    /* Episode rows have no avatar column → collapse it. */
-    .lb-row.lb-row--noavatar { grid-template-columns: 1.4rem minmax(0, 1fr) auto; }
-    .lb-rank {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-weight: 700;
-      font-size: 0.95rem;
-      text-align: center;
-      color: var(--muted);
-    }
-    .lb-rank.is-medal { font-size: 1.1rem; }
-    .lb-avatar {
-      width: 30px; height: 30px;
-      border-radius: 50%;
-      overflow: hidden;
-      background: var(--cream-d);
-      border: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-    .lb-avatar img { width: 100%; height: 100%; object-fit: cover; }
-    .lb-main { min-width: 0; }
-    .lb-name {
-      display: block;            /* ellipsis needs a block, not an inline <a>/<span> */
-      font-weight: 700;
-      color: var(--navy);
-      font-size: 0.9rem;
-      line-height: 1.25;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .lb-meta {
-      display: block;
-      font-size: 0.76rem;
-      color: var(--muted);
-      line-height: 1.3;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .lb-figure {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-weight: 700;
-      font-size: 0.86rem;
-      color: var(--orange-d);
-      white-space: nowrap;
-      text-align: right;
-      font-variant-numeric: tabular-nums;
-    }
-    .lb-loading, .lb-empty { color: var(--muted); font-style: italic; font-size: 0.88rem; }
-    /* Episode title becomes a link to /ep###; guest mentions are nostrized. */
-    a.lb-name { text-decoration: none; color: var(--navy); }
-    a.lb-name:hover { color: var(--green-d); text-decoration: underline; text-underline-offset: 2px; }
-    .lb-mention { color: var(--green-d); text-decoration: none; }
-    .lb-mention:hover { text-decoration: underline; text-underline-offset: 2px; }
-
-    /* Biggest Boosts (wide card): each row is rank + avatar + a body with a
-       name/amount line and the full boost message (the "ad read"). */
-    .lb-list--boosts { gap: 0.7rem; }
-    .lb-boost-item {
-      display: grid;
-      grid-template-columns: 1.5rem 36px minmax(0, 1fr);
-      gap: 0.6rem;
-      align-items: start;
-      padding-bottom: 0.7rem;
-      border-bottom: 1px solid var(--border);
-    }
-    .lb-boost-item:last-child { padding-bottom: 0; border-bottom: none; }
-    .lb-boost-item .lb-rank { font-size: 1.1rem; padding-top: 0.05rem; }
-    .lb-boost-item .lb-avatar { width: 36px; height: 36px; }
-    .lb-boost-body { min-width: 0; }
-    .lb-boost-top {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-    }
-    .lb-boost-top .lb-name { white-space: normal; overflow: visible; font-size: 0.95rem; }
-    .lb-boost-amt {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-weight: 700;
-      color: var(--orange-d);
-      font-size: 0.85rem;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    .lb-boost-msg {
-      margin-top: 0.15rem;
-      color: var(--text);
-      font-size: 0.86rem;
-      line-height: 1.42;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-    .lb-boost-msg .lb-mention { font-weight: 600; }
-    @media (max-width: 760px) { .lb-grid--two { grid-template-columns: 1fr; } }
-
-    /* ── Recent boosts ticker (top 20, ~4 visible, scrolls; pfp + name) ── */
-    #boosts-preview { background: var(--cream); }
-    .boost-marquee-hint {
-      font-size: 0.82rem;
-      color: var(--muted);
-      font-style: italic;
-      margin: -0.6rem 0 1.1rem;
-    }
-    /* Horizontal marquee — a real scroll container (overflow-x:auto) so it
-       can be auto-scrolled by JS AND dragged/swiped manually; both share
-       one scroll position. Side mask fades cards in/out at the edges. */
-    .boost-marquee {
-      display: flex;
-      align-items: stretch;
-      overflow-x: auto;
-      overflow-y: hidden;
-      height: clamp(300px, 42vh, 380px);
-      cursor: grab;
-      scrollbar-width: none;            /* drag/auto are the controls */
-      -ms-overflow-style: none;
-      -webkit-mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent);
-      mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent);
-    }
-    .boost-marquee::-webkit-scrollbar { display: none; }
-    .boost-marquee.is-grabbing { cursor: grabbing; }
-    /* Fixed-width, full-height cards sitting side by side. Spacing lives on
-       the item margin (not container gap) so the two cloned sets stay
-       exactly equal width → the scrollLeft wrap is seamless. */
-    .boost-marquee-item {
-      flex: 0 0 auto;
-      width: min(560px, 88vw);
-      height: 100%;
-      margin-right: 1rem;
-    }
-    .boost-marquee .note-card {
-      height: 100%;
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      background: var(--white);          /* contrast on the cream section */
-      overflow: hidden;
-      cursor: pointer;                   /* click opens the full note modal */
-    }
-    /* Body flexes + clips long boosts; a fade hints there's more (full text
-       via "View on Nostr"). min-height:0 lets the flex child actually clip. */
-    .boost-marquee .note-card .note-body {
-      flex: 1 1 auto;
-      min-height: 0;
-      overflow: hidden;
-      position: relative;
-    }
-    .boost-marquee .note-card .note-body::after {
-      content: '';
-      position: absolute;
-      left: 0; right: 0; bottom: 0;
-      height: 2.4rem;
-      background: linear-gradient(to bottom, rgba(255,253,247,0), var(--white));
-    }
-    .boost-empty { color: var(--muted); font-style: italic; padding: 1.5rem 0; align-self: center; }
-
-    /* Read modal — full, un-clipped note opened by clicking a card. */
-    .lb-boost-read-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 300;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 1.5rem;
-      background: rgba(43,35,26,0.55);
-      opacity: 0;
-      transition: opacity 0.15s ease;
-    }
-    .lb-boost-read-overlay.open { opacity: 1; }
-    .lb-boost-read-modal {
-      position: relative;
-      width: 100%;
-      max-width: 560px;
-      max-height: 85vh;
-      overflow-y: auto;
-      background: var(--white);
-      border-radius: 12px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-      padding: 1.5rem 1.5rem 1.25rem;
-    }
-    .lb-boost-read-modal .note-card {
-      background: transparent;
-      border: none;
-      box-shadow: none;
-      padding: 0;
-      margin: 0;
-    }
-    .lb-boost-read-close {
-      position: absolute;
-      top: 0.7rem;
-      right: 0.7rem;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      border: none;
-      background: var(--cream-d);
-      color: var(--navy);
-      font-size: 0.95rem;
-      line-height: 1;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    .lb-boost-read-close:hover { background: var(--border); }
-    /* Reduced motion: no JS auto-scroll (handled in JS); hide the duplicate
-       set so it's just a normal, manually-scrollable strip. */
-    @media (prefers-reduced-motion: reduce) {
-      .boost-marquee { -webkit-mask-image: none; mask-image: none; scrollbar-width: auto; }
-      .boost-marquee::-webkit-scrollbar { display: initial; height: 8px; }
-      .boost-marquee-item.is-dupe { display: none; }
-    }
-
-    /* Supporter tier rings (gold/silver/bronze) on the carousel pfps.
-       Layered shadow = crisp inner ring + a soft outer halo glow so the
-       tier reads at a glance. Hover pushes the glow a little brighter. */
-    .people-avatar.tier-gold {
-      border: 3px solid #ffcf33;
-      box-shadow: 0 0 0 2px rgba(255,207,51,0.85), 0 0 16px 3px rgba(255,196,0,0.65);
-    }
-    .people-avatar.tier-silver {
-      border: 3px solid #dfe6ec;
-      box-shadow: 0 0 0 2px rgba(206,214,222,0.90), 0 0 15px 3px rgba(190,201,212,0.60);
-    }
-    .people-avatar.tier-bronze {
-      border: 3px solid #b07d42;
-      box-shadow: 0 0 0 2px rgba(176,125,66,0.85), 0 0 15px 3px rgba(150,100,48,0.55);
-    }
-    /* Keep the tier border color on hover (the generic hover turns it
-       green otherwise) and push the glow brighter. */
-    .people-card:hover .people-avatar.tier-gold {
-      border-color: #ffcf33;
-      box-shadow: 0 0 0 2px rgba(255,207,51,1), 0 0 22px 5px rgba(255,196,0,0.85);
-    }
-    .people-card:hover .people-avatar.tier-silver {
-      border-color: #dfe6ec;
-      box-shadow: 0 0 0 2px rgba(206,214,222,1), 0 0 20px 5px rgba(190,201,212,0.80);
-    }
-    .people-card:hover .people-avatar.tier-bronze {
-      border-color: #b07d42;
-      box-shadow: 0 0 0 2px rgba(176,125,66,1), 0 0 20px 5px rgba(150,100,48,0.78);
-    }
-
-    /* ── Explore grid (a card per page) ── 4 across on desktop, 2 on mobile. */
-    #explore { background: var(--white); }
-    .explore-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 1.1rem;
-    }
-    @media (max-width: 820px) { .explore-grid { grid-template-columns: repeat(2, 1fr); } }
-    .explore-card {
-      display: block;
-      background: var(--cream);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.35rem;
-      text-decoration: none;
-      color: var(--text);
-      transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
-    }
-    .explore-card:hover {
-      box-shadow: 0 8px 26px rgba(30,58,95,0.10);
-      transform: translateY(-3px);
-      border-color: var(--green);
-    }
-    .explore-icon { font-size: 1.7rem; line-height: 1; }
-    .explore-title {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: var(--navy);
-      margin: 0.7rem 0 0.3rem;
-    }
-    .explore-desc { font-size: 0.92rem; color: var(--muted); line-height: 1.55; }
-    .explore-go { display: inline-block; margin-top: 0.8rem; font-size: 0.85rem; font-weight: 700; color: var(--green-d); }
-
-    /* ── Featured episode: clamp the description to 2 lines + "see full" ── */
-    .episode-desc.clamp-2 {
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      margin-bottom: 0.4rem;
-    }
-    .desc-more {
-      display: inline-block;
-      margin-bottom: 1.25rem;
-      font-size: 0.88rem;
-      font-weight: 700;
-      color: var(--green-d);
-      text-decoration: none;
-    }
-    .desc-more:hover { text-decoration: underline; text-underline-offset: 3px; }
-    /* "All episodes" link below the featured card. */
-    .featured-all {
-      display: inline-block;
-      margin-top: 1.25rem;
-      font-size: 0.92rem;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-      color: var(--green-d);
-      text-decoration: none;
-      border-bottom: 2px solid transparent;
-      transition: border-color 0.15s;
-    }
-    .featured-all:hover { border-color: var(--green-d); }
-
-    /* Collapsible "Recent Episodes" drawer below the featured card.
-       The summary is a self-contained bordered pill (caret hugging the
-       label) so it reads as one clickable control. */
-    .recent-drawer { margin-top: 0.9rem; }
-    .recent-drawer > summary {
-      list-style: none;
-      cursor: pointer;
-      user-select: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.45rem;
-      padding: 0.5rem 1rem;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--navy);
-      transition: color 0.15s, border-color 0.15s, background 0.15s;
-    }
-    .recent-drawer > summary::-webkit-details-marker { display: none; }
-    .recent-drawer > summary::marker { content: ''; }
-    .recent-drawer > summary:hover {
-      color: var(--green-d);
-      border-color: var(--green);
-      background: rgba(94,125,58,0.06);
-    }
-    .recent-drawer[open] > summary { border-color: var(--green); }
-    .recent-drawer .caret {
-      font-size: 0.8em;
-      color: var(--green-d);
-      transition: transform 0.2s;
-    }
-    .recent-drawer[open] > summary .caret { transform: rotate(180deg); }
-    #recent-episodes-list { margin-top: 1rem; }
-
-    /* ── People section (Guests + Supporters, two tight rows) ── */
-    #people { background: var(--cream); }
-    /* Tighter than a default module — this is two rows in one frame, kept
-       close to the top per the homepage's "less distance" goal. */
-    #people .home-module { padding-top: 2.5rem; padding-bottom: 2.25rem; }
-    #people .home-module-head { margin-bottom: 1.1rem; }
-    .people-row + .people-row { margin-top: 1.1rem; }
-    .people-row-label {
-      display: inline-block;
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--green-d);
-      background: rgba(94,125,58,0.12);
-      border-radius: 999px;
-      padding: 0.18rem 0.75rem;
-      margin-left: 0.1rem;
-    }
-    .carousel-wrap { position: relative; }
-    .people-carousel {
-      display: flex;
-      gap: 1rem;
-      overflow-x: auto;
-      scroll-snap-type: x proximity;
-      -webkit-overflow-scrolling: touch;
-      scroll-behavior: smooth;
-      /* Generous vertical padding so the tier-ring halo (~16px glow)
-         isn't clipped by the scroll container's overflow. */
-      padding: 1rem 0.6rem 0.9rem;
-      scrollbar-width: thin;
-      scrollbar-color: var(--border) transparent;
-    }
-    .people-carousel::-webkit-scrollbar { height: 8px; }
-    .people-carousel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-    .people-carousel::-webkit-scrollbar-track { background: transparent; }
-    .people-card {
-      flex: 0 0 auto;
-      width: 108px;
-      scroll-snap-align: start;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.55rem;
-      background: none;
-      border: none;
-      padding: 0.25rem;
-      font: inherit;
-      color: var(--text);
-      text-align: center;
-      cursor: pointer;
-    }
-    .people-avatar {
-      width: 72px;
-      height: 72px;
-      border-radius: 50%;
-      overflow: hidden;
-      background: var(--cream-d);
-      border: 2px solid var(--border);
-      display: block;
-      transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
-    }
-    .people-card:hover .people-avatar { border-color: var(--green); transform: translateY(-2px); }
-    .people-avatar img { width: 100%; height: 100%; object-fit: cover; }
-    .people-avatar.is-blank {
-      background: radial-gradient(circle at 50% 38%, var(--cream-d), var(--border));
-    }
-    .people-rank {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 0.7rem;
-      font-weight: 700;
-      color: var(--orange-d);
-      letter-spacing: 0.04em;
-    }
-    .people-name {
-      font-size: 0.82rem;
-      font-weight: 600;
-      color: var(--navy);
-      line-height: 1.3;
-      max-width: 100%;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      word-break: break-word;
-    }
-    .people-sats { font-size: 0.74rem; color: var(--muted); }
-    .people-empty { color: var(--muted); font-style: italic; padding: 0.5rem 0; }
-    /* Skeleton avatar shimmer. */
-    .people-card.is-skeleton { cursor: default; }
-    .people-card.is-skeleton .people-avatar {
-      background: linear-gradient(90deg, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.10) 50%, rgba(0,0,0,0.04) 100%);
-      background-size: 200% 100%;
-      animation: skeleton-shimmer 1.4s ease-in-out infinite;
-    }
-    .people-card.is-skeleton .people-name {
-      width: 70%;
-      height: 0.82rem;
-      border-radius: 4px;
-      background: linear-gradient(90deg, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.10) 50%, rgba(0,0,0,0.04) 100%);
-      background-size: 200% 100%;
-      animation: skeleton-shimmer 1.4s ease-in-out infinite;
-    }
-    /* Desktop scroll arrows — hidden on touch/narrow where native swipe wins. */
-    .carousel-arrow {
-      position: absolute;
-      top: calc(50% - 18px);
-      transform: translateY(-50%);
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      border: 1px solid var(--border);
-      background: var(--white);
-      color: var(--navy);
-      font-size: 1.3rem;
-      line-height: 1;
-      cursor: pointer;
-      box-shadow: 0 2px 10px rgba(30,58,95,0.12);
-      z-index: 3;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.15s, opacity 0.15s;
-    }
-    .carousel-arrow:hover { background: var(--cream-d); }
-    .carousel-arrow.prev { left: -8px; }
-    .carousel-arrow.next { right: -8px; }
-    .carousel-arrow[hidden] { display: none; }
-    @media (hover: none), (max-width: 640px) { .carousel-arrow { display: none; } }
-    /* npub-copied toast (shared by the people carousels). */
-    .lb-people-toast {
-      position: fixed;
-      left: 50%;
-      bottom: 28px;
-      transform: translate(-50%, 12px);
-      background: var(--navy);
-      color: var(--cream);
-      font-size: 0.88rem;
-      font-weight: 600;
-      padding: 0.55rem 1.1rem;
-      border-radius: 999px;
-      box-shadow: 0 6px 22px rgba(0,0,0,0.28);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s ease, transform 0.2s ease;
-      z-index: 200;
-    }
-    .lb-people-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
-
-    /* ── Reveal-on-scroll ── Hidden state is scoped under `html.js` so
-       no-JS visitors and crawlers always see the content; the class is
-       set synchronously in <head> before paint. */
-    html.js .reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.5s ease, transform 0.5s ease; }
-    html.js .reveal.in { opacity: 1; transform: none; }
-    @media (prefers-reduced-motion: reduce) {
-      html.js .reveal { opacity: 1; transform: none; transition: none; }
-    }
-
-    /* Rich footer styles are shared — see /assets/css/footer.css. */
   </style>
   <link rel="stylesheet" href="/assets/css/nav.css" />
   <link rel="stylesheet" href="/assets/css/footer.css" />
@@ -1383,7 +755,7 @@
 </header>
 <!-- NAV:END -->
 
-<!-- ══════════════════════════════ HERO (brand) ══════════════════════════════ -->
+<!-- ══════════════════════════════ HERO ══════════════════════════════ -->
 <section id="hero" aria-label="Hero">
   <img src="assets/LocalBitcoiners_banner.png" alt="Local Bitcoiners — a Bitcoin meetup culture podcast hosted by Reed and Rev Hodl" />
   <div class="hero-overlay">
@@ -1394,214 +766,38 @@
   </div>
 </section>
 
-<!-- ════════════════ FEATURED LATEST EPISODE (boost-forward lead) ════════════════
-     The #1 action on the site is boosting an episode, so the homepage
-     leads with the newest one. The episode script renders item[0] into
-     #featured-episode with the `featured` modifier (boost CTA promoted). -->
-<section id="featured" aria-label="Latest episode">
-  <div class="featured-wrap">
-    <div class="featured-head">
-      <span class="home-eyebrow">
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M14.615 1.595a.75.75 0 0 1 .359.852L12.982 9.75h7.268a.75.75 0 0 1 .548 1.262l-10.5 11.25a.75.75 0 0 1-1.272-.71l1.992-7.302H3.75a.75.75 0 0 1-.548-1.262l10.5-11.25a.75.75 0 0 1 .913-.143Z" clip-rule="evenodd"/></svg>
-        Latest Episode — Boost It
-      </span>
-      <a class="home-module-link" href="/episodes.html">Browse all episodes →</a>
-    </div>
-    <div id="featured-episode">
-      <!-- Static skeleton until RSS resolves; replaced by the episode script. -->
-      <article class="episode-skeleton featured">
-        <div class="skeleton-bar skeleton-title"></div>
-        <div class="skeleton-bar skeleton-date"></div>
-        <div class="skeleton-bar skeleton-desc"></div>
-        <div class="skeleton-bar skeleton-desc s2"></div>
-        <div class="skeleton-actions">
-          <div class="skeleton-bar skeleton-btn"></div>
-          <div class="skeleton-bar skeleton-btn"></div>
-        </div>
-      </article>
+<!-- ══════════════════════════════ EPISODES ══════════════════════════════ -->
+<section id="episodes">
+  <div class="section-wide">
+    <h2 class="section-title">Episodes</h2>
+
+    <div id="episodes-loading">
+      <div class="loading-spinner"></div><br />
+      Loading episodes…
     </div>
 
-    <!-- RSS failure surfaces here (no separate episodes section anymore). -->
     <div id="episodes-error">
-      <p>Couldn't load the latest episode right now. Listen directly on <a href="https://fountain.fm/show/Q48WBr6nT3mrbwMZ8ydY" target="_blank" rel="noopener">Fountain →</a></p>
+      <p>Couldn't load episodes right now. Listen directly on <a href="https://fountain.fm/show/Q48WBr6nT3mrbwMZ8ydY" target="_blank" rel="noopener">Fountain →</a></p>
     </div>
 
-    <!-- Collapsible drawer: the next 3 most-recent episodes (full cards),
-         rendered into #recent-episodes-list by the episode script. -->
-    <details class="recent-drawer">
-      <summary>
-        <span>More Recent Episodes</span>
-        <span class="caret" aria-hidden="true">▾</span>
-      </summary>
-      <div id="recent-episodes-list"></div>
-    </details>
+    <div id="episodes-list"></div>
 
-    <a class="featured-all" href="/episodes.html">Browse all episodes →</a>
-
-    <!-- Static fallback for crawlers / no-JS visitors. -->
+    <!-- Static fallback for search engine crawlers that don't execute JavaScript -->
     <noscript>
-      <p style="margin-top:1rem;">Listen on
-        <a href="https://fountain.fm/show/Q48WBr6nT3mrbwMZ8ydY">Fountain</a>,
-        <a href="https://podcasts.apple.com/us/podcast/local-bitcoiners/id1874589042">Apple Podcasts</a>,
-        <a href="https://open.spotify.com/show/5v5AX2C7ubaV1xjfL2EMZV">Spotify</a>, or
-        <a href="https://www.youtube.com/@LocalBitcoiners">YouTube</a>.</p>
+      <div style="margin-top:2rem;">
+        <p>Listen to the Local Bitcoiners podcast on any of these platforms:</p>
+        <ul style="margin-top:1rem; padding-left:1.5rem;">
+          <li><a href="https://fountain.fm/show/Q48WBr6nT3mrbwMZ8ydY">Listen on Fountain</a></li>
+          <li><a href="https://podcasts.apple.com/us/podcast/local-bitcoiners/id1874589042">Listen on Apple Podcasts</a></li>
+          <li><a href="https://open.spotify.com/show/5v5AX2C7ubaV1xjfL2EMZV">Listen on Spotify</a></li>
+          <li><a href="https://www.youtube.com/@LocalBitcoiners">Watch on YouTube</a></li>
+        </ul>
+      </div>
     </noscript>
   </div>
 </section>
 
-<!-- ════════════════ MEET THE COMMUNITY (guests + supporters) ════════════════
-     One section, two labeled rows (Guests / Supporters) — one frame, tighter
-     vertical footprint, both groups still distinct. Carousels render via
-     home-people.js (IDs unchanged). -->
-<section id="people" class="reveal" aria-label="The community">
-  <div class="home-module">
-    <div class="home-module-head">
-      <div>
-        <h2 class="home-module-title">Meet the Local Bitcoiners Community</h2>
-      </div>
-      <a class="home-module-link" href="/supporters">See full Community →</a>
-    </div>
-
-    <div class="people-row">
-      <span class="people-row-label">Show Guests</span>
-      <div class="carousel-wrap">
-        <button type="button" class="carousel-arrow prev" data-carousel-prev="guests-carousel" aria-label="Scroll left" hidden>‹</button>
-        <div class="people-carousel" id="guests-carousel" data-people="guests"></div>
-        <button type="button" class="carousel-arrow next" data-carousel-next="guests-carousel" aria-label="Scroll right" hidden>›</button>
-      </div>
-    </div>
-
-    <div class="people-row">
-      <span class="people-row-label">Supporters</span>
-      <div class="carousel-wrap">
-        <button type="button" class="carousel-arrow prev" data-carousel-prev="supporters-carousel" aria-label="Scroll left" hidden>‹</button>
-        <div class="people-carousel" id="supporters-carousel" data-people="supporters"></div>
-        <button type="button" class="carousel-arrow next" data-carousel-next="supporters-carousel" aria-label="Scroll right" hidden>›</button>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════ LEADERBOARDS ══════════════════════════════
-     Live leaderboards computed from /data/sats.json (same definitions as the
-     weekly bot note in bots/leaderboards/). Biggest Boosts leads full-width
-     WITH the boost messages ("ad reads" we want maximally visible); Top
-     Episodes + Ride or Dies sit half-width below. Episode guests come from
-     the RSS shownotes ([guests: …]). Hydrated by home-leaderboards.js. -->
-<section id="leaderboards" class="reveal" aria-label="Leaderboards">
-  <div class="home-module">
-    <div class="home-module-head">
-      <div>
-        <h2 class="home-module-title">Leaderboards</h2>
-      </div>
-      <a class="home-module-link" href="/stats.html">Full stats &amp; charts →</a>
-    </div>
-
-    <div class="lb-grid lb-grid--two">
-      <article class="lb-card">
-        <div class="lb-card-head"><span class="lb-card-icon" aria-hidden="true">🏆</span><h3>Top Episodes</h3></div>
-        <p class="lb-card-sub">Most-boosted episodes, all-time</p>
-        <ol class="lb-list" id="lb-episodes"><li class="lb-loading">Loading…</li></ol>
-      </article>
-      <article class="lb-card">
-        <div class="lb-card-head"><span class="lb-card-icon" aria-hidden="true">⚡</span><h3>Ride or Dies</h3></div>
-        <p class="lb-card-sub">Boosted the most episodes</p>
-        <ol class="lb-list" id="lb-rideordies"><li class="lb-loading">Loading…</li></ol>
-      </article>
-    </div>
-
-    <article class="lb-card lb-card--wide">
-      <div class="lb-card-head"><span class="lb-card-icon" aria-hidden="true">💰</span><h3>Biggest Boosts</h3></div>
-      <p class="lb-card-sub">The largest boosts ever sent — and what they said</p>
-      <ol class="lb-list lb-list--boosts" id="lb-bigboosts"><li class="lb-loading">Loading…</li></ol>
-    </article>
-  </div>
-</section>
-
-<!-- ══════════════════════════════ RECENT BOOSTS ══════════════════════════════
-     Continuous marquee of the real Nostr boost notes (same cards as
-     /boosts), flowing by like a wall of reviews. Hover/focus or tap to
-     pause and read. Built lazily on scroll-into-view by home-boosts.js. -->
-<section id="boosts-preview" class="reveal" aria-label="Recent boosts">
-  <div class="home-module">
-    <div class="home-module-head">
-      <div>
-        <h2 class="home-module-title">Recent Boosts</h2>
-      </div>
-      <a class="home-module-link" href="/boosts.html">See all boosts →</a>
-    </div>
-    <p class="boost-marquee-hint">Hover to pause · drag to browse · click a boost to read it in full.</p>
-    <div class="boost-marquee" id="boost-marquee">
-      <p class="boost-empty">Loading recent boosts…</p>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════ EXPLORE ══════════════════════════════
-     Teaser cards into the rest of the site (the "cool but extra" areas). -->
-<section id="explore" class="reveal" aria-label="Explore the rest of the site">
-  <div class="home-module">
-    <div class="home-module-head">
-      <div>
-        <h2 class="home-module-title">Explore Local Bitcoiners</h2>
-      </div>
-    </div>
-    <div class="explore-grid">
-      <a class="explore-card" href="/episodes.html">
-        <div class="explore-icon">🎧</div>
-        <div class="explore-title">Episodes</div>
-        <p class="explore-desc">Every episode — listen, boost, and download the back-catalog.</p>
-        <span class="explore-go">Listen →</span>
-      </a>
-      <a class="explore-card" href="/supporters">
-        <div class="explore-icon">🟧</div>
-        <div class="explore-title">Supporters</div>
-        <p class="explore-desc"><span id="explore-supporters-count">The people</span> powering the show — boosters, streamers, guests &amp; coders.</p>
-        <span class="explore-go">Meet them →</span>
-      </a>
-      <a class="explore-card" href="/stats.html">
-        <div class="explore-icon">📊</div>
-        <div class="explore-title">Stats</div>
-        <p class="explore-desc">Sats raised, value-for-value charts, and the full leaderboard.</p>
-        <span class="explore-go">Dig in →</span>
-      </a>
-      <a class="explore-card" href="/boosts.html">
-        <div class="explore-icon">⚡</div>
-        <div class="explore-title">Boosts</div>
-        <p class="explore-desc">Every boost and message listeners have sent to the show.</p>
-        <span class="explore-go">Read them →</span>
-      </a>
-      <a class="explore-card" href="/meetups">
-        <div class="explore-icon">📍</div>
-        <div class="explore-title">Meetups</div>
-        <p class="explore-desc"><span id="explore-meetups-count">Listener-boosted</span> Bitcoin meetups happening around the country.</p>
-        <span class="explore-go">Find one →</span>
-      </a>
-      <a class="explore-card" href="/merch.html">
-        <div class="explore-icon">👕</div>
-        <div class="explore-title">Merch</div>
-        <p class="explore-desc">Grab a tee or a sticker and wear the local-Bitcoin flag. Pay over Lightning.</p>
-        <span class="explore-go">Shop →</span>
-      </a>
-      <a class="explore-card" href="https://github.com/Reeds-Agent-Team/Bitcoin-Meetups" target="_blank" rel="noopener">
-        <div class="explore-icon">📖</div>
-        <div class="explore-title">Resources</div>
-        <p class="explore-desc">An open-source playbook for starting, running, and growing a meetup.</p>
-        <span class="explore-go">Browse the guide →</span>
-      </a>
-      <a class="explore-card" href="#" data-lb-bug-trigger>
-        <div class="explore-icon">🐞</div>
-        <div class="explore-title">Report a Bug</div>
-        <p class="explore-desc">Spot something broken or off? Send us a quick report.</p>
-        <span class="explore-go">Let us know →</span>
-      </a>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════ RICH FOOTER ══════════════════════════════
-     Folds the former About / Hosts / Resources / Links sections so the
-     page itself stays tight and preview-focused. -->
+<!-- ══════════════════════════════ FOOTER ══════════════════════════════ -->
 <!-- FOOTER:START (generated by scripts/sync-partials.js — edit the partial) -->
 <!-- ══════════════════════════════ FOOTER ══════════════════════════════
      SHARED FOOTER — single source of truth. Do NOT edit the copies inside
@@ -1688,14 +884,6 @@
   const $loading  = document.getElementById('episodes-loading');
   const $error    = document.getElementById('episodes-error');
   const $list     = document.getElementById('episodes-list');
-  // Homepage-only: the newest episode renders into a louder "featured"
-  // card, and the next few render into the collapsible "Recent Episodes"
-  // drawer. There's no full episode list on the homepage — the back-catalog
-  // lives on /episodes.html — so the list-related nodes ($loading, $list)
-  // may be absent and every use of them is guarded.
-  const $featured = document.getElementById('featured-episode');
-  const $recent   = document.getElementById('recent-episodes-list');
-  const RECENT_COUNT = 3; // episodes in the drawer (after the featured one)
 
   /* ── helpers ── */
   function stripHtml(html) {
@@ -1846,7 +1034,7 @@
     return details;
   }
 
-  function renderCard(item, index, total, target, featured) {
+  function renderCard(item, index, total) {
     const title       = item.querySelector('title')?.textContent?.trim() ?? 'Episode';
     const pubDate     = item.querySelector('pubDate')?.textContent ?? '';
     const enclosure   = item.querySelector('enclosure');
@@ -1894,7 +1082,7 @@
     // pubDate) flow through textContent, so a tampered feed (or a
     // compromised proxy in dev) can't inject HTML or scripts.
     const card = document.createElement('article');
-    card.className = featured ? 'episode-card featured' : 'episode-card';
+    card.className = 'episode-card';
 
     const header = document.createElement('div');
     header.className = 'episode-header';
@@ -1918,19 +1106,9 @@
 
     if (shortDesc) {
       const descP = document.createElement('p');
-      // On the featured card, clamp the description to 2 lines (CSS) and
-      // offer a "see full description" link to the episode page rather
-      // than dumping the whole shownotes into the hero.
-      descP.className = featured ? 'episode-desc clamp-2' : 'episode-desc';
+      descP.className = 'episode-desc';
       descP.textContent = shortDesc;
       card.appendChild(descP);
-      if (featured) {
-        const more = document.createElement('a');
-        more.className = 'desc-more';
-        more.href = `/ep${pad(epNum)}`;
-        more.textContent = 'See full description →';
-        card.appendChild(more);
-      }
     }
 
     if (mp3) {
@@ -2092,7 +1270,7 @@
     }
 
     card.appendChild(actions);
-    (target || $list).appendChild(card);
+    $list.appendChild(card);
   }
 
   /* Skeleton placeholder cards — rendered immediately on page load so
@@ -2116,7 +1294,7 @@
         '</div>';
       frag.appendChild(card);
     }
-    if ($list) $list.appendChild(frag);
+    $list.appendChild(frag);
   }
 
   /* Cache the raw RSS XML in localStorage so returning visitors render
@@ -2146,25 +1324,9 @@
     const items = Array.from(doc.querySelectorAll('item'));
     if (items.length === 0) return false;
 
-    if ($list) $list.replaceChildren();
-    if ($featured) $featured.replaceChildren();
-    if ($recent) $recent.replaceChildren();
-    // Homepage: newest episode (index 0) → featured card; next RECENT_COUNT
-    // (index 1..3) → the "Recent Episodes" drawer as normal full cards; the
-    // rest live on /episodes.html. Without a featured slot (a full list page
-    // reusing this script), every item renders into $list.
+    $list.replaceChildren();
     for (let i = 0; i < items.length; i++) {
-      if ($featured) {
-        if (i === 0) {
-          renderCard(items[i], i, items.length, $featured, true);
-        } else if ($recent && i <= RECENT_COUNT) {
-          renderCard(items[i], i, items.length, $recent, false);
-        } else {
-          break;
-        }
-      } else {
-        renderCard(items[i], i, items.length, $list, false);
-      }
+      renderCard(items[i], i, items.length);
     }
     return true;
   }
@@ -2174,8 +1336,8 @@
     // Show skeletons immediately and hide the spinner — the page no
     // longer needs a "Loading episodes…" message because the structure
     // is visible from the moment of paint.
-    if ($loading) $loading.style.display = 'none';
-    if ($list) renderSkeletons(4);
+    $loading.style.display = 'none';
+    renderSkeletons(4);
 
     // Sync render from cache if we have one. Returning visitors see
     // real episodes before the network responds.
@@ -2192,9 +1354,8 @@
       // No network and no cache → show error. With cache we just keep
       // showing yesterday's episodes silently.
       if (!renderedFromCache) {
-        if ($list) $list.replaceChildren();
-        if ($featured) $featured.replaceChildren();
-        if ($error) $error.style.display = 'block';
+        $list.replaceChildren();
+        $error.style.display = 'block';
       }
       return;
     }
@@ -2203,9 +1364,8 @@
     saveCachedRss(rawXml);
     const ok = renderFromXml(rawXml);
     if (!ok && !renderedFromCache) {
-      if ($list) $list.replaceChildren();
-      if ($featured) $featured.replaceChildren();
-      if ($error) $error.style.display = 'block';
+      $list.replaceChildren();
+      $error.style.display = 'block';
     }
   }
 
@@ -2359,19 +1519,5 @@
      and after a recent dismiss. -->
 <script src="assets/widgets/pwa-install.js" defer></script>
 <script src="assets/js/nav.js" defer></script>
-<!-- Homepage hub: live numbers, recent-boosts ticker, reveal-on-scroll -->
-<script src="assets/js/home.js" defer></script>
-<!-- People modules (guests + supporters carousels, recent-boosts ticker).
-     episode-enhance.js first so the shared profile resolver
-     (window.LBEpisodeEnhance) is ready. home-people.js is an ES module
-     (imports nostr-tools for the guest follow-pack fetch). -->
-<script src="/assets/js/episode-enhance.js" defer></script>
-<script type="module" src="/assets/js/home-people.js"></script>
-<!-- Leaderboards (top episodes / ride-or-dies / biggest boosts) computed
-     live from /data/sats.json; uses window.LBEpisodeEnhance for names+avatars. -->
-<script src="/assets/js/home-leaderboards.js" defer></script>
-<!-- Recent Boosts marquee — real Nostr note cards (boosts-thread.js),
-     lazy-fetched on scroll-into-view. -->
-<script type="module" src="/assets/js/home-boosts.js"></script>
 </body>
 </html>

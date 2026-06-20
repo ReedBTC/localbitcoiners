@@ -1,0 +1,73 @@
+/* Shared site footer styles — single source of truth for the rich footer
+ * on every page (paired with /partials/footer.html). Linked after each
+ * page's inline <style> so it wins over leftover inline footer rules.
+ * Uses the page-level CSS vars (--navy, --cream, etc.). */
+
+#site-footer { background: var(--navy); color: var(--cream-d); }
+.footer-top {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 3.5rem 1.5rem 2.5rem;
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr;
+  gap: 2.5rem;
+}
+.footer-col h3 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--green-d);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 1rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid rgba(94,125,58,0.3);
+}
+.footer-about p { font-size: 0.92rem; line-height: 1.7; color: var(--cream-d); }
+.footer-about p + p { margin-top: 0.7rem; }
+.footer-about a { color: var(--orange); font-weight: 600; text-decoration: none; }
+.footer-about a:hover { text-decoration: underline; }
+.footer-hosts { margin-top: 1.1rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.footer-host {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--cream);
+  text-decoration: none;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 999px;
+  padding: 0.25rem 0.8rem;
+  transition: background 0.15s;
+}
+.footer-host:hover { background: rgba(94,125,58,0.18); color: var(--cream); }
+.footer-col ul { list-style: none; }
+.footer-col ul li { margin-bottom: 0.6rem; font-size: 0.92rem; line-height: 1.5; }
+.footer-col ul li a { color: var(--cream-d); text-decoration: none; transition: color 0.15s; }
+.footer-col ul li a:hover { color: var(--green-d); }
+.footer-col ul li a.muted-link { color: var(--muted); font-size: 0.8rem; }
+.footer-col ul li a.muted-link:hover { color: var(--green-d); }
+.footer-bottom {
+  border-top: 1px solid rgba(255,255,255,0.08);
+  text-align: center;
+  padding: 1.4rem 1.5rem;
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+.footer-bottom a { color: var(--orange); text-decoration: none; }
+.footer-bottom a:hover { text-decoration: underline; }
+
+/* Silent-payment / paynym code blocks in the Support column. */
+.payment-code {
+  font-family: monospace;
+  font-size: 0.78rem;
+  color: var(--muted);
+  background: rgba(0,0,0,0.2);
+  border-radius: 4px;
+  padding: 0.3rem 0.5rem;
+  display: block;
+  margin-top: 0.3rem;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+@media (max-width: 860px) { .footer-top { grid-template-columns: 1fr 1fr; gap: 2rem; } }
+@media (max-width: 520px) { .footer-top { grid-template-columns: 1fr; } }

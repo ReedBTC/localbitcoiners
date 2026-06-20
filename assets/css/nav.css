@@ -1,0 +1,250 @@
+/* Shared site nav styles — the single source of truth for the top nav on
+ * every page (paired with /partials/nav.html + /assets/js/nav.js). Linked
+ * after each page's inline <style> so it wins over any stale inline nav
+ * rules left over from before unification. Uses the page-level CSS vars
+ * (--navy, --cream, etc.) defined in each page's :root. */
+
+/* ── Bar ── */
+#top-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--navy);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+}
+.nav-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+.nav-logo {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--green-d);
+}
+.nav-logo img { width: 100%; height: 100%; object-fit: cover; }
+.nav-site-name {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--cream);
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  flex: 1;
+}
+.nav-site-name:hover { color: var(--green-d); }
+
+/* ── "Explore" menu — the whole site map behind one trigger.
+   Grouped dropdown on desktop; full-screen overlay on mobile. ── */
+.nav-explore { position: relative; }
+.nav-explore > summary {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--cream-d);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.4rem 0.85rem;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 7px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.nav-explore > summary::-webkit-details-marker { display: none; }
+.nav-explore > summary::marker { content: ''; }
+.nav-explore > summary:hover,
+.nav-explore[open] > summary {
+  background: rgba(94,125,58,0.18);
+  color: var(--green-d);
+  border-color: var(--green);
+}
+.nav-explore-glyph { font-size: 0.95em; line-height: 1; }
+.nav-explore .caret { font-size: 0.7em; transition: transform 0.15s; }
+.nav-explore[open] .caret { transform: rotate(180deg); }
+
+.nav-explore-panel {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 60;
+  background: var(--navy);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+  padding: 1.1rem 1.3rem 1.2rem;
+}
+.nav-explore-head { display: none; } /* mobile-overlay only */
+.nav-explore-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--cream);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.92rem;
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+  width: 100%;
+  transition: color 0.15s;
+}
+.nav-explore-home:hover { color: var(--green-d); }
+.nav-explore-groups {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(140px, 1fr));
+  gap: 1.4rem;
+}
+.nav-explore-group h4 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--orange);
+  margin-bottom: 0.5rem;
+}
+.nav-explore-group a {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--cream-d);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 0.4rem 0;
+  transition: color 0.12s;
+}
+.nav-explore-group a span { width: 1.2rem; text-align: center; flex-shrink: 0; }
+.nav-explore-group a:hover { color: var(--green-d); }
+.nav-explore-close {
+  background: rgba(255,255,255,0.08);
+  color: var(--cream);
+  border: none;
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.nav-explore-close:hover { background: rgba(255,255,255,0.18); }
+
+/* ── Boost slot + identity slot ── */
+#lb-boost-slot,
+#lb-identity-slot {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+}
+.lb-identity-placeholder {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--cream);
+  border: 1px solid rgba(255, 255, 255, 0.20);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.35rem 0.85rem;
+  border-radius: 6px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.lb-identity-placeholder:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.34);
+}
+.lb-identity-restoring {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.06) 0%,
+    rgba(255,255,255,0.18) 50%,
+    rgba(255,255,255,0.06) 100%);
+  background-size: 200% 100%;
+  animation: lb-nav-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes lb-nav-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+.lb-boost-placeholder {
+  background: #f7931a;
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.3rem 0.65rem;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: background 0.15s;
+}
+.lb-boost-placeholder:hover { background: #d97b0e; }
+.lb-boost-placeholder:disabled { opacity: 0.6; cursor: wait; }
+.lb-boost-placeholder svg { width: 11px; height: 11px; flex-shrink: 0; }
+.lb-boost-placeholder .lb-label-long { display: inline; }
+.lb-boost-placeholder .lb-label-short { display: none; }
+@media (max-width: 640px) {
+  .lb-boost-placeholder .lb-label-long { display: none; }
+  .lb-boost-placeholder .lb-label-short { display: inline; }
+}
+
+/* ── Mobile: single-row bar + full-screen Explore overlay ── */
+@media (max-width: 760px) {
+  .nav-inner {
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    height: auto;
+    padding: 0.6rem 1rem;
+  }
+  .nav-site-name { font-size: 1rem; flex: 1; min-width: 0; }
+  /* Compact the trigger to just the grid glyph to save the row. */
+  .nav-explore > summary { padding: 0.4rem 0.55rem; }
+  .nav-explore-text, .nav-explore .caret { display: none; }
+  .nav-explore-glyph { font-size: 1.1em; }
+  #lb-boost-slot { flex-shrink: 0; }
+
+  .nav-explore-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    border: none;
+    border-radius: 0;
+    padding: 1.1rem 1.4rem 2.5rem;
+    overflow-y: auto;
+  }
+  .nav-explore-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+  }
+  .nav-explore-head span {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--cream);
+  }
+  .nav-explore-home { font-size: 1.05rem; padding-bottom: 1rem; margin-bottom: 1rem; }
+  .nav-explore-groups { grid-template-columns: 1fr; gap: 1.5rem; }
+  .nav-explore-group h4 { font-size: 0.8rem; margin-bottom: 0.65rem; }
+  .nav-explore-group a { font-size: 1.05rem; padding: 0.55rem 0; }
+  body.nav-explore-open { overflow: hidden; }
+}
+@media (max-width: 420px) {
+  .nav-logo { width: 36px; height: 36px; }
+  .nav-site-name { font-size: 0.92rem; }
+}

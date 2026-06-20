@@ -1,0 +1,70 @@
+<!-- ══════════════════════════════ NAV ══════════════════════════════
+     SHARED NAV — single source of truth. Do NOT edit the copies inside the
+     page files; edit THIS file, then run `node scripts/sync-partials.js` to
+     push it into every page (between the NAV:START / NAV:END markers).
+     Styles live in /assets/css/nav.css; behavior in /assets/js/nav.js. -->
+<header id="top-nav">
+  <div class="nav-inner">
+    <a class="nav-logo" href="/" aria-label="Local Bitcoiners home">
+      <img src="/assets/LocalBitcoiners.png" alt="Local Bitcoiners logo" />
+    </a>
+    <a class="nav-site-name" href="/">Local Bitcoiners</a>
+    <nav aria-label="Main navigation">
+      <!-- Single "Explore" menu = the whole site map. Grouped dropdown on
+           desktop, full-screen overlay on mobile. -->
+      <details class="nav-explore">
+        <summary aria-label="Explore the site">
+          <span class="nav-explore-glyph" aria-hidden="true">🧭</span>
+          <span class="nav-explore-text">Explore</span>
+          <span class="caret" aria-hidden="true">▾</span>
+        </summary>
+        <div class="nav-explore-panel">
+          <div class="nav-explore-head">
+            <span>Explore</span>
+            <button type="button" class="nav-explore-close" aria-label="Close menu">✕</button>
+          </div>
+          <a class="nav-explore-home" href="/"><span aria-hidden="true">🏠</span> Home</a>
+          <div class="nav-explore-groups">
+            <div class="nav-explore-group">
+              <h4>Show</h4>
+              <a href="/episodes.html"><span aria-hidden="true">🎧</span> Episodes</a>
+              <a href="/stats.html"><span aria-hidden="true">📊</span> Stats</a>
+              <a href="/merch.html"><span aria-hidden="true">👕</span> Merch</a>
+            </div>
+            <div class="nav-explore-group">
+              <h4>Community</h4>
+              <a href="/supporters"><span aria-hidden="true">🟧</span> Supporters</a>
+              <a href="/boosts.html"><span aria-hidden="true">⚡</span> Boosts</a>
+              <a href="/meetups"><span aria-hidden="true">📍</span> Meetups</a>
+            </div>
+            <div class="nav-explore-group">
+              <h4>More</h4>
+              <a href="https://github.com/Reeds-Agent-Team/Bitcoin-Meetups" target="_blank" rel="noopener"><span aria-hidden="true">📖</span> Resources</a>
+              <a href="/#site-footer"><span aria-hidden="true">✉️</span> Contact</a>
+              <a href="#" data-lb-bug-trigger><span aria-hidden="true">🐞</span> Report a bug</a>
+            </div>
+          </div>
+        </div>
+      </details>
+    </nav>
+    <div id="lb-boost-slot" aria-label="Boost the Show">
+      <button
+        type="button"
+        class="lb-boost-placeholder"
+        data-lb-boost-trigger="show"
+        aria-label="Boost the Show"
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M14.615 1.595a.75.75 0 0 1 .359.852L12.982 9.75h7.268a.75.75 0 0 1 .548 1.262l-10.5 11.25a.75.75 0 0 1-1.272-.71l1.992-7.302H3.75a.75.75 0 0 1-.548-1.262l10.5-11.25a.75.75 0 0 1 .913-.143Z" clip-rule="evenodd"/>
+        </svg>
+        <span class="lb-label-long">Boost the Show</span>
+        <span class="lb-label-short">Boost</span>
+      </button>
+    </div>
+    <div id="lb-identity-slot" aria-label="Account">
+      <!-- Static placeholder swapped out by IdentityWidget once the
+           bundle loads. Picks shimmer vs sign-in based on whether a
+           saved session exists; populated by inline script below. -->
+    </div>
+  </div>
+</header>

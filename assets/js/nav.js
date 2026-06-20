@@ -20,6 +20,40 @@
     if (d) d.removeAttribute('open')
   })
 
+  // ── "Explore" menu (homepage) — same affordances, plus Esc, the ✕
+  //    close button, and a body scroll-lock for the mobile overlay. ──
+  function closeExplore() {
+    var open = document.querySelectorAll('details.nav-explore[open]')
+    for (var i = 0; i < open.length; i++) open[i].removeAttribute('open')
+  }
+  // Outside-click close.
+  document.addEventListener('click', function (e) {
+    var open = document.querySelectorAll('details.nav-explore[open]')
+    for (var i = 0; i < open.length; i++) {
+      if (!open[i].contains(e.target)) open[i].removeAttribute('open')
+    }
+  })
+  // Close on link pick or the ✕ button.
+  document.addEventListener('click', function (e) {
+    var t = e.target && e.target.closest &&
+      e.target.closest('.nav-explore-panel a, .nav-explore-close')
+    if (!t) return
+    var d = t.closest('details.nav-explore')
+    if (d) d.removeAttribute('open')
+  })
+  // Esc closes.
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeExplore()
+  })
+  // Lock body scroll while the mobile full-screen overlay is open. The
+  // `toggle` event doesn't bubble, so listen in the capture phase.
+  document.addEventListener('toggle', function (e) {
+    var d = e.target
+    if (d && d.tagName === 'DETAILS' && d.classList && d.classList.contains('nav-explore')) {
+      document.body.classList.toggle('nav-explore-open', d.open)
+    }
+  }, true)
+
   // ── "Report a bug" trigger (More ▾ dropdown item, sitewide) ──────────
   // Lazy-loads the login-widget bundle on demand and opens the bug-report
   // modal (which gates login itself). The bundle has an internal

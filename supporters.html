@@ -92,182 +92,7 @@
     a:hover { color: var(--green-d); }
     img { display: block; max-width: 100%; }
 
-    /* ── Nav (mirrors meetups.html / boosts.html) ── */
-    #top-nav {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: var(--navy);
-      box-shadow: 0 2px 12px rgba(0,0,0,0.25);
-    }
-    .nav-inner {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 0 1.5rem;
-      height: 64px;
-      display: flex;
-      align-items: center;
-      gap: 1.25rem;
-    }
-    .nav-logo {
-      flex-shrink: 0;
-      width: 44px; height: 44px;
-      border-radius: 50%;
-      overflow: hidden;
-      border: 2px solid var(--green-d);
-    }
-    .nav-logo img { width: 100%; height: 100%; object-fit: cover; }
-    .nav-site-name {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 1.15rem;
-      font-weight: 700;
-      color: var(--cream);
-      letter-spacing: 0.02em;
-      text-decoration: none;
-      flex: 1;
-    }
-    .nav-site-name:hover { color: var(--green-d); }
-    nav ul { list-style: none; display: flex; gap: 0.25rem; }
-    nav ul li a {
-      color: var(--cream-d);
-      text-decoration: none;
-      font-size: 0.9rem;
-      font-weight: 600;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      padding: 0.35rem 0.75rem;
-      border-radius: 4px;
-      transition: background 0.15s, color 0.15s;
-    }
-    nav ul li a:hover { background: rgba(94,125,58,0.18); color: var(--green-d); }
-    nav ul li a.active { color: var(--green-d); }
-
-    /* "More ▾" dropdown — secondary nav links live here. */
-    .nav-more { position: relative; }
-    .nav-more > summary {
-      list-style: none;
-      cursor: pointer;
-      user-select: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.3rem;
-      color: var(--cream-d);
-      font-size: 0.9rem;
-      font-weight: 600;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      padding: 0.35rem 0.75rem;
-      border-radius: 4px;
-      transition: background 0.15s, color 0.15s;
-    }
-    .nav-more > summary::-webkit-details-marker { display: none; }
-    .nav-more > summary::marker { content: ''; }
-    .nav-more > summary:hover,
-    .nav-more[open] > summary,
-    .nav-more.is-active > summary {
-      background: rgba(94,125,58,0.18);
-      color: var(--green-d);
-    }
-    .nav-more .caret { font-size: 0.7em; transition: transform 0.15s; }
-    .nav-more[open] .caret { transform: rotate(180deg); }
-    .nav-more-menu {
-      position: absolute;
-      top: calc(100% + 0.35rem);
-      right: 0;
-      min-width: 160px;
-      background: var(--navy);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 6px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
-      list-style: none;
-      margin: 0;
-      padding: 0.3rem 0;
-      z-index: 60;
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-    }
-    .nav-more-menu li { margin: 0; }
-    .nav-more-menu a {
-      display: block;
-      padding: 0.5rem 1rem;
-      color: var(--cream-d);
-      text-decoration: none;
-      font-size: 0.85rem;
-      font-weight: 600;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      transition: background 0.12s, color 0.12s;
-    }
-    .nav-more-menu a:hover,
-    .nav-more-menu a.active {
-      background: rgba(94,125,58,0.18);
-      color: var(--green-d);
-    }
-
-    #lb-boost-slot {
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      min-height: 32px;
-    }
-    .lb-boost-placeholder {
-      background: #f7931a;
-      color: #ffffff;
-      border: none;
-      cursor: pointer;
-      font: inherit;
-      font-size: 0.78rem;
-      font-weight: 600;
-      padding: 0.3rem 0.65rem;
-      border-radius: 5px;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      transition: background 0.15s;
-    }
-    .lb-boost-placeholder:hover { background: #d97b0e; }
-    .lb-boost-placeholder:disabled { opacity: 0.6; cursor: wait; }
-    .lb-boost-placeholder svg { width: 11px; height: 11px; flex-shrink: 0; }
-    .lb-boost-placeholder .lb-label-long { display: inline; }
-    .lb-boost-placeholder .lb-label-short { display: none; }
-    @media (max-width: 640px) {
-      .lb-boost-placeholder .lb-label-long { display: none; }
-      .lb-boost-placeholder .lb-label-short { display: inline; }
-    }
-
-    #lb-identity-slot {
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      min-height: 32px;
-    }
-    .lb-identity-placeholder {
-      background: rgba(255, 255, 255, 0.08);
-      color: var(--cream);
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      cursor: pointer;
-      font: inherit;
-      font-size: 0.85rem;
-      font-weight: 500;
-      padding: 0.35rem 0.85rem;
-      border-radius: 6px;
-      transition: background 0.15s, border-color 0.15s;
-    }
-    .lb-identity-placeholder:hover {
-      background: rgba(255, 255, 255, 0.16);
-      border-color: rgba(255, 255, 255, 0.32);
-    }
-    .lb-identity-restoring {
-      width: 28px; height: 28px;
-      border-radius: 50%;
-      background: linear-gradient(90deg,
-        rgba(255,255,255,0.05) 0%,
-        rgba(255,255,255,0.15) 50%,
-        rgba(255,255,255,0.05) 100%);
-      background-size: 200% 100%;
-      animation: skeleton-shimmer 1.4s ease-in-out infinite;
-    }
+    /* Nav styles are shared — see /assets/css/nav.css. */
     @keyframes skeleton-shimmer {
       0% { background-position: 100% 0; }
       100% { background-position: -100% 0; }
@@ -551,62 +376,71 @@
       font-style: italic;
     }
 
-    /* ── Footer ── */
-    footer {
-      background: #2b231a;
-      color: var(--muted);
-      text-align: center;
-      padding: 2rem 1.5rem;
-      font-size: 0.85rem;
-    }
-    footer a { color: var(--orange); text-decoration: none; }
-    footer a:hover { text-decoration: underline; }
+    /* Footer styles are shared — see /assets/css/footer.css. */
 
     /* ── Responsive ── */
-    @media (max-width: 760px) {
-      .nav-inner { gap: 0.5rem; flex-wrap: wrap; height: auto; padding: 0.6rem 1rem; }
-      .nav-site-name { font-size: 1rem; flex: 1; min-width: 0; }
-      nav { order: 4; flex-basis: 100%; }
-      nav ul { justify-content: center; gap: 0.25rem; flex-wrap: wrap; }
-      nav ul li a { padding: 0.3rem 0.7rem; font-size: 0.8rem; }
-    }
     @media (max-width: 420px) {
-      .nav-logo { width: 36px; height: 36px; }
-      .nav-site-name { font-size: 0.92rem; }
       .sup-grid, .supporters-loading { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
       .sup-avatar, .sup-skeleton { width: 64px; height: 64px; }
       .sup-tier--featured .sup-card { width: 92px; }
       .sup-tier--featured .sup-avatar { width: 84px; height: 84px; }
     }
   </style>
+  <link rel="stylesheet" href="/assets/css/nav.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
 </head>
 <body>
 
 <!-- ══════════════════════════════ NAV ══════════════════════════════ -->
+<!-- NAV:START (generated by scripts/sync-partials.js — edit the partial) -->
+<!-- ══════════════════════════════ NAV ══════════════════════════════
+     SHARED NAV — single source of truth. Do NOT edit the copies inside the
+     page files; edit THIS file, then run `node scripts/sync-partials.js` to
+     push it into every page (between the NAV:START / NAV:END markers).
+     Styles live in /assets/css/nav.css; behavior in /assets/js/nav.js. -->
 <header id="top-nav">
   <div class="nav-inner">
     <a class="nav-logo" href="/" aria-label="Local Bitcoiners home">
-      <img src="assets/LocalBitcoiners.png" alt="Local Bitcoiners logo" />
+      <img src="/assets/LocalBitcoiners.png" alt="Local Bitcoiners logo" />
     </a>
     <a class="nav-site-name" href="/">Local Bitcoiners</a>
     <nav aria-label="Main navigation">
-      <ul>
-        <li><a href="/boosts.html">Boosts</a></li>
-        <li><a href="/supporters" class="active">Supporters</a></li>
-        <li><a href="/stats.html">Stats</a></li>
-        <li>
-          <details class="nav-more">
-            <summary>More <span class="caret" aria-hidden="true">▾</span></summary>
-            <ul class="nav-more-menu">
-              <li><a href="/merch.html">Merch</a></li>
-              <li><a href="/meetups">Meetups</a></li>
-              <li><a href="/#meetups">Resources</a></li>
-              <li><a href="/#links">Links</a></li>
-              <li><a href="#" data-lb-bug-trigger>Report a bug</a></li>
-            </ul>
-          </details>
-        </li>
-      </ul>
+      <!-- Single "Explore" menu = the whole site map. Grouped dropdown on
+           desktop, full-screen overlay on mobile. -->
+      <details class="nav-explore">
+        <summary aria-label="Explore the site">
+          <span class="nav-explore-glyph" aria-hidden="true">🧭</span>
+          <span class="nav-explore-text">Explore</span>
+          <span class="caret" aria-hidden="true">▾</span>
+        </summary>
+        <div class="nav-explore-panel">
+          <div class="nav-explore-head">
+            <span>Explore</span>
+            <button type="button" class="nav-explore-close" aria-label="Close menu">✕</button>
+          </div>
+          <a class="nav-explore-home" href="/"><span aria-hidden="true">🏠</span> Home</a>
+          <div class="nav-explore-groups">
+            <div class="nav-explore-group">
+              <h4>Show</h4>
+              <a href="/episodes.html"><span aria-hidden="true">🎧</span> Episodes</a>
+              <a href="/stats.html"><span aria-hidden="true">📊</span> Stats</a>
+              <a href="/merch.html"><span aria-hidden="true">👕</span> Merch</a>
+            </div>
+            <div class="nav-explore-group">
+              <h4>Community</h4>
+              <a href="/supporters"><span aria-hidden="true">🟧</span> Supporters</a>
+              <a href="/boosts.html"><span aria-hidden="true">⚡</span> Boosts</a>
+              <a href="/meetups"><span aria-hidden="true">📍</span> Meetups</a>
+            </div>
+            <div class="nav-explore-group">
+              <h4>More</h4>
+              <a href="https://github.com/Reeds-Agent-Team/Bitcoin-Meetups" target="_blank" rel="noopener"><span aria-hidden="true">📖</span> Resources</a>
+              <a href="/#site-footer"><span aria-hidden="true">✉️</span> Contact</a>
+              <a href="#" data-lb-bug-trigger><span aria-hidden="true">🐞</span> Report a bug</a>
+            </div>
+          </div>
+        </div>
+      </details>
     </nav>
     <div id="lb-boost-slot" aria-label="Boost the Show">
       <button
@@ -624,10 +458,12 @@
     </div>
     <div id="lb-identity-slot" aria-label="Account">
       <!-- Static placeholder swapped out by IdentityWidget once the
-           bundle loads. Same pattern as meetups.html. -->
+           bundle loads. Picks shimmer vs sign-in based on whether a
+           saved session exists; populated by inline script below. -->
     </div>
   </div>
 </header>
+<!-- NAV:END -->
 
 <!-- ══════════════════════════════ PAGE HEADER ══════════════════════════════ -->
 <section class="page-header">
@@ -666,9 +502,74 @@
 <main id="supporters-root" class="supporters-wrap"></main>
 
 <!-- ══════════════════════════════ FOOTER ══════════════════════════════ -->
-<footer>
-  <p>© 2026 Local Bitcoiners Podcast &nbsp;·&nbsp; <a href="mailto:localbitcoiners@gmail.com">localbitcoiners@gmail.com</a></p>
+<!-- FOOTER:START (generated by scripts/sync-partials.js — edit the partial) -->
+<!-- ══════════════════════════════ FOOTER ══════════════════════════════
+     SHARED FOOTER — single source of truth. Do NOT edit the copies inside
+     the page files; edit THIS file, then run `node scripts/sync-partials.js`
+     to push it into every page (between FOOTER:START / FOOTER:END markers).
+     Styles live in /assets/css/footer.css. -->
+<footer id="site-footer">
+  <div class="footer-top">
+
+    <div class="footer-col footer-about">
+      <h3>Local Bitcoiners</h3>
+      <p>A Bitcoin podcast about meetup culture. Hosts Reed and Rev Hodl sit down with organizers from across the country on how they find, build, and grow local Bitcoin communities — not price charts, real-world grassroots adoption.</p>
+      <p>Run a meetup and want to come on, or curious about Grassroots Bitcoin and the quarterly organizer calls? <a href="mailto:localbitcoiners@gmail.com">localbitcoiners@gmail.com</a></p>
+      <div class="footer-hosts">
+        <a class="footer-host" href="https://primal.net/Reed" target="_blank" rel="noopener">⚡ Reed</a>
+        <a class="footer-host" href="https://primal.net/p/nprofile1qqsy6q3ua80awknlxp6m368qssqghct6ra6scca4meepumhcswkuwegutksft" target="_blank" rel="noopener">⚡ Rev Hodl</a>
+      </div>
+    </div>
+
+    <div class="footer-col">
+      <h3>Listen &amp; Follow</h3>
+      <ul>
+        <li><a href="https://fountain.fm/show/Q48WBr6nT3mrbwMZ8ydY" target="_blank" rel="noopener">🎙 Fountain</a></li>
+        <li><a href="https://podcasts.apple.com/us/podcast/local-bitcoiners/id1874589042" target="_blank" rel="noopener">🍎 Apple Podcasts</a></li>
+        <li><a href="https://open.spotify.com/show/5v5AX2C7ubaV1xjfL2EMZV" target="_blank" rel="noopener">🎵 Spotify</a></li>
+        <li><a href="https://www.youtube.com/@LocalBitcoiners" target="_blank" rel="noopener">▶️ YouTube</a></li>
+        <li><a href="https://app.podcastguru.io/podcast/local-bitcoiners-1874589042" target="_blank" rel="noopener">🎧 Podcast Guru</a></li>
+        <li><a href="https://podverse.fm/podcast/eKqrkoAVH" target="_blank" rel="noopener">🎧 Podverse</a></li>
+        <li><a href="https://curiocaster.com/podcast/pi7683299" target="_blank" rel="noopener">🎧 CurioCaster</a></li>
+        <li><a href="https://castamatic.com/guid/56fbb1aa-da79-5e4b-bebc-3b934ab8914c" target="_blank" rel="noopener">🎧 Castamatic</a></li>
+        <li><a href="https://feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU" target="_blank" rel="noopener">📡 RSS Feed</a></li>
+      </ul>
+    </div>
+
+    <div class="footer-col">
+      <h3>Connect</h3>
+      <ul>
+        <li><a href="mailto:localbitcoiners@gmail.com">✉️ Email</a></li>
+        <li><a href="https://x.com/LocalBitcoiners" target="_blank" rel="noopener">🐦 Twitter / X</a></li>
+        <li><a href="https://primal.net/p/nprofile1qqsvxvygrc58dqupmk9al5n5xswu5rzcstpfhpjzaf9ustm4vvnytys56dr5z" target="_blank" rel="noopener">🟣 Show on Nostr</a></li>
+        <li><a href="https://github.com/Reeds-Agent-Team/Bitcoin-Meetups" target="_blank" rel="noopener">📖 Meetup Resources</a></li>
+        <li><a href="https://github.com/ReedBTC/localbitcoiners" target="_blank" rel="noopener">💻 Site Source</a></li>
+      </ul>
+    </div>
+
+    <div class="footer-col">
+      <h3>Support the Show</h3>
+      <ul>
+        <li><a href="lightning:aquafox30@primal.net">⚡ Zap: aquafox30@primal.net</a></li>
+        <li>
+          🔗 Silent Payment
+          <a class="muted-link" href="https://docs.cakewallet.com/cryptos/bitcoin/#silent-payments" target="_blank" rel="noopener">(what's this?)</a>
+          <span class="payment-code">sp1qq0cvn8x7x43xcpmqjzmej24jr5ccnsmvqpvjcn7ctzlpntfq9u252qj70jgwxsqugcwp7tmuq6pq77ffepsklhlhv7r434ycxy00zknjygxgl0rl</span>
+        </li>
+        <li>
+          🏦 Paynym: <strong style="color:var(--cream)">+raggedtrack25</strong>
+          <a class="muted-link" href="https://sparrowwallet.com/docs/spending-privately.html#paynym-payment-code" target="_blank" rel="noopener">(what's this?)</a>
+          <span class="payment-code">PM8TJa9CSHGKkr2ZxvAicubwbF45NcABU3iWNCqjPxspMAXXjqcNYYqwEYYndHBgWUFHdSFZjrs7DKBT2f77XCjtAhkSMrv5cZ4G1JM7jkAqGbE6xsAk</span>
+        </li>
+      </ul>
+    </div>
+
+  </div>
+  <div class="footer-bottom">
+    <p>© 2026 Local Bitcoiners Podcast &nbsp;·&nbsp; <a href="mailto:localbitcoiners@gmail.com">localbitcoiners@gmail.com</a></p>
+  </div>
 </footer>
+<!-- FOOTER:END -->
 
 <!-- ───────────────── NOSTR LOGIN WIDGET (lazy) ─────────────────
      Keeps the persistent Boost / identity affordance in the nav, in

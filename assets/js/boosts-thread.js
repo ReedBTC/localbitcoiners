@@ -219,23 +219,33 @@ function renderSegmentsInto(el, segments, opts = {}) {
 }
 
 function buildMentionEl(seg) {
+  const profile = seg.data.pubkey ? profileCache.get(seg.data.pubkey) : null
+
+  // Link by a clean npub whenever we have the pubkey: njump resolves an
+  // npub reliably, whereas a bulky nprofile (relay hints baked in) — or an
+  // empty identifier — opens a blank page. That blank tab was the bug.
+  let ident = seg.data.bech32 || (seg.value || '').replace(/^nostr:/i, '')
+  if (seg.data.pubkey) {
+    try { ident = nip19.npubEncode(seg.data.pubkey) } catch {}
+  }
+  const label = profile?.name ? '@' + profile.name : '@' + (ident ? ident.slice(0, 14) + '…' : 'user')
+
+  // Nothing usable to point at → render the name as plain text, not a dead
+  // link that opens an empty tab.
+  if (!ident) {
+    const span = document.createElement('span')
+    span.className = 'nostr-mention'
+    span.textContent = label
+    return span
+  }
+
   const a = document.createElement('a')
   a.className = 'nostr-mention'
   a.target = '_blank'
   a.rel = 'noopener noreferrer'
-  a.href = `https://njump.me/${seg.data.bech32 || seg.value.replace(/^nostr:/i, '')}`
-
-  const profile = seg.data.pubkey ? profileCache.get(seg.data.pubkey) : null
-  if (profile?.name) {
-    a.textContent = '@' + profile.name
-    if (profile.nip05) a.title = profile.nip05
-  } else {
-    let npub = seg.data.bech32 || seg.value.replace(/^nostr:/i, '')
-    if (seg.data.pubkey) {
-      try { npub = nip19.npubEncode(seg.data.pubkey) } catch {}
-    }
-    a.textContent = '@' + npub.slice(0, 14) + '…'
-  }
+  a.href = `https://njump.me/${ident}`
+  a.textContent = label
+  if (profile?.name && profile.nip05) a.title = profile.nip05
   return a
 }
 
