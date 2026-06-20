@@ -21,7 +21,11 @@
 // stale-while-revalidate copies of /assets/css/nav.css and the homepage
 // JS (home-leaderboards.js etc.) so returning visitors get the new nav
 // label, leaderboard tie-tiers, etc. without waiting for a 2nd revalidate.
-const VERSION = 'lb-v15';
+// v16: clickable URLs/bare domains in the Biggest Boosts leaderboard +
+// EP### episode links under guest names (home + supporters). Bump evicts
+// stale home-leaderboards.js / home-people.js / supporters.js so returning
+// visitors get the links without waiting for a 2nd revalidate.
+const VERSION = 'lb-v16';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

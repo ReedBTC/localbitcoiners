@@ -177,8 +177,60 @@ function makeCard(opts) {
   nameEl.textContent = name;
   card.appendChild(nameEl);
 
+  // Guests get the episode(s) they appeared on, linked to the episode page.
+  if (opts.episodes && opts.episodes.length) {
+    const eps = document.createElement('span');
+    eps.className = 'people-eps';
+    opts.episodes.forEach((pad3) => {
+      const a = document.createElement('a');
+      a.href = '/ep' + pad3;
+      a.textContent = 'EP' + pad3;
+      a.addEventListener('click', (e) => e.stopPropagation()); // navigate, don't copy npub
+      eps.appendChild(a);
+    });
+    card.appendChild(eps);
+  }
+
   registerNode(npub, { avatar, nameEl });
   return card;
+}
+
+// Fetch the RSS once and build a guest npub → [padded episode numbers] map
+// from the [guests: …] shownotes markers. Uses the cached feed when present.
+function guestEpisodeMap() {
+  function parse(xml) {
+    const map = Object.create(null);
+    if (!xml) return map;
+    let doc;
+    try { doc = new DOMParser().parseFromString(xml, 'text/xml'); } catch (e) { return map; }
+    const items = doc.querySelectorAll('item');
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const numEl = item.querySelector('episode');
+      let num = numEl ? numEl.textContent.trim() : '';
+      if (!num) {
+        const t = item.querySelector('title');
+        const tm = (t ? t.textContent : '').match(/Ep\.?\s*(\d+)/i);
+        if (tm) num = tm[1];
+      }
+      if (!num) continue;
+      const pad3 = String(num).replace(/[^\d]/g, '').padStart(3, '0');
+      const descEl = item.querySelector('summary') || item.querySelector('description');
+      const gm = (descEl ? descEl.textContent : '').match(/\[guests:\s*([^\]]*)\]/i);
+      if (!gm) continue;
+      gm[1].split(',').map((s) => s.trim()).filter(Boolean).forEach((np) => {
+        const arr = map[np] || (map[np] = []);
+        if (arr.indexOf(pad3) === -1) arr.push(pad3);
+      });
+    }
+    Object.keys(map).forEach((k) => map[k].sort());
+    return map;
+  }
+  try {
+    const c = localStorage.getItem('lb_rss_xml_v1');
+    if (c && c.indexOf('<item>') >= 0) return Promise.resolve(parse(c));
+  } catch (e) {}
+  return fetch('/api/rss').then((r) => (r.ok ? r.text() : '')).then(parse).catch(() => Object.create(null));
 }
 
 function skeletons(container) {
@@ -308,13 +360,14 @@ async function fetchApiGuests() {
 }
 async function initGuests(el) {
   skeletons(el);
-  let npubs = await fetchPackGuests();
+  const [packNpubs, epMap] = await Promise.all([fetchPackGuests(), guestEpisodeMap()]);
+  let npubs = packNpubs;
   if (!npubs.length) npubs = await fetchApiGuests();
   if (!npubs.length) { emptyState(el, 'Guest roster coming soon.'); return; }
   const cache = cachedProfiles(npubs);
   const cards = npubs.map((np) => {
     const p = cache[np] || null;
-    return makeCard({ npub: np, name: p && p.name, picture: p && p.picture });
+    return makeCard({ npub: np, name: p && p.name, picture: p && p.picture, episodes: epMap[np] || [] });
   });
   renderCarousel(el, cards, npubs);
 }

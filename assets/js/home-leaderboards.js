@@ -216,15 +216,53 @@
     }
     return out;
   }
+  // A link found in a boost message → clickable, opening in a new tab.
+  // `raw` is the text as written; `href` is the navigable URL (a scheme is
+  // prepended for bare domains). Display strips the scheme + a trailing
+  // slash so long ad-read URLs read cleanly.
+  function urlLink(raw, href) {
+    var a = document.createElement('a');
+    a.className = 'lb-url';
+    a.href = href;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.textContent = raw.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+    return a;
+  }
+  // One pass matches whichever comes first: an npub mention, a scheme'd
+  // URL, or a bare domain. The bare-domain arm is TLD-gated (so prose like
+  // "etc." isn't linkified) and the email guard below skips foo@bar.com.
+  // npubs are strictly lowercase bech32, so the `i` flag is harmless there.
+  var TOKEN_RE = /(?:nostr:)?(npub1[a-z0-9]{58})|(https?:\/\/[^\s<]+)|((?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+(?:com|net|org|io|app|co|news|dev|xyz|me|tv|fm|gg|info|page|site|link|cash|wtf)\b(?:\/[^\s<]*)?)/gi;
   // Render a boost message: collapse runs of blank lines (these ad-reads
-  // ship with 3–4 \n in a row), and swap npub callouts for @DisplayName.
+  // ship with 3–4 \n in a row), swap npub callouts for @DisplayName, and
+  // turn URLs / bare domains into clickable links.
   function renderMessageInto(el, message, profiles) {
     var text = (message || '').replace(/\n{2,}/g, '\n').trim();
     var last = 0, m;
-    MENTION_RE.lastIndex = 0;
-    while ((m = MENTION_RE.exec(text)) !== null) {
+    TOKEN_RE.lastIndex = 0;
+    while ((m = TOKEN_RE.exec(text)) !== null) {
       if (m.index > last) el.appendChild(document.createTextNode(text.slice(last, m.index)));
-      el.appendChild(mentionLink(m[1], profiles));
+      if (m[1]) {
+        el.appendChild(mentionLink(m[1], profiles));
+      } else if (m[2] || m[3]) {
+        // Bare domain mid-token or right after '@' (an email local-part):
+        // leave it as plain text rather than a bogus link.
+        var bare = !!m[3];
+        var prev = m.index > 0 ? text.charAt(m.index - 1) : '';
+        if (bare && /[@A-Za-z0-9.\/:]/.test(prev)) {
+          el.appendChild(document.createTextNode(m[0]));
+        } else {
+          // Trim trailing punctuation the greedy match grabbed (e.g. a URL
+          // ending a sentence) and re-emit it as plain text after the link.
+          var raw = m[2] || m[3], trail = '';
+          var tm = raw.match(/[).,!?;:'"\]]+$/);
+          if (tm) { trail = tm[0]; raw = raw.slice(0, -trail.length); }
+          var href = bare ? 'https://' + raw : raw;
+          el.appendChild(urlLink(raw, href));
+          if (trail) el.appendChild(document.createTextNode(trail));
+        }
+      }
       last = m.index + m[0].length;
     }
     if (last < text.length) el.appendChild(document.createTextNode(text.slice(last)));

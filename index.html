@@ -936,6 +936,13 @@
       word-break: break-word;
     }
     .lb-boost-msg .lb-mention { font-weight: 600; }
+    .lb-boost-msg .lb-url {
+      color: var(--green-d);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      word-break: break-all;
+    }
+    .lb-boost-msg .lb-url:hover { text-decoration: none; }
     @media (max-width: 760px) { .lb-grid--two { grid-template-columns: 1fr; } }
 
     /* ── Recent boosts ticker (top 20, ~4 visible, scrolls; pfp + name) ── */
@@ -1309,6 +1316,22 @@
       word-break: break-word;
     }
     .people-sats { font-size: 0.74rem; color: var(--muted); }
+    /* Guest episode link(s) under the name (e.g. EP001 → /ep001). */
+    .people-eps {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.25rem 0.4rem;
+      margin-top: 0.1rem;
+    }
+    .people-eps a {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      color: var(--green-d);
+      text-decoration: none;
+    }
+    .people-eps a:hover { text-decoration: underline; text-underline-offset: 2px; }
     .people-empty { color: var(--muted); font-style: italic; padding: 0.5rem 0; }
     /* Skeleton avatar shimmer. */
     .people-card.is-skeleton { cursor: default; }

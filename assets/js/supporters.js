@@ -190,10 +190,62 @@
     card.appendChild(avatar);
     card.appendChild(nameEl);
 
+    // Show Guests get the episode(s) they were on, linked to /ep###.
+    if (opts.episodes && opts.episodes.length) {
+      var eps = document.createElement('span');
+      eps.className = 'sup-eps';
+      opts.episodes.forEach(function (pad3) {
+        var a = document.createElement('a');
+        a.href = '/ep' + pad3;
+        a.textContent = 'EP' + pad3;
+        a.addEventListener('click', function (e) { e.stopPropagation(); });
+        eps.appendChild(a);
+      });
+      card.appendChild(eps);
+    }
+
     if (npub) {
       registerCard(npub, { avatar: avatar, nameEl: nameEl, hasName: !!opts.name });
     }
     return card;
+  }
+
+  // Fetch RSS once → guest npub → [padded episode numbers] from the
+  // [guests: …] shownotes markers. Cached feed used when present.
+  function guestEpisodeMap() {
+    function parse(xml) {
+      var map = Object.create(null);
+      if (!xml) return map;
+      var doc;
+      try { doc = new DOMParser().parseFromString(xml, 'text/xml'); } catch (e) { return map; }
+      var items = doc.querySelectorAll('item');
+      for (var i = 0; i < items.length; i++) {
+        var item = items[i];
+        var numEl = item.querySelector('episode');
+        var num = numEl ? numEl.textContent.trim() : '';
+        if (!num) {
+          var t = item.querySelector('title');
+          var tm = (t ? t.textContent : '').match(/Ep\.?\s*(\d+)/i);
+          if (tm) num = tm[1];
+        }
+        if (!num) continue;
+        var pad3 = String(num).replace(/[^\d]/g, '').padStart(3, '0');
+        var descEl = item.querySelector('summary') || item.querySelector('description');
+        var gm = (descEl ? descEl.textContent : '').match(/\[guests:\s*([^\]]*)\]/i);
+        if (!gm) continue;
+        gm[1].split(',').map(function (s) { return s.trim(); }).filter(Boolean).forEach(function (np) {
+          var arr = map[np] || (map[np] = []);
+          if (arr.indexOf(pad3) === -1) arr.push(pad3);
+        });
+      }
+      Object.keys(map).forEach(function (k) { map[k].sort(); });
+      return map;
+    }
+    try {
+      var c = localStorage.getItem('lb_rss_xml_v1');
+      if (c && c.indexOf('<item>') >= 0) return Promise.resolve(parse(c));
+    } catch (e) {}
+    return fetch('/api/rss').then(function (r) { return r.ok ? r.text() : ''; }).then(parse).catch(function () { return Object.create(null); });
   }
 
   // Apply a resolved profile to every card for that npub.
@@ -333,16 +385,17 @@
   // Gold/silver/bronze pfp rings for the top three tiers.
   var TIER_RINGS = { t100: 'tier-gold', t69: 'tier-silver', t21: 'tier-bronze' };
 
-  function render(people, guestNpubs, cache) {
+  function render(people, guestNpubs, cache, epMap) {
     var root = document.getElementById('supporters-root');
     var loading = document.getElementById('supporters-loading');
     if (loading) loading.style.display = 'none';
+    epMap = epMap || Object.create(null);
 
     function profFor(npub) { return (npub && cache[npub]) || null; }
 
-    function cardFor(npub, label, ring) {
+    function cardFor(npub, label, ring, episodes) {
       var prof = profFor(npub);
-      return makeCard({ npub: npub, name: (prof && prof.name) || label || null, picture: prof && prof.picture, ring: ring });
+      return makeCard({ npub: npub, name: (prof && prof.name) || label || null, picture: prof && prof.picture, ring: ring, episodes: episodes });
     }
 
     // 1. Supporters — boost/stream tiers. One group header + note, then a tier each.
@@ -360,9 +413,9 @@
       TIERS.map(function (t) { return { title: t.title, cards: buckets[t.id], pack: t.pack, featured: t.featured }; })
     );
 
-    // 2. Show Guests — below the supporters.
+    // 2. Show Guests — below the supporters (with their episode link(s)).
     renderSection(root, 'Show Guests', 'Everyone who’s come on the podcast.',
-      guestNpubs.map(function (n) { return cardFor(n, null); }), GUESTS_PACK);
+      guestNpubs.map(function (n) { return cardFor(n, null, null, epMap[n]); }), GUESTS_PACK);
 
     // 3. Coding Contributors — small group, centered pfps.
     renderSection(root, 'Coding Contributors', 'Builders who’ve shipped code to the site and bots.',
@@ -396,15 +449,19 @@
       .then(function (d) { return Array.isArray(d.guests) ? d.guests : []; })
       .catch(function () { return []; });
 
-    Promise.all([satsP, guestsP]).then(function (res) {
+    // Guest → episode-number map from the RSS shownotes ([guests: …]).
+    var epP = guestEpisodeMap();
+
+    Promise.all([satsP, guestsP, epP]).then(function (res) {
       var people = aggregate(res[0]);
       var guestNpubs = res[1];
+      var epMap = res[2] || Object.create(null);
       var npubs = collectNpubs(people, guestNpubs);
 
       var enhance = window.LBEpisodeEnhance || {};
       var cache = (enhance.getCachedProfilesByNpub && enhance.getCachedProfilesByNpub(npubs)) || Object.create(null);
 
-      render(people, guestNpubs, cache);
+      render(people, guestNpubs, cache, epMap);
 
       // Upgrade in place once relays answer.
       if (enhance.fetchProfilesByNpub) {

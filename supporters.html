@@ -365,6 +365,22 @@
       word-break: break-word;
       max-width: 100%;
     }
+    /* Guest episode link(s) under the name (e.g. EP001 → /ep001). */
+    .sup-eps {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.2rem 0.4rem;
+      margin-top: 0.15rem;
+    }
+    .sup-eps a {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      color: var(--green-d);
+      text-decoration: none;
+    }
+    .sup-eps a:hover { text-decoration: underline; text-underline-offset: 2px; }
 
     /* Loading + error states. */
     .supporters-loading {
