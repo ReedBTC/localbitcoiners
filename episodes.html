@@ -459,6 +459,23 @@
       line-height: 1.75;
       margin-bottom: 1.25rem;
     }
+    /* Clamp shownotes to 2 lines + a "see full description" link. */
+    .episode-desc.clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-bottom: 0.4rem;
+    }
+    .desc-more {
+      display: inline-block;
+      margin-bottom: 1.25rem;
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--green-d);
+      text-decoration: none;
+    }
+    .desc-more:hover { text-decoration: underline; text-underline-offset: 3px; }
 
     .episode-player {
       width: 100%;
@@ -706,6 +723,11 @@
       .ep-overflow-menu .ep-subscribe-menu {
         position: static; box-shadow: none; border: none; padding: 0.25rem 0 0;
       }
+      /* Boost + Subscribe split the action row 50/50. */
+      .episode-actions { gap: 0.6rem; }
+      .episode-actions > .btn-boost,
+      .episode-actions > .ep-subscribe { flex: 1 1 0; min-width: 0; }
+      .episode-actions > .ep-subscribe .btn-subscribe { width: 100%; justify-content: center; }
     }
   </style>
   <link rel="stylesheet" href="/assets/css/nav.css" />
@@ -1138,9 +1160,16 @@
 
     if (shortDesc) {
       const descP = document.createElement('p');
-      descP.className = 'episode-desc';
+      // Clamp to 2 lines + a "see full description" link to the episode page
+      // (matches the homepage's featured/recent cards).
+      descP.className = 'episode-desc clamp-2';
       descP.textContent = shortDesc;
       card.appendChild(descP);
+      const more = document.createElement('a');
+      more.className = 'desc-more';
+      more.href = `/ep${pad(epNum)}`;
+      more.textContent = 'See full description →';
+      card.appendChild(more);
     }
 
     if (mp3) {
@@ -1262,12 +1291,9 @@
     });
     ovMenu.appendChild(tx);
 
-    // Subscribe-in-app dropdown. Show-level URLs (don't change per
-    // episode) for the top podcasting 2.0 apps. Castamatic's universal
-    // link uses the show's podcast:guid; Podverse + CurioCaster don't
-    // expose stable show-page URLs we could verify, so they fall back
-    // to a search/homepage URL. Update verbatim if better URLs land.
-    ovMenu.appendChild(buildSubscribeDropdown());
+    // Subscribe-in-app dropdown — a primary button next to Boost (the two
+    // split the action row on mobile), not in the ⋮ overflow.
+    const subscribe = buildSubscribeDropdown();
 
     // Wrap the secondary actions + a ⋮ trigger (the trigger only shows on
     // mobile; on desktop the group flattens inline via display:contents).
@@ -1320,6 +1346,9 @@
       });
       actions.appendChild(boostBtn);
     }
+
+    // Subscribe sits next to Boost as a primary action.
+    actions.appendChild(subscribe);
 
     card.appendChild(actions);
     $list.appendChild(card);

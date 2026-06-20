@@ -699,6 +699,11 @@
       .ep-overflow-menu .ep-subscribe-menu {
         position: static; box-shadow: none; border: none; padding: 0.25rem 0 0;
       }
+      /* Non-featured cards: Boost + Subscribe split the action row 50/50. */
+      .episode-card:not(.featured) .episode-actions { gap: 0.6rem; }
+      .episode-card:not(.featured) .episode-actions > .btn-boost,
+      .episode-card:not(.featured) .episode-actions > .ep-subscribe { flex: 1 1 0; min-width: 0; }
+      .episode-card:not(.featured) .episode-actions > .ep-subscribe .btn-subscribe { width: 100%; justify-content: center; }
     }
 
     /* ════════════════════ HOMEPAGE HUB (redesign) ════════════════════
@@ -1469,7 +1474,7 @@
   <div class="hero-overlay">
     <div class="hero-text">
       <h1 class="sr-only">Local Bitcoiners Podcast</h1>
-      <p>Finding, Building, and Growing Local Bitcoin Meetup Culture</p>
+      <p>Finding, Building, and Growing Bitcoin Meetup Culture</p>
     </div>
   </div>
 </section>
@@ -1652,49 +1657,49 @@
       <a class="explore-card" href="/episodes.html">
         <div class="explore-icon">🎧</div>
         <div class="explore-title">Episodes</div>
-        <p class="explore-desc">Every episode — listen, boost, and download the back-catalog.</p>
+        <p class="explore-desc">Listen, boost, download.</p>
         <span class="explore-go">Listen →</span>
       </a>
       <a class="explore-card" href="/supporters">
         <div class="explore-icon">🟧</div>
         <div class="explore-title">Supporters</div>
-        <p class="explore-desc"><span id="explore-supporters-count">The people</span> powering the show — boosters, streamers, guests &amp; coders.</p>
+        <p class="explore-desc"><span id="explore-supporters-count">The people</span> powering the show.</p>
         <span class="explore-go">Meet them →</span>
       </a>
       <a class="explore-card" href="/stats.html">
         <div class="explore-icon">📊</div>
         <div class="explore-title">Stats</div>
-        <p class="explore-desc">Sats raised, value-for-value charts, and the full leaderboard.</p>
+        <p class="explore-desc">Sats, charts &amp; leaderboards.</p>
         <span class="explore-go">Dig in →</span>
       </a>
       <a class="explore-card" href="/boosts.html">
         <div class="explore-icon">⚡</div>
         <div class="explore-title">Boosts</div>
-        <p class="explore-desc">Every boost and message listeners have sent to the show.</p>
+        <p class="explore-desc">Every boost &amp; message.</p>
         <span class="explore-go">Read them →</span>
       </a>
       <a class="explore-card" href="/meetups">
         <div class="explore-icon">📍</div>
         <div class="explore-title">Meetups</div>
-        <p class="explore-desc"><span id="explore-meetups-count">Listener-boosted</span> Bitcoin meetups happening around the country.</p>
+        <p class="explore-desc"><span id="explore-meetups-count">Listener-boosted</span> meetups near you.</p>
         <span class="explore-go">Find one →</span>
       </a>
       <a class="explore-card" href="/merch.html">
         <div class="explore-icon">👕</div>
         <div class="explore-title">Merch</div>
-        <p class="explore-desc">Grab a tee or a sticker and wear the local-Bitcoin flag. Pay over Lightning.</p>
+        <p class="explore-desc">Tees &amp; stickers. Pay in sats.</p>
         <span class="explore-go">Shop →</span>
       </a>
       <a class="explore-card" href="https://github.com/Reeds-Agent-Team/Bitcoin-Meetups" target="_blank" rel="noopener">
         <div class="explore-icon">📖</div>
         <div class="explore-title">Resources</div>
-        <p class="explore-desc">An open-source playbook for starting, running, and growing a meetup.</p>
-        <span class="explore-go">Browse the guide →</span>
+        <p class="explore-desc">Open-source meetup playbook.</p>
+        <span class="explore-go">Browse →</span>
       </a>
       <a class="explore-card" href="#" data-lb-bug-trigger>
         <div class="explore-icon">🐞</div>
         <div class="explore-title">Report a Bug</div>
-        <p class="explore-desc">Spot something broken or off? Send us a quick report.</p>
+        <p class="explore-desc">Spot something broken? Tell us.</p>
         <span class="explore-go">Let us know →</span>
       </a>
     </div>
@@ -2020,19 +2025,17 @@
 
     if (shortDesc) {
       const descP = document.createElement('p');
-      // On the featured card, clamp the description to 2 lines (CSS) and
-      // offer a "see full description" link to the episode page rather
-      // than dumping the whole shownotes into the hero.
-      descP.className = featured ? 'episode-desc clamp-2' : 'episode-desc';
+      // Clamp the description to 2 lines (CSS) on every card and offer a
+      // "see full description" link to the episode page rather than dumping
+      // the whole shownotes onto the card.
+      descP.className = 'episode-desc clamp-2';
       descP.textContent = shortDesc;
       card.appendChild(descP);
-      if (featured) {
-        const more = document.createElement('a');
-        more.className = 'desc-more';
-        more.href = `/ep${pad(epNum)}`;
-        more.textContent = 'See full description →';
-        card.appendChild(more);
-      }
+      const more = document.createElement('a');
+      more.className = 'desc-more';
+      more.href = `/ep${pad(epNum)}`;
+      more.textContent = 'See full description →';
+      card.appendChild(more);
     }
 
     if (mp3) {
@@ -2154,12 +2157,12 @@
     });
     ovMenu.appendChild(tx);
 
-    // Subscribe-in-app dropdown. Show-level URLs (don't change per
-    // episode) for the top podcasting 2.0 apps. Castamatic's universal
-    // link uses the show's podcast:guid; Podverse + CurioCaster don't
-    // expose stable show-page URLs we could verify, so they fall back
-    // to a search/homepage URL. Update verbatim if better URLs land.
-    ovMenu.appendChild(buildSubscribeDropdown());
+    // Subscribe-in-app dropdown. Show-level URLs for the top podcasting 2.0
+    // apps. On the featured hero card it tucks into the ⋮ overflow; on every
+    // other card it's a primary button next to Boost (the two split the
+    // action row on mobile).
+    const subscribe = buildSubscribeDropdown();
+    if (featured) ovMenu.appendChild(subscribe);
 
     // Wrap the secondary actions + a ⋮ trigger (the trigger only shows on
     // mobile; on desktop the group flattens inline via display:contents).
@@ -2212,6 +2215,10 @@
       });
       actions.appendChild(boostBtn);
     }
+
+    // Subscribe sits next to Boost as a primary action on the non-featured
+    // cards (More Episodes drawer + /episodes.html).
+    if (!featured) actions.appendChild(subscribe);
 
     card.appendChild(actions);
     (target || $list).appendChild(card);
