@@ -943,6 +943,30 @@
       word-break: break-all;
     }
     .lb-boost-msg .lb-url:hover { text-decoration: none; }
+
+    /* Biggest Boosts as a fixed-height, vertically auto-scrolling feed:
+       top-5 rows on a gentle loop, but a real scroll container so the reader
+       can hover/scroll/drag to take over (home-leaderboards.js). Edge fade +
+       hidden scrollbar keep it reading like a ticker, not a scrollbox. */
+    .lb-list--feed {
+      max-height: 360px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      overscroll-behavior: contain;
+      scrollbar-width: none;
+      cursor: grab;
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
+              mask-image: linear-gradient(to bottom, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
+    }
+    .lb-list--feed::-webkit-scrollbar { width: 0; height: 0; }
+    .lb-list--feed.is-grabbing { cursor: grabbing; }
+    .lb-list--feed.is-grabbing * { user-select: none; }
+    .lb-feed-hint {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-style: italic;
+      margin: -0.35rem 0 1.1rem;
+    }
     @media (max-width: 760px) { .lb-grid--two { grid-template-columns: 1fr; } }
 
     /* ── Recent boosts ticker (top 20, ~4 visible, scrolls; pfp + name) ── */
@@ -1609,8 +1633,8 @@
 
     <article class="lb-card lb-card--wide">
       <div class="lb-card-head"><span class="lb-card-icon" aria-hidden="true">💰</span><h3>Biggest Boosts</h3></div>
-      <p class="lb-card-sub">The largest boosts ever sent — and what they said</p>
-      <ol class="lb-list lb-list--boosts" id="lb-bigboosts"><li class="lb-loading">Loading…</li></ol>
+      <p class="lb-feed-hint">Auto-scrolls — hover, scroll, or drag to browse</p>
+      <ol class="lb-list lb-list--boosts lb-list--feed" id="lb-bigboosts"><li class="lb-loading">Loading…</li></ol>
     </article>
   </div>
 </section>

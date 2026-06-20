@@ -296,6 +296,136 @@
     ol.replaceChildren(frag);
   }
 
+  function prefersReduce() {
+    return !!(window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+
+  // Biggest Boosts as a fixed-height vertical feed: render the rows, then
+  // (once laid out) duplicate the set if it overflows the viewport so the
+  // loop wraps seamlessly. Re-renders (cache → relay profiles) reuse the
+  // same element; ensureVMarquee binds behavior once and just re-measures.
+  function fillFeed(ol, items) {
+    if (!ol) return;
+    if (!items.length) { ol.innerHTML = '<li class="lb-empty">Nothing here yet.</li>'; return; }
+    var frag = document.createDocumentFragment();
+    items.forEach(function (li) { frag.appendChild(li); });
+    ol.replaceChildren(frag);
+    ol.dataset.setLen = '0';
+    var reduce = prefersReduce();
+    requestAnimationFrame(function () {
+      // Only clone for the loop when a single set actually overflows (and
+      // not under reduced-motion, where there's no auto-scroll to loop).
+      if (!reduce && ol.scrollHeight > ol.clientHeight + 4) {
+        var clones = document.createDocumentFragment();
+        items.forEach(function (li) {
+          var c = li.cloneNode(true);
+          c.setAttribute('aria-hidden', 'true');
+          c.classList.add('lb-clone');
+          clones.appendChild(c);
+        });
+        ol.appendChild(clones);
+        ol.dataset.setLen = String(items.length);
+      }
+      ensureVMarquee(ol);
+    });
+  }
+
+  // Gentle vertical auto-scroll that the reader can take over: hover/focus
+  // pauses it; wheel/touch/drag scrub it; auto resumes ~2s after the user
+  // stops. Mirrors the horizontal recent-boosts ticker on the Y axis.
+  function ensureVMarquee(el) {
+    if (el.__vm) { el.__vm.refresh(); return; }
+
+    var period = 0;
+    function measure() {
+      var setLen = parseInt(el.dataset.setLen, 10) || 0;
+      var a = el.children[0], b = setLen ? el.children[setLen] : null;
+      // Distance between matching rows of set A and its clone = one loop.
+      period = (a && b) ? (b.offsetTop - a.offsetTop) : 0;
+    }
+    measure();
+    el.querySelectorAll('img').forEach(function (img) {
+      if (!img.complete) img.addEventListener('load', measure, { once: true });
+    });
+    window.addEventListener('resize', measure);
+    el.__vm = { refresh: measure };
+
+    function wrap() {
+      if (period <= 0) return;
+      if (el.scrollTop >= period) el.scrollTop -= period;
+      else if (el.scrollTop < 0) el.scrollTop += period;
+    }
+
+    var hovering = false, focused = false, idle = true, idleTimer = null;
+    function markActive() {
+      idle = false;
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(function () { idle = true; }, 1800);
+    }
+    el.addEventListener('mouseenter', function () { hovering = true; });
+    el.addEventListener('mouseleave', function () { hovering = false; });
+    el.addEventListener('focusin', function () { focused = true; });
+    el.addEventListener('focusout', function () { focused = false; });
+    el.addEventListener('wheel', markActive, { passive: true });
+    el.addEventListener('touchstart', markActive, { passive: true });
+    el.addEventListener('touchmove', markActive, { passive: true });
+
+    // Mouse click-drag to scrub. Don't hijack link clicks; only treat it as
+    // a drag once the pointer moves, and swallow that drag's trailing click.
+    var startY = 0, lastY = 0, armed = false, dragging = false, dragMoved = false, pid = null;
+    el.addEventListener('pointerdown', function (e) {
+      if (e.pointerType !== 'mouse') return;
+      if (e.target.closest('a, button')) return;
+      armed = true; dragging = false; dragMoved = false;
+      startY = e.clientY; lastY = e.clientY; pid = e.pointerId;
+    });
+    el.addEventListener('pointermove', function (e) {
+      if (!armed) return;
+      if (!dragging && Math.abs(e.clientY - startY) > 3) {
+        dragging = true; dragMoved = true;
+        try { el.setPointerCapture(pid); } catch (x) {}
+        el.classList.add('is-grabbing');
+      }
+      if (dragging) { el.scrollTop -= e.clientY - lastY; wrap(); }
+      lastY = e.clientY;
+    });
+    function endDrag(e) {
+      armed = false;
+      if (!dragging) return;
+      dragging = false;
+      el.classList.remove('is-grabbing');
+      try { el.releasePointerCapture(e.pointerId); } catch (x) {}
+    }
+    el.addEventListener('pointerup', endDrag);
+    el.addEventListener('pointercancel', endDrag);
+    el.addEventListener('click', function (e) {
+      if (dragMoved) { e.preventDefault(); e.stopPropagation(); dragMoved = false; }
+    }, true);
+
+    if (prefersReduce()) return; // manual scrub only; no auto motion
+
+    var SPEED = 26; // px/sec — slow enough to read the ad-reads
+    var lastT = performance.now();
+    // Track position in JS so sub-pixel steps don't get lost to scrollTop
+    // rounding; user interaction re-syncs from the real scroll position.
+    var pos = el.scrollTop;
+    function tick(now) {
+      var dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
+      if (period > 0 && !(hovering || focused || dragging || !idle)) {
+        pos += SPEED * dt;
+        if (pos >= period) pos -= period;
+        else if (pos < 0) pos += period;
+        el.scrollTop = pos;
+      } else {
+        pos = el.scrollTop; // user-driven or paused — follow the real value
+        wrap();
+      }
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
   function renderAll(data, profiles) {
     // Episodes (no avatar column). Title links to /ep###; guests nostrized.
     fill($('lb-episodes'), data.episodes.map(function (ep, i) {
@@ -346,7 +476,7 @@
 
     // Biggest Boosts — wide rows with avatar, name/amount line, and the
     // full boost message (the "ad read").
-    fill($('lb-bigboosts'), data.biggest.map(function (b, i) {
+    fillFeed($('lb-bigboosts'), data.biggest.map(function (b, i) {
       var li = document.createElement('li');
       li.className = 'lb-boost-item';
       li.appendChild(rankCell(i));
