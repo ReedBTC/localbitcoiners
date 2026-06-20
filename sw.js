@@ -17,7 +17,11 @@
 // them, which would fail the ES module link on first merch.html load.
 // v14: hero/OG banner swapped from LocalBitcoiners_banner_YT.jpg to
 // LocalBitcoiners_banner.png. Bump evicts the precached old .jpg.
-const VERSION = 'lb-v14';
+// v15: homepage hub + unified Explore nav/footer. Bump evicts stale
+// stale-while-revalidate copies of /assets/css/nav.css and the homepage
+// JS (home-leaderboards.js etc.) so returning visitors get the new nav
+// label, leaderboard tie-tiers, etc. without waiting for a 2nd revalidate.
+const VERSION = 'lb-v15';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
@@ -41,6 +45,8 @@ const PRECACHE_URLS = [
   '/assets/LocalBitcoiners.png',
   '/assets/favicon.png',
   '/assets/LocalBitcoiners_banner.png',
+  '/assets/css/nav.css',
+  '/assets/css/footer.css',
   '/assets/css/episode.css',
   '/assets/css/boosts-thread.css',
   '/assets/css/boost-actions.css',
