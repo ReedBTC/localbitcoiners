@@ -319,7 +319,7 @@ def build_zap_splits_for_v4v(sender_npub, nsec, relays=None):
 STANDALONE_BOOST_IMAGE = "https://i.nostr.build/a6G5FkkfTlSyfJ7z.png"  # boost-publisher standalone note
 TOPEPISODES_IMAGE      = "https://i.nostr.build/FrGf0Ed65wBNuFxF.png"  # episodesats leaderboard parent
 TOPBOOSTS_IMAGE        = "https://i.nostr.build/s9WPcUfwPI4x3n5Q.png"  # top-boosts leaderboard parent
-BOOSTLEADERS_IMAGE     = "https://i.nostr.build/O19RVXpf0P0ucdkZ.png"  # boost-leaders leaderboard parent
+BOOSTLEADERS_IMAGE     = "https://i.nostr.build/AQ6JrQJ5c2vwO5u0.png"  # boost-leaders leaderboard parent
 
 def with_header_image(note_text, image_url):
     """Prepend the banner image URL on its own line so clients render it as a
