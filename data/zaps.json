@@ -1,8 +1,11 @@
 {
-  "generated_at": "2026-06-22T08:46:33Z",
+  "generated_at": "2026-06-23T08:46:23Z",
   "source": "zaps.csv",
-  "row_count": 128,
+  "row_count": 131,
   "rows": [
+    {"settled_at": "2026-06-22T21:29:23Z", "zap_receipt_id": "c6c64ee9f6834c480f294f5619b104762cf45666248add1083d802f85b0ff41c", "zapped_event_id": "7cc3cd3dcd9f866128a9da718559ef047aca3a50d6f623059626f8071e852623", "sender_npub": "npub1f4qf8gnnqjqdd5l748zesc49jj3mz8c9350y3544ajem6s77wsrsrwl37g", "sender_name": null, "sats": 10, "message": "Feeling lucky? Try bitcoin solo mining"},
+    {"settled_at": "2026-06-22T18:52:16Z", "zap_receipt_id": "e2275cb7a25adf289728009922464e2598bad7d0c8f6f46edc013164c1ee17c1", "zapped_event_id": "0c0c506b650c5336a3726a26b9c09b00f41aa62d53126b8b3644b9a2afe979e4", "sender_npub": "npub1jxh2kga4ve8d4ftahcqtqswvk5z5f7ya0k2kx3dm679hmw4ysesqvt62rj", "sender_name": null, "sats": 5, "message": null},
+    {"settled_at": "2026-06-22T12:18:07Z", "zap_receipt_id": "f16eebef94e14bb9a8db2b513292b89e4d853a57c6051ae90d99add25afefb14", "zapped_event_id": "3c1de7f565dc4989358c8010bbbc7b50a18066fa9616355105f6b6dea4173cbb", "sender_npub": "npub1uzt238htjzpq39dxmltlx60vxym9fetk9czz6kddq6fhvkf4z3usy9qtrh", "sender_name": null, "sats": 121, "message": null},
     {"settled_at": "2026-06-19T22:55:52Z", "zap_receipt_id": "a95899a6c1934ef919f1c119233f75cb02d6df7922c84c825fb09b17e12466ce", "zapped_event_id": "5bc43331e77a05ee9ab8df829470f979d45be0c7aeaa38edbed17b469d48276f", "sender_npub": "npub1p7dcnhs7yqy4785gkcfk2cgv99hxm35afdzm7arm90em63q4nl4sfg6cpu", "sender_name": null, "sats": 10, "message": "OP_RETURN your forever message here"},
     {"settled_at": "2026-06-19T01:08:33Z", "zap_receipt_id": "b103303e71105cab172a7db829055790296f8368d4684411d1b4b7593d8a5230", "zapped_event_id": "31d134450fd243b2dfddb26e8e20aa68c6e41f57fea92b54f3209d0ca7b07b83", "sender_npub": "npub1lldaex9dr9u2wy5cnezu0krhughxjdy5mw8rudvn5xxcsystkvrs56meh9", "sender_name": null, "sats": 42, "message": "Onward 🫡"},
     {"settled_at": "2026-06-17T17:54:03Z", "zap_receipt_id": "d5a56c97eb7550770de3d93905561ae689e33c1d8aaa04eb315ce0d3c388b8cc", "zapped_event_id": "5d7f3dbdab2ee19ec11e04bbff55a5f1ec75cf794f72f3e138d305df4ff599dd", "sender_npub": "npub1lhuex5pzy833ekxpvdmjz9k6rvv5763e4h2cgdfsx62egu0wk6hs7yd2ck", "sender_name": null, "sats": 21000, "message": "Connect parallel systems and supercharge the flywheel! It can start with a small single individual action. No excuses, attend a local meetup now!"},
