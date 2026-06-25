@@ -1,8 +1,14 @@
 {
-  "generated_at": "2026-06-24T08:46:52Z",
+  "generated_at": "2026-06-25T08:46:48Z",
   "source": "zaps.csv",
-  "row_count": 131,
+  "row_count": 137,
   "rows": [
+    {"settled_at": "2026-06-24T23:15:15Z", "zap_receipt_id": "3722d191a76e4ce064a09823006b08bb9151417549c351ee5957e644321bb1da", "zapped_event_id": "663698859b03bb4deb4a1faca1a9eeaec52fb492498b4330b100310567667c46", "sender_npub": "npub1avlfy74e7pmhtc2wxjnp5v5ag59jmz6jkaeurkaqgp9segw97s9qycq6k3", "sender_name": null, "sats": 21, "message": "🤝🏻"},
+    {"settled_at": "2026-06-24T18:10:48Z", "zap_receipt_id": "fb37876da7e7635e0daf39e3331f6bda79d2b97e9d311f6e0a3014115e4fb3ef", "zapped_event_id": "663698859b03bb4deb4a1faca1a9eeaec52fb492498b4330b100310567667c46", "sender_npub": "npub15ypxpg429uyjmp0zczuza902chuvvr4pn35wfzv8rx6cej4z8clq6jmpcx", "sender_name": null, "sats": 21, "message": "BULLISH"},
+    {"settled_at": "2026-06-24T16:19:30Z", "zap_receipt_id": "2f3b175dd6020e3646123815f324e1a2e45be6ce0dc1dcc9bfc0f355f4146ab9", "zapped_event_id": "28bf7fb41e29d1967fe5fcf03c1a736eb49c2bc192980c705d6cec5eb2eebecc", "sender_npub": "npub15ypxpg429uyjmp0zczuza902chuvvr4pn35wfzv8rx6cej4z8clq6jmpcx", "sender_name": null, "sats": 21, "message": "BULLISH"},
+    {"settled_at": "2026-06-24T15:31:43Z", "zap_receipt_id": "29d2853da57eb4628d83497d4ff726df236c839eca55081746a191ddeb324baa", "zapped_event_id": "ac189b6b3d7c791a6ca5656fd1295c319079fb938ca1f533ee40fb11219dcfd4", "sender_npub": "npub1h8ktyt8zvqc8dcpk7yh9gq6fs0csqcujlkqdwwspwgtef9ral6xqzugdky", "sender_name": null, "sats": 21, "message": "🧡"},
+    {"settled_at": "2026-06-24T14:50:37Z", "zap_receipt_id": "71f9f5517bc3e6e84d9103dac2f1705793a6d51fd92db9274bc29e082c8221df", "zapped_event_id": "603a98fc58e14b8e9be945a1abc98fe1eaa3eb755c62f58c9a591d9f0c8fc8e0", "sender_npub": "npub1lqs30x7466guvx6r2cek8z9d4hpucycy7j08wx58cwx70m206q3qrscejr", "sender_name": null, "sats": 10, "message": null},
+    {"settled_at": "2026-06-24T14:41:28Z", "zap_receipt_id": "30303843aa968cca422d20180a2a7305aa00a557a16728fa9d9b95eca75c5f9e", "zapped_event_id": "603a98fc58e14b8e9be945a1abc98fe1eaa3eb755c62f58c9a591d9f0c8fc8e0", "sender_npub": "npub1xgyjasdztryl9sg6nfdm2wcj0j3qjs03sq7a0an32pg0lr5l6yaqxhgu7s", "sender_name": null, "sats": 21, "message": null},
     {"settled_at": "2026-06-22T21:29:23Z", "zap_receipt_id": "c6c64ee9f6834c480f294f5619b104762cf45666248add1083d802f85b0ff41c", "zapped_event_id": "7cc3cd3dcd9f866128a9da718559ef047aca3a50d6f623059626f8071e852623", "sender_npub": "npub1f4qf8gnnqjqdd5l748zesc49jj3mz8c9350y3544ajem6s77wsrsrwl37g", "sender_name": null, "sats": 10, "message": "Feeling lucky? Try bitcoin solo mining"},
     {"settled_at": "2026-06-22T18:52:16Z", "zap_receipt_id": "e2275cb7a25adf289728009922464e2598bad7d0c8f6f46edc013164c1ee17c1", "zapped_event_id": "0c0c506b650c5336a3726a26b9c09b00f41aa62d53126b8b3644b9a2afe979e4", "sender_npub": "npub1jxh2kga4ve8d4ftahcqtqswvk5z5f7ya0k2kx3dm679hmw4ysesqvt62rj", "sender_name": null, "sats": 5, "message": null},
     {"settled_at": "2026-06-22T12:18:07Z", "zap_receipt_id": "f16eebef94e14bb9a8db2b513292b89e4d853a57c6051ae90d99add25afefb14", "zapped_event_id": "3c1de7f565dc4989358c8010bbbc7b50a18066fa9616355105f6b6dea4173cbb", "sender_npub": "npub1uzt238htjzpq39dxmltlx60vxym9fetk9czz6kddq6fhvkf4z3usy9qtrh", "sender_name": null, "sats": 121, "message": null},
