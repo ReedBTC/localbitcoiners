@@ -28,7 +28,7 @@
 // v17: Biggest Boosts becomes a fixed-height vertical auto-scrolling feed.
 // Bump evicts the stale home-leaderboards.js so returning visitors get the
 // feed without waiting for a 2nd revalidate.
-const VERSION = 'lb-v17';
+const VERSION = 'lb-v18';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

@@ -285,67 +285,6 @@
       margin: 0 auto;
     }
 
-    /* ── About ── */
-    #about .section-body {
-      margin-top: 1.8rem;
-      font-size: 1.05rem;
-      color: var(--text);
-      line-height: 1.8;
-    }
-    #about .section-body p + p { margin-top: 1rem; }
-    #about .section-body a { color: var(--green-d); font-weight: 600; }
-
-    /* ── Hosts ── */
-    #hosts { background: var(--cream); }
-    #hosts .hosts-grid {
-      margin-top: 2rem;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 2rem;
-    }
-    .host-card {
-      background: var(--cream);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 1.75rem;
-      box-shadow: 0 2px 8px rgba(30,58,95,0.06);
-    }
-    .host-card h3 {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 1.4rem;
-      font-weight: 700;
-      color: var(--navy);
-      margin-bottom: 0.75rem;
-    }
-    .host-card p {
-      font-size: 0.97rem;
-      color: var(--muted);
-      line-height: 1.7;
-    }
-    .host-card p + p { margin-top: 0.5rem; }
-    .host-card a {
-      color: var(--navy-l);
-      font-weight: 600;
-    }
-    .nostr-link {
-      display: inline-block;
-      margin-top: 0.9rem;
-      font-size: 0.88rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--green-d) !important;
-      text-decoration: none !important;
-      border: 1.5px solid var(--green-d);
-      border-radius: 4px;
-      padding: 0.3rem 0.75rem;
-      transition: background 0.15s, color 0.15s;
-    }
-    .nostr-link:hover {
-      background: var(--green-d);
-      color: var(--white) !important;
-    }
-
     /* ── Episodes ── */
     #episodes { background: var(--white); }
 
@@ -602,64 +541,6 @@
       color: var(--green-d);
     }
 
-    /* ── Meetups Resource ── */
-    #meetups { background: var(--white); }
-    #meetups .section-body {
-      margin-top: 1.8rem;
-      font-size: 1.05rem;
-      color: var(--text);
-      line-height: 1.8;
-    }
-    #meetups .section-body p + p { margin-top: 1rem; }
-    .meetups-cta {
-      display: inline-block;
-      margin-top: 1.5rem;
-      background: var(--green-d);
-      color: var(--white) !important;
-      text-decoration: none !important;
-      font-weight: 700;
-      font-size: 0.95rem;
-      padding: 0.6rem 1.4rem;
-      border-radius: 6px;
-      letter-spacing: 0.02em;
-      transition: background 0.15s;
-    }
-    .meetups-cta:hover { background: var(--green); }
-
-    /* ── Links ── */
-    #links { background: var(--navy); }
-    #links .section-title { color: var(--cream); }
-    #links .section-title::after { background: var(--green); }
-
-    .links-grid {
-      margin-top: 2.5rem;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 2rem;
-    }
-    .links-group h3 {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 1.05rem;
-      font-weight: 700;
-      color: var(--green-d);
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      margin-bottom: 1rem;
-      padding-bottom: 0.4rem;
-      border-bottom: 1px solid rgba(94,125,58,0.3);
-    }
-    .links-group ul { list-style: none; }
-    .links-group ul li {
-      margin-bottom: 0.65rem;
-      font-size: 0.97rem;
-    }
-    .links-group ul li a {
-      color: var(--cream-d);
-      text-decoration: none;
-      transition: color 0.15s;
-    }
-    .links-group ul li a:hover { color: var(--green-d); }
-
     /* Footer styles (incl. .payment-code) are shared — see /assets/css/footer.css. */
 
     /* ── Responsive ── */
@@ -670,7 +551,6 @@
       .section-title { font-size: 1.5rem; }
       .episode-card { padding: 1.25rem 1.1rem; position: relative; }
       .episode-title { font-size: 1.1rem; }
-      .links-grid { grid-template-columns: 1fr; }
 
       /* Mobile: secondary actions collapse into a ⋮ menu, top-right of the
          card, leaving Boost as the only primary action in the row. */
