@@ -1301,6 +1301,7 @@
       return;
     }
     streamers.sort(function (a, b) { return b.sats - a.sats; });
+    streamers = streamers.slice(0, 10);   // shoutout shows the top 10 only
 
     // Sync pre-resolve from cache so the first paint already shows
     // names + avatars for known supporters.
