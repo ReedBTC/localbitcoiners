@@ -20,7 +20,6 @@
 
   var SATS_URL = '/data/sats.json';
   var RSS_URL = '/api/rss';
-  var ZAPS_URL = '/data/zaps.json';
   var DAY_MS = 86400000;
   var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
                 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -80,25 +79,21 @@
       .catch(function () { return null; }),
     fetch(RSS_URL).then(function (r) { return r.ok ? r.text() : null; })
       .catch(function () { return null; }),
-    fetch(ZAPS_URL).then(function (r) { return r.ok ? r.json() : null; })
-      .catch(function () { return null; }),
   ]).then(function (results) {
     var doc = results[0];
     var rssXml = results[1];
-    var zapsDoc = results[2];
     if (!doc || !Array.isArray(doc.rows)) { showError(); return; }
     var rows = doc.rows.filter(function (row) {
       return typeof row.total_sats === 'number' && row.total_sats > 0 &&
         isFinite(Date.parse(row.settled_at));
     });
     if (!rows.length) { showError(); return; }
-    var zaps = (zapsDoc && Array.isArray(zapsDoc.rows)) ? zapsDoc.rows : [];
     render(rows, rssXml ? parseEpisodes(rssXml) : []);
     renderAppMix(rows);
     renderLeaderboard(rows);
     renderIdentityBoard(rows);
     renderStreamerShoutout(rows);
-    renderTopZappers(zaps);
+    renderTopZappers(rows);
     renderBigPreNostr(rows);
   });
 
@@ -800,6 +795,7 @@
       case 'CurioCaster':         return 'stats-app-curio';
       case 'Castamatic':          return 'stats-app-castamatic';
       case 'BoostMeBitch':        return 'stats-app-bmb';
+      case 'nostr zaps':          return 'stats-app-nostr-zaps';
       default:                    return 'stats-app-other';
     }
   }
@@ -813,6 +809,7 @@
       case 'CurioCaster':         return 'stats-band-app-curio';
       case 'Castamatic':          return 'stats-band-app-castamatic';
       case 'BoostMeBitch':        return 'stats-band-app-bmb';
+      case 'nostr zaps':          return 'stats-band-app-nostr-zaps';
       default:                    return 'stats-band-app-other';
     }
   }
@@ -1397,18 +1394,19 @@
   }
 
   // ── Top Zappers — all-time totals per zap-sender ───────────────────
-  // Aggregates zaps.json by sender_npub, sums sats, sorts largest-first
-  // and renders the same compact mini-cards the streamers shoutout uses.
-  // No app badge (zaps don't have one). Hosts left in deliberately —
-  // zaps from hosts go to the ad budget, not back to themselves.
-  function renderTopZappers(zapRows) {
+  // Filters sats.json rows by source === 'zap', aggregates total_sats per
+  // sender_npub, sorts largest-first and renders the same compact mini-cards
+  // the streamers shoutout uses. Hosts left in deliberately — zaps from hosts
+  // go to the ad budget, not back to themselves.
+  function renderTopZappers(allRows) {
     if (!zappersCanvas) return;
 
     var byId = Object.create(null);
     var anonIdx = 0;
-    for (var i = 0; i < zapRows.length; i++) {
-      var row = zapRows[i];
-      if (typeof row.sats !== 'number' || row.sats <= 0) continue;
+    for (var i = 0; i < allRows.length; i++) {
+      var row = allRows[i];
+      if (row.source !== 'zap') continue;
+      if (typeof row.total_sats !== 'number' || row.total_sats <= 0) continue;
       var npub = row.sender_npub || '';
       var key = npub || ('__anon__' + (anonIdx++));
       var rec = byId[key] || (byId[key] = {
@@ -1416,7 +1414,7 @@
         label: row.sender_name || (npub ? shortNpub(npub) : 'Anonymous'),
         sats: 0,
       });
-      rec.sats += row.sats;
+      rec.sats += row.total_sats;
     }
 
     var zappers = [];

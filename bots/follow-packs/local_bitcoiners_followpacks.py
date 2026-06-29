@@ -100,20 +100,35 @@ def load_sats_rows():
     return data["rows"] if isinstance(data, dict) else data
 
 
+ZAP_MIN_SATS = 100  # min lifetime zap total for an npub to earn tier credit from zaps
+
 def compute_tier_members(rows):
     """{tier_slug: [npub, ...]} — lifetime total_sats per sender_npub (boosts +
-    streams); name-only (no npub) supporters omitted. Hosts (Reed/Rev) are
-    included by what they've boosted, mirroring supporters.js. Each npub in the
-    first tier it clears."""
+    streams + zaps); name-only (no npub) supporters omitted. Hosts (Reed/Rev)
+    are included by what they've boosted, mirroring supporters.js. Each npub
+    lands in the first tier it clears.
+
+    Zap rows (source == 'zap') are accumulated separately and only added to an
+    npub's total when their aggregate zap sats reach ZAP_MIN_SATS — prevents
+    single tiny zaps from qualifying someone for the entry-level tier."""
     totals = {}
+    zap_totals = {}
     for r in rows:
         npub = (r.get("sender_npub") or "").strip()
         if not npub:
             continue
         try:
-            totals[npub] = totals.get(npub, 0) + int(r.get("total_sats") or 0)
+            sats = int(r.get("total_sats") or 0)
+            if r.get("source") == "zap":
+                zap_totals[npub] = zap_totals.get(npub, 0) + sats
+            else:
+                totals[npub] = totals.get(npub, 0) + sats
         except (TypeError, ValueError):
             continue
+
+    for npub, zap_sats in zap_totals.items():
+        if zap_sats >= ZAP_MIN_SATS:
+            totals[npub] = totals.get(npub, 0) + zap_sats
 
     packs = {slug: [] for _, slug, _ in TIER_PACKS}
     for npub, total in totals.items():

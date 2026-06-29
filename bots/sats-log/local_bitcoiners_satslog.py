@@ -98,6 +98,7 @@ FOUNTAIN_CSV     = REPO_ROOT / "data" / "fountain-api.csv"
 VALUE_SPLITS_CSV = REPO_ROOT / "data" / "value-splits.csv"  # hand-maintained bot INPUT
 ZAPS_CSV         = REPO_ROOT / "data" / "zaps.csv"
 ZAPS_JSON        = REPO_ROOT / "data" / "zaps.json"
+ZAPPED_NOTES_CACHE = REPO_ROOT / "data" / "zapped-notes-cache.json"
 MEETUPS_CSV      = REPO_ROOT / "data" / "meetups.csv"
 MEETUPS_JSON     = REPO_ROOT / "data" / "meetups.json"
 
@@ -1680,6 +1681,120 @@ def write_zaps_json():
 
 
 # ---------------------------------------------------------------------------
+# Zap split fractions — zapped-notes-cache.json
+#
+# When a sender zaps one of our notes, the note may carry NIP-57 `zap` tags
+# defining an equal-weight split among N recipients (us + others). Our
+# kind-9735 receipt holds the FULL sender-declared amount; we credit that full
+# amount to the sender (total_sats) but only book our 1/N share to the
+# aquafox bucket (our_sats).
+#
+# The cache maps {event_id_hex → zap_tag_count} so each note is fetched from
+# a relay exactly once and the result is reused on every subsequent run.
+# ---------------------------------------------------------------------------
+
+def _load_zap_note_cache():
+    if ZAPPED_NOTES_CACHE.exists():
+        try:
+            return json.loads(ZAPPED_NOTES_CACHE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {}
+
+
+def _save_zap_note_cache(cache):
+    ZAPPED_NOTES_CACHE.parent.mkdir(parents=True, exist_ok=True)
+    ZAPPED_NOTES_CACHE.write_text(
+        json.dumps(cache, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+
+
+def _fetch_note_zap_tag_count(event_id, relays):
+    """Fetch the Nostr note with event_id from the relay list and return how
+    many `zap` tags it carries.  Returns None if the note can't be found on
+    any relay (caller should not cache this so we retry next run)."""
+    for relay in relays:
+        try:
+            ws = websocket.create_connection(relay, timeout=10)
+            ws.send(json.dumps(["REQ", "note_zap", {"ids": [event_id], "limit": 1}]))
+            ev = None
+            while True:
+                msg = json.loads(ws.recv())
+                if msg[0] == "EVENT":
+                    ev = msg[2]
+                elif msg[0] in ("EOSE", "CLOSED"):
+                    break
+            ws.close()
+            if ev:
+                count = sum(1 for t in ev.get("tags", []) if len(t) >= 1 and t[0] == "zap")
+                return count
+        except Exception:
+            pass
+    return None
+
+
+def get_zap_split_fraction(event_id, relays, cache):
+    """Return our fractional share of a zap addressed to event_id.
+
+    Looks up the event's `zap` tags and assumes an equal-weight split among
+    all N recipients; our share = 1/N.  Falls back to 1.0 when:
+      - event_id is blank (profile zap — no split possible)
+      - the note has 0 or 1 zap tags (all sats to us)
+      - the relay fetch fails (optimistic: assume no split)
+    Mutates `cache` in place; caller must persist it with _save_zap_note_cache."""
+    if not event_id:
+        return 1.0
+    if event_id in cache:
+        n = cache[event_id]
+        return 1.0 / n if n > 1 else 1.0
+    n = _fetch_note_zap_tag_count(event_id, relays)
+    if n is None:
+        return 1.0  # fetch failed — don't cache, retry next run
+    cache[event_id] = max(1, n)
+    return 1.0 / max(1, n)
+
+
+def build_sats_zap_rows(zap_rows, relays, cache):
+    """Convert parsed zap receipt rows (ZAP_COLUMNS shape) into sats.csv-shaped
+    dicts ready to merge into all_rows.  Applies zap split fractions so
+    our_sats / aquafox_sats reflect only our share while total_sats preserves
+    the full sender intent for supporter-tier credit."""
+    sats_rows = []
+    for zap in zap_rows:
+        total_sats = int(zap.get("sats") or 0)
+        if total_sats <= 0:
+            continue
+        event_id = zap.get("zapped_event_id") or ""
+        fraction = get_zap_split_fraction(event_id, relays, cache)
+        our_sats = round(total_sats * fraction)
+        sats_rows.append({
+            "settled_at":        zap.get("settled_at") or "",
+            "payment_hash":      zap.get("zap_receipt_id") or "",
+            "source":            "zap",
+            "app":               "nostr zaps",
+            "kind":              "zap",
+            "sender_npub":       zap.get("sender_npub") or "",
+            "sender_name":       zap.get("sender_name") or "",
+            "episode_id":        "",
+            "episode_num":       "",
+            "episode_title":     "",
+            "show_level":        "true",
+            "total_sats":        total_sats,
+            "our_sats":          our_sats,
+            "divisor":           round(fraction, 6),
+            "total_sats_method": "zap receipt",
+            "message":           zap.get("message") or "",
+            "reed_sats":         0,
+            "rev_sats":          0,
+            "aquafox_sats":      our_sats,
+            "guests_sats":       0,
+            "fountain_sats":     0,
+            "uncertain_sats":    0,
+        })
+    return sats_rows
+
+
+# ---------------------------------------------------------------------------
 # Meetups — NIP-52 calendar-event naddrs shared via boost
 #
 # Boosters sometimes promote a local meetup by pasting its NIP-52 calendar
@@ -1887,6 +2002,15 @@ def main():
     zap_rows = run_zaps(state)
     print(f"\n  Zap rows (→zaps.csv): {len(zap_rows)}")
 
+    # Build sats.csv-shaped zap rows. Relay lookup reuses the NIP-65 outbox
+    # cache populated by run_zaps so no extra round-trip. The note cache
+    # persists to disk so each zapped note is fetched from a relay only once.
+    zap_relays = get_outbox_relays(LB_HEX) or list(NOSTR_RELAYS)
+    zap_note_cache = _load_zap_note_cache()
+    zap_sats_rows = build_sats_zap_rows(zap_rows, zap_relays, zap_note_cache)
+    _save_zap_note_cache(zap_note_cache)
+    print(f"  Zap sats rows (→sats.csv): {len(zap_sats_rows)}")
+
     # ── Combine ──
     all_rows = all_boost_rows + stream_rows + node_stream_rows
 
@@ -1896,6 +2020,10 @@ def main():
     split_matched, split_unmatched, unmatched_nums = apply_value_splits(
         all_rows, rss_blocks, splits_rules,
     )
+
+    # Append zap rows AFTER split processing — their split columns are already
+    # set by build_sats_zap_rows and must not be overwritten.
+    all_rows.extend(zap_sats_rows)
     rss_ep_count = sum(1 for k in rss_blocks if k != "__channel__")
     print()
     print(f"Value-split breakdown: {rss_ep_count} RSS episode blocks + "
@@ -1917,7 +2045,7 @@ def main():
     print()
     print(f"Total rows in regenerated CSV: {len(all_rows)} "
           f"({len(all_boost_rows)} boosts + {len(stream_rows)} Fountain streams "
-          f"+ {len(node_stream_rows)} node streams)")
+          f"+ {len(node_stream_rows)} node streams + {len(zap_sats_rows)} zaps)")
 
     by_source = Counter(r["source"]            for r in all_rows)
     by_kind   = Counter(r["kind"]              for r in all_rows)
@@ -1946,8 +2074,8 @@ def main():
         print("\n[dry-run] First few Fountain stream rows:")
         for r in stream_rows[:3]:
             print(f"  {r}")
-        print("\n[dry-run] First few zap rows:")
-        for r in sorted(zap_rows, key=lambda x: x.get("settled_at",""), reverse=True)[:5]:
+        print("\n[dry-run] First few zap sats rows (→sats.csv):")
+        for r in sorted(zap_sats_rows, key=lambda x: x.get("settled_at",""), reverse=True)[:5]:
             print(f"  {r}")
         print("\n[dry-run] First few meetup rows:")
         for r in meetup_rows[:5]:
