@@ -659,13 +659,7 @@
 <script type="module" src="/assets/js/meetups.js"></script>
 
 <!-- PWA service worker -->
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
-    });
-  }
-</script>
+<script src="/assets/js/sw-register.js" defer></script>
 
 <!-- PWA install affordance -->
 <script src="assets/widgets/pwa-install.js" defer></script>

@@ -31,7 +31,11 @@
 // one per view) — bump evicts the stale index.html + home-leaderboards.js.
 // v20: Biggest Boosts feed no longer loops (stops at #5, auto jumps to top);
 // touch-action:pan-y makes the card swipe sideways on mobile.
-const VERSION = 'lb-v20';
+// v21: shared /assets/js/sw-register.js — forces SW update checks on load +
+// focus and auto-reloads once when a new SW takes control, so mobile/PWA pick
+// up deploys without a manual cache clear. Only VERSION needs bumping going
+// forward (no per-asset query strings).
+const VERSION = 'lb-v21';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
@@ -67,6 +71,7 @@ const PRECACHE_URLS = [
   '/assets/js/calendar-events.js',
   '/assets/js/boost-actions.js',
   '/assets/js/nav.js',
+  '/assets/js/sw-register.js',
 ];
 
 self.addEventListener('install', (event) => {

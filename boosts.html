@@ -499,13 +499,7 @@
 <script src="assets/widgets/login-widget.js" defer></script>
 
 <!-- PWA service worker -->
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
-    });
-  }
-</script>
+<script src="/assets/js/sw-register.js" defer></script>
 
 <!-- PWA install affordance — same script as index.html. -->
 <script src="assets/widgets/pwa-install.js" defer></script>
