@@ -678,16 +678,57 @@
     }
     .home-module-link:hover { border-color: var(--green-d); }
 
-    /* ── Leaderboards ── Biggest Boosts full-width on top (with messages),
-       Top Episodes + Ride or Dies half-width below; all stack on mobile.
+    /* ── Leaderboards ── A swipeable carousel: one board per view (Top
+       Episodes, Top Listeners, then Biggest Boosts), auto-rotating with dots.
        Cream section so the white cards pop (sits above the community section). */
     #leaderboards { background: var(--cream); }
-    .lb-grid--two {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1.25rem;
-      margin-bottom: 1.25rem;   /* episodes + ride-or-dies sit above biggest boosts */
+    .lb-carousel-hint {
+      font-size: 0.82rem;
+      color: var(--muted);
+      font-style: italic;
+      margin: -0.6rem 0 1.1rem;
+      text-align: center;
     }
+    .lb-carousel { position: relative; }
+    /* Horizontal scroll-snap track — native swipe + JS auto-advance share the
+       same scroll position; one slide fills the view and snaps to center. */
+    .lb-track {
+      display: flex;
+      align-items: stretch;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      outline: none;
+    }
+    .lb-track::-webkit-scrollbar { display: none; }
+    .lb-slide {
+      flex: 0 0 100%;
+      scroll-snap-align: center;
+      display: flex;
+      justify-content: center;
+      padding: 0.4rem 0.5rem 0.6rem;   /* breathing room for the card shadow */
+      box-sizing: border-box;
+    }
+    /* Fixed card height keeps the carousel from jumping between boards and caps
+       the Biggest Boosts feed (which would otherwise grow to its full list). */
+    .lb-slide .lb-card {
+      width: min(620px, 100%);
+      height: clamp(440px, 64vh, 480px);
+      margin: 0;
+    }
+    .lb-dots { display: flex; justify-content: center; gap: 0.5rem; margin-top: 0.9rem; }
+    .lb-dot {
+      width: 9px; height: 9px;
+      padding: 0;
+      border: none;
+      border-radius: 50%;
+      background: var(--border);
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+    }
+    .lb-dot:hover { background: var(--muted); }
+    .lb-dot.is-active { background: var(--orange-d); transform: scale(1.3); }
     /* Nostr-note-ish card: titled header band, then a ranked list. */
     .lb-card {
       background: var(--white);
@@ -829,7 +870,8 @@
        can hover/scroll/drag to take over (home-leaderboards.js). Edge fade +
        hidden scrollbar keep it reading like a ticker, not a scrollbox. */
     .lb-list--feed {
-      max-height: 360px;
+      flex: 1 1 auto;
+      min-height: 0;            /* fill the fixed-height card; lets the flex child clip */
       overflow-y: auto;
       overflow-x: hidden;
       overscroll-behavior: contain;
@@ -847,7 +889,7 @@
       font-style: italic;
       margin: -0.35rem 0 1.1rem;
     }
-    @media (max-width: 760px) { .lb-grid--two { grid-template-columns: 1fr; } }
+    @media (max-width: 760px) { .lb-slide { padding: 0.4rem 0.35rem 0.6rem; } }
 
     /* ── Recent boosts ticker (top 20, ~4 visible, scrolls; pfp + name) ── */
     #boosts-preview { background: var(--cream); }
@@ -1485,10 +1527,13 @@
 
 <!-- ══════════════════════════════ LEADERBOARDS ══════════════════════════════
      Live leaderboards computed from /data/sats.json (same definitions as the
-     weekly bot note in bots/leaderboards/). Biggest Boosts leads full-width
-     WITH the boost messages ("ad reads" we want maximally visible); Top
-     Episodes + Ride or Dies sit half-width below. Episode guests come from
-     the RSS shownotes ([guests: …]). Hydrated by home-leaderboards.js. -->
+     weekly bot note in bots/leaderboards/). A swipeable, auto-rotating carousel
+     of three boards (one per view, dot-navigable), in order: Top Episodes,
+     Top Listeners (the "ride or dies" metric — distinct episodes boosted;
+     matches the bot, id stays #lb-rideordies), and Biggest Boosts (whose boost
+     "ad reads" keep their own vertical auto-scroll feed). Episode guests come
+     from the RSS shownotes ([guests: …]). Carousel + hydration in
+     home-leaderboards.js. -->
 <section id="leaderboards" class="reveal" aria-label="Leaderboards">
   <div class="home-module">
     <div class="home-module-head">
@@ -1498,24 +1543,33 @@
       <a class="home-module-link" href="/stats.html">Full stats &amp; charts →</a>
     </div>
 
-    <div class="lb-grid lb-grid--two">
-      <article class="lb-card">
-        <div class="lb-card-head"><span class="lb-card-icon" aria-hidden="true">🏆</span><h3>Top Episodes</h3></div>
-        <p class="lb-card-sub">Most-boosted episodes, all-time</p>
-        <ol class="lb-list" id="lb-episodes"><li class="lb-loading">Loading…</li></ol>
-      </article>
-      <article class="lb-card">
-        <div class="lb-card-head"><span class="lb-card-icon" aria-hidden="true">⚡</span><h3>Ride or Dies</h3></div>
-        <p class="lb-card-sub">Boosted the most episodes</p>
-        <ol class="lb-list" id="lb-rideordies"><li class="lb-loading">Loading…</li></ol>
-      </article>
+    <p class="lb-carousel-hint">Auto-rotates · swipe, or tap a dot, to switch boards.</p>
+    <div class="lb-carousel">
+      <div class="lb-track" id="lb-track" tabindex="0" role="group" aria-roledescription="carousel" aria-label="Leaderboards">
+        <article class="lb-slide">
+          <div class="lb-card">
+            <div class="lb-card-head"><span class="lb-card-icon" aria-hidden="true">🏆</span><h3>Top Episodes</h3></div>
+            <p class="lb-card-sub">Most-boosted episodes, all-time</p>
+            <ol class="lb-list" id="lb-episodes"><li class="lb-loading">Loading…</li></ol>
+          </div>
+        </article>
+        <article class="lb-slide">
+          <div class="lb-card">
+            <div class="lb-card-head"><span class="lb-card-icon" aria-hidden="true">⚡</span><h3>Top Listeners</h3></div>
+            <p class="lb-card-sub">Most episodes boosted — this is our core group</p>
+            <ol class="lb-list" id="lb-rideordies"><li class="lb-loading">Loading…</li></ol>
+          </div>
+        </article>
+        <article class="lb-slide">
+          <div class="lb-card lb-card--boosts">
+            <div class="lb-card-head"><span class="lb-card-icon" aria-hidden="true">💰</span><h3>Biggest Boosts</h3></div>
+            <p class="lb-feed-hint">Top 5 biggest boosts of all time</p>
+            <ol class="lb-list lb-list--boosts lb-list--feed" id="lb-bigboosts"><li class="lb-loading">Loading…</li></ol>
+          </div>
+        </article>
+      </div>
+      <div class="lb-dots" id="lb-dots" role="tablist" aria-label="Choose a leaderboard"></div>
     </div>
-
-    <article class="lb-card lb-card--wide">
-      <div class="lb-card-head"><span class="lb-card-icon" aria-hidden="true">💰</span><h3>Biggest Boosts</h3></div>
-      <p class="lb-feed-hint">Auto-scrolls — hover, scroll, or drag to browse</p>
-      <ol class="lb-list lb-list--boosts lb-list--feed" id="lb-bigboosts"><li class="lb-loading">Loading…</li></ol>
-    </article>
   </div>
 </section>
 

@@ -26,9 +26,10 @@
 // stale home-leaderboards.js / home-people.js / supporters.js so returning
 // visitors get the links without waiting for a 2nd revalidate.
 // v17: Biggest Boosts becomes a fixed-height vertical auto-scrolling feed.
-// Bump evicts the stale home-leaderboards.js so returning visitors get the
-// feed without waiting for a 2nd revalidate.
-const VERSION = 'lb-v18';
+// v18: dead section CSS purged from index.html.
+// v19: leaderboards become a swipeable, auto-rotating carousel (3 boards,
+// one per view) — bump evicts the stale index.html + home-leaderboards.js.
+const VERSION = 'lb-v19';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

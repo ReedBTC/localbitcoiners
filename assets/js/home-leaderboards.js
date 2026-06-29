@@ -426,6 +426,93 @@
     requestAnimationFrame(tick);
   }
 
+  // The three boards live in a horizontal scroll-snap track: one board per
+  // view, auto-rotating every few seconds, but fully swipeable (native scroll)
+  // and dot-navigable. Auto-advance pauses while the reader hovers, focuses, or
+  // is actively scrolling/swiping — including the Biggest Boosts vertical feed,
+  // whose own scroll bubbles up here as interaction. Structure is static HTML,
+  // so this binds once on load, independent of the data fetch.
+  function initCarousel() {
+    var track = $('lb-track');
+    var dotsWrap = $('lb-dots');
+    if (!track || !dotsWrap) return;
+    var slides = Array.prototype.slice.call(track.querySelectorAll('.lb-slide'));
+    if (slides.length < 2) return;
+
+    var current = 0;
+    var dots = slides.map(function (s, i) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'lb-dot';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-label', 'Board ' + (i + 1) + ' of ' + slides.length);
+      b.addEventListener('click', function () { markActive(); goTo(i); });
+      dotsWrap.appendChild(b);
+      return b;
+    });
+
+    function setActive(i) {
+      current = i;
+      dots.forEach(function (d, di) {
+        var on = di === i;
+        d.classList.toggle('is-active', on);
+        d.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+    }
+    setActive(0);
+
+    function goTo(i) {
+      var s = slides[i];
+      if (s) track.scrollTo({ left: s.offsetLeft, behavior: 'smooth' });
+    }
+
+    // Keep the active dot in sync with wherever the scroll actually lands
+    // (manual swipe, auto-advance, or dot tap) — nearest slide to center wins.
+    var rafPending = false;
+    track.addEventListener('scroll', function () {
+      if (rafPending) return;
+      rafPending = true;
+      requestAnimationFrame(function () {
+        rafPending = false;
+        var center = track.scrollLeft + track.clientWidth / 2;
+        var best = 0, bestDist = Infinity;
+        slides.forEach(function (s, i) {
+          var d = Math.abs((s.offsetLeft + s.clientWidth / 2) - center);
+          if (d < bestDist) { bestDist = d; best = i; }
+        });
+        if (best !== current) setActive(best);
+      });
+    }, { passive: true });
+
+    var hovering = false, idle = true, idleTimer = null;
+    function markActive() {
+      idle = false;
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(function () { idle = true; }, 6000);
+    }
+    track.addEventListener('mouseenter', function () { hovering = true; });
+    track.addEventListener('mouseleave', function () { hovering = false; });
+    track.addEventListener('focusin', function () { hovering = true; });
+    track.addEventListener('focusout', function () { hovering = false; });
+    track.addEventListener('pointerdown', markActive);
+    track.addEventListener('wheel', markActive, { passive: true });
+    track.addEventListener('touchstart', markActive, { passive: true });
+    track.addEventListener('touchmove', markActive, { passive: true });
+
+    // Keyboard: ← / → step between boards when the track is focused.
+    track.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowRight') { markActive(); goTo((current + 1) % slides.length); e.preventDefault(); }
+      else if (e.key === 'ArrowLeft') { markActive(); goTo((current - 1 + slides.length) % slides.length); e.preventDefault(); }
+    });
+
+    if (prefersReduce()) return;  // no auto-rotate under reduced motion
+
+    setInterval(function () {
+      if (hovering || !idle) return;
+      goTo((current + 1) % slides.length);
+    }, 5000);
+  }
+
   function renderAll(data, profiles) {
     // Episodes (no avatar column). Title links to /ep###; guests nostrized.
     fill($('lb-episodes'), data.episodes.map(function (ep, i) {
@@ -512,6 +599,7 @@
   // ── init ──────────────────────────────────────────────────────────
   function init() {
     if (!$('lb-episodes')) return;
+    initCarousel();   // structure is static; wire the carousel up front
     Promise.all([
       getJSON(SATS_URL).catch(function () { return null; }),
       getRss(),
