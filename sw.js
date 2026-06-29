@@ -35,7 +35,10 @@
 // focus and auto-reloads once when a new SW takes control, so mobile/PWA pick
 // up deploys without a manual cache clear. Only VERSION needs bumping going
 // forward (no per-asset query strings).
-const VERSION = 'lb-v21';
+// v22: stale-while-revalidate now revalidates assets with the server
+// (cache:'no-cache') so the SW can't re-cache a copy up to 4h stale from the
+// browser HTTP cache — deploys propagate within a navigation, not hours.
+const VERSION = 'lb-v22';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
@@ -120,10 +123,18 @@ function isRssRequest(url) {
 // Stale-while-revalidate helper: serve cached immediately if present,
 // fetch fresh in the background, update cache for next visit. Falls
 // back to network-only when no cached copy exists yet.
+//
+// The background fetch uses { cache: 'no-cache' } so it always REVALIDATES
+// with the server (conditional request → 304 or fresh) instead of being
+// satisfied by the browser's HTTP cache. Cloudflare Pages serves assets with
+// `max-age=14400` (4h), so a plain fetch could re-populate the SW cache with a
+// copy up to 4h stale — which made deploys look "stuck" for frequent reloaders
+// even after a VERSION bump. Revalidating kills that window; the cached copy is
+// still returned instantly, so first paint isn't slowed.
 async function staleWhileRevalidate(request, cacheName) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(request);
-  const networkP = fetch(request).then((response) => {
+  const networkP = fetch(request, { cache: 'no-cache' }).then((response) => {
     if (response && response.ok && response.type === 'basic') {
       cache.put(request, response.clone()).catch(() => {});
     }
