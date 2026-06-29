@@ -874,6 +874,10 @@
       min-height: 0;            /* fill the fixed-height card; lets the flex child clip */
       overflow-y: auto;
       overflow-x: hidden;
+      /* pan-y = this feed only claims VERTICAL touch gestures; horizontal
+         swipes pass through to the carousel track so the Biggest Boosts card
+         is as easy to swipe sideways as the other two on mobile. */
+      touch-action: pan-y;
       overscroll-behavior: contain;
       scrollbar-width: none;
       cursor: grab;

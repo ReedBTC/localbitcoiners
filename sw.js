@@ -29,7 +29,9 @@
 // v18: dead section CSS purged from index.html.
 // v19: leaderboards become a swipeable, auto-rotating carousel (3 boards,
 // one per view) — bump evicts the stale index.html + home-leaderboards.js.
-const VERSION = 'lb-v19';
+// v20: Biggest Boosts feed no longer loops (stops at #5, auto jumps to top);
+// touch-action:pan-y makes the card swipe sideways on mobile.
+const VERSION = 'lb-v20';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

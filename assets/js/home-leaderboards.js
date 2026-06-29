@@ -301,61 +301,28 @@
       window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   }
 
-  // Biggest Boosts as a fixed-height vertical feed: render the rows, then
-  // (once laid out) duplicate the set if it overflows the viewport so the
-  // loop wraps seamlessly. Re-renders (cache → relay profiles) reuse the
-  // same element; ensureVMarquee binds behavior once and just re-measures.
+  // Biggest Boosts as a fixed-height vertical feed: just render the rows. It's
+  // a plain top-to-bottom scroll container (no seamless loop / clones) so the
+  // list has a real start (#1) and end (#5) — manual scrolling stops at both.
+  // Re-renders (cache → relay profiles) reuse the same element; ensureVMarquee
+  // binds behavior once.
   function fillFeed(ol, items) {
     if (!ol) return;
     if (!items.length) { ol.innerHTML = '<li class="lb-empty">Nothing here yet.</li>'; return; }
     var frag = document.createDocumentFragment();
     items.forEach(function (li) { frag.appendChild(li); });
     ol.replaceChildren(frag);
-    ol.dataset.setLen = '0';
-    var reduce = prefersReduce();
-    requestAnimationFrame(function () {
-      // Only clone for the loop when a single set actually overflows (and
-      // not under reduced-motion, where there's no auto-scroll to loop).
-      if (!reduce && ol.scrollHeight > ol.clientHeight + 4) {
-        var clones = document.createDocumentFragment();
-        items.forEach(function (li) {
-          var c = li.cloneNode(true);
-          c.setAttribute('aria-hidden', 'true');
-          c.classList.add('lb-clone');
-          clones.appendChild(c);
-        });
-        ol.appendChild(clones);
-        ol.dataset.setLen = String(items.length);
-      }
-      ensureVMarquee(ol);
-    });
+    requestAnimationFrame(function () { ensureVMarquee(ol); });
   }
 
-  // Gentle vertical auto-scroll that the reader can take over: hover/focus
-  // pauses it; wheel/touch/drag scrub it; auto resumes ~2s after the user
-  // stops. Mirrors the horizontal recent-boosts ticker on the Y axis.
+  // Gentle vertical auto-scroll the reader can take over: hover/focus pauses
+  // it; wheel/touch/drag scrub it; auto resumes ~2s after the user stops.
+  // Unlike the horizontal ticker, this does NOT wrap — manual scrolling clamps
+  // at the top (#1) and bottom (#5). The auto-scroll instead runs #1→#5, holds
+  // a moment at the bottom, then jumps back to the top and continues, so the
+  // restart reads as a deliberate reset rather than a confusing seamless loop.
   function ensureVMarquee(el) {
     if (el.__vm) { el.__vm.refresh(); return; }
-
-    var period = 0;
-    function measure() {
-      var setLen = parseInt(el.dataset.setLen, 10) || 0;
-      var a = el.children[0], b = setLen ? el.children[setLen] : null;
-      // Distance between matching rows of set A and its clone = one loop.
-      period = (a && b) ? (b.offsetTop - a.offsetTop) : 0;
-    }
-    measure();
-    el.querySelectorAll('img').forEach(function (img) {
-      if (!img.complete) img.addEventListener('load', measure, { once: true });
-    });
-    window.addEventListener('resize', measure);
-    el.__vm = { refresh: measure };
-
-    function wrap() {
-      if (period <= 0) return;
-      if (el.scrollTop >= period) el.scrollTop -= period;
-      else if (el.scrollTop < 0) el.scrollTop += period;
-    }
 
     var hovering = false, focused = false, idle = true, idleTimer = null;
     function markActive() {
@@ -371,8 +338,7 @@
     el.addEventListener('touchstart', markActive, { passive: true });
     el.addEventListener('touchmove', markActive, { passive: true });
 
-    // Mouse click-drag to scrub. Don't hijack link clicks; only treat it as
-    // a drag once the pointer moves, and swallow that drag's trailing click.
+    // Mouse click-drag to scrub (no wrap — the browser clamps scrollTop).
     var startY = 0, lastY = 0, armed = false, dragging = false, dragMoved = false, pid = null;
     el.addEventListener('pointerdown', function (e) {
       if (e.pointerType !== 'mouse') return;
@@ -387,7 +353,7 @@
         try { el.setPointerCapture(pid); } catch (x) {}
         el.classList.add('is-grabbing');
       }
-      if (dragging) { el.scrollTop -= e.clientY - lastY; wrap(); }
+      if (dragging) { el.scrollTop -= e.clientY - lastY; }
       lastY = e.clientY;
     });
     function endDrag(e) {
@@ -403,23 +369,37 @@
       if (dragMoved) { e.preventDefault(); e.stopPropagation(); dragMoved = false; }
     }, true);
 
+    // Track position in JS so sub-pixel steps don't get lost to scrollTop
+    // rounding. A re-render (replaceChildren) resets the list to the top, so
+    // refresh() re-syncs from the live scroll position and restarts the run.
+    var SPEED = 26;          // px/sec — slow enough to read the ad-reads
+    var HOLD_BOTTOM = 1600;  // ms paused on #5 before jumping back to the top
+    var HOLD_TOP = 900;      // ms paused at #1 after the jump before scrolling
+    var pos = el.scrollTop;
+    var phase = 'scroll';    // 'scroll' | 'holdBottom' | 'holdTop'
+    var holdUntil = 0;
+    el.__vm = { refresh: function () { pos = el.scrollTop = 0; phase = 'scroll'; holdUntil = 0; } };
+
     if (prefersReduce()) return; // manual scrub only; no auto motion
 
-    var SPEED = 26; // px/sec — slow enough to read the ad-reads
     var lastT = performance.now();
-    // Track position in JS so sub-pixel steps don't get lost to scrollTop
-    // rounding; user interaction re-syncs from the real scroll position.
-    var pos = el.scrollTop;
     function tick(now) {
       var dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
-      if (period > 0 && !(hovering || focused || dragging || !idle)) {
-        pos += SPEED * dt;
-        if (pos >= period) pos -= period;
-        else if (pos < 0) pos += period;
-        el.scrollTop = pos;
+      var max = el.scrollHeight - el.clientHeight;
+      if (max <= 1 || hovering || focused || dragging || !idle) {
+        pos = el.scrollTop;   // nothing to scroll, or user-driven/paused — follow real value
+        phase = 'scroll';
+        requestAnimationFrame(tick);
+        return;
+      }
+      if (phase === 'holdBottom') {
+        if (now >= holdUntil) { pos = el.scrollTop = 0; phase = 'holdTop'; holdUntil = now + HOLD_TOP; }
+      } else if (phase === 'holdTop') {
+        if (now >= holdUntil) phase = 'scroll';
       } else {
-        pos = el.scrollTop; // user-driven or paused — follow the real value
-        wrap();
+        pos += SPEED * dt;
+        if (pos >= max) { pos = max; el.scrollTop = max; phase = 'holdBottom'; holdUntil = now + HOLD_BOTTOM; }
+        else el.scrollTop = pos;
       }
       requestAnimationFrame(tick);
     }
