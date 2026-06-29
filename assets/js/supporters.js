@@ -353,6 +353,13 @@
   }
 
   // ── Aggregate supporters from the sats ledger ──────────────────────
+  // Zap-sourced sats are held aside per supporter and only count toward
+  // their tier once they aggregate to ZAP_MIN_SATS — a tiny one-off zap
+  // shouldn't park a random npub in the entry tier. Boosts and streams
+  // always count. Mirrors compute_tier_members() in bots/follow-packs so
+  // the page and the kind-39089 packs (the "Follow Pack" buttons) agree.
+  var ZAP_MIN_SATS = 100;
+
   function aggregate(rows) {
     var byKey = Object.create(null);
     for (var i = 0; i < rows.length; i++) {
@@ -364,13 +371,18 @@
       if (!key) continue;                                 // truly anonymous → skip
       var rec = byKey[key];
       if (!rec) {
-        rec = byKey[key] = { npub: npub || null, name: r.sender_name || null, sats: 0 };
+        rec = byKey[key] = { npub: npub || null, name: r.sender_name || null, sats: 0, zapSats: 0 };
       }
-      rec.sats += sats;
+      if (r.source === 'zap') rec.zapSats += sats;
+      else rec.sats += sats;
       if (!rec.name && r.sender_name) rec.name = r.sender_name;
     }
     var people = [];
-    for (var k in byKey) people.push(byKey[k]);
+    for (var k in byKey) {
+      var p = byKey[k];
+      if (p.zapSats >= ZAP_MIN_SATS) p.sats += p.zapSats;  // fold qualifying zaps in
+      if (p.sats > 0) people.push(p);                      // sub-floor zap dust drops off
+    }
     people.sort(function (a, b) { return b.sats - a.sats; });
     return people;
   }
