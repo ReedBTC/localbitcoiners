@@ -247,11 +247,22 @@
     padding: 0.6rem 1rem;
   }
   /* Drop the wordmark on mobile (the logo carries the brand) and let the
-     freed space hold a labeled "Explore" trigger so the compass is clear. */
+     freed space hold a labeled "Explore" trigger. */
   .nav-site-name { display: none; }
   nav { margin-right: auto; }   /* push Boost + identity to the right edge */
   .nav-explore .caret { display: none; }
   #lb-boost-slot { flex-shrink: 0; }
+  /* Swap the compass for a hamburger so it clearly reads as a menu, not a
+     link. It morphs to ✕ while the full-screen overlay is open. The 🧭 emoji
+     in the markup is hidden and replaced via a pseudo-element (CSS-only so it
+     applies to every page's inlined nav at once). */
+  .nav-explore-glyph { font-size: 0; }
+  .nav-explore-glyph::before {
+    content: '\2630';   /* ☰ */
+    font-size: 1.15rem;
+    line-height: 1;
+  }
+  .nav-explore[open] .nav-explore-glyph::before { content: '\2715'; }  /* ✕ */
 
   .nav-explore-panel {
     position: fixed;
