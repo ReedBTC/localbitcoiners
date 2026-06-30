@@ -304,12 +304,10 @@ function cartLines() {
     .filter(l => l.product) // drop stale coords no longer in catalog
 }
 
+// Cart state changed — let the shared nav (nav.js) repaint its cart badge.
+// The nav owns the badge so the count shows on every page, not just /merch.
 function updateCartBadge() {
-  const badge = document.getElementById('merch-cart-badge')
-  if (!badge) return
-  const n = cartCount()
-  badge.textContent = n ? String(n) : ''
-  badge.style.display = n ? 'flex' : 'none'
+  window.dispatchEvent(new Event('lb-cart-changed'))
 }
 
 // ── Rendering: storefront grid ───────────────────────────────────────
@@ -1167,9 +1165,9 @@ function showOrderSuccess(orderId, totalSats, diag = []) {
 
 // ── Init ─────────────────────────────────────────────────────────────
 async function init() {
-  // Cart button in the page header opens the cart.
-  const cartBtn = document.getElementById('merch-cart-btn')
-  if (cartBtn) cartBtn.addEventListener('click', openCart)
+  // Expose the cart opener so the shared nav cart icon (nav.js) can open the
+  // modal in place on this page; paint the initial badge count.
+  window.openMerchCart = openCart
   updateCartBadge()
 
   try {
@@ -1180,6 +1178,10 @@ async function init() {
     document.getElementById('merch-loading').style.display = 'none'
     document.getElementById('merch-error').style.display = 'block'
   }
+
+  // Arriving from the nav cart icon on another page (/merch.html#cart) →
+  // open the cart now that the catalog is loaded so lines resolve to products.
+  if (location.hash === '#cart') openCart()
 }
 
 init()

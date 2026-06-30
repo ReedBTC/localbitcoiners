@@ -193,6 +193,42 @@
   transition: background 0.15s;
 }
 .lb-boost-placeholder:hover { background: #d97b0e; }
+
+/* ── Cart icon ── */
+.nav-cart {
+  position: relative;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  color: var(--cream);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.20);
+  transition: background 0.15s, border-color 0.15s;
+}
+.nav-cart:hover { background: rgba(255, 255, 255, 0.16); border-color: rgba(255, 255, 255, 0.34); }
+.nav-cart svg { width: 18px; height: 18px; }
+.nav-cart-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: #f7931a;
+  color: #fff;
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1;
+  display: none;            /* nav.js flips to flex when count > 0 */
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 2px var(--navy);
+}
 .lb-boost-placeholder:disabled { opacity: 0.6; cursor: wait; }
 .lb-boost-placeholder svg { width: 11px; height: 11px; flex-shrink: 0; }
 .lb-boost-placeholder .lb-label-long { display: inline; }

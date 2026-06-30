@@ -88,4 +88,49 @@
       if (window.LBLogin && window.LBLogin.openBugReport) window.LBLogin.openBugReport()
     }).catch(function (err) { console.error('[lb] bug-report widget load failed', err) })
   })
+
+  // ── Cart icon (sitewide) ─────────────────────────────────────────────
+  // The merch cart lives in sessionStorage (key 'lb_merch_cart', written by
+  // merch.js). The nav shows a running item-count badge on every page and
+  // routes clicks to the cart modal on /merch (merch.js exposes
+  // window.openMerchCart) or to /merch.html#cart elsewhere. The badge
+  // refreshes on a 'lb-cart-changed' event merch.js fires when the cart
+  // mutates, plus on tab-focus / bfcache restore.
+  function cartItemCount() {
+    try {
+      var c = JSON.parse(sessionStorage.getItem('lb_merch_cart') || '{}')
+      return Object.keys(c).reduce(function (sum, k) { return sum + (Number(c[k]) || 0) }, 0)
+    } catch (e) { return 0 }
+  }
+  function updateNavCart() {
+    var link = document.getElementById('nav-cart-link')
+    if (!link) return
+    var badge = document.getElementById('nav-cart-badge')
+    var n = cartItemCount()
+    if (badge) {
+      badge.textContent = n ? String(n) : ''
+      badge.style.display = n ? 'flex' : 'none'
+    }
+    // Don't show an empty cart on pages you can't shop from; always show it
+    // on the merch page itself so the cart is reachable while browsing.
+    var onMerch = /\/merch(\.html)?$/.test(location.pathname)
+    link.style.display = (n > 0 || onMerch) ? '' : 'none'
+  }
+  document.addEventListener('click', function (e) {
+    var link = e.target && e.target.closest && e.target.closest('#nav-cart-link')
+    if (!link) return
+    // On the merch page, open the modal in place instead of navigating.
+    if (typeof window.openMerchCart === 'function') {
+      e.preventDefault()
+      window.openMerchCart()
+    }
+    // Otherwise let the anchor navigate to /merch.html#cart (merch.js opens
+    // the cart on arrival when it sees that hash).
+  })
+  window.addEventListener('lb-cart-changed', updateNavCart)
+  window.addEventListener('pageshow', updateNavCart)
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') updateNavCart()
+  })
+  updateNavCart()
 })()
