@@ -52,6 +52,30 @@
    backdrop + small padding makes mixed aspect ratios look intentional. */
 .merch-card-media img { width: 100%; height: 100%; object-fit: contain; padding: 0.5rem; }
 .merch-card-noimg { font-size: 2.5rem; opacity: 0.5; }
+
+/* ── Image carousel (cards + detail modal) ── */
+.merch-carousel { position: relative; width: 100%; height: 100%; }
+.merch-carousel-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 32px; height: 32px; border-radius: 50%; border: none;
+  background: rgba(255,255,255,0.85); color: var(--text);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; box-shadow: 0 1px 5px rgba(0,0,0,0.22);
+  opacity: 0; transition: opacity 0.15s ease, background 0.15s ease;
+  z-index: 2;
+}
+.merch-carousel:hover .merch-carousel-arrow,
+.merch-carousel-arrow:focus-visible { opacity: 1; }
+.merch-carousel-arrow:hover { background: #fff; }
+.merch-carousel-prev { left: 0.4rem; }
+.merch-carousel-next { right: 0.4rem; }
+.merch-chev svg { width: 18px; height: 18px; display: block; }
+/* Touch devices have no hover — keep the arrows visible there. */
+@media (hover: none) { .merch-carousel-arrow { opacity: 0.9; } }
+/* Detail modal: larger image, so arrows are always shown and a touch bigger. */
+.merch-detail-carousel .merch-carousel-arrow { width: 38px; height: 38px; opacity: 0.9; }
+.merch-detail-carousel:hover .merch-carousel-arrow { opacity: 1; }
+.merch-detail-carousel .merch-chev svg { width: 22px; height: 22px; }
 .merch-badge {
   position: absolute; top: 0.6rem; left: 0.6rem;
   font-size: 0.7rem; font-weight: 800; text-transform: uppercase;
@@ -111,7 +135,7 @@
 }
 
 /* ── Product detail ── */
-.merch-modal-detail { max-width: 760px; display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+.merch-modal-detail { max-width: 880px; display: grid; grid-template-columns: 1.25fr 1fr; gap: 1.5rem; }
 .merch-detail-media { display: block; }
 .merch-detail-featured img, .merch-detail-featured .merch-card-noimg {
   width: 100%; aspect-ratio: 1/1; object-fit: contain; border-radius: 10px;
@@ -130,6 +154,12 @@
 .merch-detail-price { font-size: 1.25rem; font-weight: 800; color: var(--green-d); }
 .merch-stock { font-size: 0.85rem; color: var(--muted); }
 .merch-detail-desc { white-space: pre-wrap; font-size: 0.92rem; line-height: 1.55; color: var(--text); }
+.merch-npub-chip {
+  display: inline; font: inherit; padding: 0 0.15em; border: 0; background: none;
+  color: var(--orange); font-weight: 600; cursor: pointer; border-radius: 4px;
+}
+.merch-npub-chip:hover { text-decoration: underline; }
+.merch-npub-chip.copied { color: var(--green-d); text-decoration: none; }
 .merch-specs { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .merch-specs th, .merch-specs td { text-align: left; padding: 0.25rem 0.5rem; border-bottom: 1px solid var(--border); }
 .merch-specs th { color: var(--muted); font-weight: 600; width: 40%; }

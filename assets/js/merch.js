@@ -319,10 +319,47 @@ function badgeFor(p) {
   return null
 }
 
+function chevron(dir) {
+  const span = h('span', { class: 'merch-chev', 'aria-hidden': 'true' })
+  span.innerHTML = dir === 'left'
+    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>'
+  return span
+}
+
+// Shared image carousel: a framed <img> with prev/next arrows that cycle
+// through `images` (wrapping at the ends). Arrows render only for 2+ images
+// and stopPropagation so they work inside a clickable card without also
+// opening the modal. `onIndexChange` lets the detail modal keep its
+// thumbnail tray in sync. Returns { wrap, show(i) }.
+function imageCarousel(images, alt, { className = '', onIndexChange } = {}) {
+  let idx = 0
+  const img = h('img', { src: images[0], alt, loading: 'lazy' })
+  const wrap = h('div', { class: ('merch-carousel ' + className).trim() }, [img])
+  function show(i) {
+    idx = (i + images.length) % images.length
+    img.src = images[idx]
+    if (onIndexChange) onIndexChange(idx)
+  }
+  if (images.length > 1) {
+    wrap.appendChild(h('button', {
+      type: 'button', class: 'merch-carousel-arrow merch-carousel-prev', 'aria-label': 'Previous image',
+      onclick: (e) => { e.stopPropagation(); show(idx - 1) },
+      onkeydown: (e) => e.stopPropagation(),
+    }, chevron('left')))
+    wrap.appendChild(h('button', {
+      type: 'button', class: 'merch-carousel-arrow merch-carousel-next', 'aria-label': 'Next image',
+      onclick: (e) => { e.stopPropagation(); show(idx + 1) },
+      onkeydown: (e) => e.stopPropagation(),
+    }, chevron('right')))
+  }
+  return { wrap, show }
+}
+
 function productCard(p) {
   const media = h('div', { class: 'merch-card-media' },
-    p.images[0]
-      ? h('img', { src: p.images[0], alt: p.title, loading: 'lazy' })
+    p.images.length
+      ? imageCarousel(p.images, p.title, { className: 'merch-card-carousel' }).wrap
       : h('div', { class: 'merch-card-noimg', text: '🛍️' }))
   const badge = badgeFor(p)
   if (badge) media.appendChild(badge)
@@ -335,7 +372,7 @@ function productCard(p) {
     role: 'button',
     tabindex: '0',
     onclick: () => openProductModal(p),
-    onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProductModal(p) } },
+    onkeydown: (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); openProductModal(p) } },
   }, [
     media,
     h('div', { class: 'merch-card-body' }, [
@@ -392,29 +429,98 @@ function closeButton() {
   return h('button', { class: 'merch-close', 'aria-label': 'Close', 'data-merch-close': '' }, '✕')
 }
 
+// ── npub mentions in descriptions ────────────────────────────────────
+// A merchant description may embed an npub (bare or nostr:-prefixed). We
+// render it as a clickable chip showing the person's display name; the
+// rest of the text stays plain text nodes, so nothing is parsed as HTML.
+const NPUB_RE = /(?:nostr:)?(npub1[02-9ac-hj-np-z]{58})/g
+
+function renderDescription(text) {
+  const p = h('p', { class: 'merch-detail-desc' })
+  let last = 0, m
+  NPUB_RE.lastIndex = 0
+  while ((m = NPUB_RE.exec(text))) {
+    const npub = m[1]
+    let hex = null
+    try { const d = nip19.decode(npub); if (d.type === 'npub') hex = d.data } catch {}
+    if (!hex) continue   // bad checksum — leave the run as plain text
+    if (m.index > last) p.appendChild(document.createTextNode(text.slice(last, m.index)))
+    p.appendChild(npubChip(npub, hex))
+    last = m.index + m[0].length
+  }
+  if (last < text.length) p.appendChild(document.createTextNode(text.slice(last)))
+  return p
+}
+
+function npubChip(npub, hex) {
+  let label = npub.slice(0, 10) + '…' + npub.slice(-4)   // until the name resolves
+  const chip = h('button', {
+    type: 'button',
+    class: 'merch-npub-chip',
+    text: '@' + label,
+    title: 'Click to copy ' + npub,
+    onclick: async () => {
+      try { await navigator.clipboard.writeText(npub) } catch {}
+      clearTimeout(chip._t)
+      chip.classList.add('copied')
+      chip.textContent = 'Copied ✓'
+      chip._t = setTimeout(() => { chip.classList.remove('copied'); chip.textContent = '@' + label }, 1400)
+    },
+  })
+  resolveProfileName(hex).then(name => {
+    if (!name) return
+    label = name
+    if (!chip.classList.contains('copied')) chip.textContent = '@' + label
+  })
+  return chip
+}
+
+// Resolve a hex pubkey → display name from its kind-0. Cached per session
+// (by hex) so repeat mentions don't re-query the relays.
+const _profileNameCache = new Map()   // hex → Promise<string|null>
+function resolveProfileName(hex) {
+  if (_profileNameCache.has(hex)) return _profileNameCache.get(hex)
+  const promise = (async () => {
+    const pool = new SimplePool()
+    try {
+      const ev = await withTimeout(pool.get(RELAYS, { kinds: [0], authors: [hex] }), 6000, null)
+      if (!ev) return null
+      const meta = JSON.parse(ev.content || '{}')
+      const name = meta.display_name || meta.displayName || meta.name
+      return (typeof name === 'string' && name.trim()) ? name.trim() : null
+    } catch { return null }
+    finally { try { pool.close(RELAYS) } catch {} }
+  })()
+  _profileNameCache.set(hex, promise)
+  return promise
+}
+
 // ── Product detail modal ─────────────────────────────────────────────
 function openProductModal(p) {
-  // Featured image stays on top; thumbnail tray always sits below it and
-  // never reorders. Clicking a thumb just swaps the featured src.
-  const featuredImg = p.images.length
-    ? h('img', { src: p.images[0], alt: p.title, class: 'merch-featured-img' })
-    : h('div', { class: 'merch-card-noimg', text: '🛍️' })
+  // Featured image is a carousel (prev/next arrows cycle the images); the
+  // thumbnail tray below stays in sync — clicking a thumb jumps the
+  // carousel, and the arrows highlight the matching thumb.
+  const thumbEls = []
+  const syncThumbs = (i) => thumbEls.forEach((t, j) => t.classList.toggle('active', j === i))
+  const featured = h('div', { class: 'merch-detail-featured' })
+  let car = null
+  if (p.images.length) {
+    car = imageCarousel(p.images, p.title, { className: 'merch-detail-carousel', onIndexChange: syncThumbs })
+    featured.appendChild(car.wrap)
+  } else {
+    featured.appendChild(h('div', { class: 'merch-card-noimg', text: '🛍️' }))
+  }
   const thumbs = p.images.length > 1
-    ? h('div', { class: 'merch-detail-thumbs' }, p.images.map((u, i) =>
-        h('img', {
+    ? h('div', { class: 'merch-detail-thumbs' }, p.images.map((u, i) => {
+        const t = h('img', {
           src: u, alt: `${p.title} thumbnail ${i + 1}`,
           class: 'merch-thumb' + (i === 0 ? ' active' : ''),
-          onclick: (e) => {
-            if (featuredImg.tagName === 'IMG') featuredImg.src = u
-            const tray = e.currentTarget.parentElement
-            tray.querySelectorAll('img').forEach(t => t.classList.remove('active'))
-            e.currentTarget.classList.add('active')
-          },
-        }))) : null
-  const gallery = h('div', { class: 'merch-detail-media' }, [
-    h('div', { class: 'merch-detail-featured' }, featuredImg),
-    thumbs,
-  ])
+          onclick: () => car.show(i),
+        })
+        thumbEls.push(t)
+        return t
+      })) : null
+  const gallery = h('div', { class: 'merch-detail-media' }, [featured, thumbs])
 
   const price = h('div', { class: 'merch-detail-price' }, priceLabel(p.priceAmount, p.priceCurrency))
   applySatHint(price, p)
@@ -450,7 +556,7 @@ function openProductModal(p) {
       h('h2', { class: 'merch-detail-title', text: p.title }),
       price,
       p.stock != null && p.stock > 0 ? h('div', { class: 'merch-stock', text: `${p.stock} in stock` }) : null,
-      p.description ? h('p', { class: 'merch-detail-desc', text: p.description }) : null,
+      p.description ? renderDescription(p.description) : null,
       specs,
       shipInfo,
       h('div', { class: 'merch-detail-actions' }, [
@@ -506,11 +612,15 @@ async function openCart() {
     h('strong', { text: convertible ? fmtSats(totalSats) : 'price unavailable' }),
   ]) : null
 
+  // Physical items pick a shipping method on the next (checkout) step, so
+  // the button says so — buyers were missing the shipping selector because
+  // a plain "Checkout" gave no hint it was coming.
+  const needsShipping = lines.some(l => l.product.goods === 'physical')
   const checkoutBtn = h('button', {
     class: 'merch-btn merch-btn-primary merch-cart-checkout',
     disabled: (!lines.length || !convertible) || null,
     onclick: () => { closeModal(); openCheckout() },
-  }, [boltIcon(), 'Checkout'])
+  }, [boltIcon(), needsShipping ? 'Select shipping & checkout' : 'Checkout'])
 
   const card = h('div', { class: 'merch-modal merch-modal-cart' }, [
     closeButton(),
