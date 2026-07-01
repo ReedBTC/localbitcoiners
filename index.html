@@ -875,10 +875,12 @@
       min-height: 0;            /* fill the fixed-height card; lets the flex child clip */
       overflow-y: auto;
       overflow-x: hidden;
-      /* pan-y = this feed only claims VERTICAL touch gestures; horizontal
-         swipes pass through to the carousel track so the Biggest Boosts card
-         is as easy to swipe sideways as the other two on mobile. */
-      touch-action: pan-y;
+      /* Leave touch-action at the default `auto` so the browser routes by
+         gesture direction: a vertical swipe scrolls this feed, a horizontal
+         swipe bubbles to the carousel track (this feed is overflow-x:hidden,
+         so it can't consume horizontal). An explicit `pan-y` here would be
+         WRONG — it intersects with the track's auto to `pan-y` and blocks
+         sideways swipes that start on the Biggest Boosts card. */
       overscroll-behavior: contain;
       scrollbar-width: none;
       cursor: grab;
