@@ -1,0 +1,925 @@
+rev (00:02.175)
+Hey, local Bitcoiners. Rev Hodel back again. And as always, I'm here with Reed. And tonight we're talking with Clay. he's the organizer of the Cincinnati, Ohio meetup. We this is gonna be Clay's first podcast recording, so it'll be cool. No one's ever heard about the Cincinnati meetup before. We're gonna be hearing it for the first time here. and as usual, I'm gonna talk a little bit about
+
+My recent meetup adventures and this most recent meetup I was at was the Southwest Michigan meetup in Benton Harbor, Michigan. That meets at Dwellers Co-Working Space the first Thursday of every month. Nope. I say I always say that the first Thursday of every month is actually the South Bend meetup, and that's that's my meetup. the third Thursday of every month is the Southwest Michigan meetup, and that's at Dwellers Co-Working Space. and so the cool story here with this meetup, I as I've mentioned previously on the show, I offer up
+
+The yurt and the tiny house that I built here at the homestead for local Bitcoiners to come stay at half price if they attend the meetup, either the South Bend meetup or this Southwest Michigan meetup. And I've had one person take me up on this offer previously, but for this most recent meetup, we had Buffalo come stay from the Grand Rapids meetup. So that was the second time someone had come take me up on that offer. It was it was pretty cool. And this was Buffalo's.
+
+first experience at a different meetup other than the Grand Rapids meetup. And so we got to taste a little bit of the local flavor here in Michigan and how it can be different. And so we did our typical roundtable discussion, had some some pretty interesting stuff come up, you know, very much about the the recent gossip of you know, how do we in how do we interact and respond to this BIP one ten thing that's that's on the horizon.
+
+Should we be participating in this, should be concerned about it, so on and so forth. That was kind of the big the big item of the the discussion there. And then at the end, after our round table, we we do our circular economy marketplace activity. And, you know, I I got a new phone and I didn't have a chance to really set up my lightning wallet, my my standard lightning wallet that I use all the time at these meetups, but I did have
+
+rev (02:26.941)
+My Mini Bits wallet on there, which is receiving sats from our our core group of the show here, all of the community that is supporting us. And so it ended up being enough sats in that wallet to where I was able to buy all my stuff as usual. I bought three pounds of coffee, a pound of ground beef, and I was able to pay for some processing of some of my chicken eggs for freeze drying as well.
+
+And so it's just another example. I on the last episode I I was talking about how I used some of the sats that everyone's throwing our way to for the value that we put out here at the show, to buy some beer. And those sats came in handy once again at the Southwest Michigan meetup. these sats that you guys are sending in, you know, they're not sure they they could be going into cold storage, but even better if they go back out into the local Bitcoiners circular economy. So I've been putting those sats to work.
+
+Very grateful to have the opportunity to spend them that way. So that's my story. Reed, how's it going over there?
+
+Reed (03:31.31)
+Let's go, dude. I love to hear that. That's just another link in the value chain, right? Right? So your link in the value chain, it goes to your MiniBits wallet, and then the value chain continues after that. And so hopefully we get to talk a little bit about that tonight as we as we normally do, which is the benefits of spending Bitcoin locally. so I don't have too much of a meetup story. So our next meetup is on July 19th. So this one we actually have a little bit of a bigger, you know, we
+
+I I guess I haven't really talked about it yet. So our meetup doesn't run on a X Sunday of the month. we run on a like a four week cadence, either a four or a six week cadence. and the reason why we do that is actually because early on in the meetup, one of our members was like had a commitment every other week and so we were, you know, trying to be accommodative and it just kinda s settled in that that's the way we do things and
+
+It also is kind of nice. It gives us some flexibility where if on this particular Sunday, you know, I've mentioned before that I have to travel for work. And sometimes that involves me having to travel on Sundays. And so if it lands on that week, sometimes it's convenient for me to just say, Well, we'll just, you know, it'll be two weeks after that. And so we line them up on the calendar that way. So it does make us a little bit more dependent on people actually checking the calendar and the announcements and stuff like that. So that's a downside.
+
+but yeah, so what what that means is that this is actually one of those gap ones where we're going six weeks between meetups, which means our next meetup isn't till July 19th. So I don't have a meetup story, but I would like to talk just for a minute about our meetups page on localbitcoiners.com. So as you guys know, as listeners of the show know, I have been, you know, vibing away here on our website, adding features.
+
+trying to make a stronger connections within our community, giving lots of interesting features that we tie in with Noster, of course. And so we have this page, localbitcoiners.com forward slash meetups. there are links to it from our new homepage. however, I just really wanted to share that if you share your meetup and and what it means to share your meetup is basically just drop your meetup into a boost. If you drop your meetup into a boost, you get listed.
+
+Reed (05:55.88)
+on our meetups page. So right now we have two meetups there, Revs and mine. So Revs is coming up South Bend Indiana Bitcoin Meetup, Thursday, July 2nd, 6 p.m. at Lang Lab. And then my next meetup is here, Western Mass Bitcoin Meetup number 47, which is Sunday, July 19th, 6 p.m. So as more people share their their meetups on this page, you know, we'll be able to read off more of those. And I think actually what we talked we're talking a little bit about pre-show.
+
+I think what I'm gonna do is we'll we'll start reading these off, you know, right at the beginning of the show, just so we have a little bit a short announcement period of, hey, here's the upcoming meetups for for people in our in our core group.
+
+So there's some different ways that you can share your meetup. And so what we're sh what you're actually sharing is the the nostr event that your meetup lives in. And so if your meetup isn't on Noster, we make it easy for you to go ahead and add it to Noster. So we have a create button. So if you want to create, it's called the NIP fifty two meetup. And that just is the event that defines how to get an event onto Noster.
+
+And so there are options here. You can import it from a previously listed event. So if you're logged in with Noster, it'll go look up. Hey, you've listed all these other events. Your next meetup's probably just like the one before it. So you can just copy straight from that previous event. And it will bring in the title and the description. it'll bring in the cover image, all that stuff. And then you just change the date and you can hit publish. you can announce it with a kind one note, you can announce it with a boost to the show.
+
+or you can do neither of those things and just post it silently as a new event. we have other options too though. so for example, right, like maybe you're just you don't want you don't want to list your meetup on Noster, right? You already listed it in too many places, you don't feel like keeping track. Understandable. Okay. You know, we think it's worth it. We we've talked about it before on the show. but if you don't want to, we have a we have an option where you can paste in an external URL.
+
+Reed (08:07.054)
+So you can meetup.com link or whatever else, you can paste that in as well, you know, and throw a little boost message and then we'll still read it out on the show. You know, it won't get listed on the page with the other Nostor events, but you'll still have a way to boost your meetup and and get the information out there. So we're hoping that folks will take a look at our meetups page and and maybe consider adding their meetup onto Nostor if it's not there or sharing it with the show. And we'll try to get you some extra airtime.
+
+if you share your meetup here, we'll read it off in the beginning of the episode. So I think that's mostly what I wanted to go over. And so I'm happy now to turn it over to Clay. So Clay, welcome to the show. Thanks for hanging out with us. Why don't you take a minute and introduce yourself and introduce your meetup.
+
+Clay (08:55.686)
+Yeah, thank guys for inviting me on. Happy to be here and appreciate the work that you're doing. so I'm I'm Clay. I am in Cincinnati, Ohio, and I am one of the organizers with Cincinnati Bitcoin. And maybe I'll just tell a little bit about like my my Bitcoin story and then how I how I got to the meetup, and that's kind of a an interesting one enough. So I am one of these these 2020.
+
+Bitcoin guys who came in definitely during during the COVID rush. but but my background is in you know, in 2015, I I found Austrian economics and was, you know, really enamored with that. And so it's just binging Mises Institute content and any of the stuff I could find to that. And I'd I'd see pepperings of, you know, mentions of Bitcoin on Facebook groups or like wherever the conversation was happening and you know, like everyone else, I I ignored it.
+
+I I was really at the time I was really, really focused on paying off my student loans. So as I learned a bit more and became at least more sympathetic, I was like, I'm I'm not doing anything with this until I I I was just going really hard during that time to get to get debt free. And you know, kind of at the same time that I that I paid that off. I was I was, you know, as as much as I could be at the time.
+
+Pretty taken by Bitcoin. Like the very first thing I bought once I once I got my next paycheck was was just a little bit of Bitcoin. And I I have been going down the the rabbit hole since. and if if the last episode was the silent Bitcoiners, I I may be, I don't know if this is a phrase, but like I would have been one of the lonely Bitcoiners. I I didn't know that I didn't know meetups w were a thing until like 2023. So was three years into this.
+
+I happened to have a friend that I could I could be trading podcasts with and stuff, but didn't didn't even know this stuff happened. And I I happened to be in Charlotte for my my first meetup and and that's a that's a really awesome crew that have a lot of good stuff going on. and then got connected later that year with with Cincinnati Bitcoin and in in 2024 kind of started helping you know being a little more involved in and helping organize. So
+
+Clay (11:15.728)
+The the set of basically what we do right now is we're we're twice monthly generally. And so we do we try to keep a calendar cadence. So first Wednesday we do we do content, workshop, learning, that kind of thing at one of the guys offices. And then third Thursdays we do a social and so we we've been rotating
+
+just just around around town with the idea of kind of the the trait and I've been thinking about this even as I've been listening to to a few of your guys' episodes of like the the value of having a presence at this place at this time and people can kind of get to know you versus can we maybe get a different crowds if we're going around town because if you're on a weeknight, you know it's like it's tough to get off work sometimes and make it to this way or that. So that's been our game plan for a while. we
+
+You know, I think I think last year, so in twenty twenty-five was really our year of as these things kind of go, they they transfer hands. And so I think our group's been around for the better part of a decade. And I think just organically different folks have kind of taken the reins on it as circumstances or whatever have changed. So when I was getting a bit more involved, we're kind of in one of those those between spots and you know, we
+
+We took 2025 to you know, have a reliable product out there. Because, you know, if people don't know when it's happening or they can't really plan for it, we were sort of like, we'd kind of be in group chats and be like, hey, does anybody want to do something like in a few weeks? And we'd kind of spring it, you know, like it just was it was it was a bit flying by the seat of our pants. So last year and like for the past 18 months have really done well to to keep that cadence so that.
+
+things are pretty reliable. And we even kind of see that in who might show up to like the the Wednesday sessions versus the Thursday sessions. Cause even just like your different days of the week have different requirements of you. So yeah, and we've got a we've got a we probably have eight eight to fifteen people show up every session. And you know for I I know it's not like one of the biggest groups, but but a very faithful core group and really diverse group of of folks with different interests and skill sets and different
+
+Clay (13:37.702)
+kind of length of time in the space. So I think I I think we we outpunch our weight and we're always kind of looking to to do more.
+
+Reed (13:48.312)
+Dude, that's awesome. Yeah. We you know, we've had it's always so interesting. I'm really glad you went over that. just because I don't know, I I f always find it fascinating listening to people's like, how did you find your local meetup, how did you get involved? And then of course we're we're always talking to the organizers. So everybody always kind of has a little bit of a different story about how they actually became the organizer. So it's it sounds like your that meetup had been around for a while and
+
+I guess w like how did it how did the turnover process actually go for you? Like you went so you were going there as a member and then you sort of just saw a little bit of the disorganization and just kind of stepped up to to help out and that's just it just all sort of fell into place or
+
+Clay (14:31.76)
+Yeah, well and and definitely not to like to to bash anybody if it came off that way. Absolutely not what I was like implying at all. But like, yeah, you I guess I came into a period when it sort of was changing hands. And actually the mutual I had a mutual friend in the group that one of our non Bitcoin friends and a a former like Bitcoin hater had introduced 'cause he's 'cause like he's you guys are my wacky.
+
+Bitcoin nerd friends. And so we had been like online friends for a while. and he was actually the the guy who had kind of we were just talking about this a couple of nights ago, kind of in a moment of it looked like it was maybe not gonna keep going. Whoever had been doing it before was, you know, for for whatever reason, kind of kind of letting go of it. He kept it going a little bit, and then you know, when I was able to twenty twenty-three was a
+
+a pretty busy year for me. So even though I I was aware of this thing, it wasn't a thing I could commit to at all. I was doing a lot of travel and different stuff. but in 2024, I was around a lot more and just was showing up and and knew him and just, you know, like I think the first thing was I you know, I wanted to to do a presentation, asked if I could do that. And then you know, he was traveling for a few weeks. And so I was like, hey, I can I'm happy to put the meetup, you know, listing together. And so it it pretty, pretty organically kind of went from there.
+
+as something that like I had capacity and desire to do while he also didn't necessarily have plans to to maintain that for too long. He had wanted to kind of keep it going long enough until somebody else could could really come in and and kind of take the rein so he could be doing, you know, more of what he wanted to do. Cause it yeah, it takes I mean even just posting meetups and and attending and buying pizza and stuff. It takes it always takes a little bit more than than what you think it would.
+
+rev (16:26.003)
+So you what was it like the you you attended a meetup in Charlotte? That was your first meetup, but that's I'm assuming that wasn't close I'm assuming that you were not l still in the Cincinnati area at the time or whatever. And so then you find the the Cincinnati meetup. What was it like the the first time showing up?
+
+Clay (16:36.828)
+Yeah.
+
+Clay (16:45.744)
+Yeah, it was I mean, luckily I knew someone. I I can imagine that would be not the easiest thing to go to a play. And at the time, we now have one of the guys has has an office for us to use, which has been such a blessing. At the time, we were using a design co-work space that somebody had access to. Yet to go not a bad part of town, but just like kind of kind of desolate part of town and you know, walk
+
+around the back to these doors that weren't always open and one of us had to run in and kind of let you in. It was like it was that type of thing. But a really cool design workspace. And I think the first one I went to was a Socratic seminar. And you know, especially after going to the one in Charlotte, which they they just have a great operation and I went to one of the socials at one of the breweries there. Got to pay in Bitcoin for like it was like the first time I was ever out and got to do that, which was really sweet. so just the idea
+
+of of being around these people. Like I I was so amped anyway that like any nerves were were not there. And then yeah, it's just like really quickly, I think that you know Bitcoin and then all the things that go with it. I think for how dirt diverse of a group we are, it's it's so cool at the same time that you you can snap into like these are my people, even if they don't look like me and don't live the way that I do.
+
+like we have some really fundamental core things in common. And so that that to me, as as a Bitcoiner finding a meetup, that that was a really smooth in. I'm sure it's a totally different experience if you're not a Bitcoiner. And we always try to be like aware of that that person too. But I was I was immediately like really interested. And it's where most of my energy and time and and just my brain is wanting to go anyway. So yeah.
+
+rev (18:42.463)
+So at what point did you after attending so you were hooked right away, and that was the same thing for me. And honestly, the the a lot of the the meetups that I go to are very much what you've described as this sort of back alley type of an entrance to this more underground space. And I I personally really enjoy that that flavor of of a meetup venue. But, you know, you're you're hooked right away. You go you find this meetup and you're like, dude, this is these right away, these are my people.
+
+And you it sounds like you then sort of attended for several years, but or or several months or whatever, some for some period of time. When was it that you really were like or was there a tipping point where you're like I I could be more involved in this? Like you said, you wanted to do a presentation. What really made you feel like you wanted to give back to the the the community?
+
+Clay (19:35.514)
+That's a great question.
+
+think, yeah, I I think like later in twenty twenty three. and again I and I I don't I don't know everyone, I know some of the guys were kind of in these previous versions of this group. And I think there are a couple kind of guys that are in our core group that were also a bit newer, kind of on my timeline. And we we naturally I think I think the guy who was sort of running it had
+
+had organized this a bit, but there was, I know like that conversation basically of, hey, like what we we were basically like, let's get together and plan out the next three months. And that was the first time that core group had gotten together. And it was really simple. It was just like, what days do we want to meet? Let's just pick those, not even like what are the events, but just like, can we, can we do two days a month for the next three months? Can we commit to that? And it was like, if we can do if it works for us, that's good enough because we know we'll have an audience and people who are willing to commit.
+
+And I think like during that time, I I you know, I think I probably picked up pizza one time when the guy knew like it was gonna be late or something like that. And naturally, I I think it was kind of coming from me at a really similar time. And and I I felt that a lot more probably in like 25 into 26 of like I'm getting a little bit older.
+
+I have a general desire for leadership, which would have never I would have never said that about myself. But I'm just finding that at work and church here of like, I you know, I have my entire life been going to events where there's magically pizza. And I get to eat the pizza, I get to have the free coffee, I get to sh, you know, I get to basically be a consumer. And, you know, whether it's it's the Bitcoin thing or just getting older or a combination of both, like.
+
+Clay (21:22.5)
+I've I've just had this desire to lead and to build something. And this was also like just a super organic, obvious need where I was like, I can do this. Doesn't mean like I know everything or I'm an expert, but like I I got time and I can I can put a page together and I can just kind of make decisions for us. And and and so that's it's it's been something that I wanted and and then the opportunity is there and it just kind of it it just a perfect coincidence and combination.
+
+Reed (21:53.804)
+Yeah, it's funny. I r you know, I remember going I'm sorry, what'd you say?
+
+Clay (21:54.386)
+It's and it's not
+
+Can I add a little bit more with that? So like I kind of like the takeaway is is as I've been thinking about this sort of in the past few months is like nobody you can have too many cooks in the kitchen, but I don't know that we have like a surplus of leaders in our world. And so like if you're if you're feeling that.
+
+Reed (22:01.422)
+Sure, sure.
+
+Clay (22:24.486)
+I I would follow that because usually, like whether we're in the Bitcoin space or not, like usually the people doing things are under-resourced and and they need help with even the little things. And so you like, I think because I had showed competence with one, I I was consistent to show up, two, I presented on a few topics. So just like this is a a a competent enough guy, at least. And I don't think
+
+I I think most of the time like it's the the things for the taking are are for those of us who show up. I don't think it really takes extraordinary skill most of the time. But the extraordinary thing is just like who's gonna keep doing it after like a few weeks when it it loses its luster. So if you're like me, who's I I always feel new in the Bitcoin space, no matter how long I've been here, like we need we need work, whether it's meetups or or
+
+building apps or these circular economies, anything else. So I think it's just an op it's an opportunity rich space, however you want to plug in.
+
+Reed (23:29.422)
+Totally agree. Yeah, yeah. No, that was that was great. I you know, I remember too like so after I started my meetup, like my my very first goal as a meetup organizer was to find people because I wanted to meet the other Bitcoiners in my area. And like I had my first meetup and one one guy showed and that was great. But I was like, you know, there's more than one person around here. Like there's gotta be. And so
+
+Clay (23:29.574)
+Thank you.
+
+Reed (23:56.78)
+but I remember like after I found the you know we started getting regulars and our attendance started going up and we switched to the educational format. And I s I too, I actually started kind of asking myself, like, this is, you know, obviously this is like so fulfilling and I get to hang out with other Bitcoiners, which is great, but like why do I feel so called to to do something here? You know? And I finally kind of put my finger on it.
+
+And and I br I brought it up. I actually had a whole segment on it for my meetup. But so we do a Socratic seminar format. And I had one of my topics be why why are Bitcoin meetups important? And one of the topics, the the kind of the opening topic that I brought up, and again I was trying to be a little bit controversial just to like wake people up a little bit, but I kind of brought up the point, you know, there's there's nothing that guarantees twenty one million. You know.
+
+The yeah, we can w it' it's a great meme and stuff like that. Death taxes, twenty one million, it's never gonna change, it's impossible, blah blah blah. But it totally is possible. You know? And so it because grass because Bitcoin is such a grassroots thing, it's so important that we continue to keep the culture alive and we continue to reinforce all of these principles that we all just assume are never gonna change, but they can change. And so it's important.
+
+that we go around and continue to reinforce these social rules. because, you know, at the end of the day, I mean, Bitcoin is it's a consensus system. It is what we all agree that it is. And so what I I had brought that up with my meetup. and I guess I'm I guess I'm kind of curious like what like what what are some of your sort of guiding principles or I don't know if maybe you haven't had the chance to step back and think about it, but have you ever ki s stopped to think about, you know, what
+
+kind of important functions yet that your meetup is providing.
+
+Clay (25:56.507)
+Yeah, I I think that primarily I would say it's the social component and we do a good job of complementing that. But ultimately, like you know, I was talking about at the last meetup with a few guys that have been there longer. I guess there have been times where it's it's there've been more people and variety of reasons that could explain that, but I I think ultimately like
+
+I did a presentation a few months ago on how to survive a bear market. And and it was a lot about like the okay, how let's when this happens, it's too okay to be rattled. Let's like take a moment and kind of like let's look at the fundamentals, let's kind of look at previous bear markets and stuff like that. But you know, ultimately it was like, you know, one of the things I was I was saying at the end was you you're here, like find your people is one of the biggest things because in these moments.
+
+It's reasonable. Like this thing drops 50%. We still don't exactly have the narrative like we had in 2022. That's that should be understandably a little unsettling, even if you've been here for a minute. And so it's like, it's just good to have people. I know that like like this group the the this space is a lot of men who who we we
+
+No, we don't have like there's kind of this loneliness epidemic. So at the very least, it's the just dudes going to grab a beer. I think that's really critical. And then, you know, our the educational component, I I kind of mentioned we've a we have a pretty diverse crew. So we have like I I do, I'm kind of the econ nerd. We have qu quite a few engineers who have been in the space for a while. They work in the space or they do other engineering type work, like they know.
+
+mining, just all these so not only is it an opportunity for for them to to get up kind of in front of their people and tell about something that they're interesting, we are like to to learn different things too. So like if it were just me, like you'd you'd be on your way out because I I only have so many tools in the shed. But yeah so I think I think generally the social component and then
+
+Clay (28:11.706)
+When I was mentioning we wanted to be consistent, and that was kind of a thing that we were lacking previously, that we wanted to spend last year doing. our hunch that we haven't solved yet is that Cincinnati is not a small town. We have multiple pro sports teams, we have Fortune 500 companies and and a decent tech presence. There we know there are more Bitcoiners here. We just don't know where they are. They might be the silent Bitcoiners, they might have.
+
+Who who knows? They might have become disinterested, have families, just any of the reasons. But we definitely want to have a thing that is there so that we can receive those folks as well as any new folks. That's probably the most common kind of drop-ins we have are those folks who found it on Meetup or somewhere else, and they happen to like to come during a Bitcoin 101 week or something like that. So it it is tight kind of tough to like.
+
+you can't service everyone all the time, but we try to keep it like well rounded for our own sakes and for anybody else who might be coming in. That you're even if you come like during one of the the Bitdev type sessions that were a welcoming environment so that that you you didn't feel like this was entirely intimidating and over your head. And I think that's like something that we do pretty well.
+
+rev (29:33.491)
+The consistency is so important because a lot of times someone might have heard about the meetup and you didn't even know that they heard about it and they wanted to go and they couldn't make it for whatever reason. And then if they don't know when the next one is, they can't plan to come to the next one. But if now there's this you know that every this day of the month, you know, I'm gonna be able to get to this meetup, eventually they'll be able to get there. It's I I like to call it holding the door open, right? So
+
+Clay (30:03.015)
+Yeah.
+
+rev (30:03.485)
+These people will know that the door is always held open. And then you have the core group, right? The the core people that are always coming. This is like the the permaculture concept of the polyculture, where in my food forest, there's all of these different perennial plants. they're all working cooperatively to to collectively make what ends up being the culmination of this forest. And every plant in the forest produces some sort of yield in the form of food. And so
+
+The core group is in in a lot of these meetup situations is that polyculture that that creates the space for the new people to come in and glean the nutrients that they need to get whatever they're getting out of the Bitcoin journey. So in in as far as your core group goes, what like I I could give some examples. Like in Grand Rapids, there's a lot of people that are interested in running lightning routing nodes. So like the you could go up to that group and get a lot of really great information about running lightning nodes. In the Southwest Michigan group.
+
+There's a lot of people doing homesteading and this permaculture stuff and a lot of this home mining, you know, mining for heat aspect of things. So you could come to this this meetup and that polyculture there can teach you a lot about growing food and using mining, Bitcoin mining for heat. so I I guess a as far as the polyculture of the core group at your meetup goes, is what what would you say are like the some of the the these aspects that you could come and learn about from these folks?
+
+Clay (31:26.192)
+Yeah, and again, like we I that that is even interesting to me that like this meetup has kind of a thing and this meetup has a thing. because I I don't know we that we have like the thing, but we have guys doing cool stuff and are really educated. It's it's great when they they know things that I don't. I've mentioned that we were meeting at at one of the guys' spaces. So he's got a a project called distributed charge that he's been working on for a while.
+
+And it's it's basically making Bitcoin the native payment method for for the energy grid with like hardware devices, open source software and standard protocols. And like he just launched late last year an EV
+
+charging station that it like that's testing that's that's with bitcoin lightning payments so like i think that's a that's a i mean that's a very real world application so he's got it yeah unfortunately most of the guys don't have ev cars but we occasionally if somebody has like brings a Tesla he he's like let me come come out and show you and they get to charge their car like do do a you know like that's that's a real transaction they were gonna have to do so that's really neat one of the guys he he works
+
+He works at LIGOS under do they do like non-custodial Bitcoin collateralized loans with with DLCs. And so like, you know, in instead of I gotta give my Bitcoin to an exchange to get the loan, like they they have, you know, custody solutions that are, I guess, kind of multi-sig. and then and then one of the guys that that introduced us, I mean, he was in Africa for a few months, in excuse me, in South Africa, and
+
+With with a a group called Bitcoin Akasi. And he was doing a ton of different things over there with like Bitcoin education. but like they were doing one of his big projects was was solar powered mining.
+
+Clay (33:24.628)
+with the local communities. And it's, you know, cause like a lot of their home energy, like a lot of folks have, or at least like the wealthier folks, have solar panels on their houses and they they have to deal with all like these these rolling blackouts and stuff like that. And so he was trying to onboard folks there and a variety of other Bitcoin education. So like that's that's already like a very interesting gambit. And then you know like
+
+I came in as as like the token econ nerd. So I try I try not to inundate, but like I add that and I'm I'm really passionate about it. And as long as we don't do it too much, I think people people like getting that background. And then and then we have a few other just like engineering tinkers who one of the guys a few weeks ago, our our content session was we played Bitcoin Jeopardy and he had vibe coded a Jeopardy game for us, and so like we got to to to do that. So we just have like
+
+I just kind of think of it as like it interested people are interesting. And so I think we have like a a a hodgepodge of guys who are kind of in that bucket.
+
+rev (34:29.097)
+Yeah, typically the people that are into Bitcoin enough to to make it out to a Bitcoin meetup are probably doing some kind of cool Bitcoin thing. And I guess that's what I'm getting at is that you go to these meetups and you can meet these people, you can cooperate with them, you can learn from them, and you can start to to build something new together. and that's the whole idea of the polyculture, you know, that we can all take our each individual components that we have to offer and and maybe find something
+
+additive to where we create a even greater whole by working together. I'm interested in this this y it's is it more like Austrian economics that you're interested in?
+
+Clay (35:05.904)
+Yes. Mm-hmm.
+
+rev (35:09.127)
+So d you you have a a presentation coming up, right? Or a workshop on this?
+
+Clay (35:14.864)
+Yeah, yeah. So this is actually the the very first thing I did for this group was a primer in Austrian economics. And I'm really passionate about it because I I consider Bitcoin an application of Austrian economics, and I consider it like like just one of the the coolest applications of it. So that's how I got in. I, you know, I mentioned that I was in there at about 2015 and not into Bitcoin until 2020.
+
+Would have been a great time to be stacking. But on the other hand, like I I was kind of getting this this Austrian economics base. And I think it was like it gave me the privilege of of skipping my my shit coin phase. So at least I had that that backing. I may not have been stacking, but I I I knew by the time I got into Bitcoin what that was and what that meant. in, you know, historically. So yeah, I so I with that, like I I just think that
+
+They're they're tied at the hip, Austrian economics and Bitcoin. And if you're listening to any Bitcoin podcasts, you're gonna have some exposure. And then even if you are have an understanding of Bitcoin and you use Bitcoin, you are living out Austrian economics and you have some understanding, even if you don't have the vocabulary for it. But you know, it's it's like basically Austrian economics is value subjective.
+
+And and man expresses that value by acting to achieve a more satisfactory s state of affairs. And so everything else follows from that. And that's that's a pack statement. So like this upcoming session, we're just it I'm basically redoing and revamping that that session. It had crappy slides. So I'm using this as an opportunity to use codex for the first time and and try to revamp that. And so it's we're gonna be going through.
+
+you know subjective theory of subjective value and marginal utility and time preference those are those are like three really big topics and you know whether you know those by name or not it's kind of one of those things where let's talk about what that actually is and then you're like like I I knew that in some way shape or form but these are like whether it's to Bitcoin or just how we live
+
+Clay (37:41.681)
+Like the I I think it's just when you're equipped with this, your ability to navigate the world, it just makes more things, makes so much more sense. And other fulls of economics help you better understand those schools of economics. They don't really make me feel like I'm better equipped to to go outside now and do things at work or otherwise. So it gets me amped. I d like I'm for whatever reason this this is my my
+
+Jam and love it. So yeah, they've been they're good to let me do a session or two a year on it.
+
+Reed (38:19.16)
+So when you do a session on Austrian economics, so I I guess I I wish I had what you had, which was I wish I had some Austrian economics background before I got into because I also had I mean I had this f shit coining phase too, which was terrible. but yeah, like so after I you know, so I found Bitcoin before Austrian economics and fell down that rabbit hole after I had already, you know, started latching onto Bitcoin.
+
+So when you do these work like is your plan to just focus on like I don't know, human action? Like is that like what what is an Austrian economics workshop? Like do you get into the price stuff at all? Or like do you talk about global macro topics or store value assets and stuff like that, or just Austrian economics?
+
+Clay (39:06.674)
+For this one, I'm stripping it down to like the my I'm I'm inviting like all my normie friends and and like I want this to be some cause I I I really think that like whether you're into Bitcoin or not, that I titled it. I was kind of like working on this a bit because I had a really boring title before, but I had I had ended up titling it You're an Economist, you just don't know it yet. And that's really how I feel. It's sort of how we kind of think of like you're a pre-coiner. You know, you're a Bitcoiner, you're just not there yet. We'll we'll get you at some point because this makes
+
+It's too good. It makes too much sense. it's free real estate. So like, yeah, it's this is purely educational. And I even the last time I was trying to pepper in, like, here's where you see Bitcoin in this. And for this one, I'm just gonna be like, hey, you guys, kind you be thinking about the Bitcoin stuff and in the in the discussion after, because usually we'll do like our our meetups are for the content ones or kind of gather, have some pizza, hang out, just like talk.
+
+30 to 60 minutes on a presentation or or whatever the the content is and then QA and kind of like linger, chat, disperse. So I I figure I'll kind of lean on them to be like, hey, you be thinking about where the Bitcoin is during this. And then I'll have plenty of ideas. But you know, I wanted to so much talk if if you're talking about marginal utility, like.
+
+how that's that's where price is determined, like on the margins. And I think that's so important. But as I was tinkering with it, I'm like, there's it's it's really easy to get this crowded. And I think these three topic, like if you if you only knew subjective theory of value, marginal utility, and time preference, like those are really good things to kind of have the the the base understanding of what Austrian economics is because you can kind of go from like nothing
+
+to seeing how civilization is built and we can talk about kind of where hard money sits in there and kind of your your your positive you know capital accum accumulation and allocation loop but yeah this is just going to be kind of a a a content dump which is which is what a lot of our sessions are we do have like hands-on workshops but it tends to be a bit more of the the
+
+Clay (41:24.848)
+just a kind of a lecture and it's usually pretty casual. So if you've got questions or things kind of come up, we we jam on that. But that's usually what what we're gonna do and that's what I'll take with this one.
+
+rev (41:36.885)
+So well, okay, s I I don't I didn't know much about economics when I got into Bitcoin. I I was more studying this permaculture thing, which is essentially analyzing, working with and developing these complex systems. And nature is like the most complex system. And so as I started to learn about Bitcoin, I was like, Holy shit, this thing is like a digital
+
+Reed (41:36.888)
+It's funny at go ahead, Rev.
+
+rev (42:06.641)
+natural system. It's it's a complex system that it's like this living thing that you can't stop. And so it made a lot of sense to me when I first got into it and I was like, okay, so the more I study Bitcoin, the more information I learn about how nature works. And the more I learn about nature, the more I can s learn about how Bitcoin works. And so this this gets into that that kind of what did you call it the subjective value concept.
+
+Clay (42:34.928)
+Yeah, yeah. Value is subjective, which is like a it's it's very easy to say it is it is probably the offering of the Austrian school. And it's like it's we could spend a few hours on it. But yeah, like basically,
+
+Previous to this, you would have had the labor theory of value, which was basically, I gotta cut down a tree. Like if I want to make a chair, I gotta cut down a tree, I gotta saw it down, I gotta, I gotta cut it into pieces, glue it together, finish it, blah, blah. That takes time and resources, and that's that's what value is. And that's great, but like Reed doesn't want that chair. So like how how do we like how do we actually think about this? And and this coming into like value being subjective is that.
+
+Is that we all want in a scarce world, we want different things at different times in different ways. And you know, like that kind of gets immediately into marginal utility of like, I I water is free, I'm not paying for it. I'm just gonna go to the sink basically, unless I'm in the desert and I'm willing to trade my like my my net worth for one because like I
+
+on the margin in that moment in time, I need it to survive. And so we we could go into that the whole the whole time. But yeah, like that's that's one of those things that it's it's you can you can say economics and kind of get freaked out about it. But like that is how we operate throughout the whole world is we're just making choices and we're like expressing again expressing that value as we act in a scarce world making choices based on current knowledge.
+
+Current circumstances trying to rationally act and make a better future.
+
+Reed (44:28.568)
+So since we're talking about some of the econ stuff, I guess my original question to you was a little bit leading because I think that's I actually because we're in the bear market now and we never really had a pr a proper bear market meetup, like all the times where I where I showed up to the meetup and was expecting big time bear market vibes, like the people we we d nobody was there. like just everybody was that's right. That's right.
+
+Clay (44:53.402)
+We have the psycho barnables, yeah. So
+
+Reed (44:58.438)
+so at the last meetup, I actually had some stuff about how you know we we don't really talk about number go up too much at the meetup. Like we don't I don't certainly I'm not gonna be putting candle charts on the on the overhead or anything. but we do t I mean the the fact is is that probably everyone in this room, you know, or everyone at my meetup got into Bitcoin because number go up.
+
+Like myself included, right? So it is an important aspect. And, you know, when things aren't happening the way that you thought they were going to, you know, sometimes people can get a little bit thrown off. I think you kind of mentioned that a little bit. And so all I have done in the past like when I cover quote unquote like economics type topics, for me it's more like, what is a store value asset? What are store value asset classes? What why are they important? You know, what why do we need them?
+
+Because money has failed us. It's it the money that we use today, you know, the these fiat currencies, they don't store value. So we need to find all these other store value assets. And so I've that's how I've kind of approached it. and that's kind of what I was asking you before. Like, do you so I guess the question kind of is, you know, do you guys find ways to talk about price? Do you guys find ways to talk about
+
+Like how how do you talk about that aspect of Bitcoin? maybe it's just casually, but I'm just curious how you guys deal with it.
+
+Clay (46:29.776)
+As in like the literal price of just like current events.
+
+Reed (46:35.468)
+I guess kind of both. I you know, I'm just trying to figure like it's always been kind of a a at least for me, like as a meetup organizer, it's a little bit of a tricky topic. Like I'm usually pretty careful. Like I certainly don't want to come off like I'm telling people that like I'm not I don't stand up in the front of the room and say, Buy the dip, you know, like I'm not that kind of a meetup organizer. so anyway, I'm just kinda curious, like since you're sort of the econ guy in in your group, if you've had to deal with an anything like that before.
+
+Clay (47:04.626)
+Ну
+
+So like in that bear market session, yeah, I did encourage people to buy the dip. So that was that was financial advice to friends, I suppose. I'm not serving in a in an official capacity, but you know, trying to like it price is it is a number, but it's not an objective measurement. So like we we did talk about like why there can be a disconnect between price and
+
+And like the fundamentals. And that's that is what like what's breaking it down. Like value subjective again. Like I'm I'll just say that over and over and over. And so, like, sometimes you hear like as it was getting to like a hundred thousand and in like my hit resistance, or if it's coming down, there'll be people be people who are like, Who's selling? It's like, I don't know. Somebody like somebody who needs to sell or wants to like wants to sell. Like, I I have no idea, and I don't care. Like, somebody is, and somebody might be getting liquidated. I don't know, but like.
+
+Prices are like I like I'm an athlete and I mostly train by heart rate. And when I train by heart rate, I've got one metric that tells me you know, like I don't know. There's weather, there might be elevation, I didn't get good sleep last night, I maybe drank some alcohol, there's all these things. But like my body only really knows stress.
+
+And I I'm able to measure that from my heart rate and how how I react to activity. And so kind of in the same way, like price is this super powerful signal where like the it's it is like the price is what we come to from all of these inputs of this hyper, you know, your your nature example, this this hyper complex economy. So like like
+
+Clay (49:03.388)
+This is I really wanted to get in the price stuff in this next presentation. And we're just not gonna have time because it's it's it's probably too much, but it might be a bonus topic. But I I think like we are generally not talking about we might talk about things like that. Like, what is the price in terms of how did we get here? And what does it actually mean if it's like if I just told you all the fundamentals are good, why did we crash by 50%? Like.
+
+I think that conversation is really healthy because we're we're just trying to figure out what the heck's going on. And like, are we missing something? Who who knows? Because if you know just because value is subjective doesn't mean it's there's no logic to it. And so I think like that's an interesting kind of point as opposed to this is a good price, this is a bad price. But I think most of the time, like we're we're in the same boat, like we're not really talking about that unless
+
+Occasionally you get a new person who comes and we like you said we all get in for number go up. But you know, kind of it's it's like the once once you that that Neo and Morpheus meme, it's like, you know, like what once you understand you won't have to sell and like once you once you're in, like you're you're not checking the price anymore. And so like that it becomes boring after a while. Like
+
+even if it moves, you're kind of like, I'm already numb to like these price movements. I I just want to, you know, maybe buy more. But it's it's I I know I'm rambling, but I'd say it's like price is not a a primary thing that we're focusing on. It might just be like current events at a social that we just kind of riff on and end up talking about other things. We're not particularly preoccupied by it.
+
+rev (50:53.491)
+I think one of the cool things about Bitcoin is that it's a store of value, right? It's it's what people are kind of putting their savings into this. But if you compare it compare it to a lot of other store of value things, it's incredibly liquid compared to a lot of that stuff, right? And when you take that the the knowledge of that the fact that it's incredibly liquid, like th for example, and and this is gonna kind of make you I th I'm basically gonna ask you for your opinion on this this
+
+Concept that I've been thinking about. As I've been earning more Bitcoin and I've been finding more opportunities to then directly spend that Bitcoin and never touch fiat, I am much less concerned about the price because the velocity of my SATS coming in and going out has increased. And so if I'm earning 100K SATS today and I'm spending 100K sats tomorrow and I'm earning another 100K the next day, what different what does the price matter? It's more about the liquidity of that asset and the flow that I can create.
+
+And so I I'm just wondering if if you have any opinions on on like as velocity increases in in some sort of money, how does that change its value?
+
+Clay (52:06.15)
+So
+
+Clay (52:12.13)
+The Austrian school is not as concerned with the notion of velocity as other schools are. And like, as an example, like if I'm I'm probably gonna straw man it a bit, but like Keynesianism, they would say like the health of the economy is aggregate spending. And so we're concerned with velocity.
+
+Because if money's going from here to there to there to there, it's moving hands that's stimulative, even if it might be inflationary, that's stimulative, and that's a good thing, which is their justification for let's lower the interest rates to zero and and pump the money printer. So I think from if if we're thinking about like that man axe axiom, we're I think it's a really cool thing that like
+
+Depending on how long you've been in Bitcoin, there are, and I tend to find this with like folks who have been in longer. They maybe have hit like their bit life crisis where they're not really looking to like accumulate. They are looking much more to spend. They kind of have this, and they got in earlier when it was, it was the like peer-to-peer cash was like it, it was really that. And we we weren't thinking of it nearly as much as store of value. And
+
+They're kind of like, I wish people would spend this more. I want to get this circular economy going. And then these people over here who are using it as a store of value and they're still saving, or like, why would you spend it when like you know it's going up? And so like generally, I I think what's one of the really cool things about Austrian economics is like it sees savings as a good thing. And if you think about it, like, you know.
+
+It's really easy for for people to say, like, you got lucky, you got in in 2013, and like and you just got to write it up. And anybody who's been in that long, I was not, but like I I can look at a chart and say, it doesn't look very fun. So, so you got like the that notion of like hodling is such a I mean, it's it's beyond a meme, but that really is like in the Austrian school, savings is the bedrock of civilization. Like we cannot lower we we need to lower our time preference.
+
+Clay (54:28.87)
+So we can have savings, invest in capital goods, be productive, make profits, and then that's just a loop. so savings is really critical. And also, what you're talking about is like also again, value is subjective. I right now am more of an accumulator. I'm I I'm very happy to spend, but I'm not desperately going out of my way to try to find it, where you might be in a different position where you're like, I
+
+I want to see this network grow. I really value the peer-to-peer process of this. And so maybe I wouldn't think about it more like, I mean, we can maybe not like stereotypical velocity in terms of economics, but like that notion of it, like you said, liquidity and like ease of payments of like I can go somewhere, I can pay for a beer, I know my guy with chicken, you know, the the farm eggs and things like that. Like,
+
+I love both of those use cases. And I think, I think both of those people, the the people who want to spend, the people who want to build the rails for us to spend, and the people who are still hodling as it's, you know, dropped 50%. We are all like market actors doing our part. And that's kind of the the beauty of it. So I I don't know if that answered your question, but that's kind of my zoom out view that I look at.
+
+rev (55:53.609)
+I what can we riff on this just a little bit more? There's another there's another aspect to it that maybe I didn't quite define as well. And so if every if in every economic interaction, the the whole reason why you did that economic interaction, I bought something and that person sold me something, we both won that trade, right? Because that's why the trade happened. And so therefore, this is generative in in terms of capital. And so
+
+Clay (56:16.561)
+Yes.
+
+rev (56:21.863)
+if you can increase the number of trades happening, that means that you're increasing the generation of capital. and so the I guess like w what's missing right now in Bitcoin is the opportunities for these trades to happen. But as I guess my theory is and and what we've kind of been seeing in this these little circular economies here in Michigan is that every month that we're we're doing our little circulation of buying things with earning Bitcoin from each other and selling things to each other for Bitcoin.
+
+As the price is generally going up over time, that means that we both have what we wanted at the end of the day from each other. And at the same time, we end up with more sats in cold storage because we need less sats over time to make those same economic exchanges. And so the the velocity in in our instance is actually allowing us to save more Bitcoin.
+
+Clay (57:13.52)
+Yeah, and it really, yeah, because and that's it's it's it's a a different way of like, I mean, if you're transacting in a way it is earning a Bitcoin, you're transacting things as opposed to like services in this context, but it's the same idea. So yeah, in general, that is like the best way to accumulate is to earn it and not even have the the middleman of like I gotta I gotta go to an exchange and like pay a fee and this and like in and you always know like I'm converting my I say I can I'm converting my whole check to
+
+To Bitcoin, maybe, but like I don't actually because I have these other bills and stuff. So yeah, I think that's that's really good. And on the on the flip side, like it you again, there are people who are valuing it. They are they are hodlers and they're not selling and they're not transacting. But man, like if you make it the easiest way to do something, if you make it
+
+if if you have a private solution and i really value that or when we really get down the line if i can't get those those pasture raised eggs because he doesn't take anything other than bitcoin yeah like i i'm going to reconsider my value proposition of hodling if i really want those things so it's it's yeah like i i think that the circular economies
+
+are important because like somebody's gotta yes, eventually somebody s has to start spending. Like it like hodling is really cool, but we also one is like especially on chain, we we do need people transacting to keep the the health of the network up. That's like whole different problem. I I have mixed thoughts on that. But yeah, it's again, it's just like your your market
+
+Also, this idea we kind of say the market, like it's this monolith thing, but it is again like it is it is individuals acting. And I think that we get like I was even thinking about this recently, is like the notion that we as a country have like an interest rate is like the goofiest thing ever because like how that would work is like your bank.
+
+Clay (59:29.296)
+Would have one, or maybe like a region would probably have kind of interest rates, the same way like box of cereal costs what it costs for me is different for you and you and your different like locations. so yeah, like I I think there's like plenty of room for for all of us, but you might have like for whatever reason the the this polyculture you're talking about over here is like.
+
+We're calculating this differently. We're on a different plane. So we're spending and we're gonna get this thing going. And the beauty, you know, when we talk about circular, like when I was talking about that model before of savings into production eventually, yeah, it's the same thing. Like trade, if trade
+
+assuming like voluntary and not coercive and all that, like tr if trade is win-win, we want a lot of trade happening because that means we're winning a lot more frequently. But I never want to with that discount that saving also applies in that world. We just might not be like in those same kind of you know polycultures that you're talking about. Thank you for letting me think through that out loud. I appreciate that.
+
+Reed (01:00:35.33)
+And I know
+
+Reed (01:00:40.066)
+And I know we haven't really been talking about it in this episode, but we've talked about it quite a bit in past episodes. but it it it maybe it's it seems a little bit counterintuitive, but spending your Bitcoin is actually good for privacy. Right? It's that's how we start breaking like if if all you do is you you know buy your Bitcoin off the exchange, save it in cold storage, and and just accumulate UTXOs.
+
+and then send it back to the exchange to convert it to fiat so you can spend it. Like that is h horrible privacy practice. Like really what you want to be doing is you want to get your Bitcoin out there and get it actively engaged. Right? Start moving your sats around. Start earning sats, start spending sats, get those things injected into the economy so they can start actually circulating.
+
+like the more hops that you can do between the last time those coins have been KYC'd, if you want to think about it that way, you know, the more, you know, the less they can rely on all their heuristics and things like that to try to connect the dots. So and and, you know, just the health of the network too, like you were mentioning. Like there's so many things about the health of the network that are improved if you're actually spending your Bitcoin.
+
+Clay (01:01:58.577)
+Yeah, that's such an awesome point. Like with the the privacy part of it. I've been thinking about that a bit more recently, as that's especially when I was I was newer, that was not remotely a thought I had considered. And now that's that's more of a priority as as I'm more experienced. But yeah, like earning the the P2P beats the the KYC, and that's like one of the ways you win.
+
+rev (01:02:24.093)
+Then guess d the Austrian economics also has this concept of is maybe I'm wrong on this, but I think that I've heard that the theory is that money converges to one. Like th there's not usually many monies, like the actual money is one thing. and I don't know if that's possible with Bitcoin unless you have the liquidity to actually spend it beyond the exchange.
+
+and and flip it back into dollars. If that's the only thing you can buy with Bitcoin is dollars, is that really money? and so I think it's incredibly important to to start to seek out ways to gain more liquidity for your Bitcoin beyond just flipping back into dollars.
+
+Clay (01:03:09.584)
+Yeah, you know, like typically your your what are the three functions? They're store of value, medium of exchange, and unit of account. And we're we're like in that that phase right now of like, I mean, some people don't even consider a store of value. Most of us, I think, do. We're trying to get to medium of exchange, and then you know, unit of account will be a huge one. I don't know when that happens. but but yeah, like I I think like
+
+I think it has to be those things to be money. I I I operate as if it is that because I I'm projecting out into the future. But like, yeah, like for sure, it's not there yet. I I don't go many places and see I don't go many places and see things priced and stats. But now I can press a toggle on a square terminal and do that. So it's like we are getting wins and it's really cool. But if you yeah, you know, if you want to.
+
+see this as money, eventually it cannot just be a store of value for you. It has to be those things. And I think that like, I think that's kind of a beauty, the beauty of like that I I think you guys have been in the space longer than I have. So that there is like I I think that that we have these different timed cohorts is interesting because we always get to like if
+
+if there weren't enough people reminding you it's a store of value, you might be obsessed with medium of exchange and I don't know what the the consequences are of that. But on the flip side, like kind of thinking of of the folks who are these early adopters wanting to be more progressive, like if you
+
+make it really i i do like spending in bitcoin even though i i'm generally like trying to save but boy if it's just a toggle right there on a on a square terminal like yeah i'm spending in bitcoin so like you you guys doing like all the work to make that go you know i i think both of those things are are really healthy and i i tend to believe that the tension is good and again thinking like if if you're kind of thinking of
+
+Clay (01:05:18.14)
+consensus and you know, like what it takes for us to achieve that in Bitcoin. I I am of the belief that it's it's a good thing that it takes us a minute to do it. But yeah, I love it. Love it both.
+
+rev (01:05:30.591)
+Dude, we're so close to the unit of account. And and as you mentioned, I'm sorry, Reed, I didn't mean to jump in front of you there, but I'm I just get I'm kind of like vibing with this whole idea here a little bit. The so we've got the store of value, right? Everyone gets it. You you stack sats, you get more purchasing power. That's pretty much true over long periods of time. Right now might not be the case depending on when you stacked your sats. Whatever. Store of value is there.
+
+clear a clear objective of Bitcoin. Medium of exchange is starting to come on. Here we go. We we got the ability to, even though we're pricing in dollars, we get to spend our Bitcoin priced in dollars to get stuff, to you know, buy things. And I think when when it when we the w the the flipping into the the unit of account is maybe more of a local phenomenon. Because once again I think this has to do with velocity. Right? If you if you have a situation where a lot you have the opportunity
+
+To move your Bitcoin a lot, you can you can pretty much get everything you need with Bitcoin. What and and then you're at the same time able to earn the Bitcoin. Does it matter what the price of Bitcoin is? No, it actually just matters the amount of sats that you're moving around. That's if if the velocity is high enough in any given area, then you might not even be paying attention to the prices closely because the sets are coming in and going out so quickly that it's actually easier to instead of d changing the prices based on these minute.
+
+couple percent differences in in the dollar price, you just say it's easier to just to say 10K sats, 100k sats, whatever. and so that's I think what is gonna be the necessary step for Bitcoin to move into unit of account in certain areas, right? You're gonna need enough opportunities for velocity to allow for people to stop thinking in dollars and just make it actually becomes easier to think of it in terms of SAT.
+
+Reed (01:07:20.494)
+Yeah, and we we're we're actually an example like our podcast is an example of that, right? Like we I was gonna actually bring up that exact same point that it's kind of a local phenomenon because it's just up to like the like it depends on where you are. Like in our case, maybe it depends on where you are on the internet. But like all the metrics and stuff that we track, like the you're not gonna find a dollar symbol anywhere on our website. Like everything that we do, we we only really care about what the sat totals are.
+
+Clay (01:07:21.058)
+Mm.
+
+Reed (01:07:48.428)
+What do we care about crossing certain thresholds of of sats? You know, we're definitely not concerned about how how many dollars or what the dollar value of our sats are flowing. So sorry, I jumped in front of you now. Go ahead, Clay.
+
+Clay (01:08:02.003)
+Already forgot what I was gonna say, but I because I really I I like that and and I see that with I know I know what I was gonna say. Like when you talk about it being local, we don't have that here yet, but like I know one of my really good friends, who kind of he he was he's my my Bitcoin sensei, got me into this whole thing. Like we, you know, most of the time when we're hanging out, it's like, yeah, I'll buy a beer. Like, I'm not, I'm not gonna have you pay me back. But when we, you know.
+
+we were in the championship over a fantasy football league so like we put a wager in and we did it you know did it in bitcoin so like so that relationship because I don't have a a ton of these that's one where we're not doing dollars like why why would we? And so you and the same thing. It's like I think if you've got a bit more than just your your your body like you can do that and then you like you guys
+
+One is is you can kind of say I value it enough to to be inconvenienced, even if you like wanted to s if you actually did want to see the dollars, if it made more sense for your brain, but you're like, I'm gonna I value promoting this for what it's doing for me and what it's like the example of for others, or eventually.
+
+You're like, no, I actually I'm entirely on a Bitcoin standard. And that's how I I genuinely think of the number of sats, not the conversion rate, then then that also is like your your value statement. But like, yeah, there's different there are different ways to get there. And I think like that it's it's it's even cool for me to to hear of that idea when other people are doing that of like, again, a little bit of a challenge statement. Like, can I, can I get there?
+
+And just at least be thinking that way, even because it's okay to be like, not there yet. But being there and like continually challenging yourself to kind of get deeper and deeper. Cause I think like for me as a Bitcoiner, the the amount of times I've said to myself, I'm all in. And then I'm like, I still have like my I don't know, my fiat like life savings has been
+
+Clay (01:10:12.814)
+My emergency fund that was debased because I never touched it, which was really fortunate. You know, like, and so I have like all these moments of, yeah, no I'm all in, I'm a real Bitcoiner. And then I keep having these like glass shattering things. And it's it's it's like the life version of Stay Humble Stack Sats. It's like as you're on this journey, you're also like it's it's this, it's not just to to grow your stack, it's to like keep yourself growing. Cause I'll hear other people doing really cool stuff and I'm like.
+
+yeah, dude, like I'm a I'm a nobody, I'm a fraud, so it's it I appreciate it. It's it's humbling that way.
+
+rev (01:10:47.113)
+Well and you know, it without the meetup, how how likely is it for those opportunities to arise? It's way more likely if you have a a bunch of bitcoiners that you're surrounded by to to do it now. And so that it's small and slow solutions, we talk about it, you know. It it doesn't happen in a snap of a finger, but it doesn't happen if you don't start a meetup and you don't start finding your local Bitcoiners and you s you don't start finding opportunities to start
+
+using Bitcoin as money with each other.
+
+Clay (01:11:21.264)
+Yeah, absolutely. Like and
+
+And asking, I think is also like it's it's one is like the the big you don't have to ask the Bitcoiners. I mean they're like they're gonna be sympathetic to you, but I think then when you guys are making your circular economies, like you you start to make a culture of this can work and this is a thing. I because I don't I don't know if you remember your first time like asking.
+
+somebody at a store or a bar or something if they accept Bitcoin and they like almost worse than the no, like the scoff is the like the confuse they don't even know how to respond. Cause then you're just like never you know never mind. You just pull out your credit card. but yeah like like how these these meetups are such a great place to like that's kind of the lab that we can we can find our people
+
+whether it's like your circular economies or whatever of like the ideas, the transacting, the the the anything, so that we can we can make the thing that somebody else who's not in a meetup, maybe not a Bitcoiner, can see like, that's like that's working. Like that guy's got his his local beef guy. Like he he knows he knows a rancher or something like that. That's
+
+That's an example of one that's getting really popular right now in like a great Bitcoin use case.
+
+Reed (01:12:56.088)
+Hell yeah, guys. Dude, this was a this this was great. I'm I'm really glad we got to cover some of these topics. like I I I don't remember Rev if you said it at the beginning of the episode or if it was before we hit record, but this is stuff we haven't really gotten a chance to talk about a lot of this stuff. so yeah, this was I think this was a great episode to to try to kind of lay it all out there. So I guess Clay, you know, thanks again for coming on. And I guess before we
+
+leave or before we start transitioning here to our value for value section. I just again wanted to throw it back to you and and see if you had anything that y else you wanted to hit that we haven't had a chance to or if you had any kind of key takeaways or anything like that you wanted to kind of leave off with.
+
+Clay (01:13:41.157)
+No, th thank you guys for for having me. I I really appreciate you guys doing this podcast. Again, like I I mentioned I I kind of started as a lonely Bitcoiner. And then I, you know, from the busyness of life and just kind of keeping meetups going, I I forget there's other others of us out there doing the same thing. And I think this is like
+
+I I didn't know I had the need for something like this until until we got introduced and I started listening to your episodes. So this is this is so awesome. And then can I can I plug the the meetup if that's okay? Yeah. If so yeah, if you're if you're in Cincinnati, we typically do first Wednesdays and third Thursdays. You can find us on Meetup at Cincinnati Bitcoin.
+
+Reed (01:14:21.143)
+Absolutely.
+
+Clay (01:14:31.318)
+our next one is is July eighth and we'll be doing more of this Austrian economics stuff. So if you enjoyed it, please come out. We'd love to have you. We've got free pizza and drinks and I think a really good group of folks. But yeah, thank you guys for having me. And just like thank you for the work you do. it's I I just appreciate people doing stuff in this in this space.
+
+Reed (01:14:54.04)
+Yeah, well we're really happy to have you on and I know I've mentioned it before, but you know, you said, you know, this is your first podcast. certainly I think you did you d did fantastic. No one would ever know that this was your first podcast. You nailed it. but that's the thing. Like w when we decided that we were gonna only interview Bitcoin meetup organizers, it's such a incredible pool of talented people to to try to pull from. You know, we're all leaders and we're all putting ourselves out there and
+
+You know, I think you're an an excellent example of that. So definitely happy to have you on the show and and thanks again. But how about you, Rev? Do you have any kind of key takeaways or final wrap up thoughts?
+
+Clay (01:15:29.394)
+Thank you.
+
+rev (01:15:35.113)
+Well, to take it all the way back to the beginning, Clay was kind of dis discussing, you know, how he found himself desiring this role of leadership and and taking that desire and and stepping up at the meetup. And now here he is, he's organizing one. And there I think there's a lot of opportunities for this. If you're if you're attending the meetup and you think that, you know, these people got it under control, there's probably something that you can do to help. and I don't think that if you
+
+You're I don't think that you're gonna be stepping on anyone's toes if you decide you wanna organize a social meetup at your favorite bar down the road from your house and see if any of the other local Bitcoiners wanna come show up and meet you there. and and that takes a little bit of a burden off the organizers as well when people just start to organize their own thing well now that they have access to the culture and the community in the local area. You can you can do your own thing.
+
+as a one-off. invite people over to your house for a barbecue. Whatever. You know, that you can you can step up and just you can either depending, ask for permission or just do it. and and beyond that, like because there is this now this community around your meetup, a lot of the determinations of like the broader ecosystem of Twitter and Noster and what people are talking about, it matters less.
+
+What what what ends up mattering more and more is what's going on in your local area. The price of Bitcoin is might be different in your local area. If you have opportunities to buy Bitcoin or sell Bitcoin for cash, that price might not actually mirror the the ticker, the the spot price that you see on TradingView or whatever because people might be charging premiums. People might be so hard off to to get rid of their Bitcoin that they're they're willing to let a couple percent go. Who knows? But the the prices are local. The
+
+The benefits of knowing the people in your area, you have like Clay was mentioning, you have access to these people that are doing badass shit, creating EV charging opportunities to to stream Bitcoin. people that have experience in other continents teaching people how to mine Bitcoin on solar. just so many great people that you can gain access to by going to the meetup and once again, all the interactions.
+
+rev (01:17:55.379)
+You can make it what you want because it's your local community. That was my big takeaways that the local a aspect of it is is definitive in your experience.
+
+Reed (01:18:07.566)
+And I think that's why we see so many different, you know, I think at one point Rev, you were talking about how you know, each each meetup sort of has its own identity. And and honestly, I that's just it's because we're all different, right? We're all coming at this with our own unique blend of people and experiences and all that stuff. So you know, just for everybody listening, you know, I know we say it ten billion times, but you know, go go find your local meetup.
+
+Right. If you don't have one near you, start one. you'd be really amazed at the type of community that you're gonna end up getting involved with or end up building. it's it's a really great experience and there's there's really a ton, a ton of value that you can get out of it for yourself, but you know, also for Bitcoin.
+
+All right. Well, that's a good place to close it off. So, Clay, you know, we always open it up to you know, you're, of course, welcome to hang on with us. we do spend quite a bit of time on our value for value section of the show. the reason why we do that is because we, just like in our Bitcoin meetups, value our community. And so we spend a ton of time getting to know our community. people send in questions, people send in comments, people tell us about the stuff that they have for sale.
+
+and that's what we want to talk about. We want to talk about all that stuff. so that's our value for value section of the show. and it's become a huge part of what we do here. So definitely, Clay, more than welcome to hang out with us. Chime in. If you hang out on Noster, you might know a lot of the people. You know, we're we're pretty big into that community. So but yeah, I think why don't we just start diving right into it.
+
+Clay (01:19:50.406)
+Let's do it.
+
+Reed (01:19:52.62)
+Alright, so we're gonna start our value for value section off with our leaderboards. So our leaderboards got a a little bit of a a minor improvement. they of course only just went out about an hour ago, like right before we started recording the the show. but people may have noticed as well that our boost notifications on Nostra, our kind one notes, now have this nice little banner to kind of try to catch your eye. We're we're really flexing our
+
+Our new graphics that we've gotten from Source Node. So thank you again, SourceNode, if you're listening. we couldn't be happier with with the new graphics, and we're trying to get them out to broadcast them far and wide. And so we're finding all kinds of cool ways to get them integrated. So our first leaderboard that we always cover here are our our top episodes. And so now we've got the nice little top episodes banner. And as I've said many times before.
+
+as I introduce this leaderboard. This these episodes, if if you haven't listened to all our past episodes, maybe you're new and you're looking for, you know, you really like this episode, but you're kind of curious, like what what are some of these other episodes that we've talked about? We've talked now, this is our seventeenth episode. So that means we've talked to a whole bunch of different Bitcoin meetup organizers. Well, if you take a look at it this leaderboard, it will tell you these are the the episodes that people have found the most valuable and we know that.
+
+Because they've sent us their sats. You know, we talked a lot about in this episode the velocity of money and subjective value and things like that. Well, you know, the value that we're providing as part of this podcast, the value is subjective. And so how are we going to know how much it's worth? Based on how many sats people are sending it. So with that as a long preamble, let's dive in to our first leaderboard here. So, first place, this would be episode 15 with BTC Russell.
+
+with two hundred and eighty thousand eight hundred and ninety-seven sats. These are episode sat totals, Rev, that I thought I'd never say. it's just absolutely phenomenal the the feedback that we've gotten. and I think it's if it's not obvious to you guys, you know, so episode fifteen, that was with BTC Russell. And if you don't remember BTC Russell, he donated his split
+
+Reed (01:22:17.538)
+Which we give all our guests splits. He donated his split of all the show's proceeds to the samurai developer families. And so this is to to Keon and Bill, our biggest episode of all time, has a big split of that going right to the Samurai developers. So if you haven't checked out episode fifteen with BTC Russell, definitely get in there and check it out. It is called Privacy is Sovereignty.
+
+B T C Russell from Columbia, South Carolina.
+
+rev (01:22:50.173)
+And if you want to continue to support Samurai, you can go boost that episode and some sats will be going their way. So it's a great way to show your support for the show, get your promo in or whatever you wanna do with your boost, and at the same time help these you know, these martyrs basically that that did what they thought was right for Bitcoin and now they're paying the price for it and we can help them.
+
+Reed (01:23:18.126)
+Hundred percent. All right, second place on the top episodes leaderboard is episode two, going all the way back to episode two with GC and James from Jersey City. That one has one hundred and fifty-two thousand three hundred sixty-nine sats. that episode is titled Meetups Are the Ultimate Web of Trust. And that was it's our first episode ever that we had guests on. Episode one was just Rev and I where we kind of
+
+Lay down some of the fundamentals and the basics of starting a meetup and what some of the challenges are that you'll see when you're running a meetup. But episode two was where we finally got a chance to have some guests on. And you know, one of the key takeaways from that episode landed here in the title, which is, you know, once now that we're all spending all this time online with the rise of AI and these other, you know, deep fakes and things like that, it becomes that much more important that you get to know.
+
+you know, your community in real life, in person. Like meet your fellow Bitcoiners. And so we talk a lot about that in episode two. And I think everybody got a lot of value out of that episode. It's been on our leaderboard for a long, long time. Recently it's kind of shot up the list here because people are passionate about keeping it there. So definitely if you haven't checked episode two, go back and give it a listen.
+
+Reed (01:24:38.326)
+Alright, third episode is episode number 14 with SourceNode. And that episode has 112,456 sats. That episode is called titled Permaculture for Bitcoin Culture with Source Node from Greenville, South Carolina. That was another really good episode. And you know, again, it shows here in in the SAT totals. So SourceNode works for Sovereign. We're gonna hear more about Sovereign.
+
+coming up here, but that was a really good episode where we really got to spend time with Source Node learning about his meetup. we got to talk about some great permaculture principles, one of Rev's favorite topics. So we made sure we had plenty of airtime for that stuff. And so if you haven't checked out episode fourteen, go back and give that one a listen.
+
+Reed (01:25:29.336)
+Fourth place, episode nine with Sir Spencer, Wolf of Kansas City, with ninety eight thousand six hundred eighteen sats. and episode nine was titled Growing Slow Builds Strong Communities. So Growing Slow has been a it's a permaculture principle. Growing slow builds strong solutions, something like that. there we go.
+
+rev (01:25:54.175)
+Small and slow solutions. Small and slow solutions. That's the way to do it the resilient way. That builds resilience. You're less brittle.
+
+Reed (01:26:01.442)
+There we go. You you know, I'll I'll eventually get these permaculture principles memorized. getting there, getting there. But that was a great episode. We talked a lot about value for value. That was where Rev and I sort of started getting more a little bit more tied in and up to speed with what all the other V for V podcasts out there and some of the V for V music stuff we started talking about in that episode as well. And so just kind of learning from each other and and trying to build off of each other.
+
+as we all are growing into this value for value ecosystem. So you haven't, if you haven't checked out episode nine, it's one of our most popular episodes. we actually have some interesting other statistics that we don't normally talk about. But episode nine has received the most number of boosts, which is we don't usually talk about that statistic, but it has 25 different people have boosted that episode. So that's even though it's not number one overall here with the number of sats.
+
+You know it's a good one because it's been boosted so many different times.
+
+All right, and finally rounding out our first leaderboard, fifth place, episode five with Augie, sixty-four thousand eight hundred eighty-four sats. and that one is called The Meetup is the farmer's market, which continues to be on our leaderboard. It's been on the leaderboard, I think, almost since that episode launched. it's been one of our most popular episodes, and we still talk about these circular economies and how to get this stuff started all the time. And episode five is just an excellent
+
+has a a million examples of how you can turn your meetup into a circular economy.
+
+Reed (01:27:38.69)
+All right, so that rounds out our first leaderboard.
+
+Let's move on to leaderboard number two. So leaderboard number two is called our top listeners leaderboard, and this is our listeners who have boosted the most number of episodes of all time. So we like to call these our ride or die list. And so these are the folks who've been with us from the beginning and who have boosted or listened to or streamed us stats, all the different ways you can contribute to an episode. These are the people who do it. You could even call them our sort of core group.
+
+Right, like just like we were been talking about with our meetups. You got your meetup, you got your core group at the meetup. This is our core group, our core group of listeners. So at the top of this list, as always, Matthew D. Matthew D, a perfect 16 out of 16 episodes, keeping the streak alive. we got another good boost here from Matthew D that we'll be reading off tonight. and also tied for first place is Permanerd. Permanerd also perfect record.
+
+16 out of 16 episodes. Permanent had a had a streak a week or two ago where he was kind of blasting doing some catch up. but that's what we want, right? If you want, if you want to be part of our core group here, if you want to be on this leaderboard, you can just go through our website and just start going down the list of episodes. You know, I bet a lot of people, I know it it happens to me all the time. I'll be listening to a podcast, I'll get to the end, and the next podcast just starts up and I never go back to Boost. Happens all the time.
+
+Well, now's your chance, right? Log on to localbitcoiners dot com. We make it as easy as humanly possible. As easy it c as it can be, to actually send us stats and get some credit for it on the website. So check out the website and you know, be like Permanerd, right? That's what Permanerd did. He went back and and got got credit here for for listening to all those episodes.
+
+Reed (01:29:37.464)
+Alright, so we had a tie for first place. We've got a tie for second place also. So Noster Gang and Shadrach both tied at ten episodes apiece. Also, long time ride or dies. These guys have been on this list and and up in our boost section of the show for a long, long time. thank you both to Nostragang and to Shadrach. We know you guys are out there, we know you guys are listening to the episodes, and thank you so much for you know sp sending us some value.
+
+We really appreciate it. And then rounding out the top three, I know this is we're on our fifth person here, but third place belongs to God's Death. God's Death we've been talking about probably since episode one. Maybe he hasn't gotten every single episode in, but God's Death, you know, we see you. And and you're up you're right up here at the at the top of the list here. part of the core group, eight episodes.
+
+Alright. So thank you to all of our top listeners and hopefully we'll be rolling out continue to roll out more features for you guys on the website and possibly some other things. So be on the lookout for that kind of stuff.
+
+rev (01:30:50.013)
+And so the the last thing I wanna say about this this core group, our our top listeners, is that, you know, if you if you wanna go and make this boost sprint and and and get up on this leaderboard, all you know, ties count.
+
+What you're doing is you're not just supporting local Bitcoiners. All of the guests on the show get a split too. And so that means that you're you're supporting Bitcoin meetup culture in general. You're giving a little bit of sats to all of the the guests that have been on the show by going back and and boosting all these episodes. And so that that I couldn't be prouder to have, you know, five people that have gone in got in and and participated like that and really shown their support for for local Bitcoiners.
+
+For all the local Bitcoiners everywhere.
+
+Reed (01:31:36.28)
+You bring up a really good point too about the show guests. And this is another thing, you know, I I did have a chance, I think, to to mention it very briefly, but we haven't spent almost any time talking about it. So we do have a supporters page on our website, but we also have a new home page now. And right there on our homepage, like the fur like that's looks like the third item down on the list here is a preview of our local Bitcoiners community. And right there at the top
+
+is a list of all the guests who have ever been on the show. which I think as the show continues to progress and we keep cranking out more episodes, it'll be really cool lists to to have to always go back to. And so you can check out our guest list and it lists them all in order. It even tells you which episode that each person each guest came onto. So if you're going through the guest lists and you say, geez, I didn't know you guys had on Johnny, you know, Del Fuego
+
+Delgado Fuego. that was episode twelve? Well, bam. Now you have a link to episode twelve right there. And you can go add it to your queue on Fountain or Castomatic or Podcast Guru or wherever you're listening to podcasts. So we hope you check out our guest list. We also hope you check out our supporters list, which are on our supporters page on our website.
+
+rev (01:32:58.217)
+And there's follow packs for all those lists too. So you can you can follow all these people on Noster with a couple clicks.
+
+Reed (01:33:06.104)
+That's right. Follow our community. Right. So this would be our guests. This would be Rev and myself and all the people who boost the show. it's really cool seeing the feed. You know, we have the local Bitcoiners NPUB, and that feed is primarily our community members. And I'll be honest, scrolling through that feed is actually pretty cool. so yeah, definitely go check out those follow packs and follow our community.
+
+Reed (01:33:33.794)
+All right, final leaderboard, top boosts of all time. These are will continue to be referred to as kind of our pseudo ad reads. And they're not ad reads because we have some sort of contract or we because we have some sort of formal agreement where we're go we, you know, we have to promote, you know, your product because you sent us that's there are no rules here. the rules are, you know, we have agreed social contracts here to read off the top boosts of all time.
+
+We're gonna read those off every week. you know, at our discretion, but that's basically the plan for right now. So effectively, this kind of makes these sort of like ad reads. And I it looks like people are using it that way. we have another another week and another new number one boost of all time, which is just incredible. So this one also came in from Sovereign. Sovereign at this point.
+
+if you haven't noticed, are definitely friends of the show. So let's read off their new boost. So their new boost came in via localbitcoiners.com. they didn't boost a a specific episode this time. Instead they just boosted the show. But they boosted us 300,000 sats, which is really honestly completely unbelievable. So thank you again to Sovereign and let's read off their message here. Sovereign is the geek squad for Bitcoiners and Bitcoin companies.
+
+Come check us out at sovereign.io spelled S-O-V-R-E-I-G-N. Thanks, Rev and Read. Well thank you, Sovereign. We thank you for your support and we'd be happy. You know, we're we're happy to read off your boosts and to promote promote your your company. So thank you again for these mega, mega boosts. Very much appreciated.
+
+Reed (01:35:29.622)
+Alright. So number two, the number two spot also belongs to Sovereign. So Sovereign and this time they boosted episode 15. And I think we all know why they boosted episode 15. we as we talked about before, a third of those sats are going straight to the samurai developer fund. so those sats are gonna get used to help their families and to help with additional legal fees and and anything else that they need.
+
+And so I think Sovereign must have heard that message and decided they're gonna send two hundred thousand sats again via localbitcoiners dot com. And so if you bear with me here one second while I wait for my page to load.
+
+rev (01:36:20.541)
+I can read it if you don't have it up. I got it up right here.
+
+Reed (01:36:24.28)
+Yeah, why don't you go for it?
+
+rev (01:36:26.003)
+Alright, so for 200,000 sats, here's what Sovereign has to say. Sovereign focuses on helping individuals, families, and companies integrate Bitcoin into their personal and professional lives with confidence, recognizing the crucial role it plays in the broader economic picture. If you want to dig deeper into self-custody, node running, or point of sale implementation, Sovereign has your back. Thanks to all the meetup organizers out there for keeping the grassroots Bitcoin ethos alive.
+
+Go to sovereign.io spelled S-O-V-R-E-I-G-N for support on your Bitcoin journey.
+
+Reed (01:37:06.318)
+Hell yeah. Alright. Thank you again to Sovereign. And I do have my page loaded this time.
+
+All right, brings us to our third biggest boost of all time, which also is coming in from localbitcoiners.com. So to me, you know, the fact that all of our biggest boosts of all time are all coming in via our website, hopefully that's a cue to you guys that this is we've made this process of boosting on the website very easy. In fact, it's a lot easier to boost on our website than it is even to log into Fountain to find the episode that you want to boost and to type in your message.
+
+So definitely consider going to check out localbitcoiners dot com. So our third biggest boost of all time, also from localbitcoiners.com, came in from BTC Jackalope, and he sent us 105,000 SATS. And here is his message. Escape to the listening loft cabin in Wilmington, Vermont. A modern two bedroom retreat featuring a signature vinyl record record rec record listening loft.
+
+Luxury bedding and a peaceful deck. Perfect for skiing at Mount Snow or a relaxing getaway. Pay in Bitcoin and get twenty percent off. Visit listening cabinet dot com for more information. And that boost came in on episode two, Meetups by the Ultimate Web of Trust, Jersey City, which BTC Jackalope, who is a member of my meetup, continues to
+
+talk about episode two as his favorite episode. So there he is. Now he's putting his sats where his mouth is and and really promoting those guys. So happy to to shill the listening loft, BTC Jackalope. Love to see it.
+
+Reed (01:38:54.048)
+Alright, and so our final I'm sorry, nope, our fourth biggest boost of all time is once again from Sovereign via localbitcoiners.com. And so here's their message. Here's what I'm thinking. Sovereign focuses on helping individuals, families, and companies integrate Bitcoin into their personal and professional lives with confidence, recognizing the crucial role it plays in the broader economic picture.
+
+If you want to dig deeper into self-custody, node running, or point of sale implementation, Sovereign has your back. Thanks to all the meetup organizers out there for keeping the grassroots Bitcoin ethos alive. Go to sovereign.io spelled S-O-V-R-E-I-G-N for support on your Bitcoin journey. And that boost came in on episode 14, Permaculture for Bitcoin Culture with SourceNode.
+
+Alright, and our final biggest boost of all time came in via fountain for sixty nine thousand four hundred twenty one SATs with a message that is that reads Attend your local meetup and if there isn't one in your area, start one. Local Bitcoiners is an essential part of my forty hours per week, BTC Russell. And that boost, of course, was on episode fifteen. Privacy is sovereignty with BTC Russell from Columbia, South Carolina.
+
+Whew. Well, those are our leaderboards. and before we start transitioning here to our boosts, the first thing I sort of want to do is apologize because normally I've been doing a shout out to the streamers, and I'm pretty sure last week I did not do that. Blew right by it. I think we were talking about maybe some of the website tools and skipped right over it. So we do actually have a growing list of streamers. I think there's about
+
+20 streamers listed here on our website. And this is again on our stats page. So if you want to see all of our streamers, you can go to localbitcoiners.com forward slash sats. And right up at the top of the list is Logs. Logs has been in first place on this list for some time, and his SAT total continues to grow, which means he continues to be streaming us SATS. And he is up to 9,918 SATS streamed via fountain.
+
+Reed (01:41:15.692)
+Second place on that list is Chad F. Chad F, long time listener of the show, big time contributor to the show, lots of boosts, lots of streams. Chad F has even pulled out a PR for our website, which is on GitHub. And so he's a contributor listed on our GitHub resources as well. So thank you to Chad F. And his app of choice for podcasting 2.0 is Castomatic. And so he has sent in
+
+eight thousand two hundred eighty six sats via castomatic. And so since this isn't a leaderboard, I'll just read off a few more of the top contributors here. We got We All Eat, Used to Read a Lot, Hot Wack Social Club, Plub to Polymath, Random Junk, Julio, Eric PP, thank you all so much for all your contributions and for streaming us sats and supporting the show that way.
+
+and then the last thing I wanted to read off too is we we've had this section of our stats page and it's been largely not super interesting until recently. So we have a top zappers section. So what that means is that if you zap a note on Noster that was published by the local Bitcoiners NPUB, we actually count those and keep track of those. And so we actually had a huge boost come in from Cleveland Bitcoin.
+
+And I don't have the message here, but I took a note. it's on my plans here to start adding what were some of the zap messages that came in because they zapped us twenty one thousand sats. and I wanted to if there was a message on that, I wanted a way to display that on our website. So thank you again to Cleveland Bitcoin. You are our far and away, our our biggest zapper of all time. So we appreciate that.
+
+You're on mute, Rev.
+
+rev (01:43:09.139)
+The cool thing to note about the the zaps is that when you zap any of our our stuff on Noster, this goes to our our shared wallet, which we don't we're using this, the sats that come to this wallet to help help the velocity, help this value chain continue to react and and grow. And so we're we're zapping people back on NoSter, we're boosting other podcasts with these sats.
+
+These are not sets that I'm going to the meetup with and and and buying my coffee or anything. These are sets that are are going back out into the community. And so if you want to just help promote the velocity of all of this stuff that we're we're trying to pro we're trying to get going here with local Bitcoiners, that's that's a place where you can contribute in that way. And and once again, you don't even need to be on any any podcasting app. You just interact with us on Noster, zap stuff, and you will get recognized there.
+
+for that contribution.
+
+Reed (01:44:10.806)
+Absolutely. All right. Well I think that takes care of the leaderboards. That takes care of most of our shout outs. Rev, would you like to start reading off the boosts that have come in since last episode?
+
+rev (01:44:25.959)
+Absolutely, man. And and you know, you know, we got a lot of boosts from the last episode, which was with episode sixteen, parallel systems for silent big bitcoiners with Bidish from Cleveland, Ohio. And so we're I'm gonna try and keep it short as I can and and efficient here, but we got we got quite a few boosts to get through, but let's go. so the first yeah. The first one,
+
+Reed (01:44:50.382)
+We're gonna power through, baby.
+
+rev (01:44:54.897)
+It's we've already heard from Sovereign, two hundred thousand sats via localbitcoiners dot com. Why not? I'll read it again. Sovereign focuses on helping individuals, families, and companies integrate Bitcoin into their personal and professional lives with confidence, recognizing the crucial role it plays in the broader economic picture. If you want to dig deeper into self-custody, node running, or point of sale implementation, Sovereign has your back. Thanks to all the meetup organizers out there for keeping the grassroots Bitcoin ethos alive. Go to Sovereign.io spelled
+
+S-O-V-R-E-I-G-N for support on your Bitcoin journey. And that was actually a the boost that went to privacy is sovereignty with Bitcoin Wrestle, Columbia, South Carolina, episode 15. And a big chunk of those sats are going to help the the samurai devs. Next up we got 333 sats via cast a matic from Chad F, our great friend of the show, Chad F. And Chad F says, Hello, Cleveland, I know Biddish.
+
+From his work in V for V music. He's got a guitar emoji, a drum emoji, and micro microphone emoji in there. And that's from Parallel Systems for Silent Bitcoiners with Biddish, Cleveland, Ohio, episode 16. Thank you very much, Chad F for your continued support. And guess what? The next boost is 333 sats via Cast Domatic from Chad F again. Boost to beer pipeline is something I can get behind. And that's from Parallel Systems for Silent Bitcoiners with Bidish, episode 16.
+
+I don't know what he's referencing there, boost to beer pipeline.
+
+Reed (01:46:27.256)
+'cause you said you went to the corner store and and bought your beer with Bitcoin from the podcast boosts. Hell yeah.
+
+rev (01:46:30.397)
+There you go. Yeah. See see you w when you guys if you guys boost the show, you know, I might may or may not be buying some beer with those sats. You can buy you can buy me a beer and I and I will drink it while we record and have a good good old time. Clay, you got something to add there?
+
+Reed (01:46:40.28)
+Boom.
+
+Clay (01:46:45.404)
+We we gotta start one Yeah, we gotta start a brewery called Velocity Beer or Velocity Brewing or something like that. But I think I think that's what that was getting
+
+rev (01:46:54.879)
+Yeah, velocity is a word that I've been using more and more often lately, and you know, I'm I that's kind of where my head's been at. next we got 333 sats via castomatic. Here comes Chad F again. Boosting for the hot keys end talk. Chad F likes likes to hear about keys in. I don't know if the the key send development is gonna is is gonna happen or not, but it sounds like keysen's a pretty cool thing that a lot of people just are sleeping on. So
+
+Reed (01:46:55.566)
+Love it.
+
+rev (01:47:22.291)
+Hey, here's another shout out out there. Anyone who works with lightning wallets, you got a lightning wallet, make this key sense stuff happening happen because it makes a lot of what we're trying to do with this value for value ecosystem work, especially when it comes to the music. It sounds like that's really crucial for the music. so please try and figure that out. Next, we got 333 sats via Castomatic from Chat F yet again. If a guest boosts their own episode,
+
+Reed (01:47:39.661)
+Yeah.
+
+rev (01:47:50.215)
+It's sub it should subtract from the total, not add it, laughing emoji. Well, maybe you got a point there, Chad. This is this is the whole fun of the game. We're gonna we're trying to figure out if people figure out a way to to break our our little you know, our gamification here. And, you know, if it gets to be super broken, we might have to change the rules. But up until this point it's been a lot of fun and I don't think anyone's got anything too much to complain about with it. So but but hey, maybe their Chad app is proposing a new rule to the game.
+
+Reed (01:47:56.494)
+That's right.
+
+Clay (01:48:04.486)
+Noted.
+
+Reed (01:48:20.43)
+Well we like to call it we've we've called it in the past a a a guest discount, right? Like you you you get a little bit of a subsidy here. So you you know, you get full credit for the stats on the webpage, but you know, you get a little bit back. So
+
+rev (01:48:34.643)
+Yeah, it's an opportunity to promote your meetup, promote whatever you got, and in and keep keep your voice alive here in in the community. And you get a little bit of a discount as a perk for being on the show. next we got 1,230 sats via fountain. I don't know if that's a meme number. 1237. I don't think so. And that's from God's Death. And God's Death says, thank you, gentlemen. And that was on
+
+parallel systems for silent bitcoiners, episode 16 with Biddish. And here that's the the the core member, the core group there. God's Death keeping the consistency alive. Thank you very much, God's Death. Next we got 333 sats via Cast O Matic from Chat F. Very sneaky read. I was about to fix the issue with cast-matic messages not being shown, but you beat me to it. Big eyes emoji.
+
+And so I think we're gonna hear a little bit about more about this in the next few boosts because then Chad F has three hundred and thirty-three sats from Podcast Guru. a different he's boosting from a different app now, Podcast Guru, with just the the big eyes emoji. And next we have three hundred and thirty-three sats from Curiocaster, a different podcasting two point app. and then he says might as well test Curio Caster while I'm at it. So it sounds like Chad F is trying to see what's going on with boosting from all these different
+
+podcasting two point enabled apps. Next we got three hundred and thirty three sats via podcast in index from Chat X Chat F and he says toast. And all these are on episode sixteen with Bidish Cleveland, Ohio. And so I think what Chat F Yeah, tell the story there.
+
+Reed (01:50:13.336)
+So the so so so yeah, so this yeah, so the story here is I actually happened to notice as well. So when ch the first few boosts that you read off from Chad F, those were coming in and they were they were giving credit for the sats and the person and the episode, but they w the message wasn't coming through. And so I happened to notice kind of l not live, but like, you know, within a a pretty short period of time after the boost came in.
+
+And so I was like, gee, what you know, what's going on? I happened to be at my computer, fired up the agent, tried to do some diagnostics, figured out what the issue was. It wasn't pulling in issue the messages from Castomatic correctly, got the issue fixed, posted the update, pushed it to the site, ended up getting all the messages back into the stream here. We actually republished the notes so that way we'd have them on the on the feed on the website. And so try f
+
+It was in one of the replies saying, like, hey, where's where's my message? And he replied it to that same note where he said, Very sneaky read. he was like he typed it in with his agent to fix the problem and said, This up this issue has been fixed thirty seven minutes ago And so he's like, Just good timing.
+
+rev (01:51:27.721)
+You beat him to it. That so that that's how on the ball we can be. I wouldn't say we're we're gonna be that on the ball all the time, but we're paying attention when you guys are boosting, we're making sure that this shit is working the way we expect it to. And 'cause it's fun. And we we do we do want to showcase that this is the potential that Noster has to offer. we we can get this information to propagate really broadly and really quickly.
+
+Reed (01:51:41.4)
+Doing our best.
+
+rev (01:51:54.112)
+From one single action that you take, you can get your message out there to a lot of different places all in one spot, all at once. Next, we got five hundred sats via boost me bitch, which is a Chad F cool thing, another podcast place where you can boost other shows. And this is from Pleb and Flow. And they say, I started listening from the very beginning, love the content. I'm inspired to start a meetup in my area. It's dead out here. I just feel like I'm too much of a noob in the space. Imposter syndrome.
+
+And that wasn't that was just a I guess a general boost to the show. There's no episode associated with that. And so yeah, pleb and flow, don't get discouraged. There's there's no imposter syndrome to be had. Anyone can start a Bitcoin meetup. You can learn as much from your the the people that come to your meetup as you have to teach them. Clay, did you have something you wanted to add there?
+
+Clay (01:52:45.52)
+Yeah, just just if if you're wanting to do it and you don't know what to do and you feel like a noob, you are not too noob to just do a social. Just say we are meeting at a at a brewery, at a bar, at a wherever, and we're just hanging out. You don't have to know anything for that. So so feel empowered to do that.
+
+rev (01:53:04.155)
+Absolutely. I can I couldn't agree more. Just start it. See what happens.
+
+Reed (01:53:08.416)
+And and pleb and flow, if you've been listening from the beginning, you you're probably actually a lot more prepared than most meetup organizers were when we all started. Most of us didn't know what the heck we were doing either. And so but if you've been listening, if you're sixteen episodes into local Bitcoiners, you've heard so many different meetup stories at this point. you're you're actually gonna be extremely well prepared. So I would say no chance you're too much of a noob. I I would say
+
+Go ahead and and get it started. You'll you'll be surprised.
+
+rev (01:53:40.371)
+Yeah, your your meetup is gonna kick ass, dude. Just go do it. It's gonna be great. Next we got one hundred and eleven sats via localbitcoiners dot com. What's that? A row of sticks. I heard that. That that's called a row of sticks. All right. We got that from Perma Nerd. And Perma Nerd says, Every episode is interesting and full of useful content. I end up following every guest that I wasn't aware of previously. The community is growing and it is a beautiful thing to watch. And that's from
+
+Parallel systems for silent bitcoiners with Biddish, Cleveland, Ohio, episode 16. Thank you for continuing to participate with us, Perma Nerd. And you know, Perma Nerd and Oshi have a podcast called the Yada Podcast, which I am a a regular listen listener to, a regular booster to. And you know, Perma Nerd as in his name, Perma Nerd likes permaculture on the Yada Podcast. If you're interested in hearing a little bit more about this permaculture stuff that I bring up all the time.
+
+They go into great detail about permaculture on that podcast. They actually have a segment dedicated to permaculture there. So get your permaculture questions into the Yada podcast about permaculture. All right. Next we got five thousand go ahead.
+
+Reed (01:54:49.11)
+And actually s sorry, I know we have a million boosts to get through, but it hearing the permaculture thing, I actually meant at Rev to send you a message about this too, but so Sovereign also has a podcast and their most recent podcast episode is also about permaculture. So the permaculture is w it's spreading, right? It's becoming a hot topic again. So if you're looking for some more permaculture content, go check out also the the s Sovereigns podcast, which
+
+I can't actually remember the name of the podcast off the top of my head, but go check that out as well.
+
+rev (01:55:23.401)
+Well the the the sovereign podcast is called Becoming Sovereign. It was formerly known as the Bitcoin Business Podcast. Brandon Garpellis is the the host of that podcast. and it is excellent. Brandon Carpellis gets you you might have seen a gu you know, someone what what was Cedric Young Yengelman from or Yang the the guy from the Bitcoin Matrix.
+
+was on there recently. I've heard that dude on a a podcast a million times. And Brandon Carpellis got that dude talking about shit that I've never heard him talk about. And so like it's a really good he he's able to tease out a lot of cool conversations from these people that you might have thought you heard everything they had to say before. Well no you haven't if you go listen to the Becoming Sovereign podcast. next we got five hundred five thousand sats via localbitcoiners dot com. And this is from
+
+Wit Sixer. W H I T Six R. And they're saying thanks for having Biddish on, guys. He's a Cleveland OG and a hell of a good guy. Great job as always when when the podcast. With the podcast, I'm assuming. and that was with Parallel Systems for Silent Bitcoiners Biddish, Cleveland, Ohio, episode sixteen. Well, thanks for boosting. And yeah, Biddish is definitely a guy worth following on Noster.
+
+Especially if you're interested in the value for value music stuff. He's got a lot going on there in addition to the Cleveland meetups stuff that he's doing. Next, we got 199 sats via fountain from Alice A. And Alice A says, My feedback from a year with the Cleveland Bitcoiners is too much fun, beers emoji, not enough education, books emoji. Glad to have glad to hear some changes are happening. Thumbs up. So this is feedback for for the Cleveland group.
+
+You know, Alice A is having fun, you know, having some beers and stuff, but she wants to learn too. and and I know Biddish was saying that it's it's touch and go with the with the educational component. It it is one of those things like Clay was saying, where y the community needs to step up and and offer up this educational content. It's it's very hard to curate month after month a new topic to educate on and prepare for that and do a presentation and all this stuff.
+
+rev (01:57:39.118)
+in in Grand Rapids, the the the educational meetup was very much a community driven educational thing where every every month the kind of the call went out to the group chat, does anyone want to present this month? What do you want to present on? And sometimes there'd be several people that wanted to present on something, and then we'd kind of vote on on who would want to who would get to actually do their presentation. And that was a really kind of grassroots organic way to do it.
+
+so maybe something to try is just just to throw that out there, LSA, and say, hey, you know, I'm interested in these topics. Does anyone want to teach me about them? And maybe someone will step up and and and do a presentation to the group. Next, we got 5,000 sats via fountain from Matthew D. The one of our our longest contributing core members of the local Bitcoiners community, Matthew D. And Matthew D says.
+
+Signal BIP 110 this summer on your Bitcoin node. It's happening at block 961632. 961,632. That's the block height it's happening at. Right now we're at block height 954,260. There's a lot of cool DIY nodes you can make or run something through a cloud service. Just have fun with it. And that was on Parallel Systems for Silent Bitcoiners with Bidish in Cleveland, Ohio.
+
+so yeah, if you're interested in you know, signaling for BIP one ten, Matthew D is is saying go ahead and give that a try.
+
+rev (01:59:16.71)
+Next, we got 100 sats via fountain from Pyrohawk. Guess this is an area I don't understand. What's the advantage of buying from Robosats or Bisque and running through Whirlpool versus an exchange run through Whirlpool? Just an extra layer of disconnection. And that was on privacy of sovereignty with BTC Wrestle from South Carolina, episode 15. And so my answer to you, Pyrohawk, is that.
+
+If you're buying on chain, from one of these peer to peer exchanges and not on a on a a a regular old exchange, a KYC free exchange, you could say. the person that you're buying the the when they send you that UTXO, if you don't obfuscate the the that UTXO through Whirlpool, they can continue to watch what you're doing with that Bitcoin.
+
+And so that that's the advantage of using a Whirlpool or Wasabi or any of these CoinJoin services is that you break the link that the person that's sending you the Bitcoin f the person who's sending you the Bitcoin, they can no longer tell what you're doing with it. and that that can be for some people that's important and worth the extra step. and the difference with the exchange is that you're breaking the
+
+the the link so that the exchange can no longer see what you're doing with the Bitcoin. So it's either the individual you're buying the the Bitcoin from can watch you or the exchange can watch you. No matter who's sending you this UTXO, as soon as it lands in your wallet, they can continue to watch that address and see what's going on. If you whirlpool it, if you if you if you do any sort of coin join, they will no longer be able to see what you're doing with that Bitcoin.
+
+Reed (02:01:06.656)
+And and the argument too, in in case part of the question here was, you know, is it just as good to to run it through you know a a like a whirlpool type service alone versus you know, if I'm just buying through an exchange, for example, if I run it through the whirlpool, am I then good? And you know, my answer to that would be, you know, the exchange still knows how much sats you bought. And so
+
+regardless of if they can keep track of where it goes on chain, it is an extra good a a good extra layer of disconnection to buy it peer to peer as opposed to buying it off of a KYC exchange.
+
+rev (02:01:48.722)
+Yeah, the KYC exchange still has the record of your name and how much Bitcoin you bought. And if at some reason you we don't know, guys, if these exchanges are gonna go bankrupt someday, if they're gonna get hacked. That information is there, for somebody to get. And
+
+Reed (02:02:04.494)
+They're almost certainly gonna turn it o that information over to the IRS or the government, so
+
+rev (02:02:08.99)
+Who knows? It's there for them to to leak however it leaks. for them to to do the they you can't stop them from sharing that information or from some for from somebody getting it. And so personally, I try to avoid having any of that information available to anyone. I do not want to attach my identity to Bitcoin at all. But so hopefully that answers your question. Next we got 500 sats via fountain from code with no no message, and that's on.
+
+Parallel Systems for Silent Bitcoiners with Biddish, Cleveland, Ohio, episode 16. Thank you again, Code. Code has been pretty consistently boosting, and we really appreciate that. you know, if you feel like it, code, you can hop on the website instead of fountain and do a boost sprint and get up onto our our leaderboard there. Next, we got a thousand sats via fountain from random junk with no comment. And that was on episode one. Starting and growing meetups, Western Mass and South Bend, Indiana.
+
+Reed (02:03:05.422)
+There we go.
+
+rev (02:03:07.236)
+And so thank you, random junk, for keeping episode one alive and making sure that everyone recognizes the value in that first episode. Once again, if you go back to episode one and you're looking to start a meetup, this is gonna give you all the nuts and bolts, basic information on what you need to know to get a meetup going off on the right foot forward. next we got 101 sats via fountain from Nostergang. Must be the name. I always assumed Biddish was British.
+
+And that's from Parallel Systems for Silent Bitcoiners with Biddish, Cleveland, Ohio. And you know, Noster Gang, that was my mistake because when I when I blasted the episode out into all the group chats, the autocorrect did did change it from Biddish to British. And so that may be where some of the confusion came in. But I'm glad you're paying attention. Go ahead, Clay.
+
+Clay (02:03:52.986)
+I
+
+I I read a correct version and was processing it as British. So so some of us you might have made the mistake. My brain was also making the mistake anyway, despite despite autocorrect.
+
+rev (02:04:09.308)
+Okay, so there you go, Noster Gang. You're not the only one. You're not alone in the world. Biddish is not British, but he is Biddish. next we got 500 stats via fountain from Battersea Bitcoiners. I truly believe the first time attendees at meetups is the strongest signal we have. Great episode with Biddish. Any listeners planning to visit London, reach out to me. And that was that that was for Parallel Systems for Silent Bitcoiners Biddish, Cleveland, Ohio, episode sixteen.
+
+Thank you again, Pat Battersea Bitcoiners. You've also been really boosting very consistently and we really do appreciate the the continued participation and getting the the velocity of this value chain going. And you know, Source Node was talking about on his international travels, how he was able to reach out to through the grapevine and find some connections on a layover and had an amazing experience.
+
+with Bitcoiners in a place where he knew nobody. And so, you know, Battersea Bitcoiners is offering this opportunity up for you. If you go follow him on Noster and you find yourself in London, you can get connected and and really see what's going on over there. Next we got 420 sats via localbitcoiners.com from the Matt Western Mass Bitcoin meetup. And the message is boosting my meetup from localbitcoiners.com
+
+there's information about the Western Mass Bitcoin meetup, which is a Noster event embedded into this boost. So if you're seeing this on Noster, you can click that event and get all the details. And this is just read exemplifying some of the cool things you can do. Now that we've integrated this this concept of boosting a podcast with NoSter, you can embed a NoSter note, whether it's a meetup or anything that you want, your favorite note, a product that you're selling, anything, it will come into this boost.
+
+And then it will be propagated out through our MPUB for other people to see who follow us as well as for your own social graph. And so that's a really cool feature that we you know, that it I feel like people are sleeping on it. You know, it's a it's a really good thing that you can do.
+
+Reed (02:06:13.856)
+And and actually it it seeing this note here like this r reminds me that there's another feature that we added that we haven't even had a chance to talk about yet until now. So a lot of Nostra clients we have found, like n not all Nostra clients respect these NIP 52 events. And so it might just say you know, event not found or event type not supported. so in addition to the actual note itself that has the meetup information.
+
+We also have provide a web link. And so our web link points to Plectos, plektos.app, shout out Derek Ross, with a link to the event there. And so if it's not loading in your client, you can click the web link. It's just a URL and click on that and it will open in Plectos.
+
+rev (02:07:02.556)
+Yeah, there you go. We're we're trying to even make it available, the information available on all clients, even if the client that your your client of choice is not rendering or not yeah, not rendering these these meetup event kinds or whatever event kind you might put in your boost. Next we got 420 sats via localbitcoiners.com from Jay Nada.
+
+With no message and that's from Permaculture, for Bitcoin Culture with SourceNode. So Greenville, South Carolina, episode fifteen or f episode fourteen, I'm sorry. well thank you, Jay Nata. I think that's the the first time I've seen you come in here and boost and welcome to to the Pioneers. You're part of the community now.
+
+Reed (02:07:50.461)
+yeah.
+
+rev (02:07:50.515)
+Next, we got 500 sats via fountain from Clay Seal. No comment with boosts on local bitcoiners. parallel systems for silent bitcoiners with Biddish, Cleveland, Ohio, episode 16. Well, thanks, Clay, for taking the time to hit that boost button and and share your support for Cleveland. Let us know that the fellow Ohio Bitcoin meetup culture is strong. And you know, Clay, we're gonna have
+
+Clay (02:08:15.314)
+Biddish and I will have to we'll have to both get connected, so yeah.
+
+rev (02:08:19.612)
+We're we're having Columbus on for the next episode. So the Ohio Bitcoiners are gonna be well represented in the in these three episodes here. Which is cool. There's a lot going on. You w you'd be surprised. Pretty much anywhere you look on the map, at least in the United States, there's local Bitcoiners to be found everywhere. and there you go.
+
+Clay (02:08:30.268)
+Awesome.
+
+Clay (02:08:39.802)
+Ohio against the world.
+
+rev (02:08:43.894)
+next we got t 2121, 2121 sats from Pleby Anon. which plebeian on is Brandon Carpellis from the the Sovereign Podcast, the Becoming Sovereign Podcast. And he says, Great rip, gents. Source node actually does deserve credit for the sovereign boost, but it was an intentional zap vertizing with you guys. Nice to see Biddish on the show, too. Cheers. And that was from Parallel Systems for Silent Bitcoiners.
+
+With Biddish from Cleveland, Ohio, episode 16. And so thanks, Brandon. you know, we we did kind of debate. We weren't sure if if you know Sovereign was boosting or if it was Source Node kind of repping his own show. But why not? Let's let's have some fun. Yeah, there you go. So so thank you all, you know, everyone at over there at Sovereign, Source Node, Brandon and the rest of the crew for really, you know, joining the team over here at local bitcoiners and
+
+Reed (02:09:26.722)
+Got our answer.
+
+rev (02:09:42.502)
+Making this experiment fun for everyone. We can we can see the sats flowing around. Okay, and that leads into the next boost, which is three hundred and three hundred thousand sats. Holy smokes. From localbitcoiners.com. And that's from Sovereign. And Sovereign says, Sovereign is the greek the the geek squad for Bitcoiners and Bitcoin companies. Come check us out at sovereign.io spelled S-O-V-R-E-I-G-N. Thanks, Reed and Rev.
+
+And man, Sovereign, you guys are are really you're playing the game with us and we love it. We're having fun.
+
+Reed (02:10:17.73)
+Taking advantage of those ad read spots. Love it.
+
+rev (02:10:20.764)
+And so and so this was actually so Sovereign just came in, so this didn't come up on any of the other episodes, right? They just came to the website. Once again, Sovereign made the effort to come to the website, click that boost button, and boosted right there. And and guess what? A hundred thousand of those sats, because there was no show, there was no guest to split out with, went straight into our value for value contribution wallet. So now we've got a hundred K sats to play with.
+
+to get back out there into the community. And now it's almost becoming a challenge to where we have to figure out some bounties or something to get you guys to earn these sats out of here. To we we gotta get these sats flowing out of the wallet and back out into the community so everyone can benefit from this this contribution and interaction. Let's get that value chain going.
+
+Reed (02:10:53.71)
+That's right.
+
+Reed (02:11:05.198)
+That's right, interact with the in interact with the show. Ask questions. boost your your products. if you're selling products on on Nasser, tag us. You know, we'll find you, we'll we'll boost you. This is what we do for our community members. Right. So if you're on our supporters page, we're automatically following you. And you know, that means you're gonna be on our feed and and Rev's gonna be there trying to spread these sets around as much as he can. So definitely that's right. And
+
+rev (02:11:30.674)
+Zap, zap, zap, zap, zap. Gonna get zapped.
+
+Reed (02:11:34.604)
+We're boosting other podcasts. It's it's it's a great thing. So Sovereign, you know, whether you knew it or not, you know, like Rev said, a hundred thousand of those sats are going right back out to the whole Nasser and and podcasting two point community. So thank you again and and yeah, we'll we're gonna keep that velocity high.
+
+rev (02:11:55.625)
+All right, and we got one final boost for the evening, and that's 888 sats via fountain from our good friend Bullish. And Bullish says the next bullish market event is on Tuesday, July 21st, the 21st of every month. If you have something to sell and have been thinking about attending, reserve your booth for June for June 30th.
+
+reserve your booth before June thirtieth and take advantage of the early Nostrich pricing. One thousand sats for new vendors and five hundred for returning. The website has been updated so it'll automatically be added to the Nostrich calendar event. More integrations to come. Gotta keep cooking like the local Bitcoiners. And certainly you are cooking over there, bullish, and that's pretty that's pretty darn cheap to to participate in that that market, you know.
+
+Reed (02:12:43.598)
+Absolutely.
+
+rev (02:12:49.808)
+It's more of just a a spam prevention mechanism at that point. And you can find all that information at bullishmarket.onrender dot com. And so that rounds out the boost for the evening. my goodness gracious, thank you everyone so much for for hanging with us and participating with the show. I just get so stoked every time we do one of these recordings and we we get to spend just as much time giving back to the community as we do talking to the guests.
+
+And and there's a lot of good signal in both sides, right? We got to talk with Clay, learn all about Cincinnati, hear about Austrian economics, and then who knows what the hell can come up with the boosts and and everything. So that was great fun too.
+
+Reed (02:13:23.286)
+Absolutely.
+
+Reed (02:13:34.648)
+Yeah, we're still plowing through everything. It's it's really great hearing the feedback from all the community from guys like Chad F who are going around testing our website from every possible platform. We see you, we hear you, all all of this stuff is is super valuable. and yeah, we're really looking forward, you know, we're really have been enjoying getting to know our community and we're gonna be rolling out even more community.
+
+related features. You know, we've said before our website is an Australian. It's gonna start looking and feeling more like an Australian here as we get more time to continue developing it.
+
+rev (02:14:12.808)
+Guys, the list is getting longer than shorter, all right? So it's it's gonna be cool. We we're we only got so much time to to put in almost like we can't we gotta kinda slow roll some of this stuff so everyone can get used to playing with it before there's just like Amethyst where you they every update there's fifteen hundred new things. I d I just started stop paying attention. I'm like, I don't care about it's almost annoying, right, when you have too much shit rolling out all the time. But we got stuff, all right.
+
+Reed (02:14:16.45)
+Yeah, this is true.
+
+rev (02:14:42.438)
+And actually the final thing that I wanted to kinda tease out here is that, you know, if you made it to the end, you're listening right now, you are probably a good person to hear this message. So episode fifteen with BTC Wrestle, if you go boost that episode and and you p you send some sats towards the samurai guys, I will match that. after one month, I will match all the sats that that get thrown down there. and so I just want you to know that, you know
+
+When you're boosting that, you know, I know a third of the sats come to read and I and and and a third go to there, but I'm gonna match that for one month and I want I want to see some good signal going in their direction, even if it's a lot of money, not a lot of sats going that way, at least they'll see that there's there's velocity, right? That these these little trickles of of Bitcoin are coming in there and that hopefully will give them some hope that we care, you know, that we're out there.
+
+and we're paying attention and that we're participating and trying to do what we can.
+
+Reed (02:15:45.806)
+Yeah, I think with with that message, Rev, if if if if maybe I wasn't clear about it either, you know, I'm also happy to contribute in in the same way. And we'll make sure that th those matches happen and it should be easy for us to to go through and use a lot of our tools to figure that out. But but yeah, episode fifteen, if you're looking for a place to boost, to get your message out there, to join our community, to have us blast your stuff out there while simultaneously sending some value back
+
+to the samurai developers and their families as they are struggling through this time. every little bit counts and and hopefully seeing the signal there will will make a difference for them.
+
+Reed (02:16:29.602)
+Alright, well this was a this was a long one. Thank you all for the boosts. And I think if there's nothing else, we can roll the outro.
+

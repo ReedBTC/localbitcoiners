@@ -1,0 +1,590 @@
+rev (00:01)
+Hey local Bitcoiners, Rev Hodel back again. As always, I'm joined by Reed. And tonight we have three guests on with us from the Louisville, Kentucky meetup. We've got Scott, Tally, and Steve. And so before we meet Scott, Tally, and Steve and learn about what's going on down there in Louisville, Kentucky, at the meetup, I of course have a meetup adventure to share. And so last week I went to Chicago.
+
+twice. I did a double header. I I went to Elmhurst, the Western Suburbs of Chicago meetup on Wednesday and as usual brought my my goods and sold a bunch of stuff. That was cool. But was what was really cool was there's somebody who I've been kinda we've been building up a friendship through coming to this meetup. I just started going to this meetup this year and so I've only been there a handful of months. and so not every time each person is there, so on and so forth. But so I I've been building up a friendship with another guy there.
+
+And this meetup he brought he had brought some product for him to sell to to participate in this circular economy. And so he was making these smoked salts, which is that that pairs perfectly with the lamb I'm selling and so on and so forth. And so he ended up also giving me a bunch of these smoked salts to to kind of present at these other meetups, see if there's any interest, and then sort of point people back in his his direction. So it's pretty cool to see that you know, through the
+
+activity that I'm doing at these meetups with the economic stuff with with selling things for Bitcoin, it is inspiring people to come and come up with something else that they can do to to participate in that way as well. And so that was Wednesday. Then Thursday I I turned right around and went back to Chicago and I went to the Chicago Bitcoin Collective for their bit devs. And this the Chicago Bitcoin collective is new, so they're just starting to get their their kitchen turned on for the restaurant. They don't have their liquor license yet.
+
+and so that was kind of like you can bring beer, but please keep it in do not go into the restaurant with your beer, you know, we could get in trouble. and so I got a burger and fries, and so that the fries that were made 100% tallow, beef tallow, delicious, really good burger. And did the bit devs there. And that was the same kind of thing. I brought a whole cooler full full of stuff, sold a whole cooler cooler full of stuff, and so the cool thing about the Chicago Bitcoin Collective is it is a is now a Bitcoin hub.
+
+for Chicago and they accept memberships. They they are selling memberships. And I was able to, you know, don't trust verify, right? I could of course I was gonna inevitably become a member of this because it's so it's in my neighborhood and I believe in it. But I didn't want to sign up for the membership until I tasted the food and actually went to the bit devs, right? So as soon as that was complete, now I had verified, yes, you guys are doing a kick ass job and this is an awesome place. And I signed up for a full year membership there.
+
+21 bucks a month for the lowest tier, right? I'm kind of I'm out of state. I'm not really in Chicago. So I think that made sense for me. It's not like I'm going in there to do the co-working space or whatever. but so it was just, it's just for me, you know, going to these meetups and seeing that there is the attendance is still up and the vibes are still high and the you know the people are, you know, bear markets are for building that meme or whatever. It's so true. People are out there still going and having a great time kicking ass. So that's my meetup adventure.
+
+What do you have for us, Reed?
+
+Reed (03:25)
+Yeah, man, dude, the Bitcoiner businesses, dude, that's yeah, it's it's it's such a j it's just a high signal business, right? It's like if if a Bitcoiner is running a business, you you know you can expect high quality. So glad to hear that they're delivering on that. all right, so my next meetup, I didn't really talk about it last time, so I'll talk for a minute about what my plans are at least for our next meetup, which is coming up on Sunday, July nineteenth at six PM.
+
+This is again at the He Heavy Culture Cooperative in East Hampton. so last time we tried the roundtable format, got really good feedback on it. everybody kinda loved it actually. so you know, we normally do the Socratic seminar. So we're gonna table that again and we're gonna go forward with this we're gonna try the the round table idea again. but this time a few things different. So one thing I'm gonna send out a few like suggested topics.
+
+that we can talk about. And I haven't gone through them. I was considering maybe sending out a podcast or an article or something that maybe we could all read together and then talk about. Haven't decided on any of that yet. but one thing I do want to talk about at as part of the round table is kind of like what what types of things that we want to grow into as a meetup. Right. Like we we we did pretty good rolling out some tools to get circular economy stuff going. those are starting to be used. I'd say it's still kind of in its infancy.
+
+so like what can we do to make that better? Like what kinds of what other ideas do people have? and then what other things do we want to start doing? Like one thing I wanna talk about is what I'm gonna call community features, which is a lot of the cool stuff we've been playing with on this podcast, like on our website and stuff. Like there's pretty cool community features. Like we're that's what we're doing. We're building community, we're we're we have a place now on the internet, which is our website where we can all kind of hang out and now we can find each other and see each other.
+
+So with those features coming out with the podcast, it's like an extra natural extension is how much of this can we do with the meetup? And so I was going to talk about some of that stuff with the meetup. and then also just to decide what we're gonna do with the Socratic seminars going forward. because I know people like those too. And so maybe we'll st maybe we'll do every other every other month or something like that. But those are the kinds of things I want to talk about. But I'm sure lots of other cool stuff always comes up during those roundtables. So I don't know, I'm I'm really looking forward to it.
+
+All right. Well, I'm happy to introduce a little bit some of our guests here. like we were saying, Rev was saying, we've got three guests with us here, all from the Louisville Bitcoin network. And so why don't we start with you, Steve? Steve, why don't you introduce yourself and tell us a little bit about the meetup and then you can kinda hand it off to Scott and Tally.
+
+Steve Brown (06:18)
+Sure. So we've this is our maybe second iteration of the Louisville Bitcoin network or the Louisville meetup as we might call it. we try to get together the once a month, the last Sunday of every month. we typically put on a Socratic seminar, a a bit devs like you know, meeting where I just select a bunch of stuff that I found interesting in the previous month. you know, this this month we talked some about ARC and Bark and all the
+
+Tali & Scott (06:34)
+Okay. Okay.
+
+Steve Brown (06:47)
+arcades and different n names of that protocol. and you know, sparrow wallet, you
+
+know, some of the core changes and things like that. Some technical, some not very technical. also we try and highlight some projects, you know, that we think y you should at least try out or use, or, you know, maybe give a demonstration on, you know, I think one time we gave one on eCash and, you know, passed around some Satoshis and things like that.
+
+So we've we mostly do the Socratic seminar, but occasionally we do just like a more of a social meetup at a different location, to maybe get some people that are less technical or fear that it's gonna be a t more of a technical discussion, to, you know, maybe open the door to them a little bit more. Also, we've had a game night before with Scott and Tolly's game, or games, I guess I should say. There's multiples now. so you know, we try and do some different things, but you know, we also are
+
+a pretty small group of people and we don't do very well with, you know, the communication of when the events are or, you know, even creating a list or a a singles point of communication. It's still a little bit disjointed in that regard. But you know, we are getting better as the time time rolls on. But we've we've done probably twenty with this new format, you know, that I was kinda talking about kinda after we kinda took a step back and found a a more
+
+Tali & Scott (07:52)
+you you
+
+you
+
+Steve Brown (08:14)
+solid location, which I think we actually might change because the library has become harder and harder to deal with, unfortunately. you know, I'll I'll go to them months out in advance
+
+Tali & Scott (08:23)
+you
+
+Steve Brown (08:24)
+and say, you know, can we have the room? It's it's just a little tiny room for like ten or fifteen people. They're like, it's booked up. you know, y sorry. Yeah, you know. And anyway, they're not they're not very easy to deal with, but I think we're gonna be in the mood to to start switching to a different location soon. maybe a little more social location as well. The the library's a little sterile and
+
+Tali & Scott (08:29)
+Yeah.
+
+Steve Brown (08:43)
+Quiet, so we might in you know, liven it up a bit as well.
+
+Reed (08:50)
+Awesome. Yeah, thanks for telling us about your
+
+about the meetup. And and I know I've got some questions. We we actually haven't talked too much about bit devs before, so I've got some questions as a Bitcoin or as a bit devs organizer. But before we get into any of that, welcome also to Scott and Tally. So I'll let you guys decide who wants to introduce themselves first, but why don't you guys both introduce yourselves and and tell us a little bit about what your role is in in the meetup and stuff like that.
+
+Tali & Scott (09:19)
+I guess I'll go first. Scotland Berg that's known for in the Bitcoin space for, for hodl up the, the tabletop game. And together, Tali and I were for a while. We, for about a year, we did the Bitcoin homeschoolers podcast. We were also known for speaking on the self custody of, of education. far as my role, I'm kind of the, the, the agitator of the group, I guess I just throw ideas out there and then.
+
+Steve actually organizes things and gets things done. but I keep threatening that I'm going to set up a monthly happy hour to complement some of the technical. that hasn't been, we haven't been consistent with that. So that's still out there. But I just look at myself more as a, I'm more of a participant.
+
+And I don't, I selfishly, I want this because we always felt like we were on an island. And so if we have a problem like with the location or something else, then I feel like it's time for me to try to do something. but I'm kind of all over the map. Firefighter, I guess.
+
+I'm Tali. I am Scott's wife. My role in the Bid Devs is not that much. We are a almost 100 % men group. I am the only consistent female attendee. And that's been really challenging. I have my own women's group called Orange Hatter.
+
+And we have our summer sessions going on right now where we have women signing in from different parts of the world, mostly the US, Canada, and Mexico. But tonight was our meeting and we had someone signing in from El Salvador, which is wonderful. And we went from going from like a 10 week book study kind of set up to a member led topic.
+
+focused discussion so anybody can jump in anytime with an article or something instead of having to commit to a whole series, like a tail week series on a book. That's worked really well. And I enjoy that very much. Unfortunately, in physical in-person attendance, I've been the only woman for the last, what, year and a half. It's been really challenging, you know? So that's me.
+
+Reed (11:56)
+Yeah, great guys. Yeah. Thank you again for for being willing to come on our podcast and and talk about all your experiences. And Tally, I think you have you so as part of Orange Hatter, you had a pod I don't know if you still do it, but you had a podcast at one point. And yeah, go ahead.
+
+Tali & Scott (12:12)
+I have
+
+a podcast. I hit 100 episodes and then I wanted to pivot the direction of the podcast. But I ended up just really focusing on women coming together when we can, even over Zoom, so that we can ask each other questions in real time and be able to interact. So that has been primarily my focus over the last two, three years now.
+
+I think I launched Orange Hatter like almost four years ago. I have, there's like a little bug here, sorry.
+
+Reed (12:48)
+Yeah, it's funny. so what made me immediately think of that is our longest recurring, you know, our basically our only regular female attendee at my meetup is my mom. And my my mom, you got in after grassroots a couple of years ago, we were talking and she actually went onto your podcast. So for for people who are interested in in hearing w about what my mom does at our meetups and how we her what was her path to becoming a Bitcoiner.
+
+Tali & Scott (13:09)
+Thank
+
+Reed (13:18)
+you can dig up the old Orange Hatter podcast episode with my mom on it. I don't know what what episode number it is off the top of my head. Maybe I can find it and stick it in the show notes.
+
+Tali & Scott (13:23)
+Yeah, absolutely.
+
+Yeah, yeah. It's difficult. It's very difficult because I am involved with a lot of local women networks organizations and everywhere I go, people know that I talk about Bitcoin and they show slight interest. But when it comes to time commitment, they're just not there. They just don't have interest in learning more. It's more like, OK.
+
+I realize that that's important, but it is on the bottom of my priority list. And you just know that they're never gonna get to it because they've got the other stuff going on. They're trying to handle their job and they're picking up their kids from school and they're driving them to soccer and ballet and all of that stuff, right? So it's been real challenging trying to get interest locally from women.
+
+Steve Brown (14:18)
+Sure. And I do think that one thing that is kind of different between the the at least the men and the women is that I think a lot of times we like to talk about the the Bitcoin, like the the technical part of Bitcoin, or at least the the the group that we have in the legal Bitcoin network currently. And I I know that a lot of times we don't you know get that social connection as well by doing that, but I think we could be better at, you know, doing more events that are just purely social
+
+Tali & Scott (14:35)
+Mm.
+
+Steve Brown (14:47)
+And you know, the the the reason for of Bitcoin is just just that. The you know, like it's no we don't need to talk about it necessarily. But I know that we we we don't we turn some people off by being that a l a little bit overly technical or at least appearing overly technical, you know, for our meetup.
+
+Tali & Scott (15:06)
+It is a really fine balance to walk though. I was just talking about that very issue with my orange hat or group before I hopped on this podcast, which is that it's not that I mind talking about the technical stuff. It's that I get very sleepy. Let me just talk about that. And then I get up and go to the bathroom like three times in a meeting because I'm trying to wake myself up. It'd be very embarrassing if I fell asleep. But you know, if I'm talking...
+
+to for having a conversation about personal things or personal experience or something, I find myself more emotionally involved. But I understand that for for the group that we do have, you guys are perfectly happy talking about technical stuff and you are very fulfilled. So it is a fine line to walk. I don't don't I don't Well, I'll just say sorry to interrupt you there. don't I actually think there might be more men that are OK with the technical, but I think we lose.
+
+Steve Brown (15:51)
+Right.
+
+rev (15:53)
+Well and you know, a a lot of people go ahead. Go ahead, Scott.
+
+Tali & Scott (16:04)
+We lose men too, we just don't know it because we don't see them. I don't think all, I think maybe more men are technical than many women comparatively. But I think we actually are losing people, maybe they're older or otherwise. We do have some older gentlemen that come. But I think the technical, mean, no one goes, most people don't go to like an internet meeting to learn how the internet works, but they know how to send an email. So I don't know if everybody,
+
+needs to know all the technical. I think at this stage of the adoption curve that we're in. So I actually think we're losing more people than we realize. And it so happens that the people who are left there happen to be more on the male side. I think we're missing an opportunity. At least in Louisville, I feel strongly that I need to do more to try to make social and make it more open to non-technical people.
+
+Steve Brown (17:00)
+And one thing we kinda talked about on our last meetup just indirectly was the younger generations. We we you know, we don't seem to attract people under the age of thirty five, really. You know, it it's you know, people I don't know if that's the same trouble throughout the meetup ecospace you know, ecosystem or not, but we definitely don't have any younger generation users that come to our our meetup.
+
+Tali & Scott (17:27)
+Well, see we have the one guy who's having a baby though, so you gotta give him a pass. Right, I mean, he's well start, you know, his family, I can see why maybe he's not getting a pass to leave the house to join us. So.
+
+rev (17:41)
+Yeah, you know, it's like these meetups typically the way the the time of day that they're at, and the places that they're at are, you know, pretty good spots for dudes to go meet and not for women and kids like maybe people as couples, but like as a single woman coming into this situation, you're going into like like a l a lot of these in a a lot of our recordings people talk about the location of their meetup being like, It's hard to even find the door and you you feel like you're going into some back alley place and so
+
+I could see how that could be intimidating to show up without knowing anyone as a woman to something like that. and so in permaculture, there's I'm I'm really into permaculture and there's there's twelve principles of permaculture, and one of them is self-regulate, accept, and apply feedback. And to me, like this is kind of good like like we're recognizing right now in this just this conversation that the formats of meetups maybe can change. Maybe it doesn't need to be so technical anymore. Like that there's a place for that, but that's not all it it's about. because meetups are much more than just
+
+learning about Bitcoin at this point. It's about finding Bitcoiners to meet and cooperate with locally. And so you guys you you mentioned like maybe starting to do the happy hour. you have done some social meets and you've done the game nights. So on those outside of the bit devs format, does a different sort of demographic of people come to those the more oddball meetups that you guys are doing?
+
+Steve Brown (19:02)
+Unfortunately no. It's it's mostly the same same group. again, but you know, we show up and just, you know, don't talk about Bitcoin as much or, you know, try not try not to talk about Bitcoin as much. but we end up just falling into that same trap and talking about the same things we usually talk about. you know, maybe maybe each time there's one new person, but you know, the the chance of them coming back is, you know, fifty fifty. you know, i it depends on how well invested they are b prior to coming, you know, how much they have
+
+Tali & Scott (19:22)
+Okay.
+
+Steve Brown (19:31)
+experience Bitcoin prior to to to you know, coming to a meetup.
+
+rev (19:36)
+So like the game night, for example, would be like
+
+y like kids aren't coming to this to play the games. It's more just like people having beers and playing the game in a bar or something.
+
+Steve Brown (19:45)
+It it's more the idea. I mean, I think we we're open to either crowd, but you know, the the ones that are attracted are, you know, th typically again that older, you know, thirty five plus demographic that, you know, is already you know, exposed to Bitcoin in some way.
+
+Tali & Scott (19:59)
+Our best game nights that Tali and I have experienced have actually been away from Louisville when we've been guests at other locations and someone will put out a, maybe it said bring your family type of thing.
+
+When we went to Shenandoah Valley, we actually did it in a church and there was a ton of kids running around. And it was really nice. We just had pizza and it was very informal in the middle of the day. The ones that we've had here, by and large, we have a smaller group, so it was attracting a lot of the same people. And it doesn't lend itself to...
+
+Repeat. It's not, this isn't like your Wednesday poker night and it's the same guys with their cigars type of thing. And so I don't think we've done a game night in two years now. I feel like it's, been a little while. I'm open, I'm open to it, but I, don't think it's one of those things you can force. And, and so we've, we've had some really great experiences with it, but in large part is because we were on the road and we would reach out to.
+
+the meetup organizer in that area and we would organize something special and they would advertise it and that would attract a certain certain crowd. So I'm not against it. But on the other hand, I don't think if someone's starting a new meetup somewhere. If it fits, then great use it. If it doesn't fit. I'm not going to. I wouldn't force anybody to try it. Obviously I'm biased. I like it, but I wouldn't force anybody to do it.
+
+rev (21:35)
+Well yeah, if you
+
+got a game that you made and you could present you could create an opportunity for the local people to play it, I would do it. Right. That's great. the the other thing, like so one one technique that we've used locally here to get people to bring their spouses to the meetup is actually to invite them and create like on the the Christmas meetup here in southwest Michigan, we make that meetup like the December meetup to be the Christmas one. And so it's like bring your your wife and kids and we're gonna have snacks and it's gonna be
+
+Tali & Scott (22:01)
+Thank you.
+
+rev (22:05)
+less of a Bitcoin meetup total thing, but more about just like, hey, the families can get together, at this time. And sometimes we do these one offs, you know, where people will throw a barbecue or something like that. Just and I and I know like the guys in Indianapolis, they meet in a park. Not like you said, it's not like you can just say every month we will meet in the park and everyone all the kids will play at the playground. But every once in a while someone says, Hey, I wanna I wanna do a park meetup and they they do it, you know? And so those are some things that
+
+It's a Bitcoin meetup, but it's more just about once again finding opportunities to interact with your your local Bitcoiners. I guess I didn't have a question to follow up that, but it was just a re yeah.
+
+Reed (22:41)
+It makes me it makes me
+
+Tali & Scott (22:42)
+Yeah.
+
+Reed (22:45)
+Well, it makes me think too, like I guess throughout some of this discussion I was thinking a little bit about like advertising. And and really what I mean is more just like how do we get the word out about like what's going on at the meetup, right? Like if you're doing a different type of thing, right? Like if this is gonna be the family night. Well that's that's great because you can tell everyone who's at the meetup, you can go tell them to tell their families to come. Because you don't have like a direct line of communication to everyone's wives, like who's coming to the meetups.
+
+And so like if you wanted to do a different style, like we've been talking about, like Tally, you had some great ideas, right? Of these more, you know, socially friendly, not so Bitcoin technical type meetup. Well, how do you tell you have the one meetup.com page and it's like, well, how do you get access to like a different community who might still want to come? It's just a it's just a challenging thing. And I think, you know, Rev was talking about it maybe a little bit before we hit record, but how do you find and then the flip side of that?
+
+You know, maybe that's where w you wanna find more, you know, women or less technical people to attend your meetup. That's one challenge. But then there's like the silent Bitcoiners, right? They're really technical people who don't want to go out and go I get out of their home and go to these places. Well, how do you convince how do you let those people know that your meetup exists? Let them know that it's actually a safe place for them to come and like, you know, there's no one gonna be what, you know, these like grand conspiracy theories or whatever that people might be after them.
+
+but you know, how do we get them out too? And it's just I like it's just a challenge, I guess, that I probably all Bitcoin meetup organizers have. so I guess I guess I I didn't leave it off with a question either. Go ahead, Scott.
+
+Tali & Scott (24:24)
+We
+
+have a second challenge in that 10, 12 years ago, there was some OG Bitcoiner in the space that actually has Louisville Bitcoin Meetup, like that's still active on the Meetup app. And when we first started to learn about Bitcoin and wanted to get connected, we went there and the...
+
+the meetup page will show someone doing a presentation and you think, oh, maybe I'm going to go learn. Well, whoever started it is long gone. And now it, and you basically go, no one has any presentation. No one has any agenda and all these, all the crypto, there was a bunch of crypto guys there and there were some nice people, but they each had their own little coin that they were into. And we're like, well, he's okay, but we don't care. Right. So we,
+
+We started this one because we actually wanted, we had been to Bitcoin Park, I don't know, for the first year we got into Bitcoin, once we found it, we were down there almost every month. So we knew what it could be like. But we actually have a double problem when it comes to advertising because you already have the standard problem of how you're gonna reach out. But we also have like this distraction, like fake Bitcoin thing going on that we're battling. That's not helping us.
+
+Right, I mean, I'm tempted to go and just, you know, tell everybody to go to the other place, but I just don't even want to go. Like, just like, don't want to take my time to go all the way down to where I remember some pizza joint. I don't feel like even going to do that because you have to go all the time because you never know when those new people who are entering, if they find that first. So basically I don't have an answer for you Reed, even though you don't have a question, but.
+
+I'm just letting you know, we've got a double challenge for Louisville, the standard that you already have, and this kind of shadow ghost of the past that kind of lingers in Louisville. I also, if I can add, feel like the big question is, when we have a Bitcoin meetup, what is our purpose and mission? Are we looking for other Bitcoiners to build personal relationships, or are we trying to spread
+
+Bitcoin around. And if we're talking about this being a freedom money kind of thing, then in my opinion, it is more important for us to build relationship, even if we just have a handful of people so that we know each other on a personal level and not just always talking about Bitcoin so that we have that support system because it is very lonely when you stand by Bitcoin.
+
+and you're going to be challenged in all different areas of your life. So if we're talking about building relationships, then what are we doing on the meetups if all we're doing is talking about Bitcoin? That's not building relationship. That's like going to a lecture and thinking just because somebody sat next to you, you're going to be friends with that person. That's the way I see it. So the way I run Orange Hatter is very, very different in that we don't talk about Bitcoin for the first half of our meeting.
+
+It's like, how's your week? What's going on with you? What's going on with your kids? What's going on with your health? Who are you? And how can I show you that I care about you and vice versa? And once we build up that relationship, then we go, okay, now let's talk about Bitcoin. What's going on in the space right now that you care about? We can talk about different topics, but the focus is always the relationship because in the end, Bitcoin is also just a tool. It's nothing more than a tool that records value that you have exchanged.
+
+I think we lost somebody. think Rev didn't like what you said. I think he signed me off. Rev is upset. I think... You tell him when he comes back, we'll say he's like... Yeah, we'll give him a hard time. We'll tell Tali that he doesn't like women or something.
+
+Steve Brown (28:33)
+Yeah.
+
+Tali & Scott (30:44)
+Yeah.
+
+My guess is Tali is going to want me to take this one. So there's a few things there. So one of the games you see on there is Mission Bitcoin. So in our area, we're about an hour, hour and a half away from Lexington and the same for Cincinnati. It takes a little longer to get to Indy.
+
+We're about three hours from Bitcoin Park. But when you look at the Cincinnati and Lexington group, it used to be not uncommon to have people come from other meetups that were close by. And so Mission Bitcoin is actually created by a gentleman from Lexington. And then he had some issues with Jeff Bezos. And so now we put his game on our website.
+
+The other games, yeah, my goal is that I want a game that hits the mark where you could play it with families. I go to game conferences and there's people there who will play ridiculously long games. I just, that's not most people. Most people, might be a family night, which would be awesome for more families to have that. It might just be a New Year's thing or some other type of gathering. So my goal is that you can play it in less than an hour. And it's based on some theme.
+
+And that's what I did for HODLUP. The one that's on there now, this is a prototype box. This is an, not exactly what it's going look like, but FedUp, I know this is an audio version only, but FedUp is in production now and that's based on only Fiat. And so you're, it's like clown world and you get to throw some balls. So if you can't play it in less than an hour, most people, just, I don't think the average, the average people who buy a game for entertainment, they're nuts.
+
+They're just not gonna play it. And the only way to hit the mark like you're talking about is just game testing. So I start with an idea and then I'll base it on a theme. So Clown World FedUp is based on monetary policy versus fiscal policy. like how do I stack up rules and red tape and how do I stack up money? And I want somebody to end the Fed, right? That's apply.
+
+I just wanted it to be something like that. But then the game mechanics, it just, it's just iteration. You try it out, something just doesn't work. So you try it again and it's just, you have to be patient enough and you have to find people who are actually willing to do game testing. And that's probably the hardest part. If you have people in your area that are willing to test it out with you, yeah, you can fast iterate.
+
+But it's just game testing over and over and over and over again. And then having enough humility to realize that your original idea just didn't work and you have to change it. So the game never ends up as I originally designed it. It takes a lot of twists and turns. So basically you pick a theme, you start, test, change, iterate, and cycle, rinse, repeat for until you get something that you feel like hits the mark. That's about it.
+
+lot of patience and don't do it if you're trying to make money.
+
+Because it is not a, there's five to 10,000 new games come out every year. I mean, it's something that if you have a passion for, you can go for it. Obviously, I have a passion for games and the education side, so I want to mix those together. But, and I talked to lot of other game, people who aspire to have games. But if you don't have that feeling, then.
+
+I wouldn't look at it as a business opportunity. It's just if you happen to enjoy it, then give me a call or text me or something and I'll try to help you out. But just know you're doing it because you have a passion for the, I think the fellowship is a huge part of it and the fun of the game, some strategy in there that can also be fun. I'll say with huddle up, if you're around Bitcoiners, they'll get competitive. They might put real sats on the table or talk.
+
+Bitcoin smack to each other. But it's designed to be a family game where you could play safely with kids as well. So that's what I shoot for. That's it. Just patience, patience. Just keep trying and trying and trying again.
+
+Mm.
+
+Steve Brown (36:18)
+Sure. It's just a a game that I I believe Steve Myers created. He he's in Nashville. he basically just came up with a good way to pick a target block, you know, somewhere that's gonna be in your meetup. So the next you know, the third next block from now. And then what you do is you put in a I think it's eight digit hex code that you think is gonna be the closest to the actual nonce of that block that you target. so it's kind of a fun game.
+
+Tali & Scott (36:25)
+Thank
+
+Steve Brown (36:46)
+We you know, you can do it just kind of at the beginning and say, you know, here's how the quick rules are. You just basically guessing a random number because that's all that miners are really doing anyway, is guessing a random number. So you're trying to guess what they're guessing. And, you know, you give away a you know, some sort of swag at the end, you know, that is Bitcoin related so somebody can walk away with a prize. And everybody likes to win, so you know, why not play a little game to, you know, allow that to happen.
+
+Tali & Scott (37:13)
+It's great. Have you guys done it before? Rev, have you guys used it? It's really slick, what Steve created. Steve Price? Yes. Yeah.
+
+Steve Brown (37:20)
+Steve Myers.
+
+Tali & Scott (38:11)
+Well, I'll let you go first, Steve.
+
+Steve Brown (38:13)
+I was just gonna say
+
+I think that you guys are heading the right direction with Noster and things like that where, you know, the social graph is already built in. You know, so if you if you are on Noster, you already have a the social graph and you can tap into that a a lot more easily. And I think that, you know, the the real world gamification of, you know, your your people that show up consistently and things like that, those are gonna be the ones that r that that most likely work in the long run. you know, just trying to find, you know, ideas or metrics that you can
+
+you know, find ways to to make it interesting enough that people want to do that thing, you know, and also win. I mean, because again, I er I think most people like to win, even if it is just, you know, a high five or whatever the hell you win at the end. it's it's better than nothing, right? You get that recognition and things like that. But I think it sounds like you guys are headed in in the right direction. And I'd like to to head that way as well, you know, w just because AI is making it so much easier to build these applications and
+
+Tali & Scott (39:08)
+Hmm.
+
+Steve Brown (39:13)
+you know, just throw shit against the wall and if it sticks, great. If it doesn't, then just throw it away and try again. so I think I think that, you know, I've I've learned a little bit already from, you know, some of these things that you guys are doing to you know, build that community around Noster.
+
+Tali & Scott (39:34)
+.
+
+you
+
+All right.
+
+Yeah, I love the guest nods because it's.
+
+It's up on the screen when you walk in, you scan the QR code, someone has to explain to you if you've never been before what a hexadecimal number is, then you have to explain what a nonce is. And so it's a way of opening up conversations for new people. For people who come on a regular basis, they get a chance to win a hat or a hardware wallet or a game or whatever it is. And it doesn't take very long because you do it when you're upfront.
+
+And then at the whoever stuck around to the end and you read off the winners, it doesn't take very long. The bit devs that I was attending in Nashville, I found to be a little long. a couple of them would just be like, they'd be like hour and half, two hours. And Holly's looking at me like, okay, I'm out. Like you go ahead and you can keep sitting here if you want. So you can't, you gotta be careful of your time. And what are you doing it for? You know, I don't.
+
+I don't want people to come to meetup because they're only there because of the prize. But if you get a prize because you came, I think that's still pretty cool. Like you feel good, right? You got your hat, you got your hardware wallet, whatever it was. So it depends on what's the reason for it. Is it to help with the conversation for new people? Is it to kind of like add a little bit of variety to it? I like it for those reasons. I don't know if it really will drive
+
+attendance, it might help with repeat, you know, people coming back. And so in that sense, it might help with attendance. But you just got to know why you're, why are you doing it? Not everybody likes games. I mean, I wish people more people did, but I would say keep it short if you're doing it for the general masses. And then if you
+
+Steve Brown (45:17)
+Sure. For for me go ahead, Don. Go ahead. No.
+
+Tali & Scott (45:18)
+Well, bit I was going
+
+to say the bit devs format started in twenty four, but we started the group earlier than that. when we first started, it was just because we wanted to stand apart from the crypto Bitcoin people. So we started by having it more of a social gathering just to see if we can find each other where we are. And we didn't find each other here. We found Steve.
+
+and our other co-founder in Nashville. It was that difficult for us to find each other. And so originally our intention was just so we were not alone where we are. And then it evolved from doing socials to doing bit-devs, but we have been doing this for a number of years. Yeah, I'll let Steve go and then I'll go for a third.
+
+Steve Brown (46:12)
+Yeah, I was saying
+
+for for me, I think that you know, I'm still trying to find the actual mission for myself. What you like, what it is that I want to do. I like to educate people. That's you know, one of my passions. But right now the the meetup for me and the bit devs for me is just to exercise my Bitcoin muscle. So that when somebody talks to me, I you know, I I'm up to date. you know, I'm not weak and you know, in all the areas. And I I do it selfishly almost for myself, just to, you know, these are things I like to talk about.
+
+And these are things I want to learn about or I want to hear somebody else's opinion on. So I bring it up in a in a in a Socratic seminar way. and selfishly that's that's w what I do it for currently. You know, is for myself. You know, yes, there you know, it it it hopefully does enrich other people's lives in some way, but right now it's really just so that I s you know, stay strong and I'm up to date on, you know, the the goings on of the Bitcoin.
+
+Tali & Scott (46:57)
+.
+
+Yeah, ditto on that. mean, mean, both those pieces. We were on an island when we were first trying to get into the we went to Miami and we didn't know anybody. So you're around a whole bunch of people who are quote unquote Bitcoiners and we felt like we were isolated. So having having people in the area without having to drive three hours to Nashville, that would I would say is priority number one, but exercising your Bitcoin muscle. I like the way you worded that, Steve. That's that's exactly what I go there. I'm like, I just
+
+I haven't been following things as much as I did when I first, the first few years getting in and I, I, lose, and there's so many changes happening so fast that it's more, the technical is almost getting more, even, even harder to understand than earlier. So if you have someone new come in, I mean, heaven help you. Like you're just, right here, it's gonna be overwhelming. So yeah, I mean, it's.
+
+Steve Brown (48:01)
+And I and I think to that point, I think that our demographic is changing. The people that, you know, once we're our core audience, the technical people, the people that install their run their own nodes and things like that, w not that we've tapped them out, but like, you know, we may have found a large majority of them. and, you know, we need to be more approachable for the common, you know, person that doesn't care about
+
+how to send ACH payments via Bitcoin, right? Yeah, like or the the technicalities that are, you know, similar to a a a you know an ACH payment. I don't think people want to know or care. They just want to open up their, you know, Venmo wallet and send some money. You know, and I don't know that those people are interested in Bitcoin meetups as well, but I think that, you know, the demographic is slightly changing from the hardcore run your own node crowd to a much more diverse, you know, set of people that are interested in Bitcoin.
+
+Tali & Scott (48:56)
+Yeah, I mean, have found occasionally, like after the samurai wall thing, we found out that there are people in our area that are very technical. But yeah, we're a developer, right? Yeah. And so for them, my guess is they already, know more, no offense, Steve, but they probably know more than you on some of that stuff because they're at a different, they're committed at a different level.
+
+Steve Brown (49:05)
+Yeah. Yeah, we had a one of the developers that came to our local meetup just o out of nowhere, you know.
+
+I sure hope so.
+
+Tali & Scott (49:26)
+They don't need it. They don't need the bit des because of what they're already living. And so they don't, I mean, I guess it comes back to what are you doing it for? And you do have people come in and they're confused about, a lot of them are, the new folks will come in. They're not necessarily young, but the people come in, they'll be asking investment type questions. And so you're 101,
+
+your introductory type of thing is trying to go back to the basics of what this is, just literally what's going on with it. If you want to have an impact, those are probably the ones we need to reach out to. But if you're inside the Bitcoin space, the people who are already technical, they probably don't need to have a BitDes every month for the rest of their lives. They probably got to a point and they're like, I got enough.
+
+Steve Brown (50:22)
+Right, or or they can do do their own research, yeah, right. I mean that's
+
+Tali & Scott (50:22)
+They're do their own research, going to go to smaller conferences, they're going to do something else. That's sort of what I'm talking about though is when we come together, we rallying because we stand behind the same philosophy of sovereign money or are we just going to talk about Bitcoin until the end of time? And it's about relationship building at this point, at least to me.
+
+you know, to be able to stand strong because we are facing a lot of oppositions in different ways. Read.
+
+Okay.
+
+Okay.
+
+Steve Brown (54:15)
+Sure. so a lot of times I do get some of the inspiration from other Bitdevs like bitdevs dot org, the New York City Bitcoin, they have a cities page and I'll go out and check them and say, What did you guys talk about last month or last week? and use that as kind of a guide t for some interesting topics because, you know, I'm not up to date on all the the goings on or the the nuances of things and
+
+Tali & Scott (54:31)
+You. Thank
+
+Steve Brown (54:40)
+you know, maybe half the articles I've I've read cover to cover or understand a hundred percent. but I bring them up mainly because I'm interested in them and I wanna know what other people's opinion are on it or I
+
+haven't heard or I really don't know much about ARK or Bark. Maybe somebody else has some information that I I'm uno unawares of and so I do bring them up for that reason. I do also like the Socratic semicon seminar method as well. I'd never really
+
+knew what it was and I'm still not certain I a hundred percent know what it is. but I think it you know, it it allows people to feel confident to to say to ask questions. you know, and the the what I think I've hopefully gotten better at over time is is leading with better questions or questions that start a better discussion, you know, instead of just saying, what's up?
+
+You know, what do you think? You know. I th you know, so d trying to lead the the witnesses a bit a bit more and things like that has become hopefully a better skill of mine. but I I still really don't know what I'm doing. you know. it's it I'm flying by the seat of my pants. you know, sometimes I'll make the the topics up the night before. sometimes I'll spend a a whole you know, I'll I'll get I'll prepare weeks out and and be ready and and much more prepared. but I do really like the the Socratic seminar method,
+
+just because it allows that interaction to happen much more freely and for somebody to chime in where I may not have gaps in my knowledge or, you know, they have a interesting story about that topic that they can feel comfortable bringing it up.
+
+Right.
+
+Sure. And I think it you know, part of it is marketing. Like we don't market it as a bit devs on meetup dot com just because if you if you're unawares of the Bitcoin world, you may not even know what a bit devs is. So we we market it at more as a meetup, but you know if you read on in the the description it'll tell you it's a bit devs and Socratic seminar and so forth. but
+
+Tali & Scott (57:24)
+Okay.
+
+Reed (57:47)
+gamification. And so we came out with these leaderboards and we're trying to say, hey, you this doesn't this isn't sending us the most sats. It's like
+
+Steve Brown (57:35)
+I do think it's kind of a marketing problem. We need to trick more into to just coming because it's more fun than it's more technical, for sure.
+
+Tali & Scott (57:56)
+. .
+
+Reed (57:56)
+Hey, who can be the most consistent? Like who's like our who are our ride or dies? Who's our core group? Who's like listening to all our episodes and interacting with us on Noster and things like that? and so with this kind of gamification of of some of our features and functions and tools, we thought this would be a great opportunity to some gaming kind of experts in in the Bitcoin community. And I was looking at your website, I didn't realize you guys had so many different games now.
+
+I certainly I knew about Hot Ob. but there's a lot of other games here as well.
+
+Steve Brown (58:32)
+Yeah, I think that the the things I've picked up from our conversation are, you know, just trying new things. I know you mentioned it and we really didn't talk about it much, but like you said, a round table discussion where people bring their own you know, articles to them to the meeting. That could be something we should try out, you know, just just you know, just so people feel like they have a little more ownership of the, you know, of the meeting, things like that. also we don't really even mention that we need help.
+
+you know, doing these things. So you know, so I think we should do that as well. It's like, hey, if you're you're interested in doing anything for this at all, like reserving the room or organizing a a social meetup, please do. we're you know, we we're not gonna say no unless it's really off the wall and not not fitting our our you know the Louisville Bitcoin network you know banner. but also I picked up some things around you know
+
+we need to be more involved with Noster. We need to have we don't even have a Noster account for, you know, the Lyle Bitcoin network. Super easy to do. We should do that. We should, you know, leverage that technology a bit more, to do some of that gamification, to also make it easy to approach, you know, f you know, for somebody that just comes to the meetup, say, you know, here's Noster here's how I can send you money, instantly just by you of signing up. I think we should, you know
+
+take some of those ideas and expand on them in the local bitcoin network.
+
+Yes. I
+
+I I might do it while Scott and Tolly are are giving their their recaps.
+
+Tali & Scott (1:00:09)
+Yeah.
+
+I have two thoughts. One is the idea of like all the AI slop that's out there. It reminds me a little bit of COVID in that these, it's a push towards more the importance of in-person events and the fellowship. And we really need that. mean, that's ultimately, whether it's the technical side or otherwise, we need to have that fellowship.
+
+so that we can keep pushing on these freedom ideas. And I don't think necessarily that bigger is better. Like I don't really care about the metric of how many people show up. Whatever the number is that shows up is really the right number. I'd prefer to have some more. I would like some growth, but I've been to bigger meetups and they don't necessarily feel better for me. I would rather have a few deep conversations and get to know people.
+
+Like again, after COVID and with all the AI stuff, like the importance of fellowship towards what we all believe in, which is really at the end of the day is really freedom. I think, yeah, it's a fellowship side that I really, that's the theme that I keep coming back to. And the other thing we didn't mention on a tactical side from running a meetup, I don't like Telegram personally. I know some people really like it. We've had a couple scammers.
+
+get into our group. so we were all three of us were pretty impressed with the FETI example at grassroots. so we are gonna, you know, this is an alibi fire. That is something that we're gonna try to work on over the coming months is trying to figure out how do we make a transition to a technology. And then when people come in person, that's part of them learning.
+
+You're like, well, what is this thing? Well, that's a whole separate conversation now. You can start telling them about all kinds of things.
+
+Steve Brown (1:03:27)
+It does.
+
+Tali & Scott (1:03:37)
+Yeah, so from this conversation, I just feel very strongly that because we are a small group, that once we become very clear what our mission is, whether that is building strong relationships with existing Bitcoiners or that we want to spread Bitcoin further past work, you know, ourselves, we we pick one and then we just stop apologizing for not doing the other bit.
+
+and we just strengthen and focus on what we choose to do. And the right people will show. We'll lose some people, but the people who show up will be the right people. So just being really clear about what our mission is, I think that's my biggest takeaway.
+
+rev (1:04:50)
+problem in a lot of ways. Like nobody's really come up with u use cases to to show off how cool noster stuff is, right? So if we just make a game out of it, now okay, here's a fun way to show off how there's like all this cool interoperability things we can do. and then it creates incentives for people to break the game. Like essentially you can win the game by breaking it at this point and that's creating the incentives for playtesting. And so like when it comes to meetups, I know Steve we we talked a little bit pre show about that
+
+the nonce game that that often at BitDevs. Do you wanna talk about that for a second and explain that?
+
+Yeah, and so once again
+
+The only time I ever played it was at was at Bitcoin Park. when we were
+
+when we were there together for grassroots at that that bit devs. but I just I th I so that that's another example of like, okay, here's a game where you're you're getting a b by playing this game you're now getting a better understanding of something related to Bitcoin. And it makes it fun and then you could potentially even come away with something that you wouldn't have otherwise at the meetup. And so I don't know, I I guess this is kinda leading into like
+
+Tali & Scott (1:06:47)
+Thank you.
+
+rev (1:06:53)
+Coming from that that perspective of game design and everything, like and and we're all we've already kind like some of the incentive problems of getting these different dep demographics to show up to meetups, like through this discussion, does is anything like popping into your mind of like a game we can play to to create incentives for people to come to meetups, different people to come to meetups, different ways of interacting at meetups.
+
+Tali & Scott (1:07:28)
+you
+
+Reed (1:07:50)
+Yeah, really cool. What things so, you know, you mentioned it it's cool that if you already have your social graph on Noster. but games are really cool if you don't have a social graph as well. And the reason why is because now all of a sudden, like if you like I've been trying to tell other meetup organizers, for example. Because I think a lot of meetups like okay, even if you are active, like me, I'm a great example. I'm I'm active on Noster. My meetup has I never use it because I'm always using my own.
+
+My personal one. And so like if you have if you have an NPUB that's like very lightly used or like you generated it some years ago and you doesn't really have any miles on it and you know, you don't have any followers, what's the point? I'm shouting into the void, like all these things. Well, if you interacting with our show, now We're talking about you specifically all the time. if you boost our if you boost our podcast, you get put into our follow packs.
+
+So like we have people you want to find our community, you can go automatically follow all these people. You know, we're featuring all their top boosts. The boosts get read off, but then the top boosts stay on the website. And so like there's all these cool ways that now all of a sudden an N pub that doesn't have very many miles on it, now you're gonna get like a Nosser focused podcast talking about your NPUB all the time. And so it's actually kind of a good way to bootstrap, you know, a a new NPUB or
+
+an N pub that's been lightly used. so that's that's been really cool to see some of that stuff actually happening. and we've we're we're seeing some success stories. Like
+
+Tali & Scott (1:10:13)
+Thank
+
+Reed (1:10:42)
+goal.
+
+Tali & Scott (1:10:26)
+Well, we thank you guys for the opportunity and appreciate what you guys are doing. And yeah, this is part of it, right? You just get to meet other like-minded people, like-valued people. So appreciate this. Yeah, thank you. Thank you both for having us.
+
+Steve Brown (1:10:40)
+I
+
+agreed. Thank you very much.
+
+Reed (1:10:50)
+how we can gamification type type tools to to Bitcoin meetups. but yeah, that's that's stuff we're interested in over here.
+
+we've talked about it a bunch of different ways. Like you know, I I I we've this exact topic, you know, why why are we doing this? Like w as Bitcoin meetup organizers, like why why are we doing this to ourselves? What you know, it's it's great to get involved with and and find purpose here because of how passionate we all are, right? And so I get a little bit stuck between kind of I I see as like two
+
+very different things that both have their place. There's like finding new people and and educating them about what Bitcoin is and like what is the opportunity that's being presented to by the fact that Bitcoin exists right now and it's so still so early. and recognize like what it is going on here. But that's a completely different thing than let's say like know the social aspect of
+
+Enforcing consensus rules on Bitcoin. Right? That's a whole different audience. Where now you're gonna get into like, what version of Bitcoin Core are you Like, are you running like some other implementation? You know, let's talk about some of the developers. Like, those are not conversations you're gonna have with new And so what what are we doing Like, it is really important to strengthen that base of people all the technicals.
+
+eventually get them over into that other seminar It's like a way for you my meetup, if we're doing a Socratic seminar, we it can be tailored to whoever's there, right? Because we're just gonna throw a topic up and start talking
+
+about it.
+
+And if everybody's got beginner questions, we'll talk about beginner questions. If people want to talk about super advanced stuff, we'll talk about that too. And so that's one of the things. Maybe this is, you know, we're we're we're running a into our hour mark here, but I did want to get to some of my questions on on bit devs. And one of the things of my favorite things about bit devs is this Socratic seminar format. And so that's why I had adopted, I don't call mine a bit devs. It's just a We talk about Bitcoin topics.
+
+But that's where format from was from And so I guess I'd love to hear what you think about Socratic Seminar, but then the other I'll just slip in my other Bit Devs question get to it if you have time. But there's other tools too, like Bit Devs, it it kind of seems like as far as meetups go, there's like this underground sort of culture of bid devs.
+
+Right, you guys all seem to kind of have the same websites and you talk about a lot of the same I know it's decentralized. I'm not saying there's like a centralized source of truth about what
+
+you guys are talking about, but there's like some kind of subtle coordination going on that a lot of the other reg quote unquote regular meetups like don't necessarily have. And so been very interested in in how you got how BitDev's meetup organizers think about that and like what kind of tools you guys have disposal.
+
+Okay, well hour mark. And so I guess I'd like to just maybe horn a little bit here and and see if there's like if people have you takeaways that you guys think would be kinda good a good way to kind of sum up what we've talked about here today or some of the themes we've talked about. Or if there's other things that you didn't have a chance, like we sort of ran out of time and you you had other things you wanted to bring up that we didn't touch on.
+
+this would be a a great time to do that. and so I guess w maybe
+
+around again in in maybe the same order that we let off in. Steve, do you want would do you have any kind of follow up or final thoughts or anything?
+
+rev (1:31:21)
+Just to jump in there real quick before you finish up, Tally, yeah, the Telegram is is is crap and but problems that come from trying to do your group chat and Telegram. That being said, the group chat is incredibly important. And this is how the noobs that come in there and they don't know anything and they're overwhelmed,
+
+Reed (1:32:44)
+That's great. That's a honestly, that's like probably one of the best messages that we've left off a podcast with it's sort of just honest it it I mean, you you heard my confusion even about our own meetup. Which one do I do? which one you're gonna do and and go all in on on that one side. I'm gonna be think I know for my meetup I'll be thinking more about that.
+
+rev (1:35:59)
+devs a few years ago. And maybe creating some around that will help prove where it will help us get feedback, the feedback that we need to to know if the directions we're moving in are
+
+Reed (1:36:10)
+bit as you Spencer back in episode nine. He brought up this point that we come back to a lot. And it's c consistency, but also variety. Right? Consistency is super important for make Bitcoin meetups. And I think I think most Bitcoin meetup organizers we got that piece.
+
+We understand to be consistent and to have this thing every single month. variety piece is something I know I'm trying to work on. and it's why we're I'm trying to communicate with my meetup and just try to figure out where they're at. And I think a lot of the stuff we talked about here today is it's gonna help me on that mission. And maybe it'll it'll probably hopefully help other Bitcoin meetup organizers too, just try to meet attendees where they're at.
+
+So yeah, so I think that's that's kind of my final thought. And so with that, I think we're getting ready here to transition to our value for value portion of the show. So as we talked about pre-show, of course, Steve, Scott, Tally, you guys are all welcome to hang out. but the second half of our show is really this is our chance to develop our community and to interact with our community that listens to the podcast. A lot of them are Bitcoin meetup not all of them, a lot of them are hang out on Naster.
+
+Not all of them. to try to interact with them. So that's what we're gonna do. And so again, you guys are more than welcome to stay. but what we do to
+
+rev (1:38:35)
+While you're pulling those up, Reed, I just want to say thank you guys for on. I really do appreciate you sharing, people know, right? Louisville is a meetup, you can go to that. And you know, we just talked with Clay from Cincinnati, and as you mentioned, it's it's not too far, it's not out of range. next week we're talking with Columbus. And, you know, Indianapolis, I w I would have loved to talk with Indianapolis. We But in this region, right, around Louisville, there are a lot of other meetups. And so if you're listening from any of those
+
+different areas cross pollinate with Louisville
+
+Reed (1:39:10)
+Alright. good. Okay. So let's let's transition over to our leaderboards. so our first leaderboard we like to talk about first is called our top episodes leaderboard. These are our episodes that have received the most sats all time. to say, you know, sats are the sorry. We like to say sats are the standard, right? So let's use sats.
+
+It doesn't mean necessarily that these are our our best episodes or our our top episodes. These are our episodes the most stats. So there are other metrics too, and we can talk about some of those. but that's what we got here for our top episode leaderboard. And so still up at the list in first is episode 15, Privacy is Sovereignty with BTC from Columbia, South Carolina. And that one is coming in with
+
+281,100 or 897 So the cool, you know, this is our top episode. And the cool thing about this being our top episode is that BTC Russell the samurai developers. And I think Rev little bit about what our
+
+rev (1:41:58)
+So this is a big opportunity. If you're into this value chain concept that got spitting out over here and you know you want to support Samurai, you can boost that show. And at the same time, in the message of your boost, take advantage of the fact that you're you're donating to these guys
+
+Reed (1:42:17)
+member of our top episodes leaderboard. And right up there at the top in episode two is meetups are the ultimate web of trust with Jersey City, New Jersey, G C and James. And
+
+rev (1:42:34)
+propagate out.
+
+Reed (1:42:37)
+in-person connections are so important. And so we talked about that during that you haven't listened to episode two, definitely a recommendation to go back
+
+rev (1:44:35)
+Well, and you know, talk about the community feed, right? So now SourceNode is in the the community local bitcoiners. And you know, I I follow a lot of people on Noster on my Rev account, and I'm also looking at the local Bitcoiners account. And so a lot of times I will miss what SourceNode is putting down on Noster through the Rev account, I'm seeing it for sure on the local Bitcoiners account.
+
+And I have to say, dude, I'm I'm a big fan of the vibe that Source Note is putting out lately. I am really digging at Source Note if you're listening. keep that shit up, man. And and if you aren't following Source Note, you can do that really easy. You should be watching what this guy's talking about right now because it's it gets me going. It it gets
+
+Reed (1:45:17)
+I would say and I don't know Rev if you agree, but I would say episode nine was a little bit of a turning point for the show. Like I think that we really started leaning harder into the V for V stuff after maybe right before, but really in preparation for maybe that episode.
+
+all right. So f
+
+rev (1:46:24)
+Yeah, I will say like when it
+
+comes to gamification too, I just I've been so bowl after bowl, on Tuesday nights and bowl after bowl goes live later, usually after we're done recording, they're just getting started. And so I can pop into bowl after bowl, and and check it out live. And you know what's so fun, man, is that you can you can watch bowl after bowl live on like Noster. I can watch it on Wisp or Amethyst or whatever and my
+
+linked through NWC and Astro Wallet Connect. And so I can just like spam their their show the whole time the disco ball turning and stuff, just zapping them all throughout the whole time. I just I'm having so much fun with it. That is a fun game to play, you guys, is going after going to bowl after bowl, listening live and seeing what it feels like when you know those bowling pins crash because you sent them the Bitcoin. Super fun. Anyways, I just I've been having fun with them lately.
+
+Here's a call out. J should we have voicemail? Do you guys wanna do you want do you wanna have your voice played live on air? Should we add that as a segment here in the value for value section? Let us know.
+
+Reed (1:48:40)
+our top
+
+rev (1:49:55)
+Well and to take it back
+
+to the show too from tonight, it's it's both guys and gals, you know. We we've got some some mu not just men represented in our core group here. So this online meetup is is starting to get some diversity. Yeah.
+
+Reed (1:50:29)
+the wrong episode. I was looking into it right before the show when I saw the leaderboards so episodes. But I swear
+
+like the testers for all these features that we're rolling out. So if you like features, let us know. If some of the features that we've rolled out are kind of like, meh, you don't into them, let us know that too. Because
+
+We're trying to create a game here. And so if the more feedback that we get about what's working, you know, we'll those and what's not working, maybe we'll cut up.
+
+the boosts. They're they're boosts that get read
+
+rev (1:52:47)
+And please try and break the game because th a lot of these games are not just for the show. ideas for for Bitcoin meetups to employ this stuff too, build it into their communities. And so if we get a nice that that everyone's been poking at to to break things, then once we once meetups start they've already got a much more hardened game that it isn't as easily broken.
+
+Reed (1:53:11)
+that they could maybe they want to give somebody a shout out.
+
+rev (1:53:15)
+So this is helpful for meetups at the same time. Like w please try and break our games. Have some fun, guys.
+
+Reed (1:54:55)
+all gonna be end up going to Keon and Bill, the samurai developers.
+
+Donation fund. So let's read Sovereign's second message here. So it says Sovereign on helping individuals, families, and companies integrate Bitcoin into their personal and professional lives with confidence, recognizing the crucial role it plays in the broader economic If you want to dig deeper into self-custody, node running, or point of sale implementation, has your back. Thanks to all the meetup organizers out there for keeping the grassroots Bitcoin ethos alive.
+
+Go to sovereign.io spelled S-O-V-R-E-I-G-N for support on your Bitcoin journey. Well, thank you again, Sovereign. We really appreciate those two monster boosts. they really go a long way for this podcast. And in this this second boost case, it's hopefully a long way for the samurai developers and their families.
+
