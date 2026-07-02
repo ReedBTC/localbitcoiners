@@ -52,11 +52,12 @@
   // each host's bucket eats their half before any "profit" appears.
   // Add a new entry each month after the bill clears.
   var COSTS = [
-    { ms: Date.parse('2026-02-02T00:00:00Z'), dollars: 60, sats: 78027 }, // initial setup
-    { ms: Date.parse('2026-03-02T00:00:00Z'), dollars: 49, sats: 74500 },
-    { ms: Date.parse('2026-04-02T00:00:00Z'), dollars: 49, sats: 71940 },
-    { ms: Date.parse('2026-05-02T00:00:00Z'), dollars: 49, sats: 62633 },
-    { ms: Date.parse('2026-06-01T00:00:00Z'), dollars: 49, sats: 66599 },
+    { ms: Date.parse('2026-02-02T00:00:00Z'), dollars: 25, sats: 32000 }, // Fountain only (Riverside started Mar)
+    { ms: Date.parse('2026-03-02T00:00:00Z'), dollars: 49, sats: 73359 }, // Fountain 37428 + Riverside 35931
+    { ms: Date.parse('2026-04-02T00:00:00Z'), dollars: 49, sats: 73359 }, // Fountain 37428 + Riverside 35931
+    { ms: Date.parse('2026-05-02T00:00:00Z'), dollars: 49, sats: 62500 }, // Fountain 31888 + Riverside 30612
+    { ms: Date.parse('2026-06-01T00:00:00Z'), dollars: 49, sats: 62500 }, // Fountain 31888 + Riverside 30612
+    { ms: Date.parse('2026-07-01T00:00:00Z'), dollars: 49, sats: 74700 }, // Fountain 38112 + Riverside 36588
   ];
 
   var canvas = document.querySelector('[data-stats-canvas]');
