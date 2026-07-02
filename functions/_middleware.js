@@ -81,6 +81,7 @@ export async function onRequest(context) {
   const channelValueXml = matchChannelValue(xml);
 
   const ep = extractEpisode(itemXml, epNum, channelValueXml);
+  ep.chapters = await fetchChapters(ep.chaptersUrl);
   const html = renderEpisodePage(ep);
 
   return new Response(html, {
@@ -134,6 +135,48 @@ async function fetchRss() {
     return new TextDecoder("utf-8").decode(buf);
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// ── Chapters fetch (Podcasting 2.0 JSON chapters) ────────────────────
+// Fetches the per-episode chapters JSON referenced by <podcast:chapters>
+// and returns a normalized [{ startTime, title }] sorted by startTime.
+// Returns [] on any failure (bad URL, timeout, oversized body, malformed
+// JSON, no titled entries) — chapters are strictly additive, so the page
+// must render fine without them. The file is tiny, so the cap is small.
+const CHAPTERS_MAX_BYTES = 512 * 1024;
+async function fetchChapters(chaptersUrl) {
+  if (!chaptersUrl) return [];
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const resp = await fetch(chaptersUrl, {
+      headers: { "User-Agent": "LocalBitcoiners-EpPages/1.0" },
+      cf: { cacheTtl: 600, cacheEverything: true },
+      signal: ctrl.signal,
+    });
+    if (!resp.ok) return [];
+    const cl = parseInt(resp.headers.get("content-length") || "", 10);
+    if (Number.isFinite(cl) && cl > CHAPTERS_MAX_BYTES) return [];
+    const text = await resp.text();
+    if (text.length > CHAPTERS_MAX_BYTES) return [];
+    const data = JSON.parse(text);
+    const list = Array.isArray(data?.chapters) ? data.chapters : [];
+    return list
+      .map((c) => ({
+        startTime: Number(c && c.startTime),
+        title: typeof (c && c.title) === "string" ? c.title.trim() : "",
+      }))
+      // Drop untitled/"toc:false" markers and anything without a usable
+      // start time — those are ad/segment boundaries, not real chapters.
+      .filter(
+        (c) => c.title && Number.isFinite(c.startTime) && c.startTime >= 0
+      )
+      .sort((a, b) => a.startTime - b.startTime);
+  } catch {
+    return [];
   } finally {
     clearTimeout(timer);
   }
@@ -317,6 +360,10 @@ function extractEpisode(itemXml, epNum, channelValueXml) {
     "href",
     (v) => v && v.startsWith("https://fountain.fm/episode/")
   );
+  // Podcasting 2.0 chapters — Fountain writes a <podcast:chapters> tag per
+  // item pointing at an external JSON file (type application/json+chapters).
+  // We only keep the URL here; the JSON is fetched at the edge in onRequest.
+  const chaptersUrl = matchAttr(itemXml, "podcast:chapters", "url");
   const guests = parseGuests(descRaw);
   const splits = parseSplits(itemXml, channelValueXml);
 
@@ -328,8 +375,13 @@ function extractEpisode(itemXml, epNum, channelValueXml) {
     description: descText,
     enclosureUrl: safeHttpUrl(enclosureUrl),
     fountainUrl: safeHttpUrl(fountainUrl),
+    chaptersUrl: safeHttpUrl(chaptersUrl),
     guests,
     splits,
+    // Filled in by onRequest after the RSS parse — an array of
+    // { startTime, title } sorted by startTime, or [] when the episode
+    // has no chapters / the fetch fails.
+    chapters: [],
   };
 }
 
@@ -462,6 +514,7 @@ function renderEpisodePage(ep) {
     .filter(Boolean);
 
   const shownotesDisclosure = renderShownotesDisclosure(paragraphs);
+  const chaptersDisclosure = renderChaptersDisclosure(ep.chapters);
 
   const audioBlock = ep.enclosureUrl
     ? `<audio class="ep-player" controls preload="none" src="${htmlEscape(ep.enclosureUrl)}"></audio>`
@@ -672,6 +725,7 @@ function renderEpisodePage(ep) {
       ${boostBtn}
     </div>
 
+    ${chaptersDisclosure}
     ${shownotesDisclosure}
   </article>
 
@@ -877,6 +931,47 @@ function renderShownotesDisclosure(paragraphs) {
       <div class="ep-shownotes-body shownotes-body">
         ${body}
       </div>
+    </details>`;
+}
+
+// Formats a chapter start time as h:mm:ss (drops the hour segment when the
+// chapter starts under an hour in). Used for the timestamp column.
+function fmtChapterTime(totalSecs) {
+  const s = Math.max(0, Math.floor(totalSecs));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const mm = String(h > 0 ? String(m).padStart(2, "0") : m);
+  return (h > 0 ? `${h}:` : "") + `${mm}:${String(sec).padStart(2, "0")}`;
+}
+
+// Chapters disclosure — a collapsible list inside the player card. Each
+// row is a button carrying data-seconds; episode-enhance.js wires clicks
+// to seek the <audio> element and highlights the active chapter as it
+// plays. Ships open (it's the navigation aid the plain player lacks) but
+// only when the episode actually has chapters. No JS = still a readable
+// timestamped table of contents.
+function renderChaptersDisclosure(chapters) {
+  if (!Array.isArray(chapters) || chapters.length === 0) return "";
+  const rows = chapters
+    .map((c) => {
+      const secs = Math.max(0, Math.floor(c.startTime));
+      return `<li class="ep-chapter">
+          <button type="button" class="ep-chapter-btn" data-seconds="${secs}">
+            <span class="ep-chapter-time">${htmlEscape(fmtChapterTime(secs))}</span>
+            <span class="ep-chapter-title">${htmlEscape(c.title)}</span>
+          </button>
+        </li>`;
+    })
+    .join("\n        ");
+  return `<details class="ep-chapters" open>
+      <summary class="ep-chapters-summary">
+        <span class="ep-chapters-title">Chapters <span class="ep-chapters-count">${chapters.length}</span></span>
+        <span class="ep-chapters-caret" aria-hidden="true">▾</span>
+      </summary>
+      <ol class="ep-chapters-list">
+        ${rows}
+      </ol>
     </details>`;
 }
 

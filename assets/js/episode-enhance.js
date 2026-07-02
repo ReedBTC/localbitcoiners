@@ -328,16 +328,66 @@
     });
   }
 
+  // ── Chapters: click-to-seek + active-chapter highlight ──────────
+  // The server renders a static, timestamped chapter list (data-seconds
+  // per row). Here we make it a live control: clicking a row seeks the
+  // <audio> element, and the row covering the current playhead gets the
+  // .is-active class as playback advances. Degrades to a readable list
+  // when JS is off.
+  function wireChapters() {
+    var audio = document.querySelector('.ep-player');
+    var buttons = document.querySelectorAll('.ep-chapter-btn');
+    if (!audio || !buttons.length) return;
+
+    var starts = [];
+    for (var i = 0; i < buttons.length; i++) {
+      starts.push(parseInt(buttons[i].getAttribute('data-seconds'), 10) || 0);
+    }
+
+    for (var j = 0; j < buttons.length; j++) (function (btn, secs) {
+      btn.addEventListener('click', function () {
+        try { audio.currentTime = secs; } catch (e) {}
+        var p = audio.play();
+        if (p && typeof p.catch === 'function') p.catch(function () {});
+      });
+    })(buttons[j], starts[j]);
+
+    var activeIdx = -1;
+    function syncActive() {
+      var t = audio.currentTime;
+      // Active chapter = the last one whose start is at/behind the
+      // playhead. Small tolerance so a click-seek lands on its chapter.
+      var idx = -1;
+      for (var k = 0; k < starts.length; k++) {
+        if (starts[k] <= t + 0.25) idx = k; else break;
+      }
+      if (idx === activeIdx) return;
+      if (activeIdx >= 0) {
+        buttons[activeIdx].classList.remove('is-active');
+        buttons[activeIdx].removeAttribute('aria-current');
+      }
+      activeIdx = idx;
+      if (idx >= 0) {
+        buttons[idx].classList.add('is-active');
+        buttons[idx].setAttribute('aria-current', 'true');
+      }
+    }
+    audio.addEventListener('timeupdate', syncActive);
+    audio.addEventListener('seeked', syncActive);
+  }
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
       wireBoost();
       wireDownloadMp3();
       wireSubscribeCloser();
+      wireChapters();
     });
   } else {
     wireBoost();
     wireDownloadMp3();
     wireSubscribeCloser();
+    wireChapters();
   }
 
   // ── Shared profile resolver ─────────────────────────────────────

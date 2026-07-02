@@ -415,6 +415,116 @@ nav ul li a:hover {
 }
 .shownotes-body p { margin-bottom: 1rem; }
 .shownotes-body p:last-child { margin-bottom: 0; }
+
+/* ── Chapters (Podcasting 2.0) ─────────────────────────────────────
+   A collapsible table-of-contents inside the player card. Unlike
+   .ep-shownotes (which bleeds to the card edges as the last element),
+   chapters sit between the actions row and show notes, so this is a
+   self-contained inset panel with its own border. */
+.ep-chapters {
+  margin-top: 1.6rem;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.ep-chapters-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  padding: 0.9rem 1.15rem;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--navy);
+  letter-spacing: 0.02em;
+  transition: background 0.15s, color 0.15s;
+}
+.ep-chapters-summary::-webkit-details-marker { display: none; }
+.ep-chapters-summary::marker { content: ''; }
+.ep-chapters-summary:hover {
+  background: var(--cream);
+  color: var(--green-d);
+}
+.ep-chapters-count {
+  display: inline-block;
+  min-width: 1.4em;
+  margin-left: 0.15rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: var(--cream-d);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+  vertical-align: middle;
+}
+.ep-chapters-caret {
+  font-size: 0.85rem;
+  color: var(--muted);
+  transition: transform 0.15s, color 0.15s;
+}
+.ep-chapters[open] .ep-chapters-summary { background: var(--cream); }
+.ep-chapters[open] .ep-chapters-caret {
+  transform: rotate(180deg);
+  color: var(--navy);
+}
+.ep-chapters-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.3rem 0;
+  max-height: 22rem;
+  overflow-y: auto;
+  border-top: 1px dashed var(--border);
+  background: var(--white);
+}
+.ep-chapter { margin: 0; }
+.ep-chapter-btn {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-left: 3px solid transparent;
+  font: inherit;
+  padding: 0.5rem 1.15rem;
+  cursor: pointer;
+  color: var(--text);
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.ep-chapter-btn:hover {
+  background: var(--cream);
+  color: var(--navy);
+}
+.ep-chapter-time {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+  min-width: 3.1rem;
+}
+.ep-chapter-btn:hover .ep-chapter-time { color: var(--green-d); }
+.ep-chapter-title {
+  font-size: 0.95rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+/* Active chapter — set by episode-enhance.js as the audio plays. */
+.ep-chapter-btn.is-active {
+  background: var(--cream);
+  border-left-color: var(--orange);
+  color: var(--navy);
+}
+.ep-chapter-btn.is-active .ep-chapter-time { color: var(--orange-d); }
+.ep-chapter-btn.is-active .ep-chapter-title { font-weight: 600; }
 .shownotes-body a {
   color: var(--navy-l);
   font-weight: 600;
