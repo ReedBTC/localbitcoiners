@@ -685,8 +685,9 @@
 
     /* ── Leaderboards ── A swipeable carousel: one board per view (Top
        Episodes, Top Listeners, then Biggest Boosts), auto-rotating with dots.
-       Cream section so the white cards pop (sits above the community section). */
-    #leaderboards { background: var(--cream); }
+       White section (the lb-cards carry their own border + shadow) — sits
+       below the community section, keeping the cream/white stripe alternating. */
+    #leaderboards { background: var(--white); }
     .lb-carousel-hint {
       font-size: 0.82rem;
       color: var(--muted);
@@ -1217,7 +1218,7 @@
     }
 
     /* ── People section (Guests + Supporters, two tight rows) ── */
-    #people { background: var(--white); }
+    #people { background: var(--cream); }
     /* Tighter than a default module — this is two rows in one frame, kept
        close to the top per the homepage's "less distance" goal. */
     #people .home-module { padding-top: 2.5rem; padding-bottom: 2.25rem; }
@@ -1578,6 +1579,39 @@
   </div>
 </section>
 
+<!-- ════════════════ MEET THE COMMUNITY (guests + supporters) ════════════════
+     One section, two labeled rows (Guests / Supporters) — one frame, tighter
+     vertical footprint, both groups still distinct. Carousels render via
+     home-people.js (IDs unchanged). -->
+<section id="people" class="reveal" aria-label="The community">
+  <div class="home-module">
+    <div class="home-module-head">
+      <div>
+        <h2 class="home-module-title"><a href="/supporters">Local Bitcoiners Community</a></h2>
+      </div>
+      <a class="home-module-link" href="/supporters">See full Community →</a>
+    </div>
+
+    <div class="people-row">
+      <span class="people-row-label">Show Guests</span>
+      <div class="carousel-wrap">
+        <button type="button" class="carousel-arrow prev" data-carousel-prev="guests-carousel" aria-label="Scroll left" hidden>‹</button>
+        <div class="people-carousel" id="guests-carousel" data-people="guests"></div>
+        <button type="button" class="carousel-arrow next" data-carousel-next="guests-carousel" aria-label="Scroll right" hidden>›</button>
+      </div>
+    </div>
+
+    <div class="people-row">
+      <span class="people-row-label">Supporters</span>
+      <div class="carousel-wrap">
+        <button type="button" class="carousel-arrow prev" data-carousel-prev="supporters-carousel" aria-label="Scroll left" hidden>‹</button>
+        <div class="people-carousel" id="supporters-carousel" data-people="supporters"></div>
+        <button type="button" class="carousel-arrow next" data-carousel-next="supporters-carousel" aria-label="Scroll right" hidden>›</button>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ══════════════════════════════ LEADERBOARDS ══════════════════════════════
      Live leaderboards computed from /data/sats.json (same definitions as the
      weekly bot note in bots/leaderboards/). A swipeable, auto-rotating carousel
@@ -1622,39 +1656,6 @@
         </article>
       </div>
       <div class="lb-dots" id="lb-dots" role="tablist" aria-label="Choose a leaderboard"></div>
-    </div>
-  </div>
-</section>
-
-<!-- ════════════════ MEET THE COMMUNITY (guests + supporters) ════════════════
-     One section, two labeled rows (Guests / Supporters) — one frame, tighter
-     vertical footprint, both groups still distinct. Carousels render via
-     home-people.js (IDs unchanged). -->
-<section id="people" class="reveal" aria-label="The community">
-  <div class="home-module">
-    <div class="home-module-head">
-      <div>
-        <h2 class="home-module-title"><a href="/supporters">Local Bitcoiners Community</a></h2>
-      </div>
-      <a class="home-module-link" href="/supporters">See full Community →</a>
-    </div>
-
-    <div class="people-row">
-      <span class="people-row-label">Show Guests</span>
-      <div class="carousel-wrap">
-        <button type="button" class="carousel-arrow prev" data-carousel-prev="guests-carousel" aria-label="Scroll left" hidden>‹</button>
-        <div class="people-carousel" id="guests-carousel" data-people="guests"></div>
-        <button type="button" class="carousel-arrow next" data-carousel-next="guests-carousel" aria-label="Scroll right" hidden>›</button>
-      </div>
-    </div>
-
-    <div class="people-row">
-      <span class="people-row-label">Supporters</span>
-      <div class="carousel-wrap">
-        <button type="button" class="carousel-arrow prev" data-carousel-prev="supporters-carousel" aria-label="Scroll left" hidden>‹</button>
-        <div class="people-carousel" id="supporters-carousel" data-people="supporters"></div>
-        <button type="button" class="carousel-arrow next" data-carousel-next="supporters-carousel" aria-label="Scroll right" hidden>›</button>
-      </div>
     </div>
   </div>
 </section>
