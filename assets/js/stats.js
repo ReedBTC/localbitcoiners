@@ -485,7 +485,8 @@
     if (!appmixCanvas) return;
 
     var WEEK_MS = 7 * DAY_MS;
-    var byWeekApp = Object.create(null);
+    var byWeekApp = Object.create(null);       // sats sums (every kind)
+    var byWeekAppBoost = Object.create(null);  // boost-row counts only
     var appsSeen = Object.create(null);
     var minWeek = Infinity, maxWeek = -Infinity;
 
@@ -498,6 +499,10 @@
       appsSeen[app] = true;
       var bucket = byWeekApp[wk] || (byWeekApp[wk] = Object.create(null));
       bucket[app] = (bucket[app] || 0) + row.total_sats;
+      if (row.kind === 'boost') {
+        var bb = byWeekAppBoost[wk] || (byWeekAppBoost[wk] = Object.create(null));
+        bb[app] = (bb[app] || 0) + 1;
+      }
       if (wk < minWeek) minWeek = wk;
       if (wk > maxWeek) maxWeek = wk;
     }
@@ -514,44 +519,64 @@
     var weeks = [];
     for (var w = minWeek; w <= maxWeek; w += WEEK_MS) {
       var b = byWeekApp[w] || {};
+      var bc = byWeekAppBoost[w] || {};
       var totalW = 0;
       for (var aa in b) totalW += b[aa];
-      weeks.push({ start: w, byApp: b, total: totalW });
+      weeks.push({ start: w, byApp: b, byAppBoost: bc, total: totalW });
     }
 
     // Order apps by all-time total sats (descending). The highest-total
     // app draws last, ending up on top in the SVG paint order.
     var appList = Object.keys(appsSeen);
     var allTime = Object.create(null);
+    var allTimeBoost = Object.create(null);
     for (var w2 = 0; w2 < weeks.length; w2++) {
       for (var a2 in weeks[w2].byApp) {
         allTime[a2] = (allTime[a2] || 0) + weeks[w2].byApp[a2];
       }
+      for (var a3 in weeks[w2].byAppBoost) {
+        allTimeBoost[a3] = (allTimeBoost[a3] || 0) + weeks[w2].byAppBoost[a3];
+      }
     }
     appList.sort(function (a, b) { return allTime[b] - allTime[a]; });
 
-    function draw(view) {
-      appmixCanvas.innerHTML = buildAppMixSvg(weeks, appList, view);
-      if (appmixSubEl) {
-        appmixSubEl.textContent = view === 'percent'
-          ? "Per-week share of sats received, by app"
-          : "Per-week sats received, by app";
-      }
-    }
-    draw('percent');
+    // Boosts view uses its own app list: only apps that have ever taken a
+    // boost, ordered by all-time boost count. This drops zap/stream-only
+    // apps (e.g. "nostr zaps") that would otherwise sit as a flat zero line.
+    var boostAppList = appList.filter(function (a) { return allTimeBoost[a] > 0; });
+    boostAppList.sort(function (a, b) { return allTimeBoost[b] - allTimeBoost[a]; });
 
-    if (appmixLegendEl) {
+    function appsForView(view) {
+      return view === 'boosts' ? boostAppList : appList;
+    }
+
+    function renderLegend(list) {
+      if (!appmixLegendEl) return;
       appmixLegendEl.innerHTML = '';
-      for (var li = 0; li < appList.length; li++) {
+      for (var li = 0; li < list.length; li++) {
         var liEl = document.createElement('li');
         var sw = document.createElement('span');
         sw.className = 'stats-legend-swatch';
-        sw.style.setProperty('--c', 'var(--' + appCls(appList[li]).replace(/^stats-app-/, 'app-') + ')');
+        sw.style.setProperty('--c', 'var(--' + appCls(list[li]).replace(/^stats-app-/, 'app-') + ')');
         liEl.appendChild(sw);
-        liEl.appendChild(document.createTextNode(' ' + appList[li]));
+        liEl.appendChild(document.createTextNode(' ' + list[li]));
         appmixLegendEl.appendChild(liEl);
       }
     }
+
+    function draw(view) {
+      var list = appsForView(view);
+      appmixCanvas.innerHTML = buildAppMixSvg(weeks, list, view);
+      renderLegend(list);
+      if (appmixSubEl) {
+        appmixSubEl.textContent = view === 'percent'
+          ? "Per-week share of sats received, by app"
+          : view === 'boosts'
+            ? "Per-week number of boosts, by app"
+            : "Per-week sats received, by app";
+      }
+    }
+    draw('percent');
 
     var radios = document.querySelectorAll('input[name="stats-appmix-view"]');
     for (var r = 0; r < radios.length; r++) {
@@ -686,7 +711,7 @@
       var pts = [];
       for (var w = 0; w < weeks.length; w++) {
         var wk = weeks[w];
-        var v = wk.byApp[app] || 0;
+        var v = view === 'boosts' ? (wk.byAppBoost[app] || 0) : (wk.byApp[app] || 0);
         if (view === 'percent') v = wk.total > 0 ? (v / wk.total) * 100 : 0;
         pts.push({ ms: wk.start, val: v });
       }
@@ -696,6 +721,10 @@
     var yMax;
     if (view === 'percent') {
       yMax = 100;
+    } else if (view === 'boosts') {
+      // Fixed scale so the boosts chart stays comparable week-to-week:
+      // 25 max, gridlines every 5. (Peak per-app weekly count is ~23.)
+      yMax = 25;
     } else {
       yMax = 0;
       for (var aa = 0; aa < apps.length; aa++) {
@@ -713,7 +742,9 @@
     var parts = [];
 
     // Y gridlines + labels.
-    var ySteps = view === 'percent' ? [0, 0.25, 0.5, 0.75, 1] : [0, 0.5, 1];
+    var ySteps = view === 'percent' ? [0, 0.25, 0.5, 0.75, 1]
+      : view === 'boosts' ? [0, 0.2, 0.4, 0.6, 0.8, 1]
+      : [0, 0.5, 1];
     for (var s = 0; s < ySteps.length; s++) {
       var yv = yMax * ySteps[s];
       var yy = y(yv);
@@ -752,9 +783,16 @@
         // otherwise pile dots on top of each other along the x-axis.
         // The line still rests at zero to show the app had nothing.
         if (sp.val <= 0) continue;
-        var labelTxt = view === 'percent'
-          ? app2 + ' — ' + sp.val.toFixed(1) + '% (' + fmtWeekRange(sp.ms) + ')'
-          : app2 + ' — ' + fmtSats(Math.round(sp.val)) + ' sats (' + fmtWeekRange(sp.ms) + ')';
+        var labelTxt;
+        if (view === 'percent') {
+          labelTxt = app2 + ' — ' + sp.val.toFixed(1) + '% (' + fmtWeekRange(sp.ms) + ')';
+        } else if (view === 'boosts') {
+          var nb = Math.round(sp.val);
+          labelTxt = app2 + ' — ' + nb + (nb === 1 ? ' boost' : ' boosts') +
+            ' (' + fmtWeekRange(sp.ms) + ')';
+        } else {
+          labelTxt = app2 + ' — ' + fmtSats(Math.round(sp.val)) + ' sats (' + fmtWeekRange(sp.ms) + ')';
+        }
         var dx = x(sp.ms), dy = y(sp.val);
         // <g> wraps an invisible-hit-testable halo + visible inner dot;
         // the halo grows visible on hover via CSS, and setupChartTooltip
