@@ -1137,7 +1137,7 @@
           : 'Top 10 supporters by episodes supported (boosts + streams)';
       }
     }
-    draw('sats');
+    draw('episodes');
 
     var radios = document.querySelectorAll('input[name="stats-people-view"]');
     for (var r = 0; r < radios.length; r++) {
