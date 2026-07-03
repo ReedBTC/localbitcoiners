@@ -125,6 +125,10 @@
        (same cards as /boosts and /stats). Read-only here — no action-bar
        CSS (boost-actions.css) needed. -->
   <link rel="stylesheet" href="/assets/css/boosts-thread.css" />
+  <!-- Merch marquee cards reuse the storefront card classes, and clicking one
+       opens the same product detail modal as /merch (home-merch.js), so the
+       full merch storefront CSS is needed here too. -->
+  <link rel="stylesheet" href="/assets/css/merch.css" />
 
   <style>
     @font-face {
@@ -1014,6 +1018,37 @@
       .boost-marquee-item.is-dupe { display: none; }
     }
 
+    /* ── Merch marquee (same engine as the boosts marquee, scrolls the
+       opposite direction; simplified cards → open the /merch detail modal) ── */
+    #merch-preview { background: var(--white); }
+    .merch-marquee {
+      display: flex;
+      align-items: stretch;
+      overflow-x: auto;
+      overflow-y: hidden;
+      cursor: grab;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      -webkit-mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent);
+      mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent);
+    }
+    .merch-marquee::-webkit-scrollbar { display: none; }
+    .merch-marquee.is-grabbing { cursor: grabbing; }
+    /* Fixed-width cards side by side. Spacing on the item margin (not container
+       gap) so the two cloned sets stay exactly equal width → seamless wrap. */
+    .merch-marquee-item {
+      flex: 0 0 auto;
+      width: min(240px, 70vw);
+      margin-right: 1.5rem;
+    }
+    .merch-marquee .merch-card { height: 100%; }
+    .merch-marquee-empty { color: var(--muted); font-style: italic; padding: 1.5rem 0; align-self: center; }
+    @media (prefers-reduced-motion: reduce) {
+      .merch-marquee { -webkit-mask-image: none; mask-image: none; scrollbar-width: auto; }
+      .merch-marquee::-webkit-scrollbar { display: initial; height: 8px; }
+      .merch-marquee-item.is-dupe { display: none; }
+    }
+
     /* Supporter tier rings (gold/silver/bronze) on the carousel pfps.
        Layered shadow = crisp inner ring + a soft outer halo glow so the
        tier reads at a glance. Hover pushes the glow a little brighter. */
@@ -1639,6 +1674,25 @@
     <p class="boost-marquee-hint">Hover to pause · drag to browse · click a boost to read it in full.</p>
     <div class="boost-marquee" id="boost-marquee">
       <p class="boost-empty">Loading recent boosts…</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════ MERCH ══════════════════════════════
+     Continuous marquee of the store's products (simplified cards: image +
+     title + sats price), scrolling the OPPOSITE direction to Recent Boosts.
+     Clicking a card opens the same product detail modal as /merch. Built by
+     home-merch.js, which reuses merch.js's catalog + modal. -->
+<section id="merch-preview" class="reveal" aria-label="Merch">
+  <div class="home-module">
+    <div class="home-module-head">
+      <div>
+        <h2 class="home-module-title"><a href="/merch.html">Merch</a></h2>
+      </div>
+      <a class="home-module-link" href="/merch.html">Shop all →</a>
+    </div>
+    <div class="merch-marquee" id="merch-marquee">
+      <p class="merch-marquee-empty">Loading merch…</p>
     </div>
   </div>
 </section>
@@ -2499,5 +2553,8 @@
 <!-- Recent Boosts marquee — real Nostr note cards (boosts-thread.js),
      lazy-fetched on scroll-into-view. -->
 <script type="module" src="/assets/js/home-boosts.js"></script>
+<!-- Merch marquee — simplified product cards; reuses merch.js's catalog +
+     detail modal. Scrolls opposite the boosts marquee above. -->
+<script type="module" src="/assets/js/home-merch.js"></script>
 </body>
 </html>

@@ -231,17 +231,29 @@ function shippingForProduct(p) {
 }
 
 async function fetchCatalog() {
+  // Query each relay INDEPENDENTLY and merge, rather than one pooled
+  // querySync across all relays. A pooled query only resolves once every
+  // relay has EOSE'd or timed out, and in that shared subscription a
+  // thinly-replicated event (e.g. a product that only propagated to one
+  // relay) can get dropped when a dead/slow relay gates the close — which
+  // is why the store was intermittently missing items. Per-relay + merge is
+  // reliable: the relay that has an event returns it on its own schedule,
+  // and dedup-by-id folds the results together.
   const pool = new SimplePool()
-  let events = []
+  const byId = new Map()
   try {
-    events = await withTimeout(
-      pool.querySync(RELAYS, { authors: [MERCHANT_HEX], kinds: [30402, 30405, 30406] }),
-      9000,
-      [],
-    )
+    await Promise.allSettled(RELAYS.map(async (relay) => {
+      const evs = await withTimeout(
+        pool.querySync([relay], { authors: [MERCHANT_HEX], kinds: [30402, 30405, 30406] }, { maxWait: 4000 }),
+        4500,
+        [],
+      )
+      for (const ev of evs) if (!byId.has(ev.id)) byId.set(ev.id, ev)
+    }))
   } finally {
     try { pool.close(RELAYS) } catch {}
   }
+  const events = [...byId.values()]
 
   // Replaceable events: keep newest per (kind:d).
   const newest = new Map()
@@ -1184,4 +1196,12 @@ async function init() {
   if (location.hash === '#cart') openCart()
 }
 
-init()
+// Only auto-run the full storefront on the merch page. Other pages (e.g. the
+// homepage merch marquee) import the reusable exports below instead, and drive
+// their own fetch/render — running init() there would touch missing DOM.
+if (document.getElementById('merch-grid')) init()
+
+// Reusable pieces for the homepage merch marquee (home-merch.js): the shared
+// catalog fetch/state, the price→sats helpers, and the exact product detail
+// modal so a card click on the homepage opens the same modal as /merch.
+export { fetchCatalog, catalog, openProductModal, toSats, getBtcUsd, fmtSats, priceLabel }
