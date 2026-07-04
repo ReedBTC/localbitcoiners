@@ -178,25 +178,29 @@ function streamEvents(authors, relays, state, onUpdate) {
   return new Promise((resolve) => {
     if (!authors.length) return resolve()
     const pool = new SimplePool()
-    const filters = []
-    for (const chunk of chunkAuthors(authors)) {
-      filters.push({ kinds: [KIND_DATE_EVENT, KIND_TIME_EVENT], authors: chunk, limit: 500 })
-      filters.push({ kinds: [KIND_DELETION], authors: chunk, limit: 500 })
-    }
+    // NOTE: this vendored nostr-tools' subscribeMany takes a SINGLE filter
+    // object (not an array), so we open one subscription per author chunk,
+    // each combining the calendar + deletion kinds into one filter.
+    const filters = chunkAuthors(authors).map((chunk) => ({
+      kinds: [KIND_DATE_EVENT, KIND_TIME_EVENT, KIND_DELETION],
+      authors: chunk,
+      limit: 500,
+    }))
 
+    const subs = []
     let done = false
-    let sub = null
+    let eosed = 0
     const finish = () => {
       if (done) return
       done = true
       clearTimeout(safety)
-      try { sub && sub.close() } catch {}
+      for (const s of subs) { try { s.close() } catch {} }
       try { pool.close(relays) } catch {}
       resolve()
     }
     const safety = setTimeout(finish, 8000)
 
-    sub = pool.subscribeMany(relays, filters, {
+    const handlers = {
       onevent(ev) {
         if (!ev || !verifyEvent(ev)) return
         let changed = false
@@ -204,8 +208,12 @@ function streamEvents(authors, relays, state, onUpdate) {
         else changed = mergeCalendarEvent(state, ev)
         if (changed) onUpdate()
       },
-      oneose() { finish() },
-    })
+      oneose() { if (++eosed >= filters.length) finish() },
+    }
+
+    for (const filter of filters) {
+      subs.push(pool.subscribeMany(relays, filter, handlers))
+    }
   })
 }
 
@@ -232,7 +240,7 @@ function computeItems(state) {
 }
 
 // ── localStorage cache (stale-while-revalidate) ──────────────────────
-const CACHE_KEY = 'lb_feeds_events_v1'
+const CACHE_KEY = 'lb_feeds_events_v2'
 const CACHE_MAX_AGE = 24 * 60 * 60 * 1000  // ignore cache older than a day
 
 function readCache() {
@@ -240,7 +248,8 @@ function readCache() {
     const raw = localStorage.getItem(CACHE_KEY)
     if (!raw) return null
     const data = JSON.parse(raw)
-    if (!data || !Array.isArray(data.events)) return null
+    // Require a non-empty snapshot — an empty one is never worth painting.
+    if (!data || !Array.isArray(data.events) || !data.events.length) return null
     if (Date.now() - (data.ts || 0) > CACHE_MAX_AGE) return null
     return data
   } catch { return null }
@@ -261,6 +270,9 @@ function hydrateStateFromCache(state, cached) {
 }
 
 function writeCache(state) {
+  // Never persist an empty snapshot — a failed/empty fetch shouldn't
+  // overwrite a good cache or seed a useless one.
+  if (!state.eventsByCoord.size) return
   try {
     const data = {
       ts: Date.now(),
