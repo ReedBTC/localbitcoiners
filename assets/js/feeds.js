@@ -135,88 +135,142 @@ function chunkAuthors(authors) {
   return chunks
 }
 
-// NIP-09 deletions (kind 5) from our author set. Returns the set of
-// deleted event ids (`e` tags) plus a map of deleted addressable
-// coordinates (`a` tags) → the created_at of the deletion, so a later
-// re-publish of the same coordinate isn't wrongly hidden. A deletion is
-// only honoured for targets authored by the same pubkey (which the
-// coordinate encodes, and which is implicit for the `e`-tag case since
-// we only ever match against events from these same authors).
-async function fetchDeletions(authors, relays) {
-  const deletedIds = new Set()
-  const deletedCoords = new Map()
-  if (!authors.length) return { deletedIds, deletedCoords }
-  const pool = new SimplePool()
-  try {
-    const results = await Promise.all(
-      chunkAuthors(authors).map((chunk) =>
-        pool
-          .querySync(relays, { kinds: [KIND_DELETION], authors: chunk, limit: 500 })
-          .catch(() => [])
-      )
-    )
-    for (const evs of results) {
-      for (const ev of evs) {
-        if (!ev || !verifyEvent(ev)) continue
-        const at = ev.created_at || 0
-        for (const t of ev.tags || []) {
-          if (!Array.isArray(t)) continue
-          if (t[0] === 'e' && /^[0-9a-f]{64}$/i.test(t[1] || '')) {
-            deletedIds.add(t[1].toLowerCase())
-          } else if (t[0] === 'a' && typeof t[1] === 'string') {
-            // Only honour a coordinate deletion the deleter actually owns.
-            const coordPubkey = t[1].split(':')[1] || ''
-            if (coordPubkey.toLowerCase() !== ev.pubkey.toLowerCase()) continue
-            const prev = deletedCoords.get(t[1])
-            if (prev == null || at > prev) deletedCoords.set(t[1], at)
-          }
-        }
-      }
+// Apply one NIP-09 deletion (kind 5) into the running state: collect the
+// deleted event ids (`e` tags) and deleted addressable coordinates (`a`
+// tags → the deletion's created_at, so a later re-publish isn't wrongly
+// hidden). A coordinate deletion is only honoured for a coordinate the
+// deleter owns; the `e`-tag case is implicit since we only match against
+// events from these same authors.
+function applyDeletion(state, ev) {
+  const at = ev.created_at || 0
+  for (const t of ev.tags || []) {
+    if (!Array.isArray(t)) continue
+    if (t[0] === 'e' && /^[0-9a-f]{64}$/i.test(t[1] || '')) {
+      state.deletedIds.add(t[1].toLowerCase())
+    } else if (t[0] === 'a' && typeof t[1] === 'string') {
+      const coordPubkey = (t[1].split(':')[1] || '').toLowerCase()
+      if (coordPubkey !== ev.pubkey.toLowerCase()) continue
+      const prev = state.deletedCoords.get(t[1])
+      if (prev == null || at > prev) state.deletedCoords.set(t[1], at)
     }
-  } finally {
-    try { pool.close(relays) } catch {}
   }
-  return { deletedIds, deletedCoords }
 }
 
-// ── Calendar events by author (untrusted source — verify everything) ──
-async function fetchEventsByAuthors(authors, relays) {
-  if (!authors.length) return []
-  const out = new Map()
-  const pool = new SimplePool()
-  try {
-    const results = await Promise.all(
-      chunkAuthors(authors).map((authorsChunk) =>
-        pool
-          .querySync(relays, {
-            kinds: [KIND_DATE_EVENT, KIND_TIME_EVENT],
-            authors: authorsChunk,
-            limit: 500,
-          })
-          .catch(() => [])
-      )
-    )
-    for (const evs of results) {
-      for (const ev of evs) {
-        if (!ev || !verifyEvent(ev)) continue
-        const parsed = parseCalendarEvent(ev)
-        if (!parsed) continue
-        const coord = `${parsed.kind}:${parsed.pubkey}:${parsed.dTag}`
-        const prev = out.get(coord)
-        // Addressable events: keep only the newest version per coordinate
-        // (NIP-01 replacement). Track the winning event's id so deletions
-        // that target a specific id can be applied afterwards.
-        if (!prev || (ev.created_at || 0) > (prev.createdAt || -1)) {
-          parsed.createdAt = ev.created_at || 0
-          parsed.id = ev.id || ''
-          out.set(coord, parsed)
-        }
-      }
+// Merge one calendar event into state, keeping only the newest version
+// per coordinate (NIP-01 replacement). Returns true if state changed.
+function mergeCalendarEvent(state, ev) {
+  const parsed = parseCalendarEvent(ev)
+  if (!parsed) return false
+  const coord = `${parsed.kind}:${parsed.pubkey}:${parsed.dTag}`
+  const prev = state.eventsByCoord.get(coord)
+  if (prev && (ev.created_at || 0) <= (prev.createdAt || -1)) return false
+  parsed.createdAt = ev.created_at || 0
+  parsed.id = ev.id || ''
+  state.eventsByCoord.set(coord, parsed)
+  return true
+}
+
+// ── Progressive fetch — stream events + deletions, calling onUpdate as
+// state changes so the view can repaint incrementally. Resolves once all
+// relays have sent EOSE (or a safety timeout fires). Untrusted source —
+// verify every event. ──
+function streamEvents(authors, relays, state, onUpdate) {
+  return new Promise((resolve) => {
+    if (!authors.length) return resolve()
+    const pool = new SimplePool()
+    const filters = []
+    for (const chunk of chunkAuthors(authors)) {
+      filters.push({ kinds: [KIND_DATE_EVENT, KIND_TIME_EVENT], authors: chunk, limit: 500 })
+      filters.push({ kinds: [KIND_DELETION], authors: chunk, limit: 500 })
     }
-  } finally {
-    try { pool.close(relays) } catch {}
+
+    let done = false
+    let sub = null
+    const finish = () => {
+      if (done) return
+      done = true
+      clearTimeout(safety)
+      try { sub && sub.close() } catch {}
+      try { pool.close(relays) } catch {}
+      resolve()
+    }
+    const safety = setTimeout(finish, 8000)
+
+    sub = pool.subscribeMany(relays, filters, {
+      onevent(ev) {
+        if (!ev || !verifyEvent(ev)) return
+        let changed = false
+        if (ev.kind === KIND_DELETION) { applyDeletion(state, ev); changed = true }
+        else changed = mergeCalendarEvent(state, ev)
+        if (changed) onUpdate()
+      },
+      oneose() { finish() },
+    })
+  })
+}
+
+// Build the render-ready item list from the current state, honouring
+// deletions and dropping events with no readable start.
+function computeItems(state) {
+  const items = []
+  for (const parsed of state.eventsByCoord.values()) {
+    if (parsed.id && state.deletedIds.has(parsed.id.toLowerCase())) continue
+    const coord = `${parsed.kind}:${parsed.pubkey}:${parsed.dTag}`
+    const delAt = state.deletedCoords.get(coord)
+    if (delAt != null && delAt >= (parsed.createdAt || 0)) continue
+    const startMs = eventStartMs(parsed)
+    if (!Number.isFinite(startMs)) continue
+    items.push({
+      parsed,
+      startMs,
+      endMs: eventEndMs(parsed),
+      naddr: naddrFor(parsed, state.relays),
+      profile: state.profiles.get(parsed.pubkey) || null,
+    })
   }
-  return [...out.values()]
+  return items
+}
+
+// ── localStorage cache (stale-while-revalidate) ──────────────────────
+const CACHE_KEY = 'lb_feeds_events_v1'
+const CACHE_MAX_AGE = 24 * 60 * 60 * 1000  // ignore cache older than a day
+
+function readCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY)
+    if (!raw) return null
+    const data = JSON.parse(raw)
+    if (!data || !Array.isArray(data.events)) return null
+    if (Date.now() - (data.ts || 0) > CACHE_MAX_AGE) return null
+    return data
+  } catch { return null }
+}
+
+function hydrateStateFromCache(state, cached) {
+  for (const parsed of cached.events) {
+    if (!parsed || !parsed.kind || !parsed.pubkey || !parsed.dTag) continue
+    state.eventsByCoord.set(`${parsed.kind}:${parsed.pubkey}:${parsed.dTag}`, parsed)
+  }
+  for (const id of cached.deletedIds || []) state.deletedIds.add(id)
+  for (const pair of cached.deletedCoords || []) {
+    if (Array.isArray(pair)) state.deletedCoords.set(pair[0], pair[1])
+  }
+  for (const pair of cached.profiles || []) {
+    if (Array.isArray(pair)) state.profiles.set(pair[0], pair[1])
+  }
+}
+
+function writeCache(state) {
+  try {
+    const data = {
+      ts: Date.now(),
+      events: [...state.eventsByCoord.values()],
+      deletedIds: [...state.deletedIds],
+      deletedCoords: [...state.deletedCoords.entries()],
+      profiles: [...state.profiles.entries()].map(([pk, p]) => [pk, { name: p?.name || '', picture: p?.picture || '' }]),
+    }
+    localStorage.setItem(CACHE_KEY, JSON.stringify(data))
+  } catch {}
 }
 
 function naddrFor(parsed, relays) {
@@ -232,16 +286,43 @@ function naddrFor(parsed, relays) {
   }
 }
 
-function buildGrid(items) {
+function renderCard(item) {
+  return renderCalendarCard(item.parsed, {
+    bech32: item.naddr,
+    profile: item.profile,
+    actions: true,
+  })
+}
+
+// A group renders as its primary card, with a collapsed "See other
+// versions" disclosure holding the duplicates (if any).
+function renderGroup(group) {
+  if (!group.versions || !group.versions.length) return renderCard(group)
+
+  const wrap = document.createElement('div')
+  wrap.className = 'event-group'
+  wrap.appendChild(renderCard(group))
+
+  const details = document.createElement('details')
+  details.className = 'event-versions'
+  const summary = document.createElement('summary')
+  const n = group.versions.length
+  summary.textContent = `See other version${n === 1 ? '' : 's'} of this event (${n})`
+  details.appendChild(summary)
+
+  const inner = document.createElement('div')
+  inner.className = 'feed-list'
+  for (const v of group.versions) inner.appendChild(renderCard(v))
+  details.appendChild(inner)
+
+  wrap.appendChild(details)
+  return wrap
+}
+
+function buildGrid(groups) {
   const grid = document.createElement('div')
   grid.className = 'feed-list'
-  for (const item of items) {
-    grid.appendChild(renderCalendarCard(item.parsed, {
-      bech32: item.naddr,
-      profile: item.profile,
-      actions: true,
-    }))
-  }
+  for (const g of groups) grid.appendChild(renderGroup(g))
   return grid
 }
 
@@ -266,13 +347,43 @@ function eventYearMonth(item) {
     : { year: d.getFullYear(), month: d.getMonth() }
 }
 
+// Content key for collapsing re-posted duplicates: same author + same
+// (normalized) title + exact same start value. The raw `start` is used so
+// the match is exact — an all-day event's YYYY-MM-DD or a timed event's
+// epoch second; the two formats never collide across event types.
+function versionKey(item) {
+  const p = item.parsed
+  const title = (p.title || '').trim().toLowerCase().replace(/\s+/g, ' ')
+  return `${p.pubkey}|${title}|${p.start}`
+}
+
+// Collapse duplicate events into groups. Each group's primary is the
+// version with the highest created_at; the rest ride along as `versions`
+// (newest-first). The primary's fields are spread onto the group so it can
+// be treated like an item for month bucketing / sorting.
+function groupItems(items) {
+  const groups = new Map()
+  for (const item of items) {
+    const key = versionKey(item)
+    const arr = groups.get(key)
+    if (arr) arr.push(item)
+    else groups.set(key, [item])
+  }
+  const out = []
+  for (const arr of groups.values()) {
+    arr.sort((a, b) => (b.parsed.createdAt || 0) - (a.parsed.createdAt || 0))
+    out.push({ ...arr[0], versions: arr.slice(1) })
+  }
+  return out
+}
+
 function renderMonth(panel, allItems, year, month) {
   const list = panel.querySelector('[data-feed-list]')
   list.className = ''
   list.innerHTML = ''
 
-  const matches = allItems.filter((i) => {
-    const ym = eventYearMonth(i)
+  const matches = groupItems(allItems).filter((g) => {
+    const ym = eventYearMonth(g)
     return ym.year === year && ym.month === month
   })
 
@@ -315,9 +426,12 @@ function renderMonth(panel, allItems, year, month) {
   }
 }
 
-function buildMonthNav(panel, allItems) {
+// Build the month + year dropdowns and wire changes to `onChange`. Does
+// NOT paint on its own — returns the default { year, month } so the caller
+// controls the first render (cache vs skeletons).
+function buildMonthNav(panel, onChange) {
   const nav = panel.querySelector('[data-month-nav]')
-  if (!nav) return
+  if (!nav) return { year: new Date().getFullYear(), month: new Date().getMonth() }
   nav.innerHTML = ''
 
   const now = new Date()
@@ -346,79 +460,101 @@ function buildMonthNav(panel, allItems) {
   }
   yearSel.value = String(Math.min(Math.max(curYear, MIN_YEAR), maxYear))
 
-  const update = () => renderMonth(panel, allItems, parseInt(yearSel.value, 10), parseInt(monthSel.value, 10))
-  monthSel.addEventListener('change', update)
-  yearSel.addEventListener('change', update)
+  const fire = () => onChange(parseInt(yearSel.value, 10), parseInt(monthSel.value, 10))
+  monthSel.addEventListener('change', fire)
+  yearSel.addEventListener('change', fire)
 
   nav.appendChild(monthSel)
   nav.appendChild(yearSel)
   nav.hidden = false
 
-  update()
+  return { year: parseInt(yearSel.value, 10), month: parseInt(monthSel.value, 10) }
 }
 
 // ── Events tab loader ────────────────────────────────────────────────
+// Cache-first + progressive: paint instantly from localStorage if we have
+// a recent snapshot, then open a live subscription that streams events in
+// and repaints (debounced) as they arrive. Switching months never
+// re-fetches — it re-filters the in-memory state.
 async function loadEvents() {
   const panel = document.getElementById('panel-events')
   if (!panel) return
   const list = panel.querySelector('[data-feed-list]')
   if (!list) return
 
-  showSkeletons(list)
-  try {
-    // Start from the default set, then fold in the show's own outbox so we
-    // reach packs/events published only to the show's write relays.
-    const outbox = await fetchShowOutboxRelays(STATIC_RELAYS)
-    const relays = [...new Set([...STATIC_RELAYS, ...outbox])]
+  const state = {
+    eventsByCoord: new Map(),
+    deletedIds: new Set(),
+    deletedCoords: new Map(),
+    profiles: new Map(),
+    relays: STATIC_RELAYS,
+    year: new Date().getFullYear(),
+    month: new Date().getMonth(),
+  }
 
-    const members = await fetchPackMembers(relays)
+  const paint = () => renderMonth(panel, computeItems(state), state.year, state.month)
+
+  // Debounced repaint so a burst of streamed events doesn't thrash the DOM.
+  let paintTimer = null
+  const schedulePaint = () => {
+    clearTimeout(paintTimer)
+    paintTimer = setTimeout(paint, 200)
+  }
+
+  // Dropdowns render immediately; changing them repaints from state.
+  const sel = buildMonthNav(panel, (year, month) => {
+    state.year = year
+    state.month = month
+    paint()
+  })
+  state.year = sel.year
+  state.month = sel.month
+
+  // 1. Instant paint from cache (stale-while-revalidate).
+  const cached = readCache()
+  if (cached) {
+    hydrateStateFromCache(state, cached)
+    paint()
+  } else {
+    showSkeletons(list)
+  }
+
+  // 2. Live refresh.
+  try {
+    const outbox = await fetchShowOutboxRelays(STATIC_RELAYS)
+    state.relays = [...new Set([...STATIC_RELAYS, ...outbox])]
+
+    const members = await fetchPackMembers(state.relays)
     if (!members.size) {
-      renderPlaceholder(list, 'No supporters found', 'Couldn’t reach the follow packs right now — please try again later.')
+      if (!state.eventsByCoord.size) {
+        renderPlaceholder(list, 'No supporters found', 'Couldn’t reach the follow packs right now — please try again later.')
+      }
       return
     }
-
     const memberList = [...members]
-    const [parsedEvents, deletions] = await Promise.all([
-      fetchEventsByAuthors(memberList, relays),
-      fetchDeletions(memberList, relays),
-    ])
-    const { deletedIds, deletedCoords } = deletions
 
-    const items = []
-    for (const parsed of parsedEvents) {
-      // Honour NIP-09: skip an event whose id was deleted, or whose
-      // coordinate was deleted at/after this version was published.
-      if (parsed.id && deletedIds.has(parsed.id.toLowerCase())) continue
-      const coord = `${parsed.kind}:${parsed.pubkey}:${parsed.dTag}`
-      const delAt = deletedCoords.get(coord)
-      if (delAt != null && delAt >= (parsed.createdAt || 0)) continue
+    // Stream events + deletions, repainting as they land.
+    await streamEvents(memberList, state.relays, state, schedulePaint)
 
-      const startMs = eventStartMs(parsed)
-      if (!Number.isFinite(startMs)) continue
-      items.push({
-        parsed,
-        startMs,
-        endMs: eventEndMs(parsed),
-        naddr: naddrFor(parsed, relays),
-        profile: null,
-      })
-    }
-
-    // Organizer profiles for the avatar + name on each card.
+    // Organizer profiles (avatar + name) once the author set is known.
     try {
-      const pubkeys = [...new Set(items.map((i) => i.parsed.pubkey).filter(Boolean))]
-      const profiles = await fetchProfilesFromPrimal(pubkeys)
-      items.forEach((i) => { i.profile = profiles.get(i.parsed.pubkey) || null })
+      const pubkeys = [...new Set([...state.eventsByCoord.values()].map((p) => p.pubkey).filter(Boolean))]
+      if (pubkeys.length) {
+        const profiles = await fetchProfilesFromPrimal(pubkeys)
+        profiles.forEach((prof, pk) => state.profiles.set(pk, prof))
+      }
     } catch (e) {
       console.warn('[feeds] event profile fetch failed', e)
     }
 
-    // Build the month/year picker (defaults to the current month) and
-    // paint that month's events; changing the dropdowns re-filters.
-    buildMonthNav(panel, items)
+    clearTimeout(paintTimer)
+    paint()
+    writeCache(state)
   } catch (e) {
     console.error('[feeds] events load failed', e)
-    renderPlaceholder(list, 'Couldn’t load events', 'Something went wrong reaching the relays — please try again later.')
+    if (!state.eventsByCoord.size) {
+      renderPlaceholder(list, 'Couldn’t load events', 'Something went wrong reaching the relays — please try again later.')
+    }
   }
 }
 

@@ -354,6 +354,36 @@
     .feed-past[open] > summary::before { transform: rotate(90deg); }
     .feed-past .feed-list { margin-top: 1rem; }
 
+    /* "See other versions of this event" — collapses re-posted duplicates
+       under the primary card; accent rule ties it to the active feed. */
+    .event-group { display: block; }
+    .event-versions {
+      margin-top: 0.4rem;
+      border-left: 2px solid var(--accent);
+      padding-left: 0.8rem;
+    }
+    .event-versions > summary {
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--accent-d);
+      padding: 0.3rem 0;
+    }
+    .event-versions > summary::-webkit-details-marker { display: none; }
+    .event-versions > summary::marker { content: ''; }
+    .event-versions > summary::before {
+      content: '▸';
+      font-size: 0.85em;
+      transition: transform 0.15s;
+    }
+    .event-versions[open] > summary::before { transform: rotate(90deg); }
+    .event-versions .feed-list { margin-top: 0.5rem; }
+
     /* ── Mobile: tabs become a scrollable chip row ── */
     @media (max-width: 640px) {
       .feed-tabs-wrap { top: 56px; } /* nav shrinks on mobile */
