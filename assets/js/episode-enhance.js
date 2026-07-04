@@ -318,6 +318,34 @@
     })(btns[i]);
   }
 
+  // ── Overflow (⋮) menu: mobile-only toggle for the secondary actions ─
+  // The ⋮ trigger is hidden on desktop (the group flattens inline via
+  // display:contents), so this only does anything on narrow screens.
+  // Toggling `.open` reveals the MP3/Transcript menu; outside clicks
+  // close it, mirroring the subscribe dropdown closer below.
+  function wireOverflowMenu() {
+    var groups = document.querySelectorAll('.ep-overflow');
+    for (var i = 0; i < groups.length; i++) (function (group) {
+      var btn = group.querySelector('.ep-overflow-btn');
+      if (!btn) return;
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var open = group.classList.toggle('open');
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+    })(groups[i]);
+    document.addEventListener('click', function (e) {
+      var open = document.querySelectorAll('.ep-overflow.open');
+      for (var j = 0; j < open.length; j++) {
+        if (!open[j].contains(e.target)) {
+          open[j].classList.remove('open');
+          var b = open[j].querySelector('.ep-overflow-btn');
+          if (b) b.setAttribute('aria-expanded', 'false');
+        }
+      }
+    });
+  }
+
   // ── Subscribe dropdown outside-click closer (matches homepage) ─
   function wireSubscribeCloser() {
     document.addEventListener('click', function (e) {
@@ -380,12 +408,14 @@
     document.addEventListener('DOMContentLoaded', function () {
       wireBoost();
       wireDownloadMp3();
+      wireOverflowMenu();
       wireSubscribeCloser();
       wireChapters();
     });
   } else {
     wireBoost();
     wireDownloadMp3();
+    wireOverflowMenu();
     wireSubscribeCloser();
     wireChapters();
   }

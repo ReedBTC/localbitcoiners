@@ -123,12 +123,12 @@
   box-shadow: 0 20px 60px rgba(0,0,0,0.4);
 }
 .merch-close {
-  position: absolute; top: 0.75rem; right: 0.75rem;
+  position: absolute; top: 0.75rem; right: 0.75rem; z-index: 3;
   width: 34px; height: 34px; border-radius: 50%;
-  border: none; background: rgba(0,0,0,0.06); cursor: pointer;
-  font-size: 1rem; color: var(--text); line-height: 1;
+  border: none; background: rgba(0,0,0,0.55); color: #fff; cursor: pointer;
+  font-size: 1rem; line-height: 1;
 }
-.merch-close:hover { background: rgba(0,0,0,0.12); }
+.merch-close:hover { background: rgba(0,0,0,0.75); }
 .merch-modal-title {
   font-family: 'Playfair Display', Georgia, serif;
   font-size: 1.5rem; margin-bottom: 1rem; color: var(--text);
@@ -164,6 +164,8 @@
 .merch-specs th, .merch-specs td { text-align: left; padding: 0.25rem 0.5rem; border-bottom: 1px solid var(--border); }
 .merch-specs th { color: var(--muted); font-weight: 600; width: 40%; }
 .merch-detail-ship { font-size: 0.85rem; color: var(--muted); }
+.merch-detail-ship strong { display: block; margin-bottom: 0.15rem; }
+.merch-detail-ship-opt { padding-left: 0.1rem; }
 .merch-detail-actions { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.5rem; }
 .merch-qty-label { font-size: 0.85rem; color: var(--muted); display: inline-flex; align-items: center; gap: 0.3rem; }
 .merch-qty { width: 64px; padding: 0.4rem; border: 1px solid var(--border); border-radius: 6px; font: inherit; }

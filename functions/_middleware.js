@@ -719,10 +719,18 @@ function renderEpisodePage(ep) {
     ${audioBlock}
 
     <div class="ep-actions">
-      ${ep.enclosureUrl ? `<button type="button" class="btn btn-primary" data-lb-download-mp3 data-mp3-url="${htmlEscape(ep.enclosureUrl)}" data-mp3-filename="${htmlEscape(`local-bitcoiners-ep${epPad}.mp3`)}">↓ Download MP3</button>` : ""}
-      <a class="btn btn-outline" href="${htmlEscape(transcriptPath)}" download>↓ Download Transcript</a>
-      ${subscribeDropdown}
+      <!-- Download MP3 / Transcript are secondary: inline on desktop,
+           tucked behind a ⋮ menu on mobile so Boost + Subscribe stay the
+           only visible actions. Mirrors the episode cards on /episodes. -->
+      <div class="ep-overflow">
+        <button type="button" class="ep-overflow-btn" aria-label="More options" aria-expanded="false">⋮</button>
+        <div class="ep-overflow-menu">
+          ${ep.enclosureUrl ? `<button type="button" class="btn btn-primary" data-lb-download-mp3 data-mp3-url="${htmlEscape(ep.enclosureUrl)}" data-mp3-filename="${htmlEscape(`local-bitcoiners-ep${epPad}.mp3`)}">↓ Download MP3</button>` : ""}
+          <a class="btn btn-outline" href="${htmlEscape(transcriptPath)}" download>↓ Download Transcript</a>
+        </div>
+      </div>
       ${boostBtn}
+      ${subscribeDropdown}
     </div>
 
     ${chaptersDisclosure}

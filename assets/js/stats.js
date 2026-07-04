@@ -70,7 +70,6 @@
   var streamersCanvas = document.querySelector('[data-stats-streamers]');
   var zappersCanvas = document.querySelector('[data-stats-zappers]');
   var appmixCanvas = document.querySelector('[data-stats-appmix]');
-  var appmixSubEl = document.querySelector('[data-appmix-sub]');
   var appmixLegendEl = document.querySelector('[data-appmix-legend]');
   if (!canvas && !boardCanvas && !peopleCanvas && !preNostrCanvas &&
       !streamersCanvas && !zappersCanvas && !appmixCanvas) return;
@@ -584,15 +583,6 @@
       var list = appsForView(view);
       appmixCanvas.innerHTML = buildAppMixSvg(weeks, list, view);
       renderLegend(list);
-      if (appmixSubEl) {
-        appmixSubEl.textContent = view === 'percent'
-          ? "Per-week share of sats received, by app"
-          : view === 'boosts'
-            ? "Per-week number of boosts, by app"
-            : view === 'streams'
-              ? "Per-week streams settled, by app — one stream = a listener's streaming sats for an episode, batched by their app (not a duration)"
-              : "Per-week sats received, by app";
-      }
     }
     draw('percent');
 

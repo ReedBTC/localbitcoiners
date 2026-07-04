@@ -67,139 +67,12 @@ a:hover { color: var(--green-d); }
 
 img { display: block; max-width: 100%; }
 
-/* ── Nav (mirrors index.html) ──────────────────────────────────── */
-#top-nav {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: var(--navy);
-  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
-}
-.nav-inner {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 0 1.5rem;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-}
-.nav-logo {
-  flex-shrink: 0;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 2px solid var(--green-d);
-  text-decoration: none;
-}
-.nav-logo img { width: 100%; height: 100%; object-fit: cover; }
-.nav-site-name {
-  font-family: 'Playfair Display', Georgia, serif;
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--cream);
-  letter-spacing: 0.02em;
-  text-decoration: none;
-  flex: 1;
-}
-.nav-site-name:hover { color: var(--green-d); }
-nav ul {
-  list-style: none;
-  display: flex;
-  gap: 0.25rem;
-}
-nav ul li a {
-  color: var(--cream-d);
-  text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  padding: 0.35rem 0.75rem;
-  border-radius: 4px;
-  transition: background 0.15s, color 0.15s;
-}
-nav ul li a:hover {
-  background: rgba(94,125,58,0.18);
-  color: var(--green-d);
-}
-/* Nav stays single-row at desktop. Below ~760px the main link list
-   wraps under the logo/name + boost/identity slots; below 720px the
-   link list hides entirely (boosts.html link cluster is reachable from
-   the page footer). */
-@media (max-width: 760px) {
-  .nav-inner { gap: 0.5rem; flex-wrap: wrap; height: auto; padding: 0.6rem 1rem; }
-  .nav-site-name { font-size: 1rem; flex: 1; min-width: 0; }
-  nav { order: 4; flex-basis: 100%; }
-  nav ul { justify-content: center; gap: 0.25rem; flex-wrap: wrap; }
-  nav ul li a { padding: 0.3rem 0.7rem; font-size: 0.8rem; }
-  #lb-boost-slot { flex-shrink: 0; }
-}
-@media (max-width: 720px) {
-  nav ul { display: none; }
-}
-
-/* ── "More ▾" dropdown (secondary nav links) ────────────────────── */
-.nav-more { position: relative; }
-.nav-more > summary {
-  list-style: none;
-  cursor: pointer;
-  user-select: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  color: var(--cream-d);
-  font-size: 0.9rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  padding: 0.35rem 0.75rem;
-  border-radius: 4px;
-  transition: background 0.15s, color 0.15s;
-}
-.nav-more > summary::-webkit-details-marker { display: none; }
-.nav-more > summary::marker { content: ''; }
-.nav-more > summary:hover,
-.nav-more[open] > summary {
-  background: rgba(94,125,58,0.18);
-  color: var(--green-d);
-}
-.nav-more .caret { font-size: 0.7em; transition: transform 0.15s; }
-.nav-more[open] .caret { transform: rotate(180deg); }
-.nav-more-menu {
-  position: absolute;
-  top: calc(100% + 0.35rem);
-  right: 0;
-  min-width: 160px;
-  background: var(--navy);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
-  list-style: none;
-  margin: 0;
-  padding: 0.3rem 0;
-  z-index: 60;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-.nav-more-menu li { margin: 0; }
-.nav-more-menu a {
-  display: block;
-  padding: 0.5rem 1rem;
-  color: var(--cream-d);
-  text-decoration: none;
-  font-size: 0.85rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  transition: background 0.12s, color 0.12s;
-}
-.nav-more-menu a:hover {
-  background: rgba(94,125,58,0.18);
-  color: var(--green-d);
-}
+/* ── Nav ─────────────────────────────────────────────────────────
+   The nav is styled entirely by the shared /assets/css/nav.css (loaded
+   on this page too). An older copy of the nav CSS used to live here and
+   fought the shared rules — most visibly on mobile, where a stale
+   `nav { order: 4; flex-basis: 100% }` shoved the Explore trigger onto
+   its own second row. Keep nav styling in nav.css only. */
 
 /* ── Main + card ───────────────────────────────────────────────── */
 .ep-main {
@@ -257,6 +130,12 @@ nav ul li a:hover {
   flex-wrap: wrap;
   gap: 0.55rem;
 }
+/* Secondary-action overflow group. Desktop: flatten inline (⋮ hidden)
+   so all four buttons sit in the row; mobile collapses MP3/Transcript
+   into a top-right ⋮ menu (rules in the mobile media query). */
+.ep-overflow { display: contents; }
+.ep-overflow-menu { display: contents; }
+.ep-overflow-btn { display: none; }
 .btn {
   display: inline-flex;
   align-items: center;
@@ -826,6 +705,31 @@ nav ul li a:hover {
   .ep-card-chart { padding: 1.1rem 1.1rem 1rem; }
   .ep-supporter-row { padding: 0.7rem 0.8rem; }
   .ep-actions .btn { font-size: 0.82rem; padding: 0.45rem 0.8rem; }
+
+  /* Mobile: MP3 + Transcript collapse into a ⋮ menu at the player card's
+     top-right, leaving Boost + Subscribe splitting the action row 50/50. */
+  .ep-card-player { position: relative; }
+  .ep-overflow { display: block; position: absolute; top: 1.3rem; right: 1.1rem; }
+  .ep-overflow-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 1px solid var(--border); background: var(--cream);
+    color: var(--navy); font-size: 1.2rem; line-height: 1; cursor: pointer;
+  }
+  .ep-overflow-btn:hover { background: var(--cream-d); }
+  .ep-overflow-menu {
+    display: none; position: absolute; top: calc(100% + 0.35rem); right: 0;
+    z-index: 30; min-width: 12.5rem;
+    flex-direction: column; gap: 0.45rem;
+    background: var(--white); border: 1px solid var(--border);
+    border-radius: 8px; box-shadow: 0 8px 24px rgba(30,58,95,0.18);
+    padding: 0.5rem;
+  }
+  .ep-overflow.open .ep-overflow-menu { display: flex; }
+  .ep-overflow-menu .btn { width: 100%; justify-content: center; }
+  .ep-actions > .btn-boost,
+  .ep-actions > .ep-subscribe { flex: 1 1 0; min-width: 0; }
+  .ep-actions > .ep-subscribe .btn-subscribe { width: 100%; justify-content: center; }
   .ep-shownotes {
     margin: 1.3rem -1.1rem -1.6rem;
     border-bottom-left-radius: 10px;

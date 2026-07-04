@@ -538,8 +538,9 @@ function openProductModal(p) {
   const ship = shippingForProduct(p)
   const shipInfo = (p.goods === 'physical' && ship.length)
     ? h('div', { class: 'merch-detail-ship' }, [
-        h('strong', { text: 'Shipping: ' }),
-        ship.map(s => `${s.title} (${priceLabel(s.priceAmount, s.priceCurrency)})`).join(' · '),
+        h('strong', { text: 'Shipping:' }),
+        ...ship.map(s => h('div', { class: 'merch-detail-ship-opt',
+          text: `${s.title} (${priceLabel(s.priceAmount, s.priceCurrency)})` })),
       ])
     : null
 
