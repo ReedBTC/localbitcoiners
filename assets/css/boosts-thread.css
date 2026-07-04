@@ -227,6 +227,11 @@ a.event-title:hover { color: var(--orange); }
    have no timestamp to do it). */
 .embed-note.is-event .embed-author .note-more { margin-left: auto; }
 
+/* Event cards keep Renote + Zap right-aligned so they sit in the same
+   place whether or not a left-slot control (the versions toggle) is
+   present. (Scoped to event cards; the boosts action bar is unaffected.) */
+.embed-note.is-event .note-actions { justify-content: flex-end; }
+
 /* ── Per-card overflow (⋮) menu ──
    Duplicated from boost-actions.css so the shared calendar renderer gets
    its menu on pages that don't load the boost action bar (Meetups,

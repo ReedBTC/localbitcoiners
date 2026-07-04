@@ -306,29 +306,48 @@ function renderCard(item) {
   })
 }
 
-// A group renders as its primary card, with a collapsed "See other
-// versions" disclosure holding the duplicates (if any).
+// A group renders as its primary card. When it has duplicates, a "See
+// other versions" toggle sits at the left of the card's action row
+// (Renote + Zap pushed right), and an in-card panel below the action bar
+// holds the other versions as full cards.
 function renderGroup(group) {
   if (!group.versions || !group.versions.length) return renderCard(group)
 
-  const wrap = document.createElement('div')
-  wrap.className = 'event-group'
-  wrap.appendChild(renderCard(group))
-
-  const details = document.createElement('details')
-  details.className = 'event-versions'
-  const summary = document.createElement('summary')
   const n = group.versions.length
-  summary.textContent = `See other version${n === 1 ? '' : 's'} of this event (${n})`
-  details.appendChild(summary)
+  const toggle = document.createElement('button')
+  toggle.type = 'button'
+  toggle.className = 'versions-toggle'
+  toggle.setAttribute('aria-expanded', 'false')
+  toggle.innerHTML =
+    '<span class="versions-caret" aria-hidden="true">▸</span>' +
+    `<span>See other versions of this event (${n})</span>`
 
-  const inner = document.createElement('div')
-  inner.className = 'feed-list'
-  for (const v of group.versions) inner.appendChild(renderCard(v))
-  details.appendChild(inner)
+  const card = renderCalendarCard(group.parsed, {
+    bech32: group.naddr,
+    profile: group.profile,
+    actions: true,
+    actionsLeft: toggle,
+  })
 
-  wrap.appendChild(details)
-  return wrap
+  const panel = document.createElement('div')
+  panel.className = 'event-versions-panel'
+  panel.hidden = true
+  for (const v of group.versions) panel.appendChild(renderCard(v))
+
+  // Drop the panel in right after the action bar (both live in the card's
+  // content column, thumbnail or not).
+  const bar = card.querySelector('.note-actions')
+  if (bar && bar.parentNode) bar.parentNode.insertBefore(panel, bar.nextSibling)
+  else card.appendChild(panel)
+
+  toggle.addEventListener('click', () => {
+    const opening = panel.hidden
+    panel.hidden = !opening
+    toggle.classList.toggle('is-open', opening)
+    toggle.setAttribute('aria-expanded', opening ? 'true' : 'false')
+  })
+
+  return card
 }
 
 function buildGrid(groups) {

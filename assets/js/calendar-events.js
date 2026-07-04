@@ -208,7 +208,7 @@ export async function fetchCalendarEventsFromRelays(coords, relays) {
 // ({ name, picture }) or null; `bech32` is the event's naddr; `actions`
 // opts the card into the interactive Renote/Zap bar (Feeds + Meetups pass
 // it; the boosts-page embeds don't).
-export function renderCalendarCard(parsed, { bech32 = '', profile = null, actions = false } = {}) {
+export function renderCalendarCard(parsed, { bech32 = '', profile = null, actions = false, actionsLeft = null } = {}) {
   const card = document.createElement('div')
   card.className = 'embed-note is-event'
 
@@ -315,7 +315,7 @@ export function renderCalendarCard(parsed, { bech32 = '', profile = null, action
   }
 
   if (actions) {
-    const bar = buildEventActions(parsed)
+    const bar = buildEventActions(parsed, actionsLeft)
     if (bar) actionsParent.appendChild(bar)
   }
 
@@ -334,11 +334,18 @@ function eventAppUrl(bech32) {
 // boost-actions exposes openZapModal() + repostAnyEvent(). Kept out of
 // the static import graph so the shared renderer stays lightweight for
 // pages that only display events.
-function buildEventActions(parsed) {
+function buildEventActions(parsed, actionsLeft = null) {
   if (!parsed || !parsed.id || !parsed.pubkey) return null
 
   const bar = document.createElement('div')
   bar.className = 'note-actions'
+
+  // Optional left-slot control (e.g. the "See other versions" toggle);
+  // margin-right:auto pushes Renote + Zap to the right edge.
+  if (actionsLeft) {
+    actionsLeft.style.marginRight = 'auto'
+    bar.appendChild(actionsLeft)
+  }
 
   const renoteBtn = document.createElement('button')
   renoteBtn.type = 'button'
