@@ -44,6 +44,7 @@ function renderList(items) {
     li.appendChild(renderCalendarCard(item.parsed, {
       bech32: item.naddr,
       profile: item.profile,
+      actions: true,
     }))
     ul.appendChild(li)
   }

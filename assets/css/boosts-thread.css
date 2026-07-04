@@ -138,6 +138,7 @@
 .embed-note.is-naddr a:hover { color: var(--orange); }
 
 .embed-note.is-event .event-title {
+  display: block;
   font-family: 'Playfair Display', Georgia, serif;
   font-weight: 700;
   font-size: 1.02rem;
@@ -145,6 +146,31 @@
   color: var(--navy);
   margin-bottom: 0.35rem;
   word-break: break-word;
+}
+/* Title as a link to the event on mynostr — keep the title look (no green
+   underline), warm on hover. */
+a.event-title { text-decoration: none; }
+a.event-title:hover { color: var(--orange); }
+
+/* Clickable organizer identity (avatar + name) — copies the npub. */
+.embed-note .embed-author .author-id {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.embed-note .embed-author button.author-id .author-name { transition: color 0.12s; }
+.embed-note .embed-author button.author-id:hover .author-name {
+  color: var(--orange);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 .embed-note.is-event .event-meta {
   display: flex;
@@ -162,6 +188,98 @@
   text-align: center;
   font-style: normal;
 }
+
+/* ── Cover thumbnail (NIP-52 `image`) ──
+   With a cover image the card becomes a column: an [thumb | content] row
+   (.event-top) followed by the full-width action bar, so the bar's dashed
+   divider and buttons run under the image too. .event-col holds the
+   author / title / meta. */
+.embed-note.is-event.has-thumb {
+  display: flex;
+  flex-direction: column;
+}
+.embed-note.is-event .event-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+.embed-note.is-event .event-thumb {
+  flex: 0 0 auto;
+  width: 103px;
+  height: 103px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--cream);
+  border: 1px solid var(--border);
+}
+.embed-note.is-event .event-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.embed-note.is-event .event-col {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Push the ⋮ menu to the right edge of the author row (calendar cards
+   have no timestamp to do it). */
+.embed-note.is-event .embed-author .note-more { margin-left: auto; }
+
+/* ── Per-card overflow (⋮) menu ──
+   Duplicated from boost-actions.css so the shared calendar renderer gets
+   its menu on pages that don't load the boost action bar (Meetups,
+   Community Feeds). Keep the two in sync if either changes. */
+.note-more { position: relative; flex-shrink: 0; }
+.note-more-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font: inherit;
+  line-height: 1;
+  padding: 0.15rem 0.4rem;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  transition: background 0.15s, color 0.15s;
+}
+.note-more-btn:hover,
+.note-more-btn[aria-expanded="true"] {
+  background: rgba(247,147,26,0.12);
+  color: var(--orange);
+}
+.note-more-btn .lb-icon { font-size: 1.2rem; line-height: 1; }
+.note-more-menu {
+  position: absolute;
+  top: calc(100% + 0.3rem);
+  right: 0;
+  min-width: 190px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(30,58,95,0.18);
+  padding: 0.3rem;
+  z-index: 50;
+}
+.note-more-menu[hidden] { display: none; }
+.note-more-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--text);
+  padding: 0.5rem 0.65rem;
+  border-radius: 5px;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s;
+}
+.note-more-item:hover { background: rgba(247,147,26,0.12); color: var(--orange); }
 
 /* The per-card action bar (.note-actions) lives in boost-actions.css —
    pages that load the mutation handlers also load its styles. */
