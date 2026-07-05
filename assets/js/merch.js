@@ -150,6 +150,13 @@ function fmtSats(n) {
   return Number(n).toLocaleString() + ' sats'
 }
 
+// Short npub label (npub1abcd…wxyz) for a hex pubkey, used before/if a
+// merchant's kind-0 display name resolves.
+function shortNpub(hex) {
+  try { const np = nip19.npubEncode(hex); return np.slice(0, 12) + '…' + np.slice(-4) }
+  catch { return hex.slice(0, 8) + '…' }
+}
+
 // ── Tag parsing ──────────────────────────────────────────────────────
 const firstTag = (ev, name) => (ev.tags.find(t => t[0] === name) || [])[1]
 const allTags  = (ev, name) => ev.tags.filter(t => t[0] === name)
@@ -163,7 +170,8 @@ function parseProduct(ev) {
     .map(t => t[1]).filter(isHttpUrl)
   return {
     d,
-    coord: `30402:${MERCHANT_HEX}:${d}`,
+    merchant: ev.pubkey,                       // seller pubkey (not always the LB house npub)
+    coord: `30402:${ev.pubkey}:${d}`,
     title: firstTag(ev, 'title') || '(untitled)',
     summary: firstTag(ev, 'summary') || '',
     description: typeof ev.content === 'string' ? ev.content : '',
@@ -195,7 +203,8 @@ function parseShipping(ev) {
   const duration = ev.tags.find(t => t[0] === 'duration')
   return {
     d,
-    coord: `30406:${MERCHANT_HEX}:${d}`,
+    merchant: ev.pubkey,
+    coord: `30406:${ev.pubkey}:${d}`,
     title: firstTag(ev, 'title') || 'Shipping',
     priceAmount: Number(priceTag[1] || 0),
     priceCurrency: priceTag[2] || 'USD',
@@ -212,7 +221,8 @@ function parseCollection(ev) {
   if (!d) return null
   return {
     d,
-    coord: `30405:${MERCHANT_HEX}:${d}`,
+    merchant: ev.pubkey,
+    coord: `30405:${ev.pubkey}:${d}`,
     title: firstTag(ev, 'title') || '',
     shippingRefs: allTags(ev, 'shipping_option').map(t => t[1]).filter(Boolean),
   }
@@ -317,12 +327,13 @@ async function fetchCatalog() {
   }
   const events = [...byId.values()]
 
-  // Replaceable events: keep newest per (kind:d).
+  // Replaceable events: keep newest per (kind:pubkey:d). Pubkey is in the key
+  // so two different merchants can publish the same `d` without colliding.
   const newest = new Map()
   for (const ev of events) {
     const d = firstTag(ev, 'd')
     if (!d) continue
-    const key = `${ev.kind}:${d}`
+    const key = `${ev.kind}:${ev.pubkey}:${d}`
     const prev = newest.get(key)
     if (!prev || ev.created_at > prev.created_at) newest.set(key, ev)
   }
@@ -547,24 +558,44 @@ function npubChip(npub, hex) {
   return chip
 }
 
-// Resolve a hex pubkey → display name from its kind-0. Cached per session
-// (by hex) so repeat mentions don't re-query the relays.
-const _profileNameCache = new Map()   // hex → Promise<string|null>
-function resolveProfileName(hex) {
-  if (_profileNameCache.has(hex)) return _profileNameCache.get(hex)
+// Resolve a hex pubkey → its kind-0 profile { name, picture, nip05, lud16 }.
+// Cached per session (by hex) so repeat lookups (mentions, merchant headers,
+// payment address) don't re-query the relays. Fields are null when absent.
+const _profileCache = new Map()   // hex → Promise<{name,picture,nip05,lud16}>
+function resolveMerchantProfile(hex) {
+  if (_profileCache.has(hex)) return _profileCache.get(hex)
   const promise = (async () => {
     const pool = new SimplePool()
     try {
       const ev = await withTimeout(pool.get(RELAYS, { kinds: [0], authors: [hex] }), 6000, null)
-      if (!ev) return null
+      if (!ev) return { name: null, picture: null, nip05: null, lud16: null }
       const meta = JSON.parse(ev.content || '{}')
-      const name = meta.display_name || meta.displayName || meta.name
-      return (typeof name === 'string' && name.trim()) ? name.trim() : null
-    } catch { return null }
+      const str = (v) => (typeof v === 'string' && v.trim()) ? v.trim() : null
+      return {
+        name: str(meta.display_name) || str(meta.displayName) || str(meta.name),
+        picture: isHttpUrl(meta.picture) ? meta.picture : null,
+        nip05: str(meta.nip05),
+        lud16: str(meta.lud16),
+      }
+    } catch { return { name: null, picture: null, nip05: null, lud16: null } }
     finally { try { pool.close(RELAYS) } catch {} }
   })()
-  _profileNameCache.set(hex, promise)
+  _profileCache.set(hex, promise)
   return promise
+}
+
+// Back-compat helper for npub chips: just the display name.
+async function resolveProfileName(hex) {
+  return (await resolveMerchantProfile(hex)).name
+}
+
+// The Lightning address an order to `merchantHex` should be paid to. The LB
+// house merchant routes ALL merch revenue to one wallet regardless of its
+// kind-0 lud16; any other (community-feed) merchant is paid at their own
+// profile lud16 (Gamma "automatic" mode). null → we can't auto-pay them.
+function paymentLud16ForMerchant(merchantHex, profile) {
+  if (merchantHex === MERCHANT_HEX) return MERCH_PAYMENT_LUD16
+  return (profile && typeof profile.lud16 === 'string' && profile.lud16.trim()) ? profile.lud16.trim() : null
 }
 
 // ── Product detail modal ─────────────────────────────────────────────
@@ -797,29 +828,29 @@ async function openCheckout() {
     return m ? m[1] : null
   }
 
-  function computeTotal() {
-    let sats = 0, ok = true
-    for (const l of lines) {
+  // Sats subtotal + shipping for a set of lines. Shipping is charged once per
+  // physical line (not per unit), matching the Gamma/Plebeian model. Used for
+  // both the per-merchant and grand totals.
+  function totalsFor(subset) {
+    let subSats = 0, shipSats = 0, ok = true
+    for (const l of subset) {
       const s = toSats(l.product.priceAmount, l.product.priceCurrency, rate)
-      if (s == null) { ok = false } else sats += s * l.qty
+      if (s == null) ok = false; else subSats += s * l.qty
+      if (l.product.goods === 'physical') {
+        const choice = chosenShipFor(l.coord)
+        if (choice) {
+          const ss = shipChoiceSats(l.product, choice, rate)
+          if (ss == null) ok = false; else shipSats += ss
+        }
+      }
     }
-    // Shipping is charged once per physical line (not per unit), matching
-    // the Gamma/Plebeian model.
-    for (const l of lines) {
-      if (l.product.goods !== 'physical') continue
-      const choice = chosenShipFor(l.coord)
-      if (!choice) continue
-      const ss = shipChoiceSats(l.product, choice, rate)
-      if (ss == null) ok = false; else sats += ss
-    }
-    return { sats, ok }
+    return { subSats, shipSats, ok }
   }
 
-  // The per-line shipping selections to hand to runCheckout / the order
-  // message. One entry per physical line that has a chosen method.
-  function collectShipments() {
+  // The per-line shipping selections for a set of lines → the order message.
+  function collectShipments(subset) {
     const out = []
-    for (const l of lines) {
+    for (const l of subset) {
       if (l.product.goods !== 'physical') continue
       const choice = chosenShipFor(l.coord)
       if (choice) out.push({ productTitle: l.product.title, coord: choice.option.coord, optionTitle: choice.option.title })
@@ -827,13 +858,65 @@ async function openCheckout() {
     return out
   }
 
-  // ── Order lines (top) ──
-  // Each cart line as an expressive card: thumbnail, name, price, and — for
-  // physical goods — its own shipping selector inline. The address/details
-  // form sits below these (see modal assembly).
-  const cardEls = new Map()   // coord → card element, so removal can drop it
+  // Cart lines grouped by merchant pubkey (first-seen order preserved). A cart
+  // can hold items from several NIP-99 merchants once the community feed lands;
+  // each merchant is its own order + its own Lightning payment.
+  function groupLines() {
+    const map = new Map()   // merchantHex → lines[]
+    for (const l of lines) {
+      if (!map.has(l.product.merchant)) map.set(l.product.merchant, [])
+      map.get(l.product.merchant).push(l)
+    }
+    return map
+  }
+  const linesForMerchant = (hex) => lines.filter(l => l.product.merchant === hex)
+
+  // ── Order lines (top), grouped by merchant ──
+  // Each merchant is its own bordered section: a header (avatar + name), that
+  // seller's item cards (thumbnail, name, price, inline per-item shipping), and
+  // the seller's own subtotal/shipping/total. A grand total (below) appears
+  // only when the cart spans 2+ merchants.
+  const cardEls = new Map()       // coord → card element (for removal)
+  const sectionEls = new Map()    // merchantHex → { section, totalsEl }
   const itemsWrap = h('div', { class: 'merch-checkout-items' })
-  for (const l of lines) itemsWrap.appendChild(buildItemCard(l))
+
+  // Heads-up banner shown only when the cart spans multiple sellers.
+  const multiNote = h('div', { class: 'merch-multi-note' })
+  function syncMultiNote() {
+    const n = sectionEls.size
+    multiNote.style.display = n > 1 ? '' : 'none'
+    multiNote.textContent = n > 1
+      ? `Your cart has items from ${n} sellers — you'll approve a separate Lightning payment for each.`
+      : ''
+  }
+
+  for (const [merchantHex, gLines] of groupLines()) {
+    const totalsEl = h('div', { class: 'merch-checkout-summary merch-mgroup-totals' })
+    const section = h('div', { class: 'merch-mgroup' }, [
+      buildMerchantHeader(merchantHex),
+      ...gLines.map(buildItemCard),
+      totalsEl,
+    ])
+    sectionEls.set(merchantHex, { section, totalsEl })
+    itemsWrap.appendChild(section)
+  }
+  syncMultiNote()
+
+  // Merchant header: avatar + display name + nip05/npub, filled from kind-0.
+  // The LB house merchant gets a subtle "official" marker.
+  function buildMerchantHeader(hex) {
+    const avatar = h('div', { class: 'merch-mhead-avatar merch-card-noimg' }, '🛍️')
+    const nameEl = h('div', { class: 'merch-mhead-name', text: shortNpub(hex) })
+    const subEl  = h('div', { class: 'merch-mhead-sub', text: '' })
+    if (hex === MERCHANT_HEX) nameEl.classList.add('merch-mhead-official')
+    resolveMerchantProfile(hex).then((p) => {
+      if (p.name) nameEl.textContent = p.name
+      if (p.picture) { avatar.textContent = ''; avatar.classList.remove('merch-card-noimg')
+        avatar.appendChild(h('img', { src: p.picture, alt: '', class: 'merch-mhead-img' })) }
+      subEl.textContent = p.nip05 || shortNpub(hex)
+    })
+    return h('div', { class: 'merch-mhead' }, [avatar, h('div', { class: 'merch-mhead-id' }, [nameEl, subEl])])
+  }
 
   // Build one line card, wiring its quantity stepper to update the cart and
   // totals in place (so the address form the buyer may have typed isn't
@@ -885,14 +968,21 @@ async function openCheckout() {
   function removeLine(l) {
     const idx = lines.indexOf(l)
     if (idx === -1) return
+    const hex = l.product.merchant
     lines.splice(idx, 1)
     setCartQty(l.coord, 0)
     shipState.delete(l.coord)
     cardEls.get(l.coord)?.remove()
     cardEls.delete(l.coord)
     if (!lines.length) { closeModal(); openCart(); return }
+    // Drop the merchant's whole section once its last item is gone.
+    if (!linesForMerchant(hex).length) {
+      sectionEls.get(hex)?.section.remove()
+      sectionEls.delete(hex)
+    }
     renderTotals()
     syncShippingSection()
+    syncMultiNote()
   }
 
   // A − [n] + quantity control for a checkout line. Clamped to 1..stock;
@@ -921,46 +1011,37 @@ async function openCheckout() {
   }
 
   // ── Totals ──
-  const totals = h('div', { class: 'merch-checkout-summary' })
+  // Grand total across all merchants — shown only when the cart spans 2+.
+  const grandTotals = h('div', { class: 'merch-checkout-summary merch-grand-totals' })
+
+  // Render Subtotal / Shipping / Total for a set of lines into `el`.
+  function renderTotalsInto(el, subset, { grand = false } = {}) {
+    el.innerHTML = ''
+    const { subSats, shipSats, ok } = totalsFor(subset)
+    const physical = subset.some(l => l.product.goods === 'physical')
+    const line = (label, valEl, cls) => el.appendChild(h('div', { class: 'merch-sum-line' + (cls ? ' ' + cls : '') }, [h('span', { text: label }), valEl]))
+    line(grand ? 'Subtotal (all sellers)' : 'Subtotal', h('span', { text: ok ? fmtSats(subSats) : '—' }))
+    if (physical) line('Shipping', h('span', { text: ok ? fmtSats(shipSats) : '—' }), 'merch-sum-ship')
+    line('Total', h('strong', { text: ok ? fmtSats(subSats + shipSats) : 'unavailable' }), 'merch-sum-total')
+  }
+
   function renderTotals() {
-    totals.innerHTML = ''
-    let subSats = 0, subOk = true
-    for (const l of lines) {
-      const s = toSats(l.product.priceAmount, l.product.priceCurrency, rate)
-      if (s == null) subOk = false; else subSats += s * l.qty
-    }
-    totals.appendChild(h('div', { class: 'merch-sum-line' }, [
-      h('span', { text: 'Subtotal' }),
-      h('span', { text: subOk ? fmtSats(subSats) : '—' }),
-    ]))
-    if (hasPhysical()) {
-      let shipSats = 0, shipOk = true
-      for (const l of lines) {
-        if (l.product.goods !== 'physical') continue
-        const choice = chosenShipFor(l.coord)
-        if (!choice) continue
-        const ss = shipChoiceSats(l.product, choice, rate)
-        if (ss == null) shipOk = false; else shipSats += ss
-      }
-      totals.appendChild(h('div', { class: 'merch-sum-line merch-sum-ship' }, [
-        h('span', { text: 'Shipping' }),
-        h('span', { text: shipOk ? fmtSats(shipSats) : '—' }),
-      ]))
-    }
-    const { sats, ok } = computeTotal()
-    totals.appendChild(h('div', { class: 'merch-sum-line merch-sum-total' }, [
-      h('span', { text: 'Total' }),
-      h('strong', { text: ok ? fmtSats(sats) : 'unavailable' }),
-    ]))
+    for (const [hex, { totalsEl }] of sectionEls) renderTotalsInto(totalsEl, linesForMerchant(hex))
+    const multi = sectionEls.size > 1
+    grandTotals.style.display = multi ? '' : 'none'
+    if (multi) renderTotalsInto(grandTotals, lines, { grand: true })
+    else grandTotals.innerHTML = ''
   }
   renderTotals()
 
   const status = h('div', { class: 'merch-checkout-status' })
   const payBtn = h('button', { class: 'merch-btn merch-btn-primary' }, [boltIcon(), 'Place order & pay'])
 
-  // Persists across pay retries (e.g. after a NO_WALLET prompt) so we
-  // reuse one order id and never re-publish the order message twice.
-  const session = { orderId: uuid(), orderPublished: false }
+  // Per-merchant order state, persisted across pay retries (e.g. after a
+  // NO_WALLET prompt, or one seller failing while another succeeded): each
+  // merchant keeps its own order id + published/paid flags so a retry never
+  // re-sends an order or double-charges a seller already paid.
+  const session = { byMerchant: new Map() }
 
   // Shipping-details section (address the chosen methods ship to). Built once
   // and shown/hidden by syncShippingSection() as physical items come and go —
@@ -995,13 +1076,25 @@ async function openCheckout() {
       const missing = missingShippingField()
       if (missing) return setStatus(status, 'error', `Please enter your ${missing}.`)
     }
+    // One order per merchant. Freeze each group's totals + shipments now (the
+    // checkout closures own chosenShipFor/totalsFor); runCheckout just pays.
+    const groups = [...sectionEls.keys()].map((hex) => {
+      const gLines = linesForMerchant(hex)
+      const { subSats, shipSats, ok } = totalsFor(gLines)
+      return {
+        merchant: hex,
+        lines: gLines.map(l => ({ coord: l.coord, qty: l.qty, product: l.product })),
+        shipments: collectShipments(gLines),
+        totalSats: subSats + shipSats,
+        ok,
+      }
+    })
     runCheckout({
-      lines, rate, user, needsShipping: shipping, session,
-      shipments: collectShipments(),
+      groups, user, needsShipping: shipping, session,
       address: shipping ? composeAddress() : '',
       email: emailInput.value.trim(),
       note: noteInput.value.trim(),
-      computeTotal, status, payBtn,
+      status, payBtn,
     })
   })
 
@@ -1009,13 +1102,14 @@ async function openCheckout() {
     closeButton(),
     h('h2', { class: 'merch-modal-title', text: 'Checkout' }),
     h('div', { class: 'merch-checkout-as', text: `Ordering as ${user.profile?.name || user.npub?.slice(0, 12) + '…' || 'you'}` }),
+    multiNote,
     itemsWrap,
-    totals,
+    grandTotals,
     shippingSection,
     noteWrap,
     status,
     payBtn,
-    h('p', { class: 'merch-fineprint', text: 'Your order is sent as an encrypted Nostr message to the seller and paid over Lightning.' }),
+    h('p', { class: 'merch-fineprint', text: 'Each seller receives an encrypted Nostr order and is paid over Lightning.' }),
   ])
   openModal(card)
 }
@@ -1026,21 +1120,18 @@ function setStatus(statusEl, kind, msg) {
 }
 
 async function runCheckout(ctx) {
-  const { lines, user, needsShipping, shipments = [], address, email, note, computeTotal, status, payBtn, session } = ctx
+  const { groups, user, needsShipping, address, email, note, status, payBtn, session } = ctx
 
   if (needsShipping && !address) {
     return setStatus(status, 'error', 'Please enter a shipping address.')
   }
-  const { sats: totalSats, ok } = computeTotal()
-  if (!ok || totalSats <= 0) {
+  if (groups.some(g => !g.ok || g.totalSats <= 0)) {
     return setStatus(status, 'error', 'Could not compute a total — live BTC price unavailable. Try again shortly.')
   }
 
   payBtn.disabled = true
-  const orderId = session.orderId
-  // Per-message delivery diagnostics, surfaced in the success screen and
-  // on window.LBMerchLastOrder for inspection. Answers "did it actually
-  // send, and to which relays?" without guessing.
+  // Per-message delivery diagnostics, surfaced (in debug) on the success screen
+  // and on window.LBMerchLastOrder. Answers "did it actually send, and where?"
   const diag = []
   const logSend = (label, res) => {
     diag.push({ label, kind: res.kind, wrapId: res.wrapId, recipient: res.recipientHex,
@@ -1049,103 +1140,132 @@ async function runCheckout(ctx) {
       { acked: res.acked, failed: res.failed, ndkOutbox: res.ndkOk })
   }
 
-  try {
-    // 1. Publish the order (kind 16, type 1), gift-wrapped to merchant.
-    //    Guarded so a pay retry (after connecting a wallet) doesn't send
-    //    the merchant a second, duplicate order.
-    if (!session.orderPublished) {
-      setStatus(status, 'working', 'Encrypting your order… approve the request in your signer if it prompts.')
-      const orderTags = [
-        ['p', MERCHANT_HEX],
-        ['subject', 'New order'],
-        ['type', '1'],
-        ['order', orderId],
-        ['amount', String(totalSats)],
-        ...lines.map(l => ['item', l.coord, String(l.qty)]),
-      ]
-      // Gamma's order schema defines a single `shipping` tag, but per-item
-      // shipping means several methods may apply. Repeated `shipping` tags are
-      // tolerated by clients and keep the machine-readable order complete; the
-      // kind-14 summary (below) itemizes which item uses which method.
-      for (const coord of [...new Set(shipments.map(s => s.coord))]) orderTags.push(['shipping', coord])
-      if (address)  orderTags.push(['address', address])
-      if (email)    orderTags.push(['email', email])
-      logSend('Order → seller', await giftWrapAndPublish({ kind: 16, content: note || '', tags: orderTags }, user.pubkey))
-      session.orderPublished = true
-    }
+  // Process each merchant as its own order + payment, sequentially (one wallet
+  // approval per seller). Already-paid sellers are skipped on a retry, so a
+  // partial failure never re-charges a seller who already went through.
+  const results = []
+  let anyFailure = false
+  for (const group of groups) {
+    const hex = group.merchant
+    let st = session.byMerchant.get(hex)
+    if (!st) { st = { orderId: uuid(), orderPublished: false, paid: false, totalSats: 0 }; session.byMerchant.set(hex, st) }
+    if (st.paid) { results.push({ merchant: hex, orderId: st.orderId, totalSats: st.totalSats, ok: true }); continue }
 
-    // 2. Fetch a Lightning invoice from the merchant lud16 (Gamma
-    //    "automatic" mode) and pay it via the connected wallet.
-    setStatus(status, 'working', 'Fetching Lightning invoice…')
-    // Identifying comment so the order is recognizable in the wallet's
-    // incoming-payment log: order id + items. fetchInvoice truncates to
-    // whatever the LNURL endpoint allows.
-    const itemList = lines.map(l => `${l.qty}× ${l.product.title}`).join(', ')
-    const payComment = `LB merch order ${orderId.slice(0, 8)} — ${itemList}`
-    const invoice = await fetchInvoice(MERCH_PAYMENT_LUD16, totalSats, payComment)
-
-    setStatus(status, 'working', 'Approve the payment in your wallet…')
-    let payRes
     try {
-      payRes = await window.LBLogin.payInvoice(invoice)
+      await processMerchantOrder(group, st, { user, address, email, note, status, logSend })
+      st.paid = true
+      st.totalSats = group.totalSats
+      results.push({ merchant: hex, orderId: st.orderId, totalSats: group.totalSats, ok: true })
     } catch (e) {
       if (e?.code === 'NO_WALLET') {
         setStatus(status, 'error', 'Connect a Lightning wallet in the popup, then press “Place order & pay” again.')
         payBtn.disabled = false
         return
       }
-      throw e
+      console.error('[merch] merchant order failed', hex, e)
+      anyFailure = true
+      results.push({ merchant: hex, ok: false, error: friendlyError(e) })
+      // Keep going: other sellers can still be paid; retry re-attempts this one.
     }
+  }
 
-    // 3. Send the payment receipt (kind 17), gift-wrapped to merchant.
-    setStatus(status, 'working', 'Confirming payment with the seller…')
-    const receiptTags = [
-      ['p', MERCHANT_HEX],
-      ['subject', 'order-receipt'],
+  if (anyFailure) {
+    const failed = results.filter(r => !r.ok)
+    const paid = results.filter(r => r.ok)
+    setStatus(status, 'error', results.length === 1
+      ? failed[0].error
+      : `Paid ${paid.length} of ${results.length} sellers. Couldn't complete: ${failed.map(f => f.error).join('; ')}. Press “Place order & pay” to retry the rest.`)
+    payBtn.disabled = false
+    return
+  }
+
+  const grandTotal = results.reduce((a, r) => a + (r.totalSats || 0), 0)
+  window.LBMerchLastOrder = { orders: results, grandTotal, diag }
+  sessionStorage.removeItem(CART_KEY)
+  updateCartBadge()
+  showOrderSuccess(results, grandTotal, diag)
+}
+
+// One merchant's order: gift-wrapped kind-16 order → pay their Lightning
+// address → kind-17 receipt + kind-14 human summary (+ buyer self-copy).
+// Throws on failure (NO_WALLET propagates up to abort the whole run).
+async function processMerchantOrder(group, st, shared) {
+  const { user, address, email, note, status, logSend } = shared
+  const hex = group.merchant
+  const orderId = st.orderId
+  const totalSats = group.totalSats
+
+  const profile = await resolveMerchantProfile(hex)
+  const sellerName = profile.name || 'the seller'
+  const payLud16 = paymentLud16ForMerchant(hex, profile)
+  if (!payLud16) {
+    throw new Error(`${profile.name || 'A seller'} in your cart hasn't published a Lightning address, so their payment can't be collected automatically yet.`)
+  }
+
+  // 1. Order (kind 16, type 1), gift-wrapped to this merchant. Guarded so a
+  //    retry after a failed payment doesn't re-send the order.
+  if (!st.orderPublished) {
+    setStatus(status, 'working', `Encrypting your order to ${sellerName}… approve in your signer if it prompts.`)
+    const orderTags = [
+      ['p', hex],
+      ['subject', 'New order'],
+      ['type', '1'],
       ['order', orderId],
       ['amount', String(totalSats)],
-      ['payment', 'lightning', invoice, payRes?.preimage || ''],
+      ...group.lines.map(l => ['item', l.coord, String(l.qty)]),
     ]
-    logSend('Receipt → seller', await giftWrapAndPublish({ kind: 17, content: '', tags: receiptTags }, user.pubkey))
-
-    // 4. Also send a plain NIP-17 chat message (kind 14) carrying a
-    //    human-readable summary. The kind-16/17 above are only rendered by
-    //    Gamma-aware merchant clients; a kind-14 shows up in the seller's
-    //    everyday DM inbox (0xchat, Damus, mynostr, …) so they actually
-    //    notice the order.
-    const summaryText = buildOrderSummary({ orderId, lines, totalSats, shipments, address, note, buyer: user })
-    const summaryRumor = {
-      kind: 14,
-      content: summaryText,
-      tags: [['p', MERCHANT_HEX], ['subject', `New order ${orderId.slice(0, 8)}`]],
-    }
-    logSend('Summary → seller', await giftWrapAndPublish(summaryRumor, user.pubkey))   // → seller inbox
-    // Self-copy so the buyer sees the order in their own DM client too
-    // (NIP-17 sender copy). Best-effort — never block the success path.
-    try { logSend('Summary → you (self-copy)', await giftWrapAndPublish(summaryRumor, user.pubkey, user.pubkey)) }
-    catch (e) { console.warn('[merch] buyer self-copy failed', e) }
-
-    window.LBMerchLastOrder = { orderId, totalSats, diag }
-
-    recordOrder({ orderId, totalSats, lines, shipping: [...new Set(shipments.map(s => s.coord))], ts: Date.now() })
-    sessionStorage.removeItem(CART_KEY)
-    updateCartBadge()
-
-    showOrderSuccess(orderId, totalSats, diag)
-  } catch (e) {
-    console.error('[merch] checkout failed', e)
-    setStatus(status, 'error', friendlyError(e))
-    payBtn.disabled = false
+    // Gamma's order schema defines a single `shipping` tag, but per-item
+    // shipping means several may apply. Repeated tags are tolerated; the
+    // kind-14 summary itemizes which item ships with which method.
+    for (const coord of [...new Set(group.shipments.map(s => s.coord))]) orderTags.push(['shipping', coord])
+    if (address) orderTags.push(['address', address])
+    if (email)   orderTags.push(['email', email])
+    logSend(`Order → ${sellerName}`, await giftWrapAndPublish({ kind: 16, content: note || '', tags: orderTags }, user.pubkey, hex))
+    st.orderPublished = true
   }
+
+  // 2. Fetch this merchant's Lightning invoice and pay it.
+  setStatus(status, 'working', `Fetching Lightning invoice from ${sellerName}…`)
+  const itemList = group.lines.map(l => `${l.qty}× ${l.product.title}`).join(', ')
+  const invoice = await fetchInvoice(payLud16, totalSats, `LB merch order ${orderId.slice(0, 8)} — ${itemList}`)
+
+  setStatus(status, 'working', `Approve the payment to ${sellerName} in your wallet…`)
+  const payRes = await window.LBLogin.payInvoice(invoice)   // NO_WALLET propagates
+
+  // 3. Receipt (kind 17), gift-wrapped to this merchant.
+  setStatus(status, 'working', `Confirming payment with ${sellerName}…`)
+  const receiptTags = [
+    ['p', hex],
+    ['subject', 'order-receipt'],
+    ['order', orderId],
+    ['amount', String(totalSats)],
+    ['payment', 'lightning', invoice, payRes?.preimage || ''],
+  ]
+  logSend(`Receipt → ${sellerName}`, await giftWrapAndPublish({ kind: 17, content: '', tags: receiptTags }, user.pubkey, hex))
+
+  // 4. Human-readable kind-14 summary (what everyday DM clients render) to the
+  //    seller, plus a buyer self-copy.
+  const summaryText = buildOrderSummary({ orderId, lines: group.lines, totalSats, shipments: group.shipments, address, note, buyer: user, sellerName })
+  const summaryRumor = {
+    kind: 14,
+    content: summaryText,
+    tags: [['p', hex], ['subject', `New order ${orderId.slice(0, 8)}`]],
+  }
+  logSend(`Summary → ${sellerName}`, await giftWrapAndPublish(summaryRumor, user.pubkey, hex))
+  try { logSend('Summary → you (self-copy)', await giftWrapAndPublish(summaryRumor, user.pubkey, user.pubkey)) }
+  catch (e) { console.warn('[merch] buyer self-copy failed', e) }
+
+  recordOrder({ orderId, totalSats, lines: group.lines, merchant: hex, shipping: [...new Set(group.shipments.map(s => s.coord))], ts: Date.now() })
 }
 
 // Human-readable order summary for the kind-14 chat DM the seller's
 // everyday client will actually render.
-function buildOrderSummary({ orderId, lines, totalSats, shipments = [], address, note, buyer }) {
+function buildOrderSummary({ orderId, lines, totalSats, shipments = [], address, note, buyer, sellerName }) {
   const who = buyer?.profile?.name || (buyer?.npub ? buyer.npub.slice(0, 12) + '…' : 'a customer')
   const items = lines.map(l => `• ${l.qty}× ${l.product.title}`).join('\n')
   const parts = [
-    `🛒 New Local Bitcoiners order`,
+    `🛒 New order via Local Bitcoiners`,
+    ...(sellerName && sellerName !== 'the seller' ? [`Seller: ${sellerName}`] : []),
     `From: ${who}`,
     ``,
     items,
@@ -1339,7 +1459,7 @@ function recordOrder(o) {
   try {
     const list = JSON.parse(localStorage.getItem(ORDERS_KEY) || '[]')
     list.unshift({
-      orderId: o.orderId, totalSats: o.totalSats, ts: o.ts, shipping: o.shipping,
+      orderId: o.orderId, totalSats: o.totalSats, ts: o.ts, shipping: o.shipping, merchant: o.merchant || null,
       items: o.lines.map(l => ({ coord: l.coord, title: l.product.title, qty: l.qty })),
     })
     localStorage.setItem(ORDERS_KEY, JSON.stringify(list.slice(0, 50)))
@@ -1352,7 +1472,8 @@ function merchDebugOn() {
   } catch { return false }
 }
 
-function showOrderSuccess(orderId, totalSats, diag = []) {
+function showOrderSuccess(orders, grandTotal, diag = []) {
+  const multi = orders.length > 1
   // Collapsible delivery diagnostics: every message we sent, its kind, the
   // gift-wrap id, and which relays accepted it. Lets the seller confirm
   // (e.g. on njump.me / a relay explorer) that the events really landed.
@@ -1377,9 +1498,10 @@ function showOrderSuccess(orderId, totalSats, diag = []) {
   const card = h('div', { class: 'merch-modal merch-modal-success' }, [
     closeButton(),
     h('div', { class: 'merch-success-check', text: '✓' }),
-    h('h2', { class: 'merch-modal-title', text: 'Order placed!' }),
-    h('p', { text: `You paid ${fmtSats(totalSats)}. The seller has your order over an encrypted Nostr message and will follow up about fulfillment.` }),
-    h('div', { class: 'merch-order-id' }, ['Order ID: ', h('code', { text: orderId })]),
+    h('h2', { class: 'merch-modal-title', text: multi ? 'Orders placed!' : 'Order placed!' }),
+    h('p', { text: `You paid ${fmtSats(grandTotal)}${multi ? ` across ${orders.length} sellers` : ''}. ${multi ? 'Each seller has' : 'The seller has'} your order over an encrypted Nostr message and will follow up about fulfillment.` }),
+    h('div', { class: 'merch-order-ids' }, orders.map(o =>
+      h('div', { class: 'merch-order-id' }, ['Order ID: ', h('code', { text: o.orderId })]))),
     diagPanel,
     h('button', { class: 'merch-btn merch-btn-primary', 'data-merch-close': '' }, 'Done'),
   ])
