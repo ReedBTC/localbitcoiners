@@ -150,9 +150,30 @@ function fmtSats(n) {
   return Number(n).toLocaleString() + ' sats'
 }
 
+// Short npub label (npub1abcd…wxyz) for a hex pubkey, used before/if a
+// merchant's kind-0 display name resolves.
+function shortNpub(hex) {
+  try { const np = nip19.npubEncode(hex); return np.slice(0, 12) + '…' + np.slice(-4) }
+  catch { return hex.slice(0, 8) + '…' }
+}
+
 // ── Tag parsing ──────────────────────────────────────────────────────
 const firstTag = (ev, name) => (ev.tags.find(t => t[0] === name) || [])[1]
 const allTags  = (ev, name) => ev.tags.filter(t => t[0] === name)
+
+// Human description from the event content. Some marketplace clients (notably
+// Conduit) stuff a machine-readable JSON product payload into the content
+// instead of prose; rendering that verbatim dumps a wall of JSON into the
+// detail modal (and it has no spaces, so it overflows). Treat a JSON
+// object/array as "no description" — the human text lives in the summary tag.
+function descriptionText(content) {
+  if (typeof content !== 'string') return ''
+  const t = content.trim()
+  if (t && (t[0] === '{' || t[0] === '[')) {
+    try { const v = JSON.parse(t); if (v && typeof v === 'object') return '' } catch {}
+  }
+  return content
+}
 
 function parseProduct(ev) {
   const d = firstTag(ev, 'd')
@@ -163,19 +184,30 @@ function parseProduct(ev) {
     .map(t => t[1]).filter(isHttpUrl)
   return {
     d,
-    coord: `30402:${MERCHANT_HEX}:${d}`,
+    id: ev.id,                                 // this version's event id (Plebeian routes by it)
+    merchant: ev.pubkey,                       // seller pubkey (not always the LB house npub)
+    coord: `30402:${ev.pubkey}:${d}`,
     title: firstTag(ev, 'title') || '(untitled)',
     summary: firstTag(ev, 'summary') || '',
-    description: typeof ev.content === 'string' ? ev.content : '',
+    description: descriptionText(ev.content),
+    priceRaw: priceTag[1] != null ? String(priceTag[1]) : '',   // original text, e.g. "30,000 - sold!"
     priceAmount: Number(priceTag[1]),
     priceCurrency: priceTag[2] || 'USD',
     priceFreq: priceTag[3] || '',
     goods: (typeTag[2] || 'digital').toLowerCase(),       // physical | digital
     visibility: (firstTag(ev, 'visibility') || 'on-sale').toLowerCase(),
+    status: (firstTag(ev, 'status') || '').toLowerCase(),  // NIP-99: active | sold
     stock: firstTag(ev, 'stock') != null ? Number(firstTag(ev, 'stock')) : null,
     images,
     specs: allTags(ev, 'spec').map(t => [t[1], t[2]]).filter(s => s[0]),
-    shippingRefs: allTags(ev, 'shipping_option').map(t => t[1]).filter(Boolean),
+    // Gamma: a product's shipping_option tag is ["shipping_option", <ref>,
+    // <extra-cost>]. The optional third element is a per-product surcharge
+    // (in the PRODUCT's currency) added to that method's base price. <ref>
+    // is a 30406 option coord or a 30405 collection coord (extra then applies
+    // to every option in that collection).
+    shippingRefs: allTags(ev, 'shipping_option')
+      .map(t => ({ coord: t[1], extra: Number(t[2]) || 0 }))
+      .filter(s => s.coord),
     collectionRefs: allTags(ev, 'a').map(t => t[1]).filter(c => c.startsWith('30405:')),
     created_at: ev.created_at,
   }
@@ -188,7 +220,8 @@ function parseShipping(ev) {
   const duration = ev.tags.find(t => t[0] === 'duration')
   return {
     d,
-    coord: `30406:${MERCHANT_HEX}:${d}`,
+    merchant: ev.pubkey,
+    coord: `30406:${ev.pubkey}:${d}`,
     title: firstTag(ev, 'title') || 'Shipping',
     priceAmount: Number(priceTag[1] || 0),
     priceCurrency: priceTag[2] || 'USD',
@@ -205,7 +238,8 @@ function parseCollection(ev) {
   if (!d) return null
   return {
     d,
-    coord: `30405:${MERCHANT_HEX}:${d}`,
+    merchant: ev.pubkey,
+    coord: `30405:${ev.pubkey}:${d}`,
     title: firstTag(ev, 'title') || '',
     shippingRefs: allTags(ev, 'shipping_option').map(t => t[1]).filter(Boolean),
   }
@@ -218,16 +252,71 @@ const catalog = {
   collections: new Map(),  // coord → collection
 }
 
-// Resolve the full set of shipping options that apply to a product:
-// its own shipping_option refs, merged with any from collections it
-// references (Gamma: product + collection shipping MUST be merged).
+// Resolve the shipping choices that apply to a product: its own
+// shipping_option refs (each carrying an optional per-product extra cost),
+// merged with any inherited from collections it references (Gamma: product +
+// collection shipping MUST be merged). Returns [{ option, extra }] where
+// `option` is a parsed 30406 shipping option and `extra` is the surcharge in
+// the product's currency.
 function shippingForProduct(p) {
-  const coords = new Set(p.shippingRefs)
+  const extraByCoord = new Map()   // 30406 coord → extra cost (product currency)
+  const add = (coord, extra) => {
+    // If the same option is reachable by several paths, keep the largest
+    // extra so a product-specific surcharge is never silently dropped.
+    if (!extraByCoord.has(coord) || extra > extraByCoord.get(coord)) extraByCoord.set(coord, extra)
+  }
+  for (const { coord, extra } of p.shippingRefs) {
+    if (coord.startsWith('30405:')) {
+      // Collection reference: the extra applies to every option inside it.
+      const col = catalog.collections.get(coord)
+      if (col) col.shippingRefs.forEach(r => add(r, extra))
+    } else {
+      add(coord, extra)   // direct 30406 option
+    }
+  }
+  // Collections the product belongs to via `a` tags contribute their options
+  // too, with no product-specific surcharge.
   for (const cref of p.collectionRefs) {
     const col = catalog.collections.get(cref)
-    if (col) col.shippingRefs.forEach(r => coords.add(r))
+    if (col) col.shippingRefs.forEach(r => add(r, 0))
   }
-  return [...coords].map(c => catalog.shipping.get(c)).filter(Boolean)
+  const out = []
+  for (const [coord, extra] of extraByCoord) {
+    const option = catalog.shipping.get(coord)
+    if (option) out.push({ option, extra })
+  }
+  // Put local-pickup options last so a shipped method is the default choice
+  // (buyers shouldn't accidentally default to "come pick it up"). Array.sort
+  // is stable, so non-pickup order is otherwise preserved.
+  out.sort((a, b) => (isPickupOption(a.option) ? 1 : 0) - (isPickupOption(b.option) ? 1 : 0))
+  return out
+}
+
+// A shipping option is "pickup" if its Gamma service type says so, or the
+// title reads like a pickup (some merchants omit the service tag).
+function isPickupOption(option) {
+  return String(option.service).toLowerCase() === 'pickup' || /pick\s*-?\s*up/i.test(option.title || '')
+}
+
+// Sats cost of a shipping choice for a given product: the option's base price
+// (in the option's currency) plus the per-product extra (in the product's
+// currency), each converted independently. null if either can't be converted.
+function shipChoiceSats(product, choice, rate) {
+  const base = toSats(choice.option.priceAmount, choice.option.priceCurrency, rate)
+  const extra = choice.extra ? toSats(choice.extra, product.priceCurrency, rate) : 0
+  if (base == null || extra == null) return null
+  return base + extra
+}
+
+// Human label for a shipping choice, e.g. "Standard — $5.99" or, with a
+// surcharge in the same currency, the combined "$7.99". If base and extra are
+// in different currencies they're shown side by side ("$5.99 + 2000 sats").
+function shipChoiceLabel(product, choice) {
+  const o = choice.option
+  if (!choice.extra) return `${o.title} — ${priceLabel(o.priceAmount, o.priceCurrency)}`
+  const sameCcy = String(o.priceCurrency).toUpperCase() === String(product.priceCurrency).toUpperCase()
+  if (sameCcy) return `${o.title} — ${priceLabel(o.priceAmount + choice.extra, o.priceCurrency)}`
+  return `${o.title} — ${priceLabel(o.priceAmount, o.priceCurrency)} + ${priceLabel(choice.extra, product.priceCurrency)}`
 }
 
 async function fetchCatalog() {
@@ -255,12 +344,13 @@ async function fetchCatalog() {
   }
   const events = [...byId.values()]
 
-  // Replaceable events: keep newest per (kind:d).
+  // Replaceable events: keep newest per (kind:pubkey:d). Pubkey is in the key
+  // so two different merchants can publish the same `d` without colliding.
   const newest = new Map()
   for (const ev of events) {
     const d = firstTag(ev, 'd')
     if (!d) continue
-    const key = `${ev.kind}:${d}`
+    const key = `${ev.kind}:${ev.pubkey}:${d}`
     const prev = newest.get(key)
     if (!prev || ev.created_at > prev.created_at) newest.set(key, ev)
   }
@@ -282,6 +372,46 @@ async function fetchCatalog() {
     if (a.visibility !== b.visibility) return a.visibility === 'pre-order' ? 1 : -1
     return b.created_at - a.created_at
   })
+}
+
+// Merge externally-sourced NIP-99 events (e.g. the /feeds community
+// marketplace, which surfaces listings from OTHER merchants alongside the
+// house store) into the in-memory catalog WITHOUT clearing what's already
+// there, so the shared cart + checkout can resolve their products, shipping
+// and collections. Same newest-per-(kind:pubkey:d) + skip-hidden rules as
+// fetchCatalog. Returns the parsed products that were ingested (newest per
+// coord) so the caller can grade/classify them.
+function ingestListings(events) {
+  const newest = new Map()
+  for (const ev of events || []) {
+    if (!ev || (ev.kind !== 30402 && ev.kind !== 30405 && ev.kind !== 30406)) continue
+    const d = firstTag(ev, 'd')
+    if (!d) continue
+    const key = `${ev.kind}:${ev.pubkey}:${d}`
+    const prev = newest.get(key)
+    if (!prev || ev.created_at > prev.created_at) newest.set(key, ev)
+  }
+  // Shipping + collections first so a product can resolve its refs.
+  for (const ev of newest.values()) {
+    if (ev.kind === 30406) { const s = parseShipping(ev); if (s) catalog.shipping.set(s.coord, s) }
+    else if (ev.kind === 30405) { const c = parseCollection(ev); if (c) catalog.collections.set(c.coord, c) }
+  }
+  const ingested = []
+  for (const ev of newest.values()) {
+    if (ev.kind !== 30402) continue
+    const p = parseProduct(ev)
+    if (!p || p.visibility === 'hidden') continue
+    const idx = catalog.products.findIndex(x => x.coord === p.coord)
+    if (idx === -1) catalog.products.push(p)
+    else if (p.created_at >= catalog.products[idx].created_at) catalog.products[idx] = p
+    else continue   // an older duplicate — keep the newer one already held
+    ingested.push(p)
+  }
+  catalog.products.sort((a, b) => {
+    if (a.visibility !== b.visibility) return a.visibility === 'pre-order' ? 1 : -1
+    return b.created_at - a.created_at
+  })
+  return ingested
 }
 
 // ── Cart (sessionStorage) ────────────────────────────────────────────
@@ -485,28 +615,53 @@ function npubChip(npub, hex) {
   return chip
 }
 
-// Resolve a hex pubkey → display name from its kind-0. Cached per session
-// (by hex) so repeat mentions don't re-query the relays.
-const _profileNameCache = new Map()   // hex → Promise<string|null>
-function resolveProfileName(hex) {
-  if (_profileNameCache.has(hex)) return _profileNameCache.get(hex)
+// Resolve a hex pubkey → its kind-0 profile { name, picture, nip05, lud16 }.
+// Cached per session (by hex) so repeat lookups (mentions, merchant headers,
+// payment address) don't re-query the relays. Fields are null when absent.
+const _profileCache = new Map()   // hex → Promise<{name,picture,nip05,lud16}>
+function resolveMerchantProfile(hex) {
+  if (_profileCache.has(hex)) return _profileCache.get(hex)
   const promise = (async () => {
     const pool = new SimplePool()
     try {
       const ev = await withTimeout(pool.get(RELAYS, { kinds: [0], authors: [hex] }), 6000, null)
-      if (!ev) return null
+      if (!ev) return { name: null, picture: null, nip05: null, lud16: null }
       const meta = JSON.parse(ev.content || '{}')
-      const name = meta.display_name || meta.displayName || meta.name
-      return (typeof name === 'string' && name.trim()) ? name.trim() : null
-    } catch { return null }
+      const str = (v) => (typeof v === 'string' && v.trim()) ? v.trim() : null
+      return {
+        name: str(meta.display_name) || str(meta.displayName) || str(meta.name),
+        picture: isHttpUrl(meta.picture) ? meta.picture : null,
+        nip05: str(meta.nip05),
+        lud16: str(meta.lud16),
+      }
+    } catch { return { name: null, picture: null, nip05: null, lud16: null } }
     finally { try { pool.close(RELAYS) } catch {} }
   })()
-  _profileNameCache.set(hex, promise)
+  _profileCache.set(hex, promise)
   return promise
 }
 
+// Back-compat helper for npub chips: just the display name.
+async function resolveProfileName(hex) {
+  return (await resolveMerchantProfile(hex)).name
+}
+
+// The Lightning address an order to `merchantHex` should be paid to. The LB
+// house merchant routes ALL merch revenue to one wallet regardless of its
+// kind-0 lud16; any other (community-feed) merchant is paid at their own
+// profile lud16 (Gamma "automatic" mode). null → we can't auto-pay them.
+function paymentLud16ForMerchant(merchantHex, profile) {
+  if (merchantHex === MERCHANT_HEX) return MERCH_PAYMENT_LUD16
+  return (profile && typeof profile.lud16 === 'string' && profile.lud16.trim()) ? profile.lud16.trim() : null
+}
+
 // ── Product detail modal ─────────────────────────────────────────────
-function openProductModal(p) {
+// opts (all optional; the /merch storefront passes none):
+//   sellerHeader — a node inserted under the title (e.g. seller pfp + name)
+//   actions      — node(s) to render in place of the default Qty/Add/Buy row
+//                  (the /feeds classifieds pass a "Contact seller" button)
+//   menu         — a node pinned top-right (e.g. /feeds ⋮ copy-naddr / view-on)
+function openProductModal(p, opts = {}) {
   // Featured image is a carousel (prev/next arrows cycle the images); the
   // thumbnail tray below stays in sync — clicking a thumb jumps the
   // carousel, and the arrows highlight the matching thumb.
@@ -539,8 +694,8 @@ function openProductModal(p) {
   const shipInfo = (p.goods === 'physical' && ship.length)
     ? h('div', { class: 'merch-detail-ship' }, [
         h('strong', { text: 'Shipping:' }),
-        ...ship.map(s => h('div', { class: 'merch-detail-ship-opt',
-          text: `${s.title} (${priceLabel(s.priceAmount, s.priceCurrency)})` })),
+        ...ship.map(c => h('div', { class: 'merch-detail-ship-opt',
+          text: shipChoiceLabel(p, c) })),
       ])
     : null
 
@@ -560,20 +715,28 @@ function openProductModal(p) {
         h('tr', {}, [h('th', { text: k }), h('td', { text: v })])))
     : null
 
+  const actions = opts.actions
+    ? h('div', { class: 'merch-detail-actions' }, [].concat(opts.actions))
+    : h('div', { class: 'merch-detail-actions' }, [
+        h('label', { class: 'merch-qty-label' }, ['Qty ', qtyInput]),
+        addBtn, buyBtn,
+      ])
+
   const card = h('div', { class: 'merch-modal merch-modal-detail' }, [
     closeButton(),
+    opts.menu || null,   // optional ⋮ menu (e.g. /feeds: copy naddr + view elsewhere)
     gallery,
     h('div', { class: 'merch-detail-info' }, [
       h('h2', { class: 'merch-detail-title', text: p.title }),
+      opts.sellerHeader || null,
       price,
       p.stock != null && p.stock > 0 ? h('div', { class: 'merch-stock', text: `${p.stock} in stock` }) : null,
-      p.description ? renderDescription(p.description) : null,
+      // Fall back to the summary when there's no body text (e.g. Conduit
+      // listings, whose JSON content is suppressed) so the modal still reads.
+      (p.description || p.summary) ? renderDescription(p.description || p.summary) : null,
       specs,
       shipInfo,
-      h('div', { class: 'merch-detail-actions' }, [
-        h('label', { class: 'merch-qty-label' }, ['Qty ', qtyInput]),
-        addBtn, buyBtn,
-      ]),
+      actions,
     ]),
   ])
 
@@ -583,6 +746,12 @@ function openProductModal(p) {
 function boltIcon() {
   const span = h('span', { class: 'merch-bolt', 'aria-hidden': 'true' })
   span.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M14.615 1.595a.75.75 0 0 1 .359.852L12.982 9.75h7.268a.75.75 0 0 1 .548 1.262l-10.5 11.25a.75.75 0 0 1-1.272-.71l1.992-7.302H3.75a.75.75 0 0 1-.548-1.262l10.5-11.25a.75.75 0 0 1 .913-.143Z" clip-rule="evenodd"/></svg>'
+  return span
+}
+
+function trashIcon() {
+  const span = h('span', { class: 'merch-trash', 'aria-hidden': 'true' })
+  span.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>'
   return span
 }
 
@@ -614,7 +783,7 @@ async function openCart() {
         h('div', { class: 'merch-cart-line-price', text: priceLabel(p.priceAmount, p.priceCurrency) + (sats != null ? `  ·  ${fmtSats(sats)}` : '') }),
       ]),
       qtyInput,
-      h('button', { class: 'merch-line-remove', 'aria-label': 'Remove', onclick: () => { setCartQty(p.coord, 0); openCart() } }, '✕'),
+      h('button', { class: 'merch-line-remove', 'aria-label': 'Remove', title: 'Remove', onclick: () => { setCartQty(p.coord, 0); openCart() } }, trashIcon()),
     ]))
   }
 
@@ -669,24 +838,34 @@ async function openCheckout() {
   }
 
   const rate = await getBtcUsd()
-  const needsShipping = lines.some(l => l.product.goods === 'physical')
+  // Whether any physical item is still in the cart. Dynamic because lines can
+  // be removed on this page — dropping the last physical item hides the
+  // shipping-details form.
+  const hasPhysical = () => lines.some(l => l.product.goods === 'physical')
 
-  // Build shipping option choices (union across all physical items).
-  const shipOptions = []
-  if (needsShipping) {
-    const seen = new Set()
-    for (const l of lines) {
-      if (l.product.goods !== 'physical') continue
-      for (const s of shippingForProduct(l.product)) {
-        if (!seen.has(s.coord)) { seen.add(s.coord); shipOptions.push(s) }
-      }
-    }
+  // Per-item shipping (Gamma): each physical product line picks its OWN
+  // method from its own options, and each line's cost is summed independently
+  // into the order total. shipState is keyed by line coord.
+  const shipState = new Map()   // coord → { line, choices, select }
+  for (const line of lines.filter(l => l.product.goods === 'physical')) {
+    const choices = shippingForProduct(line.product)
+    const select = choices.length
+      ? h('select', { class: 'merch-input' },
+          choices.map((c, i) => h('option', { value: c.option.coord, selected: i === 0 ? '' : null },
+            shipChoiceLabel(line.product, c))))
+      : null
+    if (select) select.addEventListener('change', renderTotals)
+    shipState.set(line.coord, { line, choices, select })
+  }
+  // The chosen { option, extra } for a physical line, or null if it has no
+  // shipping options published.
+  function chosenShipFor(coord) {
+    const st = shipState.get(coord)
+    if (!st || !st.choices.length) return null
+    return st.choices.find(c => c.option.coord === st.select.value) || st.choices[0]
   }
 
   // ── Form fields ──
-  const shipSelect = h('select', { class: 'merch-input' },
-    shipOptions.map((s, i) => h('option', { value: s.coord, selected: i === 0 ? '' : null },
-      `${s.title} — ${priceLabel(s.priceAmount, s.priceCurrency)}`)))
   // Standard shipping form (no phone). Email is optional.
   const nameInput  = h('input', { class: 'merch-input', type: 'text', autocomplete: 'name', placeholder: 'Name' })
   const addr1Input = h('input', { class: 'merch-input', type: 'text', autocomplete: 'address-line1', placeholder: 'Address line 1' })
@@ -719,89 +898,273 @@ async function openCheckout() {
     return m ? m[1] : null
   }
 
-  function chosenShipping() {
-    if (!needsShipping || !shipOptions.length) return null
-    return shipOptions.find(s => s.coord === shipSelect.value) || shipOptions[0]
+  // Sats subtotal + shipping for a set of lines. Shipping is charged once per
+  // physical line (not per unit), matching the Gamma/Plebeian model. Used for
+  // both the per-merchant and grand totals.
+  function totalsFor(subset) {
+    let subSats = 0, shipSats = 0, ok = true
+    for (const l of subset) {
+      const s = toSats(l.product.priceAmount, l.product.priceCurrency, rate)
+      if (s == null) ok = false; else subSats += s * l.qty
+      if (l.product.goods === 'physical') {
+        const choice = chosenShipFor(l.coord)
+        if (choice) {
+          const ss = shipChoiceSats(l.product, choice, rate)
+          if (ss == null) ok = false; else shipSats += ss
+        }
+      }
+    }
+    return { subSats, shipSats, ok }
   }
 
-  function computeTotal() {
-    let sats = 0, ok = true
-    for (const l of lines) {
-      const s = toSats(l.product.priceAmount, l.product.priceCurrency, rate)
-      if (s == null) { ok = false } else sats += s * l.qty
+  // The per-line shipping selections for a set of lines → the order message.
+  function collectShipments(subset) {
+    const out = []
+    for (const l of subset) {
+      if (l.product.goods !== 'physical') continue
+      const choice = chosenShipFor(l.coord)
+      if (choice) out.push({ productTitle: l.product.title, coord: choice.option.coord, optionTitle: choice.option.title })
     }
-    const ship = chosenShipping()
-    if (ship) {
-      const ss = toSats(ship.priceAmount, ship.priceCurrency, rate)
-      if (ss == null) ok = false; else sats += ss
-    }
-    return { sats, ok }
+    return out
   }
 
-  // ── Summary + status panes ──
-  const summary = h('div', { class: 'merch-checkout-summary' })
-  function renderSummary() {
-    summary.innerHTML = ''
+  // Cart lines grouped by merchant pubkey (first-seen order preserved). A cart
+  // can hold items from several NIP-99 merchants once the community feed lands;
+  // each merchant is its own order + its own Lightning payment.
+  function groupLines() {
+    const map = new Map()   // merchantHex → lines[]
     for (const l of lines) {
-      const s = toSats(l.product.priceAmount, l.product.priceCurrency, rate)
-      summary.appendChild(h('div', { class: 'merch-sum-line' }, [
-        h('span', { text: `${l.qty}× ${l.product.title}` }),
-        h('span', { text: s != null ? fmtSats(s * l.qty) : '—' }),
-      ]))
+      if (!map.has(l.product.merchant)) map.set(l.product.merchant, [])
+      map.get(l.product.merchant).push(l)
     }
-    const ship = chosenShipping()
-    if (ship) {
-      const ss = toSats(ship.priceAmount, ship.priceCurrency, rate)
-      summary.appendChild(h('div', { class: 'merch-sum-line' }, [
-        h('span', { text: `Shipping — ${ship.title}` }),
-        h('span', { text: ss != null ? fmtSats(ss) : '—' }),
-      ]))
-    }
-    const { sats, ok } = computeTotal()
-    summary.appendChild(h('div', { class: 'merch-sum-total' }, [
-      h('span', { text: 'Total' }),
-      h('strong', { text: ok ? fmtSats(sats) : 'unavailable' }),
-    ]))
+    return map
   }
-  shipSelect.addEventListener('change', renderSummary)
-  renderSummary()
+  const linesForMerchant = (hex) => lines.filter(l => l.product.merchant === hex)
+
+  // ── Order lines (top), grouped by merchant ──
+  // Each merchant is its own bordered section: a header (avatar + name), that
+  // seller's item cards (thumbnail, name, price, inline per-item shipping), and
+  // the seller's own subtotal/shipping/total. A grand total (below) appears
+  // only when the cart spans 2+ merchants.
+  const cardEls = new Map()       // coord → card element (for removal)
+  const sectionEls = new Map()    // merchantHex → { section, totalsEl }
+  const itemsWrap = h('div', { class: 'merch-checkout-items' })
+
+  // Heads-up banner shown only when the cart spans multiple sellers.
+  const multiNote = h('div', { class: 'merch-multi-note' })
+  function syncMultiNote() {
+    const n = sectionEls.size
+    multiNote.style.display = n > 1 ? '' : 'none'
+    multiNote.textContent = n > 1
+      ? `Your cart has items from ${n} sellers — you'll approve a separate Lightning payment for each.`
+      : ''
+  }
+
+  for (const [merchantHex, gLines] of groupLines()) {
+    const totalsEl = h('div', { class: 'merch-checkout-summary merch-mgroup-totals' })
+    const section = h('div', { class: 'merch-mgroup' }, [
+      buildMerchantHeader(merchantHex),
+      ...gLines.map(buildItemCard),
+      totalsEl,
+    ])
+    sectionEls.set(merchantHex, { section, totalsEl })
+    itemsWrap.appendChild(section)
+  }
+  syncMultiNote()
+
+  // Merchant header: avatar + display name + nip05/npub, filled from kind-0.
+  // The LB house merchant gets a subtle "official" marker.
+  function buildMerchantHeader(hex) {
+    const avatar = h('div', { class: 'merch-mhead-avatar merch-card-noimg' }, '🛍️')
+    const nameEl = h('div', { class: 'merch-mhead-name', text: shortNpub(hex) })
+    const subEl  = h('div', { class: 'merch-mhead-sub', text: '' })
+    if (hex === MERCHANT_HEX) nameEl.classList.add('merch-mhead-official')
+    resolveMerchantProfile(hex).then((p) => {
+      if (p.name) nameEl.textContent = p.name
+      if (p.picture) { avatar.textContent = ''; avatar.classList.remove('merch-card-noimg')
+        avatar.appendChild(h('img', { src: p.picture, alt: '', class: 'merch-mhead-img' })) }
+      subEl.textContent = p.nip05 || shortNpub(hex)
+    })
+    return h('div', { class: 'merch-mhead' }, [avatar, h('div', { class: 'merch-mhead-id' }, [nameEl, subEl])])
+  }
+
+  // Build one line card, wiring its quantity stepper to update the cart and
+  // totals in place (so the address form the buyer may have typed isn't
+  // rebuilt). Shipping is per-line, not per-unit, so quantity only moves the
+  // subtotal — the stepper just refreshes this line's price and the totals.
+  function buildItemCard(l) {
+    const p = l.product
+    const thumb = p.images[0]
+      ? h('img', { src: p.images[0], alt: p.title, class: 'merch-citem-thumb' })
+      : h('div', { class: 'merch-citem-thumb merch-card-noimg', text: '🛍️' })
+
+    const priceEl = h('div', { class: 'merch-citem-price' })
+    const setPrice = () => {
+      const s = toSats(p.priceAmount, p.priceCurrency, rate)
+      priceEl.textContent = priceLabel(p.priceAmount, p.priceCurrency) + (s != null ? `  ·  ${fmtSats(s * l.qty)}` : '')
+    }
+    setPrice()
+
+    const st = shipState.get(l.coord)   // physical lines only
+    let shipRow = null
+    if (p.goods === 'physical') {
+      shipRow = st?.select
+        ? h('div', { class: 'merch-citem-ship' }, st.select)
+        : h('p', { class: 'merch-warn merch-citem-shipwarn', text: 'No shipping options published — the seller will follow up.' })
+    }
+
+    const stepper = qtyStepper(l, () => { setPrice(); renderTotals() })
+    const removeBtn = h('button', { type: 'button', class: 'merch-citem-remove',
+      'aria-label': `Remove ${p.title}`, title: 'Remove', onclick: () => removeLine(l) }, trashIcon())
+
+    const card = h('div', { class: 'merch-citem' }, [
+      thumb,
+      h('div', { class: 'merch-citem-info' }, [
+        h('div', { class: 'merch-citem-title', text: p.title }),
+        priceEl,
+        stepper,
+        shipRow,
+      ]),
+      removeBtn,
+    ])
+    cardEls.set(l.coord, card)
+    return card
+  }
+
+  // Remove a line from the cart on this page. Persists to the cart, drops the
+  // card + its shipping state, then refreshes totals and the shipping section
+  // (which hides once no physical items remain). Emptying the cart returns to
+  // the cart view.
+  function removeLine(l) {
+    const idx = lines.indexOf(l)
+    if (idx === -1) return
+    const hex = l.product.merchant
+    lines.splice(idx, 1)
+    setCartQty(l.coord, 0)
+    shipState.delete(l.coord)
+    cardEls.get(l.coord)?.remove()
+    cardEls.delete(l.coord)
+    if (!lines.length) { closeModal(); openCart(); return }
+    // Drop the merchant's whole section once its last item is gone.
+    if (!linesForMerchant(hex).length) {
+      sectionEls.get(hex)?.section.remove()
+      sectionEls.delete(hex)
+    }
+    renderTotals()
+    syncShippingSection()
+    syncMultiNote()
+  }
+
+  // A − [n] + quantity control for a checkout line. Clamped to 1..stock;
+  // removal is done from the cart, not here.
+  function qtyStepper(l, onChange) {
+    const maxStock = l.product.stock != null ? Math.max(l.product.stock, 0) : null
+    const box = h('input', { type: 'number', class: 'merch-qty', min: '1',
+      max: maxStock != null ? String(maxStock) : null, value: String(l.qty),
+      'aria-label': `Quantity of ${l.product.title}` })
+    const apply = (n) => {
+      let q = Math.floor(n) || 1
+      if (q < 1) q = 1
+      if (maxStock != null && maxStock > 0) q = Math.min(q, maxStock)
+      box.value = String(q)
+      if (q === l.qty) return
+      l.qty = q
+      setCartQty(l.coord, q)
+      onChange()
+    }
+    box.addEventListener('change', () => apply(parseInt(box.value, 10)))
+    const dec = h('button', { type: 'button', class: 'merch-step', 'aria-label': 'Decrease quantity',
+      onclick: () => apply(l.qty - 1) }, '−')
+    const inc = h('button', { type: 'button', class: 'merch-step', 'aria-label': 'Increase quantity',
+      onclick: () => apply(l.qty + 1) }, '+')
+    return h('div', { class: 'merch-qty-stepper' }, [dec, box, inc])
+  }
+
+  // ── Totals ──
+  // Grand total across all merchants — shown only when the cart spans 2+.
+  const grandTotals = h('div', { class: 'merch-checkout-summary merch-grand-totals' })
+
+  // Render Subtotal / Shipping / Total for a set of lines into `el`.
+  function renderTotalsInto(el, subset, { grand = false } = {}) {
+    el.innerHTML = ''
+    const { subSats, shipSats, ok } = totalsFor(subset)
+    const physical = subset.some(l => l.product.goods === 'physical')
+    const line = (label, valEl, cls) => el.appendChild(h('div', { class: 'merch-sum-line' + (cls ? ' ' + cls : '') }, [h('span', { text: label }), valEl]))
+    line(grand ? 'Subtotal (all sellers)' : 'Subtotal', h('span', { text: ok ? fmtSats(subSats) : '—' }))
+    if (physical) line('Shipping', h('span', { text: ok ? fmtSats(shipSats) : '—' }), 'merch-sum-ship')
+    line('Total', h('strong', { text: ok ? fmtSats(subSats + shipSats) : 'unavailable' }), 'merch-sum-total')
+  }
+
+  function renderTotals() {
+    for (const [hex, { totalsEl }] of sectionEls) renderTotalsInto(totalsEl, linesForMerchant(hex))
+    const multi = sectionEls.size > 1
+    grandTotals.style.display = multi ? '' : 'none'
+    if (multi) renderTotalsInto(grandTotals, lines, { grand: true })
+    else grandTotals.innerHTML = ''
+  }
+  renderTotals()
 
   const status = h('div', { class: 'merch-checkout-status' })
   const payBtn = h('button', { class: 'merch-btn merch-btn-primary' }, [boltIcon(), 'Place order & pay'])
 
-  // Persists across pay retries (e.g. after a NO_WALLET prompt) so we
-  // reuse one order id and never re-publish the order message twice.
-  const session = { orderId: uuid(), orderPublished: false }
+  // Per-merchant order state, persisted across pay retries (e.g. after a
+  // NO_WALLET prompt, or one seller failing while another succeeded): each
+  // merchant keeps its own order id + published/paid flags so a retry never
+  // re-sends an order or double-charges a seller already paid.
+  const session = { byMerchant: new Map() }
 
-  const fields = []
-  if (needsShipping) {
-    fields.push(h('label', { class: 'merch-field' }, ['Shipping method', shipSelect]))
-    fields.push(h('label', { class: 'merch-field' }, ['Name', nameInput]))
-    fields.push(h('label', { class: 'merch-field' }, ['Address line 1', addr1Input]))
-    fields.push(h('label', { class: 'merch-field' }, ['Address line 2', addr2Input]))
-    // City / State / ZIP on one row.
-    fields.push(h('div', { class: 'merch-field-row' }, [
-      h('label', { class: 'merch-field' }, ['Town / City', cityInput]),
-      h('label', { class: 'merch-field' }, ['State', stateInput]),
-      h('label', { class: 'merch-field' }, ['ZIP', zipInput]),
-    ]))
-    fields.push(h('label', { class: 'merch-field' }, ['Country', countryInput]))
-    fields.push(h('label', { class: 'merch-field' }, ['Email (optional)', emailInput]))
-  }
-  fields.push(h('label', { class: 'merch-field' }, ['Note (optional)', noteInput]))
+  // Shipping-details section (address the chosen methods ship to). Built once
+  // and shown/hidden by syncShippingSection() as physical items come and go —
+  // shipping selectors themselves live in the order-lines block above.
+  const shippingSection = h('div', { class: 'merch-shipping-section' }, [
+    h('div', { class: 'merch-checkout-divider' }),
+    h('h3', { class: 'merch-checkout-subhead', text: 'Shipping details' }),
+    h('div', { class: 'merch-checkout-fields' }, [
+      h('label', { class: 'merch-field' }, ['Name', nameInput]),
+      h('label', { class: 'merch-field' }, ['Address line 1', addr1Input]),
+      h('label', { class: 'merch-field' }, ['Address line 2', addr2Input]),
+      // City / State / ZIP on one row.
+      h('div', { class: 'merch-field-row' }, [
+        h('label', { class: 'merch-field' }, ['Town / City', cityInput]),
+        h('label', { class: 'merch-field' }, ['State', stateInput]),
+        h('label', { class: 'merch-field' }, ['ZIP', zipInput]),
+      ]),
+      h('label', { class: 'merch-field' }, ['Country', countryInput]),
+      h('label', { class: 'merch-field' }, ['Email (optional)', emailInput]),
+    ]),
+  ])
+  function syncShippingSection() { shippingSection.style.display = hasPhysical() ? '' : 'none' }
+  syncShippingSection()
+
+  const noteWrap = h('div', { class: 'merch-checkout-fields' }, [
+    h('label', { class: 'merch-field' }, ['Note (optional)', noteInput]),
+  ])
 
   payBtn.addEventListener('click', () => {
-    if (needsShipping) {
+    const shipping = hasPhysical()
+    if (shipping) {
       const missing = missingShippingField()
       if (missing) return setStatus(status, 'error', `Please enter your ${missing}.`)
     }
+    // One order per merchant. Freeze each group's totals + shipments now (the
+    // checkout closures own chosenShipFor/totalsFor); runCheckout just pays.
+    const groups = [...sectionEls.keys()].map((hex) => {
+      const gLines = linesForMerchant(hex)
+      const { subSats, shipSats, ok } = totalsFor(gLines)
+      return {
+        merchant: hex,
+        lines: gLines.map(l => ({ coord: l.coord, qty: l.qty, product: l.product })),
+        shipments: collectShipments(gLines),
+        totalSats: subSats + shipSats,
+        ok,
+      }
+    })
     runCheckout({
-      lines, rate, user, needsShipping, session,
-      shipping: chosenShipping(),
-      address: needsShipping ? composeAddress() : '',
+      groups, user, needsShipping: shipping, session,
+      address: shipping ? composeAddress() : '',
       email: emailInput.value.trim(),
       note: noteInput.value.trim(),
-      computeTotal, status, payBtn,
+      status, payBtn,
     })
   })
 
@@ -809,11 +1172,14 @@ async function openCheckout() {
     closeButton(),
     h('h2', { class: 'merch-modal-title', text: 'Checkout' }),
     h('div', { class: 'merch-checkout-as', text: `Ordering as ${user.profile?.name || user.npub?.slice(0, 12) + '…' || 'you'}` }),
-    summary,
-    h('div', { class: 'merch-checkout-fields' }, fields),
+    multiNote,
+    itemsWrap,
+    grandTotals,
+    shippingSection,
+    noteWrap,
     status,
     payBtn,
-    h('p', { class: 'merch-fineprint', text: 'Your order is sent as an encrypted Nostr message to the seller and paid over Lightning.' }),
+    h('p', { class: 'merch-fineprint', text: 'Each seller receives an encrypted Nostr order and is paid over Lightning.' }),
   ])
   openModal(card)
 }
@@ -824,21 +1190,18 @@ function setStatus(statusEl, kind, msg) {
 }
 
 async function runCheckout(ctx) {
-  const { lines, user, needsShipping, shipping, address, email, note, computeTotal, status, payBtn, session } = ctx
+  const { groups, user, needsShipping, address, email, note, status, payBtn, session } = ctx
 
   if (needsShipping && !address) {
     return setStatus(status, 'error', 'Please enter a shipping address.')
   }
-  const { sats: totalSats, ok } = computeTotal()
-  if (!ok || totalSats <= 0) {
+  if (groups.some(g => !g.ok || g.totalSats <= 0)) {
     return setStatus(status, 'error', 'Could not compute a total — live BTC price unavailable. Try again shortly.')
   }
 
   payBtn.disabled = true
-  const orderId = session.orderId
-  // Per-message delivery diagnostics, surfaced in the success screen and
-  // on window.LBMerchLastOrder for inspection. Answers "did it actually
-  // send, and to which relays?" without guessing.
+  // Per-message delivery diagnostics, surfaced (in debug) on the success screen
+  // and on window.LBMerchLastOrder. Answers "did it actually send, and where?"
   const diag = []
   const logSend = (label, res) => {
     diag.push({ label, kind: res.kind, wrapId: res.wrapId, recipient: res.recipientHex,
@@ -847,106 +1210,144 @@ async function runCheckout(ctx) {
       { acked: res.acked, failed: res.failed, ndkOutbox: res.ndkOk })
   }
 
-  try {
-    // 1. Publish the order (kind 16, type 1), gift-wrapped to merchant.
-    //    Guarded so a pay retry (after connecting a wallet) doesn't send
-    //    the merchant a second, duplicate order.
-    if (!session.orderPublished) {
-      setStatus(status, 'working', 'Encrypting your order… approve the request in your signer if it prompts.')
-      const orderTags = [
-        ['p', MERCHANT_HEX],
-        ['subject', 'New order'],
-        ['type', '1'],
-        ['order', orderId],
-        ['amount', String(totalSats)],
-        ...lines.map(l => ['item', l.coord, String(l.qty)]),
-      ]
-      if (shipping) orderTags.push(['shipping', shipping.coord])
-      if (address)  orderTags.push(['address', address])
-      if (email)    orderTags.push(['email', email])
-      logSend('Order → seller', await giftWrapAndPublish({ kind: 16, content: note || '', tags: orderTags }, user.pubkey))
-      session.orderPublished = true
-    }
+  // Process each merchant as its own order + payment, sequentially (one wallet
+  // approval per seller). Already-paid sellers are skipped on a retry, so a
+  // partial failure never re-charges a seller who already went through.
+  const results = []
+  let anyFailure = false
+  for (const group of groups) {
+    const hex = group.merchant
+    let st = session.byMerchant.get(hex)
+    if (!st) { st = { orderId: uuid(), orderPublished: false, paid: false, totalSats: 0 }; session.byMerchant.set(hex, st) }
+    if (st.paid) { results.push({ merchant: hex, orderId: st.orderId, totalSats: st.totalSats, ok: true }); continue }
 
-    // 2. Fetch a Lightning invoice from the merchant lud16 (Gamma
-    //    "automatic" mode) and pay it via the connected wallet.
-    setStatus(status, 'working', 'Fetching Lightning invoice…')
-    // Identifying comment so the order is recognizable in the wallet's
-    // incoming-payment log: order id + items. fetchInvoice truncates to
-    // whatever the LNURL endpoint allows.
-    const itemList = lines.map(l => `${l.qty}× ${l.product.title}`).join(', ')
-    const payComment = `LB merch order ${orderId.slice(0, 8)} — ${itemList}`
-    const invoice = await fetchInvoice(MERCH_PAYMENT_LUD16, totalSats, payComment)
-
-    setStatus(status, 'working', 'Approve the payment in your wallet…')
-    let payRes
     try {
-      payRes = await window.LBLogin.payInvoice(invoice)
+      await processMerchantOrder(group, st, { user, address, email, note, status, logSend })
+      st.paid = true
+      st.totalSats = group.totalSats
+      results.push({ merchant: hex, orderId: st.orderId, totalSats: group.totalSats, ok: true })
     } catch (e) {
       if (e?.code === 'NO_WALLET') {
         setStatus(status, 'error', 'Connect a Lightning wallet in the popup, then press “Place order & pay” again.')
         payBtn.disabled = false
         return
       }
-      throw e
+      console.error('[merch] merchant order failed', hex, e)
+      anyFailure = true
+      results.push({ merchant: hex, ok: false, error: friendlyError(e) })
+      // Keep going: other sellers can still be paid; retry re-attempts this one.
     }
+  }
 
-    // 3. Send the payment receipt (kind 17), gift-wrapped to merchant.
-    setStatus(status, 'working', 'Confirming payment with the seller…')
-    const receiptTags = [
-      ['p', MERCHANT_HEX],
-      ['subject', 'order-receipt'],
+  if (anyFailure) {
+    const failed = results.filter(r => !r.ok)
+    const paid = results.filter(r => r.ok)
+    setStatus(status, 'error', results.length === 1
+      ? failed[0].error
+      : `Paid ${paid.length} of ${results.length} sellers. Couldn't complete: ${failed.map(f => f.error).join('; ')}. Press “Place order & pay” to retry the rest.`)
+    payBtn.disabled = false
+    return
+  }
+
+  const grandTotal = results.reduce((a, r) => a + (r.totalSats || 0), 0)
+  window.LBMerchLastOrder = { orders: results, grandTotal, diag }
+  sessionStorage.removeItem(CART_KEY)
+  updateCartBadge()
+  showOrderSuccess(results, grandTotal, diag)
+}
+
+// One merchant's order: gift-wrapped kind-16 order → pay their Lightning
+// address → kind-17 receipt + kind-14 human summary (+ buyer self-copy).
+// Throws on failure (NO_WALLET propagates up to abort the whole run).
+async function processMerchantOrder(group, st, shared) {
+  const { user, address, email, note, status, logSend } = shared
+  const hex = group.merchant
+  const orderId = st.orderId
+  const totalSats = group.totalSats
+
+  const profile = await resolveMerchantProfile(hex)
+  const sellerName = profile.name || 'the seller'
+  const payLud16 = paymentLud16ForMerchant(hex, profile)
+  if (!payLud16) {
+    throw new Error(`${profile.name || 'A seller'} in your cart hasn't published a Lightning address, so their payment can't be collected automatically yet.`)
+  }
+
+  // 1. Order (kind 16, type 1), gift-wrapped to this merchant. Guarded so a
+  //    retry after a failed payment doesn't re-send the order.
+  if (!st.orderPublished) {
+    setStatus(status, 'working', `Encrypting your order to ${sellerName}… approve in your signer if it prompts.`)
+    const orderTags = [
+      ['p', hex],
+      ['subject', 'New order'],
+      ['type', '1'],
       ['order', orderId],
       ['amount', String(totalSats)],
-      ['payment', 'lightning', invoice, payRes?.preimage || ''],
+      ...group.lines.map(l => ['item', l.coord, String(l.qty)]),
     ]
-    logSend('Receipt → seller', await giftWrapAndPublish({ kind: 17, content: '', tags: receiptTags }, user.pubkey))
-
-    // 4. Also send a plain NIP-17 chat message (kind 14) carrying a
-    //    human-readable summary. The kind-16/17 above are only rendered by
-    //    Gamma-aware merchant clients; a kind-14 shows up in the seller's
-    //    everyday DM inbox (0xchat, Damus, mynostr, …) so they actually
-    //    notice the order.
-    const summaryText = buildOrderSummary({ orderId, lines, totalSats, shipping, address, note, buyer: user })
-    const summaryRumor = {
-      kind: 14,
-      content: summaryText,
-      tags: [['p', MERCHANT_HEX], ['subject', `New order ${orderId.slice(0, 8)}`]],
-    }
-    logSend('Summary → seller', await giftWrapAndPublish(summaryRumor, user.pubkey))   // → seller inbox
-    // Self-copy so the buyer sees the order in their own DM client too
-    // (NIP-17 sender copy). Best-effort — never block the success path.
-    try { logSend('Summary → you (self-copy)', await giftWrapAndPublish(summaryRumor, user.pubkey, user.pubkey)) }
-    catch (e) { console.warn('[merch] buyer self-copy failed', e) }
-
-    window.LBMerchLastOrder = { orderId, totalSats, diag }
-
-    recordOrder({ orderId, totalSats, lines, shipping: shipping?.coord || null, ts: Date.now() })
-    sessionStorage.removeItem(CART_KEY)
-    updateCartBadge()
-
-    showOrderSuccess(orderId, totalSats, diag)
-  } catch (e) {
-    console.error('[merch] checkout failed', e)
-    setStatus(status, 'error', friendlyError(e))
-    payBtn.disabled = false
+    // Gamma's order schema defines a single `shipping` tag, but per-item
+    // shipping means several may apply. Repeated tags are tolerated; the
+    // kind-14 summary itemizes which item ships with which method.
+    for (const coord of [...new Set(group.shipments.map(s => s.coord))]) orderTags.push(['shipping', coord])
+    if (address) orderTags.push(['address', address])
+    if (email)   orderTags.push(['email', email])
+    logSend(`Order → ${sellerName}`, await giftWrapAndPublish({ kind: 16, content: note || '', tags: orderTags }, user.pubkey, hex))
+    st.orderPublished = true
   }
+
+  // 2. Fetch this merchant's Lightning invoice and pay it.
+  setStatus(status, 'working', `Fetching Lightning invoice from ${sellerName}…`)
+  const itemList = group.lines.map(l => `${l.qty}× ${l.product.title}`).join(', ')
+  const invoice = await fetchInvoice(payLud16, totalSats, `LB merch order ${orderId.slice(0, 8)} — ${itemList}`)
+
+  setStatus(status, 'working', `Approve the payment to ${sellerName} in your wallet…`)
+  const payRes = await window.LBLogin.payInvoice(invoice)   // NO_WALLET propagates
+
+  // 3. Receipt (kind 17), gift-wrapped to this merchant.
+  setStatus(status, 'working', `Confirming payment with ${sellerName}…`)
+  const receiptTags = [
+    ['p', hex],
+    ['subject', 'order-receipt'],
+    ['order', orderId],
+    ['amount', String(totalSats)],
+    ['payment', 'lightning', invoice, payRes?.preimage || ''],
+  ]
+  logSend(`Receipt → ${sellerName}`, await giftWrapAndPublish({ kind: 17, content: '', tags: receiptTags }, user.pubkey, hex))
+
+  // 4. Human-readable kind-14 summary (what everyday DM clients render) to the
+  //    seller, plus a buyer self-copy.
+  const summaryText = buildOrderSummary({ orderId, lines: group.lines, totalSats, shipments: group.shipments, address, note, buyer: user, sellerName })
+  const summaryRumor = {
+    kind: 14,
+    content: summaryText,
+    tags: [['p', hex], ['subject', `New order ${orderId.slice(0, 8)}`]],
+  }
+  logSend(`Summary → ${sellerName}`, await giftWrapAndPublish(summaryRumor, user.pubkey, hex))
+  try { logSend('Summary → you (self-copy)', await giftWrapAndPublish(summaryRumor, user.pubkey, user.pubkey)) }
+  catch (e) { console.warn('[merch] buyer self-copy failed', e) }
+
+  recordOrder({ orderId, totalSats, lines: group.lines, merchant: hex, shipping: [...new Set(group.shipments.map(s => s.coord))], ts: Date.now() })
 }
 
 // Human-readable order summary for the kind-14 chat DM the seller's
 // everyday client will actually render.
-function buildOrderSummary({ orderId, lines, totalSats, shipping, address, note, buyer }) {
+function buildOrderSummary({ orderId, lines, totalSats, shipments = [], address, note, buyer, sellerName }) {
   const who = buyer?.profile?.name || (buyer?.npub ? buyer.npub.slice(0, 12) + '…' : 'a customer')
   const items = lines.map(l => `• ${l.qty}× ${l.product.title}`).join('\n')
   const parts = [
-    `🛒 New Local Bitcoiners order`,
+    `🛒 New order via Local Bitcoiners`,
+    ...(sellerName && sellerName !== 'the seller' ? [`Seller: ${sellerName}`] : []),
     `From: ${who}`,
     ``,
     items,
     ``,
     `Total paid: ${fmtSats(totalSats)} ⚡`,
   ]
-  if (shipping) parts.push(`Shipping: ${shipping.title}`)
+  // Per-item shipping: itemize which method each product ships with so the
+  // seller can fulfill without guessing.
+  if (shipments.length) {
+    parts.push(`Shipping:`)
+    for (const s of shipments) parts.push(`• ${s.productTitle}: ${s.optionTitle}`)
+  }
   if (address)  parts.push(`Ship to:\n${address}`)
   if (note)     parts.push(`Note: ${note}`)
   parts.push(``, `Order ID: ${orderId}`)
@@ -1128,7 +1529,7 @@ function recordOrder(o) {
   try {
     const list = JSON.parse(localStorage.getItem(ORDERS_KEY) || '[]')
     list.unshift({
-      orderId: o.orderId, totalSats: o.totalSats, ts: o.ts, shipping: o.shipping,
+      orderId: o.orderId, totalSats: o.totalSats, ts: o.ts, shipping: o.shipping, merchant: o.merchant || null,
       items: o.lines.map(l => ({ coord: l.coord, title: l.product.title, qty: l.qty })),
     })
     localStorage.setItem(ORDERS_KEY, JSON.stringify(list.slice(0, 50)))
@@ -1141,7 +1542,8 @@ function merchDebugOn() {
   } catch { return false }
 }
 
-function showOrderSuccess(orderId, totalSats, diag = []) {
+function showOrderSuccess(orders, grandTotal, diag = []) {
+  const multi = orders.length > 1
   // Collapsible delivery diagnostics: every message we sent, its kind, the
   // gift-wrap id, and which relays accepted it. Lets the seller confirm
   // (e.g. on njump.me / a relay explorer) that the events really landed.
@@ -1166,9 +1568,10 @@ function showOrderSuccess(orderId, totalSats, diag = []) {
   const card = h('div', { class: 'merch-modal merch-modal-success' }, [
     closeButton(),
     h('div', { class: 'merch-success-check', text: '✓' }),
-    h('h2', { class: 'merch-modal-title', text: 'Order placed!' }),
-    h('p', { text: `You paid ${fmtSats(totalSats)}. The seller has your order over an encrypted Nostr message and will follow up about fulfillment.` }),
-    h('div', { class: 'merch-order-id' }, ['Order ID: ', h('code', { text: orderId })]),
+    h('h2', { class: 'merch-modal-title', text: multi ? 'Orders placed!' : 'Order placed!' }),
+    h('p', { text: `You paid ${fmtSats(grandTotal)}${multi ? ` across ${orders.length} sellers` : ''}. ${multi ? 'Each seller has' : 'The seller has'} your order over an encrypted Nostr message and will follow up about fulfillment.` }),
+    h('div', { class: 'merch-order-ids' }, orders.map(o =>
+      h('div', { class: 'merch-order-id' }, ['Order ID: ', h('code', { text: o.orderId })]))),
     diagPanel,
     h('button', { class: 'merch-btn merch-btn-primary', 'data-merch-close': '' }, 'Done'),
   ])
@@ -1206,3 +1609,23 @@ if (document.getElementById('merch-grid')) init()
 // catalog fetch/state, the price→sats helpers, and the exact product detail
 // modal so a card click on the homepage opens the same modal as /merch.
 export { fetchCatalog, catalog, openProductModal, toSats, getBtcUsd, fmtSats, priceLabel }
+
+// Additional reusable pieces for the /feeds community marketplace
+// (feeds-market.js): the house-merchant identity + payment routing, the
+// catalog-merge entry point, the shared cart/checkout, and the NIP-17
+// gift-wrap send used for buyer↔seller DMs. All are import-safe on other
+// pages — init() only runs where #merch-grid exists (see above).
+export {
+  MERCHANT_HEX,
+  ingestListings,
+  addToCart,
+  openCart,
+  openCheckout,
+  imageCarousel,
+  closeModal,
+  shippingForProduct,
+  paymentLud16ForMerchant,
+  resolveMerchantProfile,
+  giftWrapAndPublish,
+  resolveDMRelays,
+}

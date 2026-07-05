@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Pragmatic baseline CSP. See index.html for the rationale; every
+       public page shares the same policy intentionally so future
+       tightening happens in lockstep. -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com;
+    style-src 'self' 'unsafe-inline';
+    img-src 'self' data: https:;
+    font-src 'self' data:;
+    connect-src 'self' https: wss:;
+    media-src 'self' https:;
+    base-uri 'self';
+    form-action 'self';
+    object-src 'none';
+  " />
+
+  <title>Community Feeds — Local Bitcoiners</title>
+  <meta name="description" content="Live Nostr feeds from the Local Bitcoiners community — notes, marketplace listings, events, and long-form articles, all in one place." />
+  <link rel="canonical" href="https://localbitcoiners.com/feeds" />
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="theme-color" content="#3a3125" />
+  <link rel="apple-touch-icon" href="/assets/LocalBitcoiners.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Local Bitcoiners" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://localbitcoiners.com/feeds" />
+  <meta property="og:title" content="Community Feeds — Local Bitcoiners" />
+  <meta property="og:description" content="Live Nostr feeds from the Local Bitcoiners community — notes, marketplace, events, and articles." />
+  <meta property="og:site_name" content="Local Bitcoiners" />
+  <meta property="og:image" content="https://localbitcoiners.com/assets/LocalBitcoiners_banner.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <!-- Self-hosted fonts (mirrors the other pages). -->
+  <link rel="preload" as="font" type="font/woff2" href="assets/fonts/source-serif-4.woff2" crossorigin />
+  <link rel="preload" as="font" type="font/woff2" href="assets/fonts/playfair-display.woff2" crossorigin />
+
+  <!-- Shared note / card styles (.embed-note etc.) — used once the feeds
+       hydrate in a later phase. -->
+  <link rel="stylesheet" href="/assets/css/boosts-thread.css" />
+  <!-- Action-bar, toast, and zap-modal styles for the event cards' Renote
+       + Zap buttons (renderer reuses boost-actions.js). -->
+  <link rel="stylesheet" href="/assets/css/boost-actions.css" />
+
+  <style>
+    @font-face {
+      font-family: 'Playfair Display';
+      font-style: normal;
+      font-weight: 400 700;
+      font-display: swap;
+      src: url('assets/fonts/playfair-display.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Source Serif 4';
+      font-style: normal;
+      font-weight: 300 600;
+      font-display: swap;
+      src: url('assets/fonts/source-serif-4.woff2') format('woff2');
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { overflow-x: hidden; max-width: 100vw; }
+
+    :root {
+      --cream:   #f5eedc;
+      --cream-d: #ede3c8;
+      --navy:    #3a3125;
+      --navy-l:  #3a2f28;
+      --green:   #5e7d3a;
+      --green-d: #46602c;
+      --orange:  #f7931a;
+      --orange-d:#d97b0e;
+      --text:    #2d2010;
+      --muted:   #6b5a3e;
+      --border:  #d4c4a0;
+      --white:   #fffdf7;
+      --bg:      #ede3c8;   /* used by a few reused merch.css rules */
+
+      /* ── Per-feed theme palette ──────────────────────────────────
+         Each of the four feeds owns an accent (used for its tab, the
+         active-panel wash, and — in a later phase — its cards). The
+         active feed's trio is mirrored into --accent / --accent-d /
+         --tint by the [data-active-feed] rules below so the shared
+         chrome (panel, toolbar) can just read --accent. */
+      --notes-accent:    #5e7d3a;  --notes-accent-d:    #46602c;  --notes-tint:    #eef3e2;
+      --market-accent:   #d97b0e;  --market-accent-d:   #b8640a;  --market-tint:   #fbefda;
+      --events-accent:   #2f6f8f;  --events-accent-d:   #245a75;  --events-tint:   #e6f0f5;
+      --articles-accent: #7150a6;  --articles-accent-d: #573c86;  --articles-tint: #efe9f6;
+
+      /* Defaults (Notes) — overridden per active feed. */
+      --accent:   var(--notes-accent);
+      --accent-d: var(--notes-accent-d);
+      --tint:     var(--notes-tint);
+    }
+
+    /* Active-feed → accent mapping. Set on <body data-active-feed>. */
+    body[data-active-feed="notes"]    { --accent: var(--notes-accent);    --accent-d: var(--notes-accent-d);    --tint: var(--notes-tint); }
+    body[data-active-feed="market"]   { --accent: var(--market-accent);   --accent-d: var(--market-accent-d);   --tint: var(--market-tint); }
+    body[data-active-feed="events"]   { --accent: var(--events-accent);   --accent-d: var(--events-accent-d);   --tint: var(--events-tint); }
+    body[data-active-feed="articles"] { --accent: var(--articles-accent); --accent-d: var(--articles-accent-d); --tint: var(--articles-tint); }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Source Serif 4', Georgia, serif;
+      background: var(--cream);
+      color: var(--text);
+      line-height: 1.65;
+      font-size: 17px;
+      color-scheme: light;
+    }
+    a { color: var(--green-d); text-decoration: underline; text-underline-offset: 3px; }
+    img { display: block; max-width: 100%; }
+
+    @keyframes skeleton-shimmer {
+      0% { background-position: 100% 0; }
+      100% { background-position: -100% 0; }
+    }
+
+    /* ── Page header ── */
+    .page-header {
+      background: var(--navy);
+      color: var(--cream);
+      padding: 2.75rem 1.5rem 2.25rem;
+      text-align: center;
+    }
+    .page-header h1 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      font-weight: 700;
+      color: var(--white);
+      line-height: 1.2;
+    }
+    .page-header p {
+      max-width: 640px;
+      margin: 0.6rem auto 0;
+      font-size: clamp(0.95rem, 2vw, 1.1rem);
+      color: var(--cream);
+      font-style: italic;
+    }
+
+    /* ── Feed tabs ──────────────────────────────────────────────────
+       Desktop: a row of four equal-width tabs, each carrying its own
+       feed color. The active tab fills with its accent; inactive tabs
+       show a colored icon + a thin colored top rule. The whole bar is
+       sticky under the nav so the tabs stay reachable while scrolling
+       a long feed.
+       Mobile: the bar collapses into a horizontally-scrollable row of
+       colored chips (icon + short name). */
+    .feed-tabs-wrap {
+      position: sticky;
+      top: 64px; /* height of #top-nav */
+      z-index: 40;
+      background: var(--cream);
+      border-bottom: 1px solid var(--border);
+    }
+    .feed-tabs {
+      max-width: 1000px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+    }
+    .feed-tab {
+      --tab: var(--muted);
+      appearance: none;
+      background: transparent;
+      border: 0;
+      border-top: 3px solid transparent;
+      font: inherit;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      padding: 0.95rem 0.75rem 0.85rem;
+      color: var(--muted);
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .feed-tab--notes    { --tab: var(--notes-accent); }
+    .feed-tab--market   { --tab: var(--market-accent); }
+    .feed-tab--events   { --tab: var(--events-accent); }
+    .feed-tab--articles { --tab: var(--articles-accent); }
+
+    .feed-tab-icon {
+      width: 26px;
+      height: 26px;
+      color: var(--tab);
+      transition: color 0.15s;
+    }
+    .feed-tab-icon svg { width: 100%; height: 100%; display: block; }
+    .feed-tab-label {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: 0.01em;
+    }
+    .feed-tab-sub {
+      font-size: 0.72rem;
+      color: var(--muted);
+      opacity: 0.85;
+    }
+    .feed-tab:hover { background: rgba(0,0,0,0.03); }
+    .feed-tab:focus-visible {
+      outline: 2px solid var(--tab);
+      outline-offset: -2px;
+    }
+    .feed-tab[aria-selected="true"] {
+      background: var(--tab);
+      border-top-color: var(--tab);
+      color: var(--white);
+    }
+    .feed-tab[aria-selected="true"] .feed-tab-icon,
+    .feed-tab[aria-selected="true"] .feed-tab-sub { color: #fff; opacity: 0.95; }
+
+    /* ── Panels ── */
+    .feed-panels {
+      background: var(--tint);
+      transition: background 0.25s ease;
+      min-height: 60vh;
+    }
+    .feed-panels-inner {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+    }
+    .feed-panel { display: none; }
+    .feed-panel.is-active { display: block; }
+
+    /* Panel intro row — feed name + a short "what am I looking at" line,
+       plus a right-aligned live count once feeds hydrate. */
+    .feed-panel-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .feed-panel-head h2 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--accent-d);
+    }
+    .feed-panel-head p {
+      margin-top: 0.15rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+      font-style: italic;
+    }
+    .feed-count {
+      flex-shrink: 0;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--accent-d);
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.15rem 0.7rem;
+      white-space: nowrap;
+    }
+
+    /* Month + year dropdowns for the Events feed (replaces the count pill). */
+    .feed-monthnav {
+      display: flex;
+      gap: 0.4rem;
+      flex-shrink: 0;
+    }
+    .feed-select {
+      font: inherit;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--accent-d);
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.2rem 0.5rem;
+      cursor: pointer;
+    }
+    .feed-select:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+
+    /* Loading skeletons + states (feed content wired up in a later phase). */
+    .feed-list { display: grid; gap: 0.6rem; }
+    /* The shared .embed-note card carries its own vertical margin; drop it
+       inside a feed list so the grid gap is the only spacing between cards. */
+    .feed-list .embed-note { margin: 0; }
+    .feed-skeleton {
+      height: 104px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: linear-gradient(90deg,
+        rgba(0,0,0,0.03) 0%,
+        rgba(0,0,0,0.08) 50%,
+        rgba(0,0,0,0.03) 100%);
+      background-size: 200% 100%;
+      animation: skeleton-shimmer 1.4s ease-in-out infinite;
+    }
+    .feed-placeholder {
+      background: var(--white);
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      padding: 2.25rem 1.5rem;
+      text-align: center;
+      color: var(--muted);
+    }
+    .feed-placeholder strong {
+      display: block;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.1rem;
+      color: var(--accent-d);
+      margin-bottom: 0.35rem;
+    }
+
+    /* Collapsed "Past events / older posts" section under a feed's list. */
+    .feed-past {
+      margin-top: 1.75rem;
+      border-top: 1px solid var(--border);
+      padding-top: 1.1rem;
+    }
+    .feed-past > summary {
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: var(--accent-d);
+      padding: 0.3rem 0;
+    }
+    .feed-past > summary::-webkit-details-marker { display: none; }
+    .feed-past > summary::marker { content: ''; }
+    .feed-past > summary::before {
+      content: '▸';
+      font-size: 0.85em;
+      transition: transform 0.15s;
+    }
+    .feed-past[open] > summary::before { transform: rotate(90deg); }
+    .feed-past .feed-list { margin-top: 1rem; }
+
+    /* "See other versions of this event" — collapses re-posted duplicates.
+       The toggle lives at the left of the card's action row (styled by
+       .note-actions button); the panel of version cards drops in below,
+       accent-ruled to tie it to the active feed. */
+    .versions-toggle .versions-caret {
+      display: inline-block;
+      font-size: 0.85em;
+      transition: transform 0.15s;
+    }
+    .versions-toggle.is-open .versions-caret { transform: rotate(90deg); }
+    .event-versions-panel {
+      margin-top: 0.7rem;
+      padding-left: 0.8rem;
+      border-left: 2px solid var(--accent);
+      display: grid;
+      gap: 0.6rem;
+    }
+    .event-versions-panel[hidden] { display: none; }
+
+    /* ── Marketplace cards ───────────────────────────────────────────
+       A responsive grid of listing cards. The whole card is clickable →
+       the /merch product modal (carousel + description + shipping).
+       Classifieds carry an amber badge over the image naming what's
+       missing to be checkout-ready (from the shared Gamma grader);
+       Buy-Now items carry none — the "Add to cart" button says it all.
+       The card image is the shared merch carousel (arrows via merch.css).
+       Rendered by feeds-market.js. */
+    /* "Manage / List Items" — shown in the panel head for logged-in users,
+       deep-links to their MyNostr marketplace. Replaces the old count pill. */
+    .market-manage-btn {
+      flex-shrink: 0;
+      display: inline-flex; align-items: center;
+      padding: 0.4rem 0.85rem;
+      font-size: 0.82rem; font-weight: 700;
+      color: #fff; background: var(--accent-d);
+      border-radius: 999px; text-decoration: none;
+      white-space: nowrap;
+      transition: background 0.12s;
+    }
+    .market-manage-btn:hover { background: var(--accent); }
+
+    .market-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+      gap: 1rem;
+    }
+    .market-card {
+      display: flex;
+      flex-direction: column;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.12s, box-shadow 0.12s;
+    }
+    .market-card:hover, .market-card:focus-visible {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 22px rgba(0,0,0,0.12);
+      outline: none;
+    }
+    /* contain (not cover) so the whole product image shows on a neutral
+       backdrop — matches the merch storefront cards. Targets the plain
+       <img> and the carousel's <img> alike. */
+    .market-card-media { position: relative; aspect-ratio: 1 / 1; background: var(--white); }
+    .market-card-media img { width: 100%; height: 100%; object-fit: contain; padding: 0.4rem; box-sizing: border-box; display: block; }
+    .market-card-noimg {
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.1rem; opacity: 0.5;
+    }
+    .market-badge {
+      position: absolute; top: 0.45rem; left: 0.45rem;
+      max-width: calc(100% - 0.9rem);
+      padding: 0.15rem 0.45rem;
+      font-size: 0.66rem; font-weight: 600;
+      border-radius: 999px;
+      color: #fff; background: var(--market-accent-d);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .market-card-body { display: flex; flex-direction: column; gap: 0.2rem; padding: 0.6rem 0.65rem 0.65rem; flex: 1; }
+    .market-card-title { margin: 0; font-size: 0.9rem; line-height: 1.25; color: var(--text); }
+    .market-seller { display: flex; align-items: center; gap: 0.35rem; min-width: 0; }
+    .market-seller-pfp { width: 18px; height: 18px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+    .market-seller-pfp--none {
+      display: flex; align-items: center; justify-content: center;
+      background: var(--cream-d); color: var(--muted); font-size: 0.62rem; font-weight: 700;
+    }
+    .market-seller-name { font-size: 0.72rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .market-card-price { font-size: 0.9rem; font-weight: 700; color: var(--accent-d); }
+    .market-card-sats { font-weight: 500; color: var(--muted); font-size: 0.8em; }
+    .market-card-summary {
+      margin: 0.1rem 0 0; font-size: 0.78rem; color: var(--muted); line-height: 1.3;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .market-card-actions { margin-top: auto; padding-top: 0.45rem; }
+    .market-btn {
+      width: 100%;
+      padding: 0.4rem 0.6rem;
+      font-size: 0.82rem; font-weight: 700;
+      border: 1px solid transparent; border-radius: 7px;
+      cursor: pointer;
+    }
+    .market-btn--buy { background: var(--green-d); color: #fff; }
+    .market-btn--buy:hover { background: var(--green); }
+    .market-btn--buy:disabled { opacity: 0.6; cursor: default; }
+    .market-btn--contact { background: transparent; color: var(--accent-d); border-color: var(--border); }
+    .market-btn--contact:hover { background: var(--tint); }
+
+    /* ⋮ menu inside the product detail modal (copy naddr + view elsewhere).
+       Pinned top-right, just left of the modal's ✕ close button. */
+    .market-menu-wrap { position: absolute; top: 0.75rem; right: 3.25rem; z-index: 4; }
+    .market-menu-btn {
+      width: 34px; height: 34px; border-radius: 50%;
+      border: none; background: rgba(0,0,0,0.55); color: #fff; cursor: pointer;
+      font-size: 1.1rem; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .market-menu-btn:hover { background: rgba(0,0,0,0.75); }
+    .market-menu {
+      display: none;
+      position: absolute; top: 40px; right: 0;
+      min-width: 190px;
+      background: var(--white);
+      border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+      padding: 0.35rem;
+    }
+    .market-menu-wrap.open .market-menu { display: block; }
+    .market-menu-item {
+      display: block; width: 100%; box-sizing: border-box;
+      text-align: left; padding: 0.45rem 0.6rem;
+      font: inherit; font-size: 0.85rem; color: var(--text);
+      background: transparent; border: none; border-radius: 6px;
+      cursor: pointer; text-decoration: none;
+    }
+    .market-menu-item:hover { background: var(--tint); }
+    .market-menu-label {
+      padding: 0.4rem 0.6rem 0.2rem;
+      font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--muted);
+    }
+
+    /* Contact-seller DM modal */
+    .market-modal-overlay {
+      position: fixed; inset: 0; z-index: 1000;
+      background: rgba(30, 22, 10, 0.55);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .market-modal {
+      position: relative;
+      width: 100%; max-width: 420px;
+      background: var(--white);
+      border: 1px solid var(--border); border-radius: 14px;
+      padding: 1.2rem 1.2rem 1rem;
+    }
+    .market-modal-close {
+      position: absolute; top: 0.6rem; right: 0.6rem;
+      width: 2rem; height: 2rem;
+      background: transparent; border: none; cursor: pointer;
+      font-size: 1rem; color: var(--muted); line-height: 1;
+    }
+    .market-modal-title { margin: 0 1.6rem 0.3rem 0; font-size: 1.1rem; color: var(--text); }
+    .market-modal-sub { margin: 0 0 0.7rem; font-size: 0.82rem; color: var(--muted); }
+    .market-dm-input {
+      width: 100%; box-sizing: border-box;
+      padding: 0.6rem; font: inherit; font-size: 0.9rem;
+      border: 1px solid var(--border); border-radius: 8px;
+      resize: vertical;
+    }
+    .market-dm-status { min-height: 1.2rem; margin: 0.5rem 0; font-size: 0.82rem; color: var(--muted); }
+    .market-modal-actions { display: flex; justify-content: flex-end; }
+    .market-modal-actions .market-btn { width: auto; padding-left: 1.2rem; padding-right: 1.2rem; }
+
+    /* ── Mobile: tabs become a scrollable chip row ── */
+    @media (max-width: 640px) {
+      .feed-tabs-wrap { top: 56px; } /* nav shrinks on mobile */
+      /* Icon-only chips that all fit across the row (no horizontal scroll). */
+      .feed-tabs {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.5rem;
+        padding: 0.6rem 0.85rem;
+      }
+      .feed-tab {
+        flex-direction: row;
+        justify-content: center;
+        gap: 0;
+        border-top: 0;
+        border: 1px solid var(--tab);
+        border-radius: 999px;
+        padding: 0.5rem 0;
+        color: var(--tab);
+      }
+      .feed-tab-icon { width: 22px; height: 22px; }
+      /* Hide the text visually but keep it for screen readers (the icon is
+         aria-hidden, so this stays the tab's accessible name). */
+      .feed-tab-label {
+        position: absolute;
+        width: 1px; height: 1px;
+        padding: 0; margin: -1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+        border: 0;
+      }
+      .feed-tab-sub { display: none; }
+      .feed-tab[aria-selected="true"] { border-color: var(--tab); }
+      .feed-panels-inner { padding: 1.5rem 1rem 2.5rem; }
+    }
+  </style>
+  <link rel="stylesheet" href="/assets/css/nav.css" />
+  <link rel="stylesheet" href="/assets/css/footer.css" />
+  <!-- Marketplace "Buy Now" reuses merch.js's cart + checkout modal, which is
+       styled here — so the reused modal looks right on /feeds too. -->
+  <link rel="stylesheet" href="/assets/css/merch.css" />
+</head>
+<body data-active-feed="events">
+
+<!-- ══════════════════════════════ NAV ══════════════════════════════ -->
+<!-- NAV:START (generated by scripts/sync-partials.js — edit the partial) -->
+<!-- ══════════════════════════════ NAV ══════════════════════════════
+     SHARED NAV — single source of truth. Do NOT edit the copies inside the
+     page files; edit THIS file, then run scripts/sync-partials.js to
+     push it into every page (between the NAV:START / NAV:END markers).
+     Styles live in /assets/css/nav.css; behavior in /assets/js/nav.js. -->
+<header id="top-nav">
+  <div class="nav-inner">
+    <a class="nav-logo" href="/" aria-label="Local Bitcoiners home">
+      <img src="/assets/LocalBitcoiners.png" alt="Local Bitcoiners logo" />
+    </a>
+    <a class="nav-site-name" href="/">Local Bitcoiners</a>
+    <nav aria-label="Main navigation">
+      <!-- Single "Explore" menu = the whole site map. Grouped dropdown on
+           desktop, full-screen overlay on mobile. -->
+      <details class="nav-explore">
+        <summary aria-label="Explore the site">
+          <span class="nav-explore-glyph" aria-hidden="true">🧭</span>
+          <span class="nav-explore-text">Explore</span>
+          <span class="caret" aria-hidden="true">▾</span>
+        </summary>
+        <div class="nav-explore-panel">
+          <div class="nav-explore-head">
+            <span>Explore</span>
+            <button type="button" class="nav-explore-close" aria-label="Close menu">✕</button>
+          </div>
+          <a class="nav-explore-home" href="/"><span aria-hidden="true">🏠</span> Home</a>
+          <div class="nav-explore-groups">
+            <div class="nav-explore-group">
+              <h4>Show</h4>
+              <a href="/episodes.html"><span aria-hidden="true">🎧</span> Episodes</a>
+              <a href="/stats.html"><span aria-hidden="true">📊</span> Stats</a>
+              <a href="/merch.html"><span aria-hidden="true">👕</span> Merch</a>
+            </div>
+            <div class="nav-explore-group">
+              <h4>Community</h4>
+              <a href="/feeds"><span aria-hidden="true">🗞️</span> Feeds</a>
+              <a href="/supporters"><span aria-hidden="true">🟧</span> Supporters</a>
+              <a href="/boosts.html"><span aria-hidden="true">⚡</span> Boosts</a>
+              <a href="/meetups"><span aria-hidden="true">📍</span> Meetups</a>
+            </div>
+            <div class="nav-explore-group">
+              <h4>More</h4>
+              <a href="https://github.com/Reeds-Agent-Team/Bitcoin-Meetups" target="_blank" rel="noopener"><span aria-hidden="true">📖</span> Resources</a>
+              <a href="/#site-footer"><span aria-hidden="true">✉️</span> Contact</a>
+              <a href="#" data-lb-bug-trigger><span aria-hidden="true">🐞</span> Report a bug</a>
+            </div>
+          </div>
+        </div>
+      </details>
+    </nav>
+    <div id="lb-boost-slot" aria-label="Boost the Show">
+      <button
+        type="button"
+        class="lb-boost-placeholder"
+        data-lb-boost-trigger="show"
+        aria-label="Boost the Show"
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M14.615 1.595a.75.75 0 0 1 .359.852L12.982 9.75h7.268a.75.75 0 0 1 .548 1.262l-10.5 11.25a.75.75 0 0 1-1.272-.71l1.992-7.302H3.75a.75.75 0 0 1-.548-1.262l10.5-11.25a.75.75 0 0 1 .913-.143Z" clip-rule="evenodd"/>
+        </svg>
+        <span class="lb-label-long">Boost the Show</span>
+        <span class="lb-label-short">Boost</span>
+      </button>
+    </div>
+    <!-- Cart icon → merch checkout cart. Hidden by nav.js until the cart
+         (sessionStorage 'lb_merch_cart') has items, except on /merch where
+         it always shows. Click opens the cart modal on /merch (merch.js
+         exposes window.openMerchCart) or navigates to /merch.html#cart. -->
+    <a id="nav-cart-link" class="nav-cart" href="/merch.html#cart" aria-label="View cart" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+      </svg>
+      <span id="nav-cart-badge" class="nav-cart-badge" aria-hidden="true"></span>
+    </a>
+    <div id="lb-identity-slot" aria-label="Account">
+      <!-- Static placeholder swapped out by IdentityWidget once the
+           bundle loads. Picks shimmer vs sign-in based on whether a
+           saved session exists; populated by inline script below. -->
+    </div>
+  </div>
+</header>
+<!-- NAV:END -->
+
+<!-- ══════════════════════════════ PAGE HEADER ══════════════════════════════ -->
+<section class="page-header">
+  <h1>Community Feeds</h1>
+  <p>Notes from the Local Bitcoiners Community</p>
+</section>
+
+<!-- ══════════════════════════════ FEED TABS ══════════════════════════════ -->
+<div class="feed-tabs-wrap">
+  <div class="feed-tabs" role="tablist" aria-label="Community feeds">
+    <button
+      type="button"
+      class="feed-tab feed-tab--notes"
+      role="tab"
+      id="tab-notes"
+      aria-controls="panel-notes"
+      aria-selected="false"
+      data-feed="notes"
+    >
+      <span class="feed-tab-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+        </svg>
+      </span>
+      <span class="feed-tab-label">Notes</span>
+    </button>
+
+    <button
+      type="button"
+      class="feed-tab feed-tab--market"
+      role="tab"
+      id="tab-market"
+      aria-controls="panel-market"
+      aria-selected="false"
+      data-feed="market"
+    >
+      <span class="feed-tab-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+          <line x1="7" y1="7" x2="7.01" y2="7"/>
+        </svg>
+      </span>
+      <span class="feed-tab-label">Marketplace</span>
+    </button>
+
+    <button
+      type="button"
+      class="feed-tab feed-tab--events"
+      role="tab"
+      id="tab-events"
+      aria-controls="panel-events"
+      aria-selected="true"
+      data-feed="events"
+    >
+      <span class="feed-tab-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+      </span>
+      <span class="feed-tab-label">Events</span>
+    </button>
+
+    <button
+      type="button"
+      class="feed-tab feed-tab--articles"
+      role="tab"
+      id="tab-articles"
+      aria-controls="panel-articles"
+      aria-selected="false"
+      data-feed="articles"
+    >
+      <span class="feed-tab-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+          <line x1="9" y1="7" x2="16" y2="7"/><line x1="9" y1="11" x2="14" y2="11"/>
+        </svg>
+      </span>
+      <span class="feed-tab-label">Articles</span>
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════ PANELS ══════════════════════════════ -->
+<main class="feed-panels">
+  <div class="feed-panels-inner">
+
+    <section class="feed-panel" id="panel-notes" role="tabpanel" aria-labelledby="tab-notes" data-feed="notes" data-kinds="1" tabindex="0" hidden>
+      <div class="feed-panel-head">
+        <div>
+          <h2>Notes</h2>
+          <p>Short posts from the community — kind-1 notes.</p>
+        </div>
+        <span class="feed-count" hidden></span>
+      </div>
+      <div class="feed-list" data-feed-list>
+        <div class="feed-placeholder">
+          <strong>Notes feed coming online</strong>
+          The layout is ready — live kind-1 notes will load here in the next phase.
+        </div>
+      </div>
+    </section>
+
+    <section class="feed-panel" id="panel-market" role="tabpanel" aria-labelledby="tab-market" data-feed="market" data-kinds="30402,30403" tabindex="0" hidden>
+      <div class="feed-panel-head">
+        <div>
+          <h2>Marketplace</h2>
+        </div>
+        <span class="feed-count" hidden></span>
+      </div>
+      <div class="feed-list" data-feed-list>
+        <div class="feed-placeholder">
+          <strong>Marketplace feed coming online</strong>
+          The layout is ready — NIP-99 listings will load here in the next phase.
+        </div>
+      </div>
+    </section>
+
+    <section class="feed-panel is-active" id="panel-events" role="tabpanel" aria-labelledby="tab-events" data-feed="events" data-kinds="31922,31923" tabindex="0">
+      <div class="feed-panel-head">
+        <div>
+          <h2>Upcoming Events</h2>
+        </div>
+        <!-- Month + year dropdowns (populated by feeds.js) — browse events a
+             month at a time. -->
+        <div class="feed-monthnav" data-month-nav hidden></div>
+      </div>
+      <div class="feed-list" data-feed-list>
+        <div class="feed-placeholder">
+          <strong>Events feed coming online</strong>
+          The layout is ready — NIP-52 calendar events will load here in the next phase.
+        </div>
+      </div>
+    </section>
+
+    <section class="feed-panel" id="panel-articles" role="tabpanel" aria-labelledby="tab-articles" data-feed="articles" data-kinds="30023" tabindex="0" hidden>
+      <div class="feed-panel-head">
+        <div>
+          <h2>Articles</h2>
+          <p>Long reads — NIP-23 long-form articles.</p>
+        </div>
+        <span class="feed-count" hidden></span>
+      </div>
+      <div class="feed-list" data-feed-list>
+        <div class="feed-placeholder">
+          <strong>Articles feed coming online</strong>
+          The layout is ready — NIP-23 long-form articles will load here in the next phase.
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<!-- ══════════════════════════════ FOOTER ══════════════════════════════ -->
+<!-- FOOTER:START (generated by scripts/sync-partials.js — edit the partial) -->
+<!-- ══════════════════════════════ FOOTER ══════════════════════════════
+     SHARED FOOTER — single source of truth. Do NOT edit the copies inside
+     the page files; edit THIS file, then run scripts/sync-partials.js
+     to push it into every page (between FOOTER:START / FOOTER:END markers).
+     Styles live in /assets/css/footer.css. -->
+<footer id="site-footer">
+  <div class="footer-top">
+
+    <div class="footer-col footer-about">
+      <h3>Local Bitcoiners</h3>
+      <p>A Bitcoin podcast about meetup culture. Hosts Reed and Rev Hodl sit down with organizers from across the country on how they find, build, and grow local Bitcoin communities — not price charts, real-world grassroots adoption.</p>
+      <p>Run a meetup and want to come on, or curious about Grassroots Bitcoin and the quarterly organizer calls? <a href="mailto:localbitcoiners@gmail.com">localbitcoiners@gmail.com</a></p>
+      <div class="footer-hosts">
+        <a class="footer-host" href="https://primal.net/Reed" target="_blank" rel="noopener">⚡ Reed</a>
+        <a class="footer-host" href="https://primal.net/p/nprofile1qqsy6q3ua80awknlxp6m368qssqghct6ra6scca4meepumhcswkuwegutksft" target="_blank" rel="noopener">⚡ Rev Hodl</a>
+      </div>
+    </div>
+
+    <div class="footer-col">
+      <h3>Listen &amp; Follow</h3>
+      <ul>
+        <li><a href="https://fountain.fm/show/Q48WBr6nT3mrbwMZ8ydY" target="_blank" rel="noopener">🎙 Fountain</a></li>
+        <li><a href="https://podcasts.apple.com/us/podcast/local-bitcoiners/id1874589042" target="_blank" rel="noopener">🍎 Apple Podcasts</a></li>
+        <li><a href="https://open.spotify.com/show/5v5AX2C7ubaV1xjfL2EMZV" target="_blank" rel="noopener">🎵 Spotify</a></li>
+        <li><a href="https://www.youtube.com/@LocalBitcoiners" target="_blank" rel="noopener">▶️ YouTube</a></li>
+        <li><a href="https://app.podcastguru.io/podcast/local-bitcoiners-1874589042" target="_blank" rel="noopener">🎧 Podcast Guru</a></li>
+        <li><a href="https://podverse.fm/podcast/eKqrkoAVH" target="_blank" rel="noopener">🎧 Podverse</a></li>
+        <li><a href="https://curiocaster.com/podcast/pi7683299" target="_blank" rel="noopener">🎧 CurioCaster</a></li>
+        <li><a href="https://castamatic.com/guid/56fbb1aa-da79-5e4b-bebc-3b934ab8914c" target="_blank" rel="noopener">🎧 Castamatic</a></li>
+        <li><a href="https://feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU" target="_blank" rel="noopener">📡 RSS Feed</a></li>
+      </ul>
+    </div>
+
+    <div class="footer-col">
+      <h3>Connect</h3>
+      <ul>
+        <li><a href="mailto:localbitcoiners@gmail.com">✉️ Email</a></li>
+        <li><a href="https://x.com/LocalBitcoiners" target="_blank" rel="noopener">🐦 Twitter / X</a></li>
+        <li><a href="https://primal.net/p/nprofile1qqsvxvygrc58dqupmk9al5n5xswu5rzcstpfhpjzaf9ustm4vvnytys56dr5z" target="_blank" rel="noopener">🟣 Show on Nostr</a></li>
+        <li><a href="https://github.com/Reeds-Agent-Team/Bitcoin-Meetups" target="_blank" rel="noopener">📖 Meetup Resources</a></li>
+        <li><a href="https://github.com/ReedBTC/localbitcoiners" target="_blank" rel="noopener">💻 Site Source</a></li>
+      </ul>
+    </div>
+
+    <div class="footer-col">
+      <h3>Support the Show</h3>
+      <ul>
+        <li><a href="lightning:aquafox30@primal.net">⚡ Zap: aquafox30@primal.net</a></li>
+        <li>
+          🔗 Silent Payment
+          <a class="muted-link" href="https://docs.cakewallet.com/cryptos/bitcoin/#silent-payments" target="_blank" rel="noopener">(what's this?)</a>
+          <span class="payment-code">sp1qq0cvn8x7x43xcpmqjzmej24jr5ccnsmvqpvjcn7ctzlpntfq9u252qj70jgwxsqugcwp7tmuq6pq77ffepsklhlhv7r434ycxy00zknjygxgl0rl</span>
+        </li>
+        <li>
+          🏦 Paynym: <strong style="color:var(--cream)">+raggedtrack25</strong>
+          <a class="muted-link" href="https://sparrowwallet.com/docs/spending-privately.html#paynym-payment-code" target="_blank" rel="noopener">(what's this?)</a>
+          <span class="payment-code">PM8TJa9CSHGKkr2ZxvAicubwbF45NcABU3iWNCqjPxspMAXXjqcNYYqwEYYndHBgWUFHdSFZjrs7DKBT2f77XCjtAhkSMrv5cZ4G1JM7jkAqGbE6xsAk</span>
+        </li>
+      </ul>
+    </div>
+
+  </div>
+  <div class="footer-bottom">
+    <p>© 2026 Local Bitcoiners Podcast &nbsp;·&nbsp; <a href="mailto:localbitcoiners@gmail.com">localbitcoiners@gmail.com</a></p>
+  </div>
+</footer>
+<!-- FOOTER:END -->
+
+<!-- ═══════════════ FEED TABS — switching + hash routing ═══════════════
+     Pure shell logic: swap the active tab / panel and repaint the panel
+     wash by setting <body data-active-feed>. The actual feed fetching is
+     a later phase (a feeds.js module will read each panel's data-kinds
+     and hydrate [data-feed-list]). Kept inline so tab switching works
+     with zero network dependency. -->
+<script>
+(function () {
+  'use strict';
+  const FEEDS = ['notes', 'market', 'events', 'articles'];
+  const tablist = document.querySelector('.feed-tabs');
+  if (!tablist) return;
+  const tabs = Array.from(tablist.querySelectorAll('[role="tab"]'));
+
+  function panelFor(feed) { return document.getElementById('panel-' + feed); }
+
+  function activate(feed, { focus = false, updateHash = true } = {}) {
+    if (!FEEDS.includes(feed)) feed = 'events';
+    document.body.setAttribute('data-active-feed', feed);
+    tabs.forEach((tab) => {
+      const isActive = tab.dataset.feed === feed;
+      tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      tab.tabIndex = isActive ? 0 : -1;
+      const panel = panelFor(tab.dataset.feed);
+      if (panel) {
+        panel.classList.toggle('is-active', isActive);
+        panel.hidden = !isActive;
+      }
+      if (isActive && focus) tab.focus();
+    });
+    if (updateHash && ('#' + feed) !== location.hash) {
+      history.replaceState(null, '', '#' + feed);
+    }
+    // Tell feeds.js (if loaded) to lazily hydrate this feed on first view.
+    document.dispatchEvent(new CustomEvent('lb:feed-activate', { detail: { feed } }));
+  }
+
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => activate(tab.dataset.feed));
+  });
+
+  // Roving-tabindex arrow-key navigation across the tablist.
+  tablist.addEventListener('keydown', (e) => {
+    const idx = tabs.findIndex((t) => t.dataset.feed === document.body.dataset.activeFeed);
+    if (idx < 0) return;
+    let next = null;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (idx + 1) % tabs.length;
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (idx - 1 + tabs.length) % tabs.length;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = tabs.length - 1;
+    if (next === null) return;
+    e.preventDefault();
+    activate(tabs[next].dataset.feed, { focus: true });
+  });
+
+  window.addEventListener('hashchange', () => {
+    activate((location.hash || '').replace('#', ''), { updateHash: false });
+  });
+
+  // Deep-link support: /feeds#events lands on the Events tab.
+  const initial = (location.hash || '').replace('#', '');
+  activate(FEEDS.includes(initial) ? initial : 'events', { updateHash: false });
+})();
+</script>
+
+<!-- ───────────────── NOSTR LOGIN WIDGET (lazy) ─────────────────
+     Same lazy-load pattern as the other pages: the ~250KB bundle is
+     deferred until a returning user's session restore or a nav
+     boost / sign-in click actually needs it. -->
+<script>
+(function () {
+  'use strict';
+
+  let widgetPromise = null;
+  function ensureWidgetLoaded() {
+    if (widgetPromise) return widgetPromise;
+    widgetPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'assets/widgets/login-widget.js';
+      s.async = true;
+      s.onload = () => { Promise.resolve().then(resolve); };
+      s.onerror = () => {
+        widgetPromise = null;
+        reject(new Error('Failed to load login widget'));
+      };
+      document.head.appendChild(s);
+    });
+    return widgetPromise;
+  }
+
+  const boostPh = document.querySelector('[data-lb-boost-trigger="show"]');
+  if (boostPh) {
+    boostPh.addEventListener('click', async () => {
+      boostPh.disabled = true;
+      const long = boostPh.querySelector('.lb-label-long');
+      const short = boostPh.querySelector('.lb-label-short');
+      const prevLong = long ? long.textContent : '';
+      const prevShort = short ? short.textContent : '';
+      if (long) long.textContent = 'Loading…';
+      if (short) short.textContent = '…';
+      try {
+        await ensureWidgetLoaded();
+        if (window.LBLogin?.openShowBoost) window.LBLogin.openShowBoost();
+      } catch (e) {
+        if (long) long.textContent = prevLong;
+        if (short) short.textContent = prevShort;
+        boostPh.disabled = false;
+        console.error('[lb] widget load failed', e);
+      }
+    });
+  }
+
+  const identitySlot = document.getElementById('lb-identity-slot');
+  function renderIdentitySignIn() {
+    if (!identitySlot) return;
+    identitySlot.innerHTML =
+      '<button type="button" class="lb-identity-placeholder" aria-label="Sign in with Nostr">Sign in</button>';
+    const btn = identitySlot.querySelector('button');
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      const prev = btn.textContent;
+      btn.textContent = '…';
+      try {
+        await ensureWidgetLoaded();
+        if (window.LBLogin?.requestLogin) window.LBLogin.requestLogin();
+      } catch (e) {
+        btn.textContent = prev;
+        btn.disabled = false;
+        console.error('[lb] widget load failed', e);
+      }
+    });
+  }
+  if (identitySlot) {
+    let hasSession = false;
+    try { hasSession = !!localStorage.getItem('lb_nostr_session'); } catch {}
+    if (hasSession) {
+      identitySlot.innerHTML = '<div class="lb-identity-restoring" aria-label="Loading account"></div>';
+      ensureWidgetLoaded().catch((e) => {
+        console.warn('[lb] eager widget load failed', e);
+        renderIdentitySignIn();
+      });
+    } else {
+      renderIdentitySignIn();
+    }
+  }
+})();
+</script>
+
+<!-- PWA service worker -->
+<script src="/assets/js/sw-register.js" defer></script>
+
+<!-- PWA install affordance -->
+<script src="assets/widgets/pwa-install.js" defer></script>
+
+<!-- Community feeds — lazily hydrates the active feed (Events wired up;
+     Notes / Marketplace / Articles land in later phases). -->
+<script type="module" src="/assets/js/feeds.js"></script>
+<script src="/assets/js/nav.js" defer></script>
+</body>
+</html>

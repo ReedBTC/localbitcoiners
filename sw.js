@@ -38,7 +38,7 @@
 // v22: stale-while-revalidate now revalidates assets with the server
 // (cache:'no-cache') so the SW can't re-cache a copy up to 4h stale from the
 // browser HTTP cache — deploys propagate within a navigation, not hours.
-const VERSION = 'lb-v22';
+const VERSION = 'lb-v23';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

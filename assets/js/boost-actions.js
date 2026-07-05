@@ -499,8 +499,48 @@ async function handleRepost(ev, btn) {
   }
 }
 
+// Generic repost usable for non-kind-1 events (e.g. NIP-52 calendar
+// events). NIP-18: kind 6 reposts kind-1 only; everything else uses the
+// generic kind 16, which carries a `k` tag for the reposted kind and —
+// for addressable (parameterized replaceable) events — an `a` coordinate
+// alongside the `e` id. Exposed so the shared calendar renderer can offer
+// a Renote button without duplicating the publish flow.
+//
+// NOTE: hydrateUserReposts() only reads kind-6, so a calendar renote's
+// "already reposted" state won't repaint on reload yet — cosmetic only.
+export async function repostAnyEvent(ev, btn) {
+  if (!ensureLoggedIn()) return
+  const id = (ev.id || '').toLowerCase()
+  if (!id || !ev.pubkey) { showToast('Nothing to repost', true); return }
+  if (repostedIds.has(id)) return
+
+  repostedIds.add(id)
+  if (btn) btn.setAttribute('aria-pressed', 'true')
+
+  try {
+    const kind = ev.kind || 1
+    const isAddressable = kind >= 30000 && kind < 40000
+    const tags = [['e', ev.id, '']]
+    if (isAddressable && ev.dTag) {
+      tags.push(['a', `${kind}:${ev.pubkey}:${ev.dTag}`, ''])
+    }
+    tags.push(['p', ev.pubkey], ['k', String(kind)], ['client', 'localbitcoiners.com'])
+
+    await window.LBLogin.signAndPublish({
+      kind: kind === 1 ? 6 : 16,
+      content: '',
+      tags,
+    })
+    showToast('Renoted')
+  } catch (e) {
+    repostedIds.delete(id)
+    if (btn) btn.setAttribute('aria-pressed', 'false')
+    showToast('Renote failed: ' + (e?.message || 'unknown'), true)
+  }
+}
+
 // ── Zap (NIP-57) ─────────────────────────────────────────────────────
-async function openZapModal(targetEvent) {
+export async function openZapModal(targetEvent) {
   if (!ensureLoggedIn()) return
 
   let profile = getCachedProfile(targetEvent.pubkey)
