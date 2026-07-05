@@ -639,4 +639,4 @@ document.addEventListener('lb:feed-activate', (e) => {
 // Load whichever feed is active when this module first runs (the inline
 // tab controller has already set body[data-active-feed] and may have
 // dispatched its activation event before this listener attached).
-loadFeed(document.body.dataset.activeFeed || 'notes')
+loadFeed(document.body.dataset.activeFeed || 'events')
