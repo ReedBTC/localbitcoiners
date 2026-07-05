@@ -320,7 +320,7 @@ function renderGroup(group) {
   toggle.setAttribute('aria-expanded', 'false')
   toggle.innerHTML =
     '<span class="versions-caret" aria-hidden="true">▸</span>' +
-    `<span>See other versions of this event (${n})</span>`
+    `<span>Other Versions (${n})</span>`
 
   const card = renderCalendarCard(group.parsed, {
     bech32: group.naddr,

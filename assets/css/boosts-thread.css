@@ -200,7 +200,7 @@ a.event-title:hover { color: var(--orange); }
 }
 .embed-note.is-event .event-top {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.75rem;
 }
 .embed-note.is-event .event-thumb {
