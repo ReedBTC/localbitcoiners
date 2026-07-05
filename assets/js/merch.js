@@ -161,6 +161,20 @@ function shortNpub(hex) {
 const firstTag = (ev, name) => (ev.tags.find(t => t[0] === name) || [])[1]
 const allTags  = (ev, name) => ev.tags.filter(t => t[0] === name)
 
+// Human description from the event content. Some marketplace clients (notably
+// Conduit) stuff a machine-readable JSON product payload into the content
+// instead of prose; rendering that verbatim dumps a wall of JSON into the
+// detail modal (and it has no spaces, so it overflows). Treat a JSON
+// object/array as "no description" — the human text lives in the summary tag.
+function descriptionText(content) {
+  if (typeof content !== 'string') return ''
+  const t = content.trim()
+  if (t && (t[0] === '{' || t[0] === '[')) {
+    try { const v = JSON.parse(t); if (v && typeof v === 'object') return '' } catch {}
+  }
+  return content
+}
+
 function parseProduct(ev) {
   const d = firstTag(ev, 'd')
   if (!d) return null
@@ -170,16 +184,19 @@ function parseProduct(ev) {
     .map(t => t[1]).filter(isHttpUrl)
   return {
     d,
+    id: ev.id,                                 // this version's event id (Plebeian routes by it)
     merchant: ev.pubkey,                       // seller pubkey (not always the LB house npub)
     coord: `30402:${ev.pubkey}:${d}`,
     title: firstTag(ev, 'title') || '(untitled)',
     summary: firstTag(ev, 'summary') || '',
-    description: typeof ev.content === 'string' ? ev.content : '',
+    description: descriptionText(ev.content),
+    priceRaw: priceTag[1] != null ? String(priceTag[1]) : '',   // original text, e.g. "30,000 - sold!"
     priceAmount: Number(priceTag[1]),
     priceCurrency: priceTag[2] || 'USD',
     priceFreq: priceTag[3] || '',
     goods: (typeTag[2] || 'digital').toLowerCase(),       // physical | digital
     visibility: (firstTag(ev, 'visibility') || 'on-sale').toLowerCase(),
+    status: (firstTag(ev, 'status') || '').toLowerCase(),  // NIP-99: active | sold
     stock: firstTag(ev, 'stock') != null ? Number(firstTag(ev, 'stock')) : null,
     images,
     specs: allTags(ev, 'spec').map(t => [t[1], t[2]]).filter(s => s[0]),
@@ -355,6 +372,46 @@ async function fetchCatalog() {
     if (a.visibility !== b.visibility) return a.visibility === 'pre-order' ? 1 : -1
     return b.created_at - a.created_at
   })
+}
+
+// Merge externally-sourced NIP-99 events (e.g. the /feeds community
+// marketplace, which surfaces listings from OTHER merchants alongside the
+// house store) into the in-memory catalog WITHOUT clearing what's already
+// there, so the shared cart + checkout can resolve their products, shipping
+// and collections. Same newest-per-(kind:pubkey:d) + skip-hidden rules as
+// fetchCatalog. Returns the parsed products that were ingested (newest per
+// coord) so the caller can grade/classify them.
+function ingestListings(events) {
+  const newest = new Map()
+  for (const ev of events || []) {
+    if (!ev || (ev.kind !== 30402 && ev.kind !== 30405 && ev.kind !== 30406)) continue
+    const d = firstTag(ev, 'd')
+    if (!d) continue
+    const key = `${ev.kind}:${ev.pubkey}:${d}`
+    const prev = newest.get(key)
+    if (!prev || ev.created_at > prev.created_at) newest.set(key, ev)
+  }
+  // Shipping + collections first so a product can resolve its refs.
+  for (const ev of newest.values()) {
+    if (ev.kind === 30406) { const s = parseShipping(ev); if (s) catalog.shipping.set(s.coord, s) }
+    else if (ev.kind === 30405) { const c = parseCollection(ev); if (c) catalog.collections.set(c.coord, c) }
+  }
+  const ingested = []
+  for (const ev of newest.values()) {
+    if (ev.kind !== 30402) continue
+    const p = parseProduct(ev)
+    if (!p || p.visibility === 'hidden') continue
+    const idx = catalog.products.findIndex(x => x.coord === p.coord)
+    if (idx === -1) catalog.products.push(p)
+    else if (p.created_at >= catalog.products[idx].created_at) catalog.products[idx] = p
+    else continue   // an older duplicate — keep the newer one already held
+    ingested.push(p)
+  }
+  catalog.products.sort((a, b) => {
+    if (a.visibility !== b.visibility) return a.visibility === 'pre-order' ? 1 : -1
+    return b.created_at - a.created_at
+  })
+  return ingested
 }
 
 // ── Cart (sessionStorage) ────────────────────────────────────────────
@@ -599,7 +656,12 @@ function paymentLud16ForMerchant(merchantHex, profile) {
 }
 
 // ── Product detail modal ─────────────────────────────────────────────
-function openProductModal(p) {
+// opts (all optional; the /merch storefront passes none):
+//   sellerHeader — a node inserted under the title (e.g. seller pfp + name)
+//   actions      — node(s) to render in place of the default Qty/Add/Buy row
+//                  (the /feeds classifieds pass a "Contact seller" button)
+//   menu         — a node pinned top-right (e.g. /feeds ⋮ copy-naddr / view-on)
+function openProductModal(p, opts = {}) {
   // Featured image is a carousel (prev/next arrows cycle the images); the
   // thumbnail tray below stays in sync — clicking a thumb jumps the
   // carousel, and the arrows highlight the matching thumb.
@@ -653,20 +715,28 @@ function openProductModal(p) {
         h('tr', {}, [h('th', { text: k }), h('td', { text: v })])))
     : null
 
+  const actions = opts.actions
+    ? h('div', { class: 'merch-detail-actions' }, [].concat(opts.actions))
+    : h('div', { class: 'merch-detail-actions' }, [
+        h('label', { class: 'merch-qty-label' }, ['Qty ', qtyInput]),
+        addBtn, buyBtn,
+      ])
+
   const card = h('div', { class: 'merch-modal merch-modal-detail' }, [
     closeButton(),
+    opts.menu || null,   // optional ⋮ menu (e.g. /feeds: copy naddr + view elsewhere)
     gallery,
     h('div', { class: 'merch-detail-info' }, [
       h('h2', { class: 'merch-detail-title', text: p.title }),
+      opts.sellerHeader || null,
       price,
       p.stock != null && p.stock > 0 ? h('div', { class: 'merch-stock', text: `${p.stock} in stock` }) : null,
-      p.description ? renderDescription(p.description) : null,
+      // Fall back to the summary when there's no body text (e.g. Conduit
+      // listings, whose JSON content is suppressed) so the modal still reads.
+      (p.description || p.summary) ? renderDescription(p.description || p.summary) : null,
       specs,
       shipInfo,
-      h('div', { class: 'merch-detail-actions' }, [
-        h('label', { class: 'merch-qty-label' }, ['Qty ', qtyInput]),
-        addBtn, buyBtn,
-      ]),
+      actions,
     ]),
   ])
 
@@ -1539,3 +1609,23 @@ if (document.getElementById('merch-grid')) init()
 // catalog fetch/state, the price→sats helpers, and the exact product detail
 // modal so a card click on the homepage opens the same modal as /merch.
 export { fetchCatalog, catalog, openProductModal, toSats, getBtcUsd, fmtSats, priceLabel }
+
+// Additional reusable pieces for the /feeds community marketplace
+// (feeds-market.js): the house-merchant identity + payment routing, the
+// catalog-merge entry point, the shared cart/checkout, and the NIP-17
+// gift-wrap send used for buyer↔seller DMs. All are import-safe on other
+// pages — init() only runs where #merch-grid exists (see above).
+export {
+  MERCHANT_HEX,
+  ingestListings,
+  addToCart,
+  openCart,
+  openCheckout,
+  imageCarousel,
+  closeModal,
+  shippingForProduct,
+  paymentLud16ForMerchant,
+  resolveMerchantProfile,
+  giftWrapAndPublish,
+  resolveDMRelays,
+}

@@ -85,6 +85,7 @@
       --muted:   #6b5a3e;
       --border:  #d4c4a0;
       --white:   #fffdf7;
+      --bg:      #ede3c8;   /* used by a few reused merch.css rules */
 
       /* ── Per-feed theme palette ──────────────────────────────────
          Each of the four feeds owns an accent (used for its tab, the
@@ -373,6 +374,162 @@
     }
     .event-versions-panel[hidden] { display: none; }
 
+    /* ── Marketplace cards ───────────────────────────────────────────
+       A responsive grid of listing cards. The whole card is clickable →
+       the /merch product modal (carousel + description + shipping).
+       Classifieds carry an amber badge over the image naming what's
+       missing to be checkout-ready (from the shared Gamma grader);
+       Buy-Now items carry none — the "Add to cart" button says it all.
+       The card image is the shared merch carousel (arrows via merch.css).
+       Rendered by feeds-market.js. */
+    /* "Manage / List Items" — shown in the panel head for logged-in users,
+       deep-links to their MyNostr marketplace. Replaces the old count pill. */
+    .market-manage-btn {
+      flex-shrink: 0;
+      display: inline-flex; align-items: center;
+      padding: 0.4rem 0.85rem;
+      font-size: 0.82rem; font-weight: 700;
+      color: #fff; background: var(--accent-d);
+      border-radius: 999px; text-decoration: none;
+      white-space: nowrap;
+      transition: background 0.12s;
+    }
+    .market-manage-btn:hover { background: var(--accent); }
+
+    .market-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+      gap: 1rem;
+    }
+    .market-card {
+      display: flex;
+      flex-direction: column;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.12s, box-shadow 0.12s;
+    }
+    .market-card:hover, .market-card:focus-visible {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 22px rgba(0,0,0,0.12);
+      outline: none;
+    }
+    /* contain (not cover) so the whole product image shows on a neutral
+       backdrop — matches the merch storefront cards. Targets the plain
+       <img> and the carousel's <img> alike. */
+    .market-card-media { position: relative; aspect-ratio: 1 / 1; background: var(--white); }
+    .market-card-media img { width: 100%; height: 100%; object-fit: contain; padding: 0.4rem; box-sizing: border-box; display: block; }
+    .market-card-noimg {
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.1rem; opacity: 0.5;
+    }
+    .market-badge {
+      position: absolute; top: 0.45rem; left: 0.45rem;
+      max-width: calc(100% - 0.9rem);
+      padding: 0.15rem 0.45rem;
+      font-size: 0.66rem; font-weight: 600;
+      border-radius: 999px;
+      color: #fff; background: var(--market-accent-d);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .market-card-body { display: flex; flex-direction: column; gap: 0.2rem; padding: 0.6rem 0.65rem 0.65rem; flex: 1; }
+    .market-card-title { margin: 0; font-size: 0.9rem; line-height: 1.25; color: var(--text); }
+    .market-seller { display: flex; align-items: center; gap: 0.35rem; min-width: 0; }
+    .market-seller-pfp { width: 18px; height: 18px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+    .market-seller-pfp--none {
+      display: flex; align-items: center; justify-content: center;
+      background: var(--cream-d); color: var(--muted); font-size: 0.62rem; font-weight: 700;
+    }
+    .market-seller-name { font-size: 0.72rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .market-card-price { font-size: 0.9rem; font-weight: 700; color: var(--accent-d); }
+    .market-card-sats { font-weight: 500; color: var(--muted); font-size: 0.8em; }
+    .market-card-summary {
+      margin: 0.1rem 0 0; font-size: 0.78rem; color: var(--muted); line-height: 1.3;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .market-card-actions { margin-top: auto; padding-top: 0.45rem; }
+    .market-btn {
+      width: 100%;
+      padding: 0.4rem 0.6rem;
+      font-size: 0.82rem; font-weight: 700;
+      border: 1px solid transparent; border-radius: 7px;
+      cursor: pointer;
+    }
+    .market-btn--buy { background: var(--green-d); color: #fff; }
+    .market-btn--buy:hover { background: var(--green); }
+    .market-btn--buy:disabled { opacity: 0.6; cursor: default; }
+    .market-btn--contact { background: transparent; color: var(--accent-d); border-color: var(--border); }
+    .market-btn--contact:hover { background: var(--tint); }
+
+    /* ⋮ menu inside the product detail modal (copy naddr + view elsewhere).
+       Pinned top-right, just left of the modal's ✕ close button. */
+    .market-menu-wrap { position: absolute; top: 0.75rem; right: 3.25rem; z-index: 4; }
+    .market-menu-btn {
+      width: 34px; height: 34px; border-radius: 50%;
+      border: none; background: rgba(0,0,0,0.55); color: #fff; cursor: pointer;
+      font-size: 1.1rem; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .market-menu-btn:hover { background: rgba(0,0,0,0.75); }
+    .market-menu {
+      display: none;
+      position: absolute; top: 40px; right: 0;
+      min-width: 190px;
+      background: var(--white);
+      border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+      padding: 0.35rem;
+    }
+    .market-menu-wrap.open .market-menu { display: block; }
+    .market-menu-item {
+      display: block; width: 100%; box-sizing: border-box;
+      text-align: left; padding: 0.45rem 0.6rem;
+      font: inherit; font-size: 0.85rem; color: var(--text);
+      background: transparent; border: none; border-radius: 6px;
+      cursor: pointer; text-decoration: none;
+    }
+    .market-menu-item:hover { background: var(--tint); }
+    .market-menu-label {
+      padding: 0.4rem 0.6rem 0.2rem;
+      font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--muted);
+    }
+
+    /* Contact-seller DM modal */
+    .market-modal-overlay {
+      position: fixed; inset: 0; z-index: 1000;
+      background: rgba(30, 22, 10, 0.55);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .market-modal {
+      position: relative;
+      width: 100%; max-width: 420px;
+      background: var(--white);
+      border: 1px solid var(--border); border-radius: 14px;
+      padding: 1.2rem 1.2rem 1rem;
+    }
+    .market-modal-close {
+      position: absolute; top: 0.6rem; right: 0.6rem;
+      width: 2rem; height: 2rem;
+      background: transparent; border: none; cursor: pointer;
+      font-size: 1rem; color: var(--muted); line-height: 1;
+    }
+    .market-modal-title { margin: 0 1.6rem 0.3rem 0; font-size: 1.1rem; color: var(--text); }
+    .market-modal-sub { margin: 0 0 0.7rem; font-size: 0.82rem; color: var(--muted); }
+    .market-dm-input {
+      width: 100%; box-sizing: border-box;
+      padding: 0.6rem; font: inherit; font-size: 0.9rem;
+      border: 1px solid var(--border); border-radius: 8px;
+      resize: vertical;
+    }
+    .market-dm-status { min-height: 1.2rem; margin: 0.5rem 0; font-size: 0.82rem; color: var(--muted); }
+    .market-modal-actions { display: flex; justify-content: flex-end; }
+    .market-modal-actions .market-btn { width: auto; padding-left: 1.2rem; padding-right: 1.2rem; }
+
     /* ── Mobile: tabs become a scrollable chip row ── */
     @media (max-width: 640px) {
       .feed-tabs-wrap { top: 56px; } /* nav shrinks on mobile */
@@ -411,6 +568,9 @@
   </style>
   <link rel="stylesheet" href="/assets/css/nav.css" />
   <link rel="stylesheet" href="/assets/css/footer.css" />
+  <!-- Marketplace "Buy Now" reuses merch.js's cart + checkout modal, which is
+       styled here — so the reused modal looks right on /feeds too. -->
+  <link rel="stylesheet" href="/assets/css/merch.css" />
 </head>
 <body data-active-feed="notes">
 
@@ -608,7 +768,6 @@
       <div class="feed-panel-head">
         <div>
           <h2>Marketplace</h2>
-          <p>Things for sale — NIP-99 classified listings.</p>
         </div>
         <span class="feed-count" hidden></span>
       </div>

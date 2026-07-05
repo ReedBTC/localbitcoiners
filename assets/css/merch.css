@@ -149,11 +149,11 @@
 }
 .merch-thumb:hover { opacity: 1; }
 .merch-thumb.active { opacity: 1; border-color: var(--green-d); }
-.merch-detail-info { display: flex; flex-direction: column; gap: 0.6rem; }
-.merch-detail-title { font-family: 'Playfair Display', Georgia, serif; font-size: 1.4rem; color: var(--text); }
+.merch-detail-info { display: flex; flex-direction: column; gap: 0.6rem; min-width: 0; }
+.merch-detail-title { font-family: 'Playfair Display', Georgia, serif; font-size: 1.4rem; color: var(--text); overflow-wrap: anywhere; }
 .merch-detail-price { font-size: 1.25rem; font-weight: 800; color: var(--green-d); }
 .merch-stock { font-size: 0.85rem; color: var(--muted); }
-.merch-detail-desc { white-space: pre-wrap; font-size: 0.92rem; line-height: 1.55; color: var(--text); }
+.merch-detail-desc { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.92rem; line-height: 1.55; color: var(--text); }
 .merch-npub-chip {
   display: inline; font: inherit; padding: 0 0.15em; border: 0; background: none;
   color: var(--orange); font-weight: 600; cursor: pointer; border-radius: 4px;

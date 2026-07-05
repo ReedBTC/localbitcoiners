@@ -589,8 +589,39 @@ async function loadEvents() {
   }
 }
 
+// ── Marketplace tab loader ───────────────────────────────────────────
+// Resolves the same supporter set + outbox relays the Events tab uses, then
+// lazy-imports the heavier marketplace module (which pulls in merch.js's cart
+// / checkout / gift-wrap send) only when the tab is actually opened.
+async function loadMarket() {
+  const panel = document.getElementById('panel-market')
+  if (!panel) return
+  const list = panel.querySelector('[data-feed-list]')
+  if (!list) return
+
+  // Replace the static placeholder with skeletons up front — resolving the
+  // supporter set + lazy-importing the market module (which pulls in merch.js)
+  // takes a moment, and renderMarket only paints its own skeletons afterwards.
+  showSkeletons(list)
+
+  try {
+    const outbox = await fetchShowOutboxRelays(STATIC_RELAYS)
+    const relays = [...new Set([...STATIC_RELAYS, ...outbox])]
+    const members = await fetchPackMembers(relays)
+    if (!members.size) {
+      renderPlaceholder(list, 'No supporters found', 'Couldn’t reach the follow packs right now — please try again later.')
+      return
+    }
+    const mod = await import('/assets/js/feeds-market.js')
+    await mod.renderMarket({ panel, list, relays, members: [...members] })
+  } catch (e) {
+    console.error('[feeds] market load failed', e)
+    renderPlaceholder(list, 'Couldn’t load the marketplace', 'Something went wrong reaching the relays — please try again later.')
+  }
+}
+
 // ── Lazy per-feed dispatch ───────────────────────────────────────────
-const LOADERS = { events: loadEvents }
+const LOADERS = { events: loadEvents, market: loadMarket }
 const loaded = new Set()
 
 function loadFeed(feed) {
