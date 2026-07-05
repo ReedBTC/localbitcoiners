@@ -175,7 +175,14 @@ function parseProduct(ev) {
     stock: firstTag(ev, 'stock') != null ? Number(firstTag(ev, 'stock')) : null,
     images,
     specs: allTags(ev, 'spec').map(t => [t[1], t[2]]).filter(s => s[0]),
-    shippingRefs: allTags(ev, 'shipping_option').map(t => t[1]).filter(Boolean),
+    // Gamma: a product's shipping_option tag is ["shipping_option", <ref>,
+    // <extra-cost>]. The optional third element is a per-product surcharge
+    // (in the PRODUCT's currency) added to that method's base price. <ref>
+    // is a 30406 option coord or a 30405 collection coord (extra then applies
+    // to every option in that collection).
+    shippingRefs: allTags(ev, 'shipping_option')
+      .map(t => ({ coord: t[1], extra: Number(t[2]) || 0 }))
+      .filter(s => s.coord),
     collectionRefs: allTags(ev, 'a').map(t => t[1]).filter(c => c.startsWith('30405:')),
     created_at: ev.created_at,
   }
@@ -218,16 +225,71 @@ const catalog = {
   collections: new Map(),  // coord → collection
 }
 
-// Resolve the full set of shipping options that apply to a product:
-// its own shipping_option refs, merged with any from collections it
-// references (Gamma: product + collection shipping MUST be merged).
+// Resolve the shipping choices that apply to a product: its own
+// shipping_option refs (each carrying an optional per-product extra cost),
+// merged with any inherited from collections it references (Gamma: product +
+// collection shipping MUST be merged). Returns [{ option, extra }] where
+// `option` is a parsed 30406 shipping option and `extra` is the surcharge in
+// the product's currency.
 function shippingForProduct(p) {
-  const coords = new Set(p.shippingRefs)
+  const extraByCoord = new Map()   // 30406 coord → extra cost (product currency)
+  const add = (coord, extra) => {
+    // If the same option is reachable by several paths, keep the largest
+    // extra so a product-specific surcharge is never silently dropped.
+    if (!extraByCoord.has(coord) || extra > extraByCoord.get(coord)) extraByCoord.set(coord, extra)
+  }
+  for (const { coord, extra } of p.shippingRefs) {
+    if (coord.startsWith('30405:')) {
+      // Collection reference: the extra applies to every option inside it.
+      const col = catalog.collections.get(coord)
+      if (col) col.shippingRefs.forEach(r => add(r, extra))
+    } else {
+      add(coord, extra)   // direct 30406 option
+    }
+  }
+  // Collections the product belongs to via `a` tags contribute their options
+  // too, with no product-specific surcharge.
   for (const cref of p.collectionRefs) {
     const col = catalog.collections.get(cref)
-    if (col) col.shippingRefs.forEach(r => coords.add(r))
+    if (col) col.shippingRefs.forEach(r => add(r, 0))
   }
-  return [...coords].map(c => catalog.shipping.get(c)).filter(Boolean)
+  const out = []
+  for (const [coord, extra] of extraByCoord) {
+    const option = catalog.shipping.get(coord)
+    if (option) out.push({ option, extra })
+  }
+  // Put local-pickup options last so a shipped method is the default choice
+  // (buyers shouldn't accidentally default to "come pick it up"). Array.sort
+  // is stable, so non-pickup order is otherwise preserved.
+  out.sort((a, b) => (isPickupOption(a.option) ? 1 : 0) - (isPickupOption(b.option) ? 1 : 0))
+  return out
+}
+
+// A shipping option is "pickup" if its Gamma service type says so, or the
+// title reads like a pickup (some merchants omit the service tag).
+function isPickupOption(option) {
+  return String(option.service).toLowerCase() === 'pickup' || /pick\s*-?\s*up/i.test(option.title || '')
+}
+
+// Sats cost of a shipping choice for a given product: the option's base price
+// (in the option's currency) plus the per-product extra (in the product's
+// currency), each converted independently. null if either can't be converted.
+function shipChoiceSats(product, choice, rate) {
+  const base = toSats(choice.option.priceAmount, choice.option.priceCurrency, rate)
+  const extra = choice.extra ? toSats(choice.extra, product.priceCurrency, rate) : 0
+  if (base == null || extra == null) return null
+  return base + extra
+}
+
+// Human label for a shipping choice, e.g. "Standard — $5.99" or, with a
+// surcharge in the same currency, the combined "$7.99". If base and extra are
+// in different currencies they're shown side by side ("$5.99 + 2000 sats").
+function shipChoiceLabel(product, choice) {
+  const o = choice.option
+  if (!choice.extra) return `${o.title} — ${priceLabel(o.priceAmount, o.priceCurrency)}`
+  const sameCcy = String(o.priceCurrency).toUpperCase() === String(product.priceCurrency).toUpperCase()
+  if (sameCcy) return `${o.title} — ${priceLabel(o.priceAmount + choice.extra, o.priceCurrency)}`
+  return `${o.title} — ${priceLabel(o.priceAmount, o.priceCurrency)} + ${priceLabel(choice.extra, product.priceCurrency)}`
 }
 
 async function fetchCatalog() {
@@ -539,8 +601,8 @@ function openProductModal(p) {
   const shipInfo = (p.goods === 'physical' && ship.length)
     ? h('div', { class: 'merch-detail-ship' }, [
         h('strong', { text: 'Shipping:' }),
-        ...ship.map(s => h('div', { class: 'merch-detail-ship-opt',
-          text: `${s.title} (${priceLabel(s.priceAmount, s.priceCurrency)})` })),
+        ...ship.map(c => h('div', { class: 'merch-detail-ship-opt',
+          text: shipChoiceLabel(p, c) })),
       ])
     : null
 
@@ -586,6 +648,12 @@ function boltIcon() {
   return span
 }
 
+function trashIcon() {
+  const span = h('span', { class: 'merch-trash', 'aria-hidden': 'true' })
+  span.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>'
+  return span
+}
+
 // ── Cart modal ───────────────────────────────────────────────────────
 async function openCart() {
   const lines = cartLines()
@@ -614,7 +682,7 @@ async function openCart() {
         h('div', { class: 'merch-cart-line-price', text: priceLabel(p.priceAmount, p.priceCurrency) + (sats != null ? `  ·  ${fmtSats(sats)}` : '') }),
       ]),
       qtyInput,
-      h('button', { class: 'merch-line-remove', 'aria-label': 'Remove', onclick: () => { setCartQty(p.coord, 0); openCart() } }, '✕'),
+      h('button', { class: 'merch-line-remove', 'aria-label': 'Remove', title: 'Remove', onclick: () => { setCartQty(p.coord, 0); openCart() } }, trashIcon()),
     ]))
   }
 
@@ -669,24 +737,34 @@ async function openCheckout() {
   }
 
   const rate = await getBtcUsd()
-  const needsShipping = lines.some(l => l.product.goods === 'physical')
+  // Whether any physical item is still in the cart. Dynamic because lines can
+  // be removed on this page — dropping the last physical item hides the
+  // shipping-details form.
+  const hasPhysical = () => lines.some(l => l.product.goods === 'physical')
 
-  // Build shipping option choices (union across all physical items).
-  const shipOptions = []
-  if (needsShipping) {
-    const seen = new Set()
-    for (const l of lines) {
-      if (l.product.goods !== 'physical') continue
-      for (const s of shippingForProduct(l.product)) {
-        if (!seen.has(s.coord)) { seen.add(s.coord); shipOptions.push(s) }
-      }
-    }
+  // Per-item shipping (Gamma): each physical product line picks its OWN
+  // method from its own options, and each line's cost is summed independently
+  // into the order total. shipState is keyed by line coord.
+  const shipState = new Map()   // coord → { line, choices, select }
+  for (const line of lines.filter(l => l.product.goods === 'physical')) {
+    const choices = shippingForProduct(line.product)
+    const select = choices.length
+      ? h('select', { class: 'merch-input' },
+          choices.map((c, i) => h('option', { value: c.option.coord, selected: i === 0 ? '' : null },
+            shipChoiceLabel(line.product, c))))
+      : null
+    if (select) select.addEventListener('change', renderTotals)
+    shipState.set(line.coord, { line, choices, select })
+  }
+  // The chosen { option, extra } for a physical line, or null if it has no
+  // shipping options published.
+  function chosenShipFor(coord) {
+    const st = shipState.get(coord)
+    if (!st || !st.choices.length) return null
+    return st.choices.find(c => c.option.coord === st.select.value) || st.choices[0]
   }
 
   // ── Form fields ──
-  const shipSelect = h('select', { class: 'merch-input' },
-    shipOptions.map((s, i) => h('option', { value: s.coord, selected: i === 0 ? '' : null },
-      `${s.title} — ${priceLabel(s.priceAmount, s.priceCurrency)}`)))
   // Standard shipping form (no phone). Email is optional.
   const nameInput  = h('input', { class: 'merch-input', type: 'text', autocomplete: 'name', placeholder: 'Name' })
   const addr1Input = h('input', { class: 'merch-input', type: 'text', autocomplete: 'address-line1', placeholder: 'Address line 1' })
@@ -719,52 +797,163 @@ async function openCheckout() {
     return m ? m[1] : null
   }
 
-  function chosenShipping() {
-    if (!needsShipping || !shipOptions.length) return null
-    return shipOptions.find(s => s.coord === shipSelect.value) || shipOptions[0]
-  }
-
   function computeTotal() {
     let sats = 0, ok = true
     for (const l of lines) {
       const s = toSats(l.product.priceAmount, l.product.priceCurrency, rate)
       if (s == null) { ok = false } else sats += s * l.qty
     }
-    const ship = chosenShipping()
-    if (ship) {
-      const ss = toSats(ship.priceAmount, ship.priceCurrency, rate)
+    // Shipping is charged once per physical line (not per unit), matching
+    // the Gamma/Plebeian model.
+    for (const l of lines) {
+      if (l.product.goods !== 'physical') continue
+      const choice = chosenShipFor(l.coord)
+      if (!choice) continue
+      const ss = shipChoiceSats(l.product, choice, rate)
       if (ss == null) ok = false; else sats += ss
     }
     return { sats, ok }
   }
 
-  // ── Summary + status panes ──
-  const summary = h('div', { class: 'merch-checkout-summary' })
-  function renderSummary() {
-    summary.innerHTML = ''
+  // The per-line shipping selections to hand to runCheckout / the order
+  // message. One entry per physical line that has a chosen method.
+  function collectShipments() {
+    const out = []
+    for (const l of lines) {
+      if (l.product.goods !== 'physical') continue
+      const choice = chosenShipFor(l.coord)
+      if (choice) out.push({ productTitle: l.product.title, coord: choice.option.coord, optionTitle: choice.option.title })
+    }
+    return out
+  }
+
+  // ── Order lines (top) ──
+  // Each cart line as an expressive card: thumbnail, name, price, and — for
+  // physical goods — its own shipping selector inline. The address/details
+  // form sits below these (see modal assembly).
+  const cardEls = new Map()   // coord → card element, so removal can drop it
+  const itemsWrap = h('div', { class: 'merch-checkout-items' })
+  for (const l of lines) itemsWrap.appendChild(buildItemCard(l))
+
+  // Build one line card, wiring its quantity stepper to update the cart and
+  // totals in place (so the address form the buyer may have typed isn't
+  // rebuilt). Shipping is per-line, not per-unit, so quantity only moves the
+  // subtotal — the stepper just refreshes this line's price and the totals.
+  function buildItemCard(l) {
+    const p = l.product
+    const thumb = p.images[0]
+      ? h('img', { src: p.images[0], alt: p.title, class: 'merch-citem-thumb' })
+      : h('div', { class: 'merch-citem-thumb merch-card-noimg', text: '🛍️' })
+
+    const priceEl = h('div', { class: 'merch-citem-price' })
+    const setPrice = () => {
+      const s = toSats(p.priceAmount, p.priceCurrency, rate)
+      priceEl.textContent = priceLabel(p.priceAmount, p.priceCurrency) + (s != null ? `  ·  ${fmtSats(s * l.qty)}` : '')
+    }
+    setPrice()
+
+    const st = shipState.get(l.coord)   // physical lines only
+    let shipRow = null
+    if (p.goods === 'physical') {
+      shipRow = st?.select
+        ? h('div', { class: 'merch-citem-ship' }, st.select)
+        : h('p', { class: 'merch-warn merch-citem-shipwarn', text: 'No shipping options published — the seller will follow up.' })
+    }
+
+    const stepper = qtyStepper(l, () => { setPrice(); renderTotals() })
+    const removeBtn = h('button', { type: 'button', class: 'merch-citem-remove',
+      'aria-label': `Remove ${p.title}`, title: 'Remove', onclick: () => removeLine(l) }, trashIcon())
+
+    const card = h('div', { class: 'merch-citem' }, [
+      thumb,
+      h('div', { class: 'merch-citem-info' }, [
+        h('div', { class: 'merch-citem-title', text: p.title }),
+        priceEl,
+        stepper,
+        shipRow,
+      ]),
+      removeBtn,
+    ])
+    cardEls.set(l.coord, card)
+    return card
+  }
+
+  // Remove a line from the cart on this page. Persists to the cart, drops the
+  // card + its shipping state, then refreshes totals and the shipping section
+  // (which hides once no physical items remain). Emptying the cart returns to
+  // the cart view.
+  function removeLine(l) {
+    const idx = lines.indexOf(l)
+    if (idx === -1) return
+    lines.splice(idx, 1)
+    setCartQty(l.coord, 0)
+    shipState.delete(l.coord)
+    cardEls.get(l.coord)?.remove()
+    cardEls.delete(l.coord)
+    if (!lines.length) { closeModal(); openCart(); return }
+    renderTotals()
+    syncShippingSection()
+  }
+
+  // A − [n] + quantity control for a checkout line. Clamped to 1..stock;
+  // removal is done from the cart, not here.
+  function qtyStepper(l, onChange) {
+    const maxStock = l.product.stock != null ? Math.max(l.product.stock, 0) : null
+    const box = h('input', { type: 'number', class: 'merch-qty', min: '1',
+      max: maxStock != null ? String(maxStock) : null, value: String(l.qty),
+      'aria-label': `Quantity of ${l.product.title}` })
+    const apply = (n) => {
+      let q = Math.floor(n) || 1
+      if (q < 1) q = 1
+      if (maxStock != null && maxStock > 0) q = Math.min(q, maxStock)
+      box.value = String(q)
+      if (q === l.qty) return
+      l.qty = q
+      setCartQty(l.coord, q)
+      onChange()
+    }
+    box.addEventListener('change', () => apply(parseInt(box.value, 10)))
+    const dec = h('button', { type: 'button', class: 'merch-step', 'aria-label': 'Decrease quantity',
+      onclick: () => apply(l.qty - 1) }, '−')
+    const inc = h('button', { type: 'button', class: 'merch-step', 'aria-label': 'Increase quantity',
+      onclick: () => apply(l.qty + 1) }, '+')
+    return h('div', { class: 'merch-qty-stepper' }, [dec, box, inc])
+  }
+
+  // ── Totals ──
+  const totals = h('div', { class: 'merch-checkout-summary' })
+  function renderTotals() {
+    totals.innerHTML = ''
+    let subSats = 0, subOk = true
     for (const l of lines) {
       const s = toSats(l.product.priceAmount, l.product.priceCurrency, rate)
-      summary.appendChild(h('div', { class: 'merch-sum-line' }, [
-        h('span', { text: `${l.qty}× ${l.product.title}` }),
-        h('span', { text: s != null ? fmtSats(s * l.qty) : '—' }),
-      ]))
+      if (s == null) subOk = false; else subSats += s * l.qty
     }
-    const ship = chosenShipping()
-    if (ship) {
-      const ss = toSats(ship.priceAmount, ship.priceCurrency, rate)
-      summary.appendChild(h('div', { class: 'merch-sum-line' }, [
-        h('span', { text: `Shipping — ${ship.title}` }),
-        h('span', { text: ss != null ? fmtSats(ss) : '—' }),
+    totals.appendChild(h('div', { class: 'merch-sum-line' }, [
+      h('span', { text: 'Subtotal' }),
+      h('span', { text: subOk ? fmtSats(subSats) : '—' }),
+    ]))
+    if (hasPhysical()) {
+      let shipSats = 0, shipOk = true
+      for (const l of lines) {
+        if (l.product.goods !== 'physical') continue
+        const choice = chosenShipFor(l.coord)
+        if (!choice) continue
+        const ss = shipChoiceSats(l.product, choice, rate)
+        if (ss == null) shipOk = false; else shipSats += ss
+      }
+      totals.appendChild(h('div', { class: 'merch-sum-line merch-sum-ship' }, [
+        h('span', { text: 'Shipping' }),
+        h('span', { text: shipOk ? fmtSats(shipSats) : '—' }),
       ]))
     }
     const { sats, ok } = computeTotal()
-    summary.appendChild(h('div', { class: 'merch-sum-total' }, [
+    totals.appendChild(h('div', { class: 'merch-sum-line merch-sum-total' }, [
       h('span', { text: 'Total' }),
       h('strong', { text: ok ? fmtSats(sats) : 'unavailable' }),
     ]))
   }
-  shipSelect.addEventListener('change', renderSummary)
-  renderSummary()
+  renderTotals()
 
   const status = h('div', { class: 'merch-checkout-status' })
   const payBtn = h('button', { class: 'merch-btn merch-btn-primary' }, [boltIcon(), 'Place order & pay'])
@@ -773,32 +962,43 @@ async function openCheckout() {
   // reuse one order id and never re-publish the order message twice.
   const session = { orderId: uuid(), orderPublished: false }
 
-  const fields = []
-  if (needsShipping) {
-    fields.push(h('label', { class: 'merch-field' }, ['Shipping method', shipSelect]))
-    fields.push(h('label', { class: 'merch-field' }, ['Name', nameInput]))
-    fields.push(h('label', { class: 'merch-field' }, ['Address line 1', addr1Input]))
-    fields.push(h('label', { class: 'merch-field' }, ['Address line 2', addr2Input]))
-    // City / State / ZIP on one row.
-    fields.push(h('div', { class: 'merch-field-row' }, [
-      h('label', { class: 'merch-field' }, ['Town / City', cityInput]),
-      h('label', { class: 'merch-field' }, ['State', stateInput]),
-      h('label', { class: 'merch-field' }, ['ZIP', zipInput]),
-    ]))
-    fields.push(h('label', { class: 'merch-field' }, ['Country', countryInput]))
-    fields.push(h('label', { class: 'merch-field' }, ['Email (optional)', emailInput]))
-  }
-  fields.push(h('label', { class: 'merch-field' }, ['Note (optional)', noteInput]))
+  // Shipping-details section (address the chosen methods ship to). Built once
+  // and shown/hidden by syncShippingSection() as physical items come and go —
+  // shipping selectors themselves live in the order-lines block above.
+  const shippingSection = h('div', { class: 'merch-shipping-section' }, [
+    h('div', { class: 'merch-checkout-divider' }),
+    h('h3', { class: 'merch-checkout-subhead', text: 'Shipping details' }),
+    h('div', { class: 'merch-checkout-fields' }, [
+      h('label', { class: 'merch-field' }, ['Name', nameInput]),
+      h('label', { class: 'merch-field' }, ['Address line 1', addr1Input]),
+      h('label', { class: 'merch-field' }, ['Address line 2', addr2Input]),
+      // City / State / ZIP on one row.
+      h('div', { class: 'merch-field-row' }, [
+        h('label', { class: 'merch-field' }, ['Town / City', cityInput]),
+        h('label', { class: 'merch-field' }, ['State', stateInput]),
+        h('label', { class: 'merch-field' }, ['ZIP', zipInput]),
+      ]),
+      h('label', { class: 'merch-field' }, ['Country', countryInput]),
+      h('label', { class: 'merch-field' }, ['Email (optional)', emailInput]),
+    ]),
+  ])
+  function syncShippingSection() { shippingSection.style.display = hasPhysical() ? '' : 'none' }
+  syncShippingSection()
+
+  const noteWrap = h('div', { class: 'merch-checkout-fields' }, [
+    h('label', { class: 'merch-field' }, ['Note (optional)', noteInput]),
+  ])
 
   payBtn.addEventListener('click', () => {
-    if (needsShipping) {
+    const shipping = hasPhysical()
+    if (shipping) {
       const missing = missingShippingField()
       if (missing) return setStatus(status, 'error', `Please enter your ${missing}.`)
     }
     runCheckout({
-      lines, rate, user, needsShipping, session,
-      shipping: chosenShipping(),
-      address: needsShipping ? composeAddress() : '',
+      lines, rate, user, needsShipping: shipping, session,
+      shipments: collectShipments(),
+      address: shipping ? composeAddress() : '',
       email: emailInput.value.trim(),
       note: noteInput.value.trim(),
       computeTotal, status, payBtn,
@@ -809,8 +1009,10 @@ async function openCheckout() {
     closeButton(),
     h('h2', { class: 'merch-modal-title', text: 'Checkout' }),
     h('div', { class: 'merch-checkout-as', text: `Ordering as ${user.profile?.name || user.npub?.slice(0, 12) + '…' || 'you'}` }),
-    summary,
-    h('div', { class: 'merch-checkout-fields' }, fields),
+    itemsWrap,
+    totals,
+    shippingSection,
+    noteWrap,
     status,
     payBtn,
     h('p', { class: 'merch-fineprint', text: 'Your order is sent as an encrypted Nostr message to the seller and paid over Lightning.' }),
@@ -824,7 +1026,7 @@ function setStatus(statusEl, kind, msg) {
 }
 
 async function runCheckout(ctx) {
-  const { lines, user, needsShipping, shipping, address, email, note, computeTotal, status, payBtn, session } = ctx
+  const { lines, user, needsShipping, shipments = [], address, email, note, computeTotal, status, payBtn, session } = ctx
 
   if (needsShipping && !address) {
     return setStatus(status, 'error', 'Please enter a shipping address.')
@@ -861,7 +1063,11 @@ async function runCheckout(ctx) {
         ['amount', String(totalSats)],
         ...lines.map(l => ['item', l.coord, String(l.qty)]),
       ]
-      if (shipping) orderTags.push(['shipping', shipping.coord])
+      // Gamma's order schema defines a single `shipping` tag, but per-item
+      // shipping means several methods may apply. Repeated `shipping` tags are
+      // tolerated by clients and keep the machine-readable order complete; the
+      // kind-14 summary (below) itemizes which item uses which method.
+      for (const coord of [...new Set(shipments.map(s => s.coord))]) orderTags.push(['shipping', coord])
       if (address)  orderTags.push(['address', address])
       if (email)    orderTags.push(['email', email])
       logSend('Order → seller', await giftWrapAndPublish({ kind: 16, content: note || '', tags: orderTags }, user.pubkey))
@@ -907,7 +1113,7 @@ async function runCheckout(ctx) {
     //    Gamma-aware merchant clients; a kind-14 shows up in the seller's
     //    everyday DM inbox (0xchat, Damus, mynostr, …) so they actually
     //    notice the order.
-    const summaryText = buildOrderSummary({ orderId, lines, totalSats, shipping, address, note, buyer: user })
+    const summaryText = buildOrderSummary({ orderId, lines, totalSats, shipments, address, note, buyer: user })
     const summaryRumor = {
       kind: 14,
       content: summaryText,
@@ -921,7 +1127,7 @@ async function runCheckout(ctx) {
 
     window.LBMerchLastOrder = { orderId, totalSats, diag }
 
-    recordOrder({ orderId, totalSats, lines, shipping: shipping?.coord || null, ts: Date.now() })
+    recordOrder({ orderId, totalSats, lines, shipping: [...new Set(shipments.map(s => s.coord))], ts: Date.now() })
     sessionStorage.removeItem(CART_KEY)
     updateCartBadge()
 
@@ -935,7 +1141,7 @@ async function runCheckout(ctx) {
 
 // Human-readable order summary for the kind-14 chat DM the seller's
 // everyday client will actually render.
-function buildOrderSummary({ orderId, lines, totalSats, shipping, address, note, buyer }) {
+function buildOrderSummary({ orderId, lines, totalSats, shipments = [], address, note, buyer }) {
   const who = buyer?.profile?.name || (buyer?.npub ? buyer.npub.slice(0, 12) + '…' : 'a customer')
   const items = lines.map(l => `• ${l.qty}× ${l.product.title}`).join('\n')
   const parts = [
@@ -946,7 +1152,12 @@ function buildOrderSummary({ orderId, lines, totalSats, shipping, address, note,
     ``,
     `Total paid: ${fmtSats(totalSats)} ⚡`,
   ]
-  if (shipping) parts.push(`Shipping: ${shipping.title}`)
+  // Per-item shipping: itemize which method each product ships with so the
+  // seller can fulfill without guessing.
+  if (shipments.length) {
+    parts.push(`Shipping:`)
+    for (const s of shipments) parts.push(`• ${s.productTitle}: ${s.optionTitle}`)
+  }
   if (address)  parts.push(`Ship to:\n${address}`)
   if (note)     parts.push(`Note: ${note}`)
   parts.push(``, `Order ID: ${orderId}`)
