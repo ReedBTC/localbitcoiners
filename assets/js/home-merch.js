@@ -19,6 +19,30 @@ import {
 const SPEED_PX_S = 55;          // match the boosts marquee cadence
 const SOLD_OUT_MSG = 'Sold Out — Restocking Inventory';
 
+// Stale-while-revalidate cache: paint instantly from a recent snapshot, then
+// refetch the live catalog and repaint. Teaser-only — the detail modal / cart
+// / checkout always run against the live catalog fetched on every build, so a
+// stale card can't cause a bad purchase.
+const CACHE_KEY = 'lb_home_merch_v1';
+const CACHE_TTL = 6 * 60 * 60 * 1000;   // 6h
+
+function readCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || !Array.isArray(data.products) || !data.products.length) return null;
+    if (Date.now() - (data.ts || 0) > CACHE_TTL) return null;
+    return data.products;
+  } catch { return null; }
+}
+function writeCache(products) {
+  try {
+    if (!products || !products.length) return;
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), products }));
+  } catch {}
+}
+
 function message(container, msg) {
   const p = document.createElement('p');
   p.className = 'merch-marquee-empty';
@@ -92,6 +116,7 @@ function startMarquee(el) {
 
   let setWidth = 0;
   const measure = () => { setWidth = el.scrollWidth / 2; };
+  el.__measure = measure;   // let a later (revalidation) repaint re-measure
   measure();
   el.querySelectorAll('img').forEach((img) => {
     if (!img.complete) img.addEventListener('load', measure, { once: true });
@@ -187,23 +212,12 @@ function startMarquee(el) {
   requestAnimationFrame(tick);
 }
 
-async function build(container) {
-  try {
-    await fetchCatalog();
-  } catch (e) {
-    console.warn('[home-merch] catalog fetch failed', e);
-    message(container, SOLD_OUT_MSG);
-    return;
-  }
-  const products = catalog.products || [];
-  if (!products.length) { message(container, SOLD_OUT_MSG); return; }
-
-  // Probe: render one copy of the catalog and measure it against the strip.
-  // With only a few products, a single copy can be narrower than the visible
-  // strip — then there's nothing to scroll and the marquee sits still. We
-  // repeat the catalog enough times that ONE set is at least as wide as the
-  // strip, which is the precondition for the seamless scrollLeft wrap
-  // (setWidth = scrollWidth/2 must be ≥ clientWidth).
+// Fill the strip with two identical sets (A + dupe B), each `reps` copies of
+// the catalog so ONE set comfortably overflows the strip — the precondition
+// for the seamless scrollLeft wrap (setWidth = scrollWidth/2 must be ≥
+// clientWidth). Probe one copy first to size `reps`. Rendered fresh (not
+// cloned) so each item carries its own __product for the click handler.
+function fill(container, products) {
   const probe = document.createDocumentFragment();
   for (const p of products) probe.appendChild(makeItem(p, false));
   container.replaceChildren(probe);
@@ -211,17 +225,48 @@ async function build(container) {
   const viewW = container.clientWidth || 1;
   const reps = Math.max(1, Math.ceil((viewW + 1) / Math.max(oneCopyW, 1)));
 
-  // Two identical sets (A + dupe B); each set is `reps` copies of the catalog
-  // so a set comfortably overflows the strip. Wrapping scrollLeft by one set
-  // width then loops seamlessly. Rendered fresh (not cloned) so each item
-  // carries its own __product for the click handler.
   const frag = document.createDocumentFragment();
   for (let set = 0; set < 2; set++)
     for (let r = 0; r < reps; r++)
       for (const p of products) frag.appendChild(makeItem(p, set === 1));
   container.replaceChildren(frag);
+}
 
-  requestAnimationFrame(() => startMarquee(container));
+// Paint the strip, starting the marquee the FIRST time only; a later
+// (revalidation) repaint just refills + re-measures so we never stack a
+// second scroll loop / listener set on the container.
+function paint(container, products) {
+  fill(container, products);
+  if (!container.__marqueeStarted) {
+    container.__marqueeStarted = true;
+    requestAnimationFrame(() => startMarquee(container));
+  } else {
+    requestAnimationFrame(() => container.__measure && container.__measure());
+  }
+}
+
+async function build(container) {
+  // 1. Instant paint from a recent cached snapshot. The marquee renders
+  // straight from the product objects; the live catalog fetched below still
+  // backs the detail modal's cart / stock / checkout.
+  const cached = readCache();
+  if (cached) paint(container, cached);
+
+  // 2. Revalidate against the live catalog.
+  try {
+    await fetchCatalog();
+  } catch (e) {
+    console.warn('[home-merch] catalog fetch failed', e);
+    if (!cached) message(container, SOLD_OUT_MSG);
+    return;
+  }
+  const products = catalog.products || [];
+  if (!products.length) {
+    if (!cached) message(container, SOLD_OUT_MSG);
+    return;
+  }
+  writeCache(products);
+  paint(container, products);
 }
 
 function init() {

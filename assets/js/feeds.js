@@ -502,6 +502,52 @@ function buildMonthNav(panel, onChange) {
   return { year: parseInt(yearSel.value, 10), month: parseInt(monthSel.value, 10) }
 }
 
+// ── Shared supporter resolution ──────────────────────────────────────
+// Resolve the show's write outbox, then the union of every follow-pack
+// member into one { relays, members } set. Exported so the homepage
+// "Community Feeds" teaser (home-feeds.js) resolves supporters exactly the
+// way this page does, and reused by both tab loaders below.
+export async function resolveSupporters() {
+  const outbox = await fetchShowOutboxRelays(STATIC_RELAYS)
+  const relays = [...new Set([...STATIC_RELAYS, ...outbox])]
+  const members = await fetchPackMembers(relays)
+  return { relays, members: [...members] }
+}
+
+// One-shot fetch of the soonest upcoming events from the supporter set,
+// grouped (duplicates collapsed) and sorted soonest-first, with organizer
+// profiles attached to the returned slice. Powers the homepage teaser; the
+// full Events tab (loadEvents) keeps its own streaming/month-browser path.
+export async function fetchUpcomingEvents(supporters, { limit = 12 } = {}) {
+  const { relays, members } = supporters || {}
+  if (!members || !members.length) return []
+  const state = {
+    eventsByCoord: new Map(),
+    deletedIds: new Set(),
+    deletedCoords: new Map(),
+    profiles: new Map(),
+    relays,
+  }
+  await streamEvents(members, relays, state, () => {})
+
+  const now = Date.now()
+  const upcoming = groupItems(computeItems(state))
+    .filter((g) => g.endMs >= now)
+    .sort((a, b) => a.startMs - b.startMs)
+    .slice(0, limit)
+
+  try {
+    const pubkeys = [...new Set(upcoming.map((g) => g.parsed.pubkey).filter(Boolean))]
+    if (pubkeys.length) {
+      const profiles = await fetchProfilesFromPrimal(pubkeys)
+      for (const g of upcoming) g.profile = profiles.get(g.parsed.pubkey) || g.profile
+    }
+  } catch (e) {
+    console.warn('[feeds] upcoming-events profile fetch failed', e)
+  }
+  return upcoming
+}
+
 // ── Events tab loader ────────────────────────────────────────────────
 // Cache-first + progressive: paint instantly from localStorage if we have
 // a recent snapshot, then open a live subscription that streams events in
@@ -552,17 +598,14 @@ async function loadEvents() {
 
   // 2. Live refresh.
   try {
-    const outbox = await fetchShowOutboxRelays(STATIC_RELAYS)
-    state.relays = [...new Set([...STATIC_RELAYS, ...outbox])]
-
-    const members = await fetchPackMembers(state.relays)
-    if (!members.size) {
+    const { relays, members: memberList } = await resolveSupporters()
+    state.relays = relays
+    if (!memberList.length) {
       if (!state.eventsByCoord.size) {
         renderPlaceholder(list, 'No supporters found', 'Couldn’t reach the follow packs right now — please try again later.')
       }
       return
     }
-    const memberList = [...members]
 
     // Stream events + deletions, repainting as they land.
     await streamEvents(memberList, state.relays, state, schedulePaint)
@@ -605,15 +648,13 @@ async function loadMarket() {
   showSkeletons(list)
 
   try {
-    const outbox = await fetchShowOutboxRelays(STATIC_RELAYS)
-    const relays = [...new Set([...STATIC_RELAYS, ...outbox])]
-    const members = await fetchPackMembers(relays)
-    if (!members.size) {
+    const { relays, members } = await resolveSupporters()
+    if (!members.length) {
       renderPlaceholder(list, 'No supporters found', 'Couldn’t reach the follow packs right now — please try again later.')
       return
     }
     const mod = await import('/assets/js/feeds-market.js')
-    await mod.renderMarket({ panel, list, relays, members: [...members] })
+    await mod.renderMarket({ panel, list, relays, members })
   } catch (e) {
     console.error('[feeds] market load failed', e)
     renderPlaceholder(list, 'Couldn’t load the marketplace', 'Something went wrong reaching the relays — please try again later.')

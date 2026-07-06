@@ -904,7 +904,7 @@
     @media (max-width: 760px) { .lb-slide { padding: 0.4rem 0.35rem 0.6rem; } }
 
     /* ── Recent boosts ticker (top 20, ~4 visible, scrolls; pfp + name) ── */
-    #boosts-preview { background: var(--cream); }
+    #boosts-preview { background: var(--white); }
     .boost-marquee-hint {
       font-size: 0.82rem;
       color: var(--muted);
@@ -1021,7 +1021,7 @@
 
     /* ── Merch marquee (same engine as the boosts marquee, scrolls the
        opposite direction; simplified cards → open the /merch detail modal) ── */
-    #merch-preview { background: var(--white); }
+    #merch-preview { background: var(--cream); }
     .merch-marquee {
       display: flex;
       align-items: stretch;
@@ -1048,6 +1048,107 @@
       .merch-marquee { -webkit-mask-image: none; mask-image: none; scrollbar-width: auto; }
       .merch-marquee::-webkit-scrollbar { display: initial; height: 8px; }
       .merch-marquee-item.is-dupe { display: none; }
+    }
+
+    /* ── Community Feeds teaser (Events + Marketplace tabs → /feeds) ──
+       Two segmented tabs over an auto-scrolling strip; Events flows right,
+       Marketplace flows left (echoing boosts↔merch below). Event cards reuse
+       .embed-note.is-event (boosts-thread.css); market cards reuse .merch-card
+       (merch.css); the strip mechanics mirror the marquees above. */
+    #community-feeds { background: var(--cream); }
+    .cf-tabs {
+      display: inline-flex;
+      gap: 0.25rem;
+      padding: 0.25rem;
+      margin-bottom: 1rem;
+      background: var(--cream-d);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+    }
+    .cf-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.4rem 0.95rem;
+      border: none;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .cf-tab svg { width: 16px; height: 16px; }
+    .cf-tab:hover { color: var(--text); }
+    .cf-tab.is-active {
+      background: var(--white);
+      color: var(--orange-d);
+      box-shadow: 0 1px 3px rgba(45,32,16,0.12);
+    }
+    .cf-panel { display: none; }
+    .cf-panel.is-active { display: block; }
+    .cf-strip {
+      display: flex;
+      align-items: stretch;
+      overflow-x: auto;
+      overflow-y: hidden;
+      cursor: grab;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      -webkit-mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent);
+      mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent);
+    }
+    .cf-strip::-webkit-scrollbar { display: none; }
+    .cf-strip.is-grabbing { cursor: grabbing; }
+    /* Spacing on the item margin (not container gap) so the two cloned sets
+       stay exactly equal width → seamless wrap. */
+    .cf-item { flex: 0 0 auto; margin-right: 1.25rem; cursor: pointer; }
+    .cf-item--event { width: min(340px, 84vw); }
+    .cf-item--event .embed-note {
+      margin: 0;
+      height: 100%;
+      max-height: 220px;
+      overflow: hidden;
+    }
+    .cf-item--market { width: min(220px, 66vw); }
+    .cf-item--market .merch-card { height: 100%; }
+    /* Seller identity chip on a market card: pfp (or initial) + display name. */
+    .cf-item-seller {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+      min-width: 0;
+    }
+    .cf-seller-pfp {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex: 0 0 auto;
+      background: var(--cream-d);
+    }
+    .cf-seller-pfp--none {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.62rem;
+      font-weight: 700;
+      color: var(--muted);
+    }
+    .cf-seller-name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .cf-empty { color: var(--muted); font-style: italic; padding: 1.5rem 0; align-self: center; }
+    @media (prefers-reduced-motion: reduce) {
+      .cf-strip { -webkit-mask-image: none; mask-image: none; scrollbar-width: auto; }
+      .cf-strip::-webkit-scrollbar { display: initial; height: 8px; }
+      .cf-item.is-dupe { display: none; }
     }
 
     /* Supporter tier rings (gold/silver/bronze) on the carousel pfps.
@@ -1661,6 +1762,51 @@
   </div>
 </section>
 
+<!-- ════════════════════════════ COMMUNITY FEEDS ════════════════════════════
+     A two-tab teaser of the /feeds page: Events (default) + Marketplace,
+     each an auto-scrolling strip of real content scoped to the show's
+     supporter follow packs. Cards click through to /feeds#<tab>. Data +
+     supporter resolution reuse the /feeds modules (see home-feeds.js). -->
+<section id="community-feeds" class="reveal" aria-label="Community feeds">
+  <div class="home-module">
+    <div class="home-module-head">
+      <div>
+        <h2 class="home-module-title"><a href="/feeds">Community Feeds</a></h2>
+      </div>
+      <a class="home-module-link" href="/feeds#events" data-cf-seeall>See all Community Events →</a>
+    </div>
+
+    <div class="cf-tabs" role="tablist" aria-label="Community feeds">
+      <button type="button" class="cf-tab is-active" role="tab" data-cf-tab="events" aria-selected="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        <span>Events</span>
+      </button>
+      <button type="button" class="cf-tab" role="tab" data-cf-tab="market" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+          <line x1="7" y1="7" x2="7.01" y2="7"/>
+        </svg>
+        <span>Marketplace</span>
+      </button>
+    </div>
+
+    <div class="cf-panel is-active" data-cf-panel="events">
+      <div class="cf-strip" id="cf-strip-events" data-cf-strip="events">
+        <p class="cf-empty">Loading community events…</p>
+      </div>
+    </div>
+    <div class="cf-panel" data-cf-panel="market" hidden>
+      <div class="cf-strip" id="cf-strip-market" data-cf-strip="market">
+        <p class="cf-empty">Loading community listings…</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ══════════════════════════════ RECENT BOOSTS ══════════════════════════════
      Continuous marquee of the real Nostr boost notes (same cards as
      /boosts), flowing by like a wall of reviews. Hover/focus or tap to
@@ -1673,7 +1819,6 @@
       </div>
       <a class="home-module-link" href="/boosts.html">See all boosts →</a>
     </div>
-    <p class="boost-marquee-hint">Hover to pause · drag to browse · click a boost to read it in full.</p>
     <div class="boost-marquee" id="boost-marquee">
       <p class="boost-empty">Loading recent boosts…</p>
     </div>
@@ -2558,5 +2703,9 @@
 <!-- Merch marquee — simplified product cards; reuses merch.js's catalog +
      detail modal. Scrolls opposite the boosts marquee above. -->
 <script type="module" src="/assets/js/home-merch.js"></script>
+
+<!-- Community Feeds teaser — Events + Marketplace strips; reuses the /feeds
+     modules' supporter resolution + data (see home-feeds.js). -->
+<script type="module" src="/assets/js/home-feeds.js"></script>
 </body>
 </html>

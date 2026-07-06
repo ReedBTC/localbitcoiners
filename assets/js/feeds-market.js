@@ -521,25 +521,12 @@ function renderManageButton(panel) {
   }, 'Manage / List Items'))
 }
 
-// ── Entry point ──────────────────────────────────────────────────────
-export async function renderMarket({ panel, list, relays, members }) {
-  showSkeletons(list)
-  feedRelays = relays || []
-
-  // Manage button shows immediately (independent of the fetch) and tracks
-  // login changes — the loader runs once, so subscribe just once here.
-  renderManageButton(panel)
-  if (!renderMarket._manageWired) {
-    renderMarket._manageWired = true
-    window.LBLogin?.onChange?.(() => renderManageButton(panel))
-  }
-
-  // Let the shared nav cart icon open the cart IN PLACE on /feeds (merch.js
-  // only wires this on /merch, via its init). Without it the icon would
-  // navigate to /merch.html#cart, where the LB-only catalog can't resolve a
-  // community seller's line and would silently drop it.
-  window.openMerchCart = openCart
-
+// ── Data pipeline ────────────────────────────────────────────────────
+// Resolve the supporter set's marketplace into a render-ready, classified,
+// sorted item list (Buy Now first, then newest) + the current BTC/USD rate.
+// Exported so the homepage teaser (home-feeds.js) surfaces the same listings
+// the Marketplace tab does without duplicating the fetch/grade/sort logic.
+export async function loadMarketItems({ relays, members }) {
   const authors = [...new Set([...(members || []), MERCHANT_HEX].map((a) => a.toLowerCase()))]
   const events = await fetchMarketEvents(authors, relays)
 
@@ -561,10 +548,7 @@ export async function renderMarket({ panel, list, relays, members }) {
     (p) => p.visibility !== 'hidden' && p.status !== 'sold' && p.visibility !== 'sold' && p.stock !== 0 && !soldInPrice(p),
   )
 
-  if (!products.length) {
-    renderPlaceholder(list, 'No listings yet', 'No marketplace listings from supporters right now — check back soon.')
-    return
-  }
+  if (!products.length) return { items: [], rate: null }
 
   // Merchant profiles (pfp / name / lud16) drive display AND the Lightning-
   // payability check. Fetched for EVERY seller incl. the house merchant (its
@@ -581,6 +565,34 @@ export async function renderMarket({ panel, list, relays, members }) {
       if (a.buyNow !== b.buyNow) return a.buyNow ? -1 : 1
       return (b.product.created_at || 0) - (a.product.created_at || 0)
     })
+
+  return { items, rate }
+}
+
+// ── Entry point (Marketplace tab) ────────────────────────────────────
+export async function renderMarket({ panel, list, relays, members }) {
+  showSkeletons(list)
+  feedRelays = relays || []
+
+  // Let the shared nav cart icon open the cart IN PLACE on /feeds (merch.js
+  // only wires this on /merch, via its init). Without it the icon would
+  // navigate to /merch.html#cart, where the LB-only catalog can't resolve a
+  // community seller's line and would silently drop it.
+  window.openMerchCart = openCart
+
+  // Manage button shows immediately (independent of the fetch) and tracks
+  // login changes — the loader runs once, so subscribe just once here.
+  renderManageButton(panel)
+  if (!renderMarket._manageWired) {
+    renderMarket._manageWired = true
+    window.LBLogin?.onChange?.(() => renderManageButton(panel))
+  }
+
+  const { items, rate } = await loadMarketItems({ relays, members })
+  if (!items.length) {
+    renderPlaceholder(list, 'No listings yet', 'No marketplace listings from supporters right now — check back soon.')
+    return
+  }
 
   const onContact = (item) => openContactModal(item, relays)
   const grid = h('div', { class: 'feed-list market-grid' })
