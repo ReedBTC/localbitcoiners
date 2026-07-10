@@ -45,6 +45,15 @@ since-cursor for the next run. First run has no state file and backfills all
 the way to SINCE_CUTOFF (10am EST Feb 2 2026 — per Reed, when the show
 started). Subsequent runs re-query from a small overlap window before
 last_processed; output is deduped by event_id so overlap is harmless.
+
+state.json also holds `item_url_map` (item_guid -> canonical listen URL),
+accumulated across every run. Each boost record carries `item_url`/
+`show_url` — the third element of the NIP-73 `i` tag, when the booster's app
+provides one (Fountain does; BoostMeBitch/BowlAfterBowl/PV4V don't). Every
+run harvests any newly-seen URL for a given item_guid into the map, then
+fills `item_url: null` on any boost of the same episode from an app that
+didn't provide one — so an episode boosted via a URL-less app today still
+picks up its link the next time anyone boosts it via Fountain.
 """
 
 import json
@@ -258,13 +267,18 @@ def resolve_zap_amount(receipt_event):
 # ── boost classification ─────────────────────────────────────────────────────
 def classify_boost(event, receipt_cache):
     tags = event.get("tags", [])
-    i_vals = [t[1] for t in tags if len(t) >= 2 and t[0] == "i"]
+    i_tags = [t for t in tags if len(t) >= 2 and t[0] == "i"]
     podcast_guid = item_guid = None
-    for v in i_vals:
+    item_url = show_url = None
+    for t in i_tags:
+        v = t[1]
+        url = t[2] if len(t) >= 3 and t[2] else None
         if v.startswith("podcast:item:guid:"):
             item_guid = v[len("podcast:item:guid:"):]
+            item_url = url
         elif v.startswith("podcast:guid:"):
             podcast_guid = v[len("podcast:guid:"):]
+            show_url = url
 
     if not item_guid:            # episode-level only, no show-level mentions
         return None
@@ -322,6 +336,8 @@ def classify_boost(event, receipt_cache):
         "client":          client,
         "podcast_guid":    podcast_guid,
         "item_guid":       item_guid,
+        "item_url":        item_url,
+        "show_url":        show_url,
         "r_urls":          r_urls,
     }
 
@@ -497,6 +513,38 @@ def main():
         boosts_by_id[b["event_id"]] = b
     all_boosts = sorted(boosts_by_id.values(), key=lambda b: b["created_at"])
 
+    # Schema normalization: older records (written before item_url/show_url
+    # existed) won't have these keys at all if their raw event wasn't
+    # re-fetched this run. Backfill the keys as null so every record in the
+    # output has a consistent shape regardless of when it was last (re)seen.
+    for b in all_boosts:
+        b.setdefault("item_url", None)
+        b.setdefault("show_url", None)
+
+    # Persistent item_guid -> item_url map (state.json). Apps other than
+    # Fountain emit the same item_guid but no URL hint on their own boosts;
+    # once ANY boost for that item_guid carries a real URL (almost always a
+    # Fountain-sourced one), every other boost of that same episode inherits
+    # it here — including ones from apps that boosted it before Fountain did,
+    # on a later run. Last-write-wins per Reed/website-agent's verification
+    # that no item_guid maps to conflicting URLs in practice; still logs a
+    # warning if that ever turns out false, rather than trusting it silently.
+    item_url_map = dict(state.get("item_url_map") or {})
+    for b in all_boosts:
+        ig, url = b.get("item_guid"), b.get("item_url")
+        if ig and url:
+            prev = item_url_map.get(ig)
+            if prev and prev != url:
+                print(f"  [warn] item_url_map conflict for {ig}: {prev!r} vs {url!r} — keeping newest")
+            item_url_map[ig] = url
+    filled = 0
+    for b in all_boosts:
+        if not b.get("item_url") and b.get("item_guid") in item_url_map:
+            b["item_url"] = item_url_map[b["item_guid"]]
+            filled += 1
+    if filled:
+        print(f"  Backfilled item_url on {filled} boost(s) from the persistent guid→url map")
+
     show_cache = dict(existing.get("shows", {}))
     guids_needed = {b["podcast_guid"] for b in all_boosts if b.get("podcast_guid")}
     for pg in guids_needed:
@@ -531,7 +579,9 @@ def main():
 
     new_last_processed = max((e["created_at"] for e in events), default=since)
     state["last_processed"] = max(last_processed or 0, new_last_processed, since)
+    state["item_url_map"] = item_url_map
     save_state(state)
+    print(f"  item_url_map: {len(item_url_map)} known item_guid→url entries")
     print(f"State saved → {STATE_FILE} (last_processed={state['last_processed']})")
 
 
