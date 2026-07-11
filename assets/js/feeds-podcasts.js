@@ -28,6 +28,7 @@ import {
   renderSegmentsInto,
 } from '/assets/js/boosts-thread.js'
 import { fromApiValue, applyExternalOverrides } from '/assets/js/value-block.js'
+import { buildActionBar, configureBoostActions } from '/assets/js/boost-actions.js'
 
 const API_URL = '/api/community-boosts'
 const VALUE_API = '/api/value'   // Podcast Index value-block proxy (splits)
@@ -403,8 +404,16 @@ async function onBoostClick(item, btn) {
   btn.disabled = true
   try {
     const url = `${VALUE_API}?feedId=${encodeURIComponent(feedId)}` + (guid ? `&guid=${encodeURIComponent(guid)}` : '')
-    const resp = await fetch(url, { headers: { Accept: 'application/json' } })
-    const data = resp.ok ? await resp.json() : null
+    let data = null
+    try {
+      const resp = await fetch(url, { headers: { Accept: 'application/json' } })
+      // Distinguish a server/config error (e.g. the value proxy is down or the
+      // PI keys aren't set) from a genuine "this episode has no value block" —
+      // otherwise an outage looks like every episode is un-boostable.
+      if (!resp.ok) { showToast('Couldn’t load boost splits — please try again in a moment.', true); return }
+      data = await resp.json()
+    } catch { showToast('Couldn’t load boost splits — please try again in a moment.', true); return }
+    if (data && data.error) { showToast('Boost splits are unavailable right now.', true); return }
     const parsed = fromApiValue(data)
     if (!parsed) { showToast('This episode has no value block to boost.', true); return }
 
@@ -474,11 +483,18 @@ function episodeCard(item) {
   // Shownotes teaser: first ~2 lines of the description, with a link out to the
   // full description on the episode's Boost Me Bitch page.
   const descText = htmlToText(ep.description)
-  const descEl = descText
-    ? h('div', { class: 'pcast-desc-wrap' }, [
-        h('p', { class: 'pcast-desc', text: descText }),
+  const descP = descText ? h('p', { class: 'pcast-desc', text: descText }) : null
+
+  // Links row under the description: "See full description →" (BMB page) and a
+  // compact "Listen on Fountain" link, tucked together instead of a big pill in
+  // the corner.
+  const linksRow = (bmbUrl || fountainUrl)
+    ? h('div', { class: 'pcast-links' }, [
         bmbUrl
           ? h('a', { class: 'pcast-desc-more', href: bmbUrl, target: '_blank', rel: 'noopener noreferrer' }, 'See full description →')
+          : null,
+        fountainUrl
+          ? h('a', { class: 'pcast-fountain-link', href: fountainUrl, target: '_blank', rel: 'noopener noreferrer', title: 'Listen on Fountain' }, 'Listen on Fountain ↗')
           : null,
       ])
     : null
@@ -486,24 +502,15 @@ function episodeCard(item) {
   const body = h('div', { class: 'pcast-card-body' }, [
     show?.title ? h('div', { class: 'pcast-show', text: show.title }) : null,
     titleEl,
-    descEl,
+    descP,
+    linksRow,
   ])
 
-  // Top-right cluster: a "Listen on Fountain" pill (when we have the episode
-  // URL) alongside the ⋮ subscribe menu, with the episode's air date beneath.
-  const actionsRow = h('div', { class: 'pcast-card-actions' }, [
-    fountainUrl
-      ? h('a', {
-          class: 'pcast-fountain-pill', href: fountainUrl,
-          target: '_blank', rel: 'noopener noreferrer', title: 'Listen on Fountain',
-        }, 'Listen on Fountain')
-      : null,
+  // Top-right cluster: just the ⋮ subscribe menu with the episode air date beneath.
+  const actionsCol = h('div', { class: 'pcast-card-actions-col' }, [
     subscribeMenu(item),
+    ep.published ? h('div', { class: 'pcast-card-aired', title: 'Episode aired' }, fullDate(ep.published)) : null,
   ])
-  const aired = ep.published
-    ? h('div', { class: 'pcast-card-aired', title: 'Episode aired' }, fullDate(ep.published))
-    : null
-  const actionsCol = h('div', { class: 'pcast-card-actions-col' }, [actionsRow, aired])
   const head = h('div', { class: 'pcast-card-head' }, [media, body, actionsCol])
 
   // Inline audio player (native controls, no preload until played).
@@ -652,7 +659,15 @@ function boostRow(b) {
     renderSegmentsInto(msgEl, parseSegments(msg), { inEmbed: true })
     parts.push(msgEl)
   }
-  return h('div', { class: 'pcast-boost' }, parts)
+  const row = h('div', { class: 'pcast-boost' }, parts)
+
+  // Reuse the shared boosts-page action bar (Reply / Repost / Like / Zap). The
+  // boost IS a kind-1 note, so id + pubkey is all these actions need.
+  if (b.event_id && b.booster_pubkey) {
+    const ev = { id: b.event_id, pubkey: b.booster_pubkey, kind: 1, content: b.message || '', created_at: b.created_at, tags: [] }
+    try { row.appendChild(buildActionBar(ev, row)) } catch (e) { console.warn('[podcasts] action bar failed', e) }
+  }
+  return row
 }
 
 // Per-boost overflow (⋮) menu — its one item copies the boost note's nevent.
@@ -834,7 +849,14 @@ export async function renderPodcasts({ panel, list }) {
   // Pre-warm the boost widget in the background once the feed is up, so the
   // first Boost click doesn't pay the cold-start cost (bundle load + session /
   // wallet restore). Deferred so it doesn't compete with first paint.
-  setTimeout(() => { ensureWidgetLoaded().catch(() => {}) }, 1200)
+  setTimeout(() => {
+    ensureWidgetLoaded()
+      // Wire the shared reply/repost/like/zap actions once the widget (window.
+      // LBLogin) is up, so boost-comment action bars work and hydrate the
+      // user's existing likes/reposts.
+      .then(() => { try { configureBoostActions({}) } catch {} })
+      .catch(() => {})
+  }, 1200)
 
   // Names/avatars enrich the cards but shouldn't gate first paint — render
   // immediately with initials, repaint once booster profiles resolve, and

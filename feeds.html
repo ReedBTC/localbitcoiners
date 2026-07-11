@@ -614,18 +614,18 @@
       margin-top: 0.25rem; font-size: 0.78rem; color: var(--muted);
     }
 
-    /* Shownotes teaser (first ~2 lines) + "see full description" link. */
-    .pcast-desc-wrap { margin-top: 0.35rem; }
+    /* Shownotes teaser (first ~2 lines) + a links row ("see full description"
+       and a compact "Listen on Fountain") beneath it. */
     .pcast-desc {
-      margin: 0; font-size: 0.82rem; line-height: 1.4; color: var(--muted);
+      margin: 0.35rem 0 0; font-size: 0.82rem; line-height: 1.4; color: var(--muted);
       display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
       overflow-wrap: anywhere; word-break: break-word;
     }
-    .pcast-desc-more {
-      display: inline-block; margin-top: 0.2rem;
-      font-size: 0.78rem; font-weight: 700; color: var(--accent-d); text-decoration: none;
+    .pcast-links { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.35rem; }
+    .pcast-desc-more, .pcast-fountain-link {
+      font-size: 0.78rem; font-weight: 700; color: var(--accent-d); text-decoration: none; white-space: nowrap;
     }
-    .pcast-desc-more:hover { text-decoration: underline; }
+    .pcast-desc-more:hover, .pcast-fountain-link:hover { text-decoration: underline; }
 
     /* Inline audio player. */
     .pcast-player-row { padding: 0.1rem 0.7rem 0.2rem; }
@@ -688,20 +688,9 @@
     .pcast-title-link { color: var(--text); text-decoration: none; }
     .pcast-title-link:hover { color: var(--accent-d); text-decoration: underline; }
 
-    /* Top-right card cluster: "Listen on Fountain" pill + ⋮ subscribe menu,
-       with the episode air date stacked beneath. */
+    /* Top-right card cluster: the ⋮ subscribe menu with the air date beneath. */
     .pcast-card-actions-col { display: flex; flex-direction: column; align-items: flex-end; gap: 0.3rem; align-self: flex-start; flex-shrink: 0; }
     .pcast-card-aired { font-size: 0.68rem; color: var(--muted); white-space: nowrap; }
-    .pcast-card-actions { display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0; }
-    .pcast-fountain-pill {
-      display: inline-flex; align-items: center; white-space: nowrap;
-      padding: 0.25rem 0.6rem;
-      font-size: 0.72rem; font-weight: 700; line-height: 1;
-      color: var(--accent-d); background: var(--tint);
-      border: 1px solid var(--border); border-radius: 999px; text-decoration: none;
-      transition: background 0.12s, border-color 0.12s;
-    }
-    .pcast-fountain-pill:hover { background: var(--white); border-color: var(--accent); }
 
     /* ⋮ subscribe menu on the card head (top-right) — show-level app links. */
     .pcast-cardmenu { position: relative; flex-shrink: 0; align-self: flex-start; }
@@ -798,6 +787,13 @@
       white-space: pre-wrap; word-break: break-word;
     }
     .pcast-boost-msg a { color: var(--accent-d); }
+    /* Shared reply/repost/like/zap bar (boost-actions.css) under each comment —
+       scoped-down here: no divider line, smaller + tighter than the boosts page. */
+    .pcast-boost .note-actions {
+      margin-top: 0.15rem; padding-top: 0; border-top: none; gap: 0.05rem;
+    }
+    .pcast-boost .note-actions button { font-size: 0.72rem; padding: 0.2rem 0.4rem; gap: 0.25rem; }
+    .pcast-boost .note-actions .lb-icon { font-size: 0.82rem; }
 
     /* Per-boost ⋮ overflow menu */
     .pcast-more { position: relative; flex-shrink: 0; }

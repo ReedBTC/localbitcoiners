@@ -170,7 +170,7 @@ function ensureLoggedIn() {
 }
 
 // ── Action bar ───────────────────────────────────────────────────────
-function buildActionBar(ev, cardEl) {
+export function buildActionBar(ev, cardEl) {
   const bar = document.createElement('div')
   bar.className = 'note-actions'
 
