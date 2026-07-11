@@ -98,11 +98,15 @@ export function buildExternalNoteTemplate({
   amountSats, message, showTitle, episodeTitle, podcastGuid, itemGuid, bmbUrl,
 }) {
   const sats = Number(amountSats) || 0
-  const lines = [`Just boosted ⚡ ${sats.toLocaleString()} sats to ${showTitle || 'a podcast'}`]
-  if (episodeTitle) { lines.push(''); lines.push(`"${episodeTitle}"`) }
   const msg = (message || '').trim()
-  if (msg) { lines.push(''); lines.push(msg.slice(0, MAX_MESSAGE_CHARS)) }
-  if (bmbUrl) { lines.push(''); lines.push(bmbUrl) }
+  const showEp = episodeTitle
+    ? `${showTitle || 'a podcast'} • ${episodeTitle}`
+    : (showTitle || 'a podcast')
+  const lines = [`⚡Just boosted ${sats.toLocaleString()} sats 📱 via localbitcoiners.com`]
+  if (msg) lines.push(`💬 "${msg.slice(0, MAX_MESSAGE_CHARS)}"`)
+  lines.push('')
+  lines.push(`🎙️ ${showEp}`)
+  if (bmbUrl) lines.push(bmbUrl)
 
   const tags = [
     ['t', 'boost'],
