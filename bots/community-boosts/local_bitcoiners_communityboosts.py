@@ -56,6 +56,7 @@ didn't provide one — so an episode boosted via a URL-less app today still
 picks up its link the next time anyone boosts it via Fountain.
 """
 
+import html
 import json
 import re
 import subprocess
@@ -382,6 +383,25 @@ def resolve_show(podcast_guid, key, secret):
         return None
 
 
+# Podcast Index episode descriptions are frequently HTML; the website only
+# renders a short teaser and links out for the full text, so we store a
+# plain-text, length-capped version — strips tags, unescapes entities,
+# collapses whitespace, truncates on a character boundary with an ellipsis.
+# Keeps community_boosts.json small (~400 chars vs full HTML bodies).
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def clean_description(raw, limit=400):
+    if not raw:
+        return None
+    text = _HTML_TAG_RE.sub(" ", raw)     # tags → space so words don't fuse
+    text = html.unescape(text)            # &amp; etc. → literal chars
+    text = re.sub(r"\s+", " ", text).strip()
+    if len(text) > limit:
+        text = text[:limit].rstrip() + "…"
+    return text or None
+
+
 def resolve_episode(item_guid, feed_id, key, secret):
     try:
         params = {"guid": item_guid}
@@ -400,6 +420,9 @@ def resolve_episode(item_guid, feed_id, key, secret):
             "episode_number":  ep.get("episode"),
             "podcast_guid":    ep.get("podcastGuid") or None,
             "feed_id":         ep.get("feedId"),
+            "enclosure_url":   ep.get("enclosureUrl"),
+            "enclosure_type":  ep.get("enclosureType"),
+            "description":     clean_description(ep.get("description")),
         }
     except Exception as e:
         print(f"  [warn] Podcast Index episode lookup failed for {item_guid}: {e}")
@@ -557,12 +580,30 @@ def main():
         print(f"  [exclude] {pg} medium={show_cache[pg].get('medium')!r} — dropping (not a podcast)")
     all_boosts = [b for b in all_boosts if b.get("podcast_guid") not in excluded_shows]
 
+    # Resolve each boosted episode's metadata. An episode is (re)resolved when
+    # it's not cached yet, OR it's cached from before the enclosure_url/
+    # enclosure_type/description fields existed — a one-time backfill that
+    # enriches historical episodes in place (byguid works for episodes older
+    # than a feed's most recent 50). Episodes PI genuinely can't find stay
+    # cached as None so we don't re-query them every run, and a transient miss
+    # on a re-resolve never clobbers good existing data.
     episode_cache = dict(existing.get("episodes", {}))
-    for b in all_boosts:
-        ig, pg = b.get("item_guid"), b.get("podcast_guid")
-        if ig and ig not in episode_cache and pi_key and pi_secret:
+    if pi_key and pi_secret:
+        for b in all_boosts:
+            ig, pg = b.get("item_guid"), b.get("podcast_guid")
+            if not ig:
+                continue
+            cached = episode_cache.get(ig)
+            needs = ig not in episode_cache or (
+                isinstance(cached, dict) and "enclosure_url" not in cached)
+            if not needs:
+                continue
             feed_id = (show_cache.get(pg) or {}).get("feed_id") if pg else None
-            episode_cache[ig] = resolve_episode(ig, feed_id, pi_key, pi_secret)
+            resolved = resolve_episode(ig, feed_id, pi_key, pi_secret)
+            if resolved is not None:
+                episode_cache[ig] = resolved
+            elif ig not in episode_cache:
+                episode_cache[ig] = None
 
     output = {
         "generated_at": datetime.now(tz=timezone.utc).isoformat(),
