@@ -506,12 +506,14 @@ function episodeCard(item) {
     linksRow,
   ])
 
-  // Top-right cluster: just the ⋮ subscribe menu with the episode air date beneath.
-  const actionsCol = h('div', { class: 'pcast-card-actions-col' }, [
-    subscribeMenu(item),
+  // Media column: episode art with the air date tucked directly beneath it —
+  // keeps the date off the body's right edge so the ⋮ menu can hug the corner
+  // and the body reclaims the width.
+  const mediaCol = h('div', { class: 'pcast-media-col' }, [
+    media,
     ep.published ? h('div', { class: 'pcast-card-aired', title: 'Episode aired' }, fullDate(ep.published)) : null,
   ])
-  const head = h('div', { class: 'pcast-card-head' }, [media, body, actionsCol])
+  const head = h('div', { class: 'pcast-card-head' }, [mediaCol, body, subscribeMenu(item)])
 
   // Inline audio player (native controls, no preload until played).
   const audioUrl = safeHttpUrl(ep.enclosure_url)
