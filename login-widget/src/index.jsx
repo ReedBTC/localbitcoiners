@@ -6,6 +6,7 @@ import { NDKEvent } from '@nostr-dev-kit/ndk'
 import BoostButton from './components/BoostButton.jsx'
 import LoginModal from './components/LoginModal.jsx'
 import EpisodeBoostModal from './components/EpisodeBoostModal.jsx'
+import ExternalBoostModal from './components/ExternalBoostModal.jsx'
 import BoostModal from './components/BoostModal.jsx'
 import IdentityWidget from './components/IdentityWidget.jsx'
 import WalletConnectModal from './components/WalletConnectModal.jsx'
@@ -432,6 +433,38 @@ function EpisodeBoostHost() {
   )
 }
 
+// ── External-episode boost host (other podcasts, via /feeds) ─────────────
+// Separate signal + host from EpisodeBoostHost so the LB episode-boost path
+// is untouched. State: { episode, recipientsBundle } or null when closed.
+const externalBoostListeners = new Set()
+let externalBoostState = null
+function setExternalBoostState(v) {
+  externalBoostState = v || null
+  for (const fn of externalBoostListeners) {
+    try { fn(externalBoostState) } catch {}
+  }
+}
+
+function ExternalBoostHost() {
+  const user = useSharedUser()
+  const [state, setLocalState] = useState(externalBoostState)
+  useEffect(() => {
+    const fn = (v) => setLocalState(v)
+    externalBoostListeners.add(fn)
+    return () => { externalBoostListeners.delete(fn) }
+  }, [])
+  if (!state) return null
+  return createPortal(
+    <ExternalBoostModal
+      user={user || null}
+      onClose={() => setExternalBoostState(null)}
+      episode={state.episode}
+      recipientsBundle={state.recipientsBundle}
+    />,
+    document.body,
+  )
+}
+
 // ── Meetup-flow modal host ───────────────────────────────────────────────
 // One signal, one host. The four entry points on the meetups page —
 // "My meetups", "Search Nostr", "Paste naddr", "+ Create new" — set the
@@ -594,6 +627,7 @@ const api = {
     }
     createRoot(makeHost('lb-login-prompt-host')).render(<LoginPromptHost />)
     createRoot(makeHost('lb-episode-boost-host')).render(<EpisodeBoostHost />)
+    createRoot(makeHost('lb-external-boost-host')).render(<ExternalBoostHost />)
     createRoot(makeHost('lb-show-boost-host')).render(<ShowBoostHost />)
     createRoot(makeHost('lb-wallet-connect-host')).render(<WalletConnectHost />)
     createRoot(makeHost('lb-meetup-modal-host')).render(<MeetupModalHost />)
@@ -842,6 +876,53 @@ const api = {
       episode,
       splits: { ...splits, recipients: normalizedRecipients },
     })
+  },
+
+  /**
+   * Open the EXTERNAL-episode boost modal (another podcast's episode, from
+   * /feeds). Same login → real-user → signer → wallet gate chain as
+   * openEpisodeBoost, but renders ExternalBoostModal and applies NO LB
+   * recipient overrides — external recipients + the Fountain→aquafox
+   * redirect are already resolved by the caller (value-block.js).
+   *
+   * @param {object} args
+   * @param {object} args.episode          - { showTitle, episodeTitle, podcastGuid, itemGuid, bmbUrl }
+   * @param {object} args.recipientsBundle - { recipients, totalWeight }
+   */
+  async openExternalBoost({ episode, recipientsBundle }) {
+    if (!episode || !recipientsBundle || !Array.isArray(recipientsBundle.recipients) || recipientsBundle.recipients.length === 0) {
+      console.warn('[LBLogin] openExternalBoost: missing episode/recipients payload')
+      return
+    }
+    const args = { episode, recipientsBundle }
+
+    // Gate 1: signed in?
+    if (!currentUser || currentUser === undefined) {
+      setPendingAction(() => api.openExternalBoost(args))
+      api.requestLogin()
+      return
+    }
+    // Gate 1.5: stub user — wait for real restore (NWC unlock needs the real signer).
+    if (isStubUser(currentUser)) {
+      setPendingAction(() => api.openExternalBoost(args))
+      ensureRealRestore()
+      return
+    }
+    // Gate 1.75: signer-account match (the boostagram embeds the sender pubkey).
+    if (!await ensureSignerVerified()) return
+
+    // Gate 2: wallet connected?
+    if (!wallet.isReady()) {
+      wallet.ensureReady(currentUser)
+        .then((ok) => {
+          if (ok) api.openExternalBoost(args)
+          else { setPendingAction(() => api.openExternalBoost(args)); api.openWalletConnect() }
+        })
+        .catch(() => { setPendingAction(() => api.openExternalBoost(args)); api.openWalletConnect() })
+      return
+    }
+
+    setExternalBoostState({ episode, recipientsBundle })
   },
 
   /**

@@ -1,0 +1,897 @@
+rev (00:01.442)
+Hey, welcome back. Rev Hodel here. I'm back with Reed, and tonight we have Shannon of Columbus Bitcoin. And we're going to talk to Shannon all about what cool things Columbus has going on. And before we get into what Shannon's got going on over there in Columbus, I'm going to, as usual, talk about my most recent meetup adventure. And this one was the South Bend Meetup.
+
+That's my meetup and that's the first Thursday of every month at Lang Lab. And this was pretty cool. we've been attending this we've been, yeah, hosting the meetup at this venue for over a year. And we've been working on getting them to accept Bitcoin there. They have a square point of sale system, and it started off as, you know, basically all right, we
+
+We don't wanna take Bitcoin through the point of sale, but the bartender was cool with taking tips. So I got him set up with a moon wallet and we've been tipping the bartender, for all this time. And it was actually kind of cool because he he had like lost his phone and had to restore the wallet and he had backed up his keys correctly and and was able to restore it and all his bitcoin was still there. And so that was kind of a win. But finally this meetup
+
+the right person was there to say, Hey, can you turn on this this Bitcoin payment optionality? And we spent some time kind of poking around in in the user interface there. Couldn't it wasn't obvious and the guy was like, Well, let me look into it 'cause I w i at that point I'd been standing there for like ten minutes as we've been poking around, seeing if we could get it set up and he came out onto the patio where we were hanging out. He's like, All right, we got it. We're taking Bitcoin. And so then
+
+We all went in there and and started buying our drinks and paying in Bitcoin. And so as as I was talking to him a little bit more, I'm like, So what do you got? What's what are you gonna do? Do you are you gonna flip it back into fiat automatically? What what kind of setup do you have? And he's Well, I haven't had a really chance to think about it. So we're just gonna hold it. And you know, when when we need the cash flow, we'll the the Bitcoin will be the last thing we liquidate in order to meet our cash flow needs. And, you know.
+
+rev (02:25.696)
+It's just a handful of drinks every month anyway, so it seems like they should be able to hold that for a decent period of time before they have to liquidate and hopefully the the price moves in their favor. It's a good time to start stacking as you as it is, because it's always better to start when the price is low, rather than high, in my opinion. How much how much lower can it go, guys? Come on. and f and for how much longer? I don't know. I'm always way too bullish. But
+
+Shannon ( Columbus Bitcoin) (02:46.981)
+Yeah.
+
+rev (02:52.502)
+And and so th the the final thing that I'll add to this little story is that I always try and we try and do a little cookout at our meetup. And I because I have this relationship with the corner store down the road for me, where I can buy stuff there in Bitcoin, I always stop over there and I buy some they have these pre made burger patties and and buns. And so I pick up some burgers and buns and grill them up at the meetup. And so now it's you can attend the meetup and eat food that was purchased with Bitcoin, buy your beer with Bitcoin.
+
+It's a whole Bitcoin only experience at our meetup now, which is pretty awesome. and so that's really the the exciting stuff. th the conversation was was the typical Bitcoin gossip, whatever's going on. We just kinda touched on whatever people wanted to talk about in relationship to their own Bitcoin journeys at the time. And was a great meetup, man. I I also found a way to hang our flag in a really noticeable area.
+
+Like so it was up high and and it it was much more visible now. And so we kind of did get some a attention from the flag hanging. some people that were not Bitcoiners or n even knew that a Bitcoin meetup was going on were like, what's going on with that flag? What and we're like, hey, yeah, join the Bitcoin meetup. We're doing it right here. And so that that was cool too. So even I am learning some cool techniques from myself doing the podcast over time to improve my own meetup.
+
+And so I appreciate all the guests and everybody that's come on to help me on my meetup organization journey. Reed, how about you? What's going on?
+
+Reed (04:29.635)
+Yeah man, dude. I've I know I've said it before. Like I'm learning all kinds of stuff from from hosting this pod, but you know, just listening, right? Even just listening to what everybody else has going on and and spending more t I think it was might have been fundamentals. One w somebody from one of the earlier episodes brought up the point. It's just like the more opportunity that you have to just be talking about, even just talking about your meetup, you just start thinking about it more.
+
+And then all of a sudden you start thinking of things. yeah, you know, I should probably I that's something I could easily do at the meetup. so you know, I've been learning all kinds of stuff. so okay, so I don't have a meetup adventure. I think I mentioned last time. So our meetup's still a couple weeks out. our next meetup is Western Mass Bitcoin meetup number forty-seven is on Sunday, July nineteenth at six p.m. at the Heavy Culture Cooperative in East Hampton Mass. but
+
+Instead of talking too much about of an upcoming meetup, what I'd like to do instead is talk for a minute again about our the meetups page on our website. So this is localbitcoiners.com forward slash meetups. And I know we talked about some of this last time, but I'm gonna I'm gonna reiterate it here right at right at the top of the show. So one of the things that we're trying to do is we're trying to find all the meetups that
+
+are either that participate in some way in the show. So whether you listen to the show, whether you're a guest on the show, if you're just a fan of the show, maybe you don't even listen to the show, but you've heard of us and you know that we talk about meetups all the time. Well it would be really great if we could talk about your meetup. And one of the best ways that we could think of to do that is if you boost your meetup and we'll talk about it here on the show. So we added some tools to the website for people to be able to put their meetups on Noster.
+
+And then we can find the meetups on Noster. And we're going to talk about that later on in the show. But when you post your meetup on Noster, it makes it a lot, a lot easier to find. And it's just because of the openness of the Noster protocol. It just makes everything a lot easier to find and aggregate and and put out all things right in the same place. Okay, so what I really want to talk about is this how how do you share your meetup? How do you boost your meetup on the show?
+
+Reed (06:53.827)
+So if you go to localbakewinners.com forward slash meetups and you click on share your meetup, then you're gonna see that you have four different options to do that. So if you've already posted your meetup on Noster and you just want to share it with the show, no problem. You just click on my meetups and it will show you all the meetups that you've listed on Noster already. Because again, these things are easy to find. Once it's on Noster, we just look for your NPUB and then bam, we can find all your events. And you can you can boost your meetup right from there.
+
+but you don't even have to be the organizer. You don't even have to be the one who posted it on meetup. If you see a meetup on if if you know of another meetup on on Noster, you can search for it. Just search for the person who posted it and you can boost that meetup. and we'll read that meetup out. you don't even have to have it. The other thing we did add, you don't it doesn't even have to be on Noster, right? You can boost your meetup from an external URL. So if you just want to share the meetup.com link.
+
+Or if you post it on, you know, Satlantis or if you post it on Eventbrite or any of these other platforms, you can drop the link in there as well. it won't show up on this meetups page because that's only looking for Noster events, but we'll still be able to read out your your event and you can share out the link via Noster. and then the last thing you can do is you can create a new one. And so we are thinking of some ideas about how to make that as easy as possible.
+
+But you know, it's pretty straightforward. You just list the date and the time. You can upload an image if you want, that's optional. and then when you post it, you can share it with us and it will show up on this meetups page. Okay. So now that you've got the options down, really what we want to talk about or what I wanted to talk about during my little segment here in the beginning is we teased this last time, but you know, we've got this wallet that we've been using for the show, and it's filling up with stats.
+
+Because this is the these are the sats that we like to give back, right? This is our value these are our value for value sats. And so when you post valuable content like your meetup on the show, we want to give you some value back. And so we teased it last time and and really what we're gonna be doing here is anyone who posts their meetup, we're gonna be randomly selecting one of the meetups and we're gonna be, you know, sending a value for value boost of twenty one thousand sats.
+
+Reed (09:17.493)
+And I think we're just gonna do that until we run out of sats in the wallet. So that's gonna be at least a few weeks here. and so for today, we have just one meetup that isn't hasn't been posted by Rev or myself. So, Rev, you posted Chicago BitDevs, which is coming up on Thursday, July 9th. you also posted Michigan Bitcoin meetup, which is coming up on July 16th, and that's in Benton Harbor. I posted my meetup.
+
+Which already said is July nineteenth. And then you also posted South Bend Indiana Bitcoin meetup on August sixth. But we did have Whiter, or at least that's how we're deciding, by the way, to say your name, Whiter. I hope that's we've gone back and forth several times here with Sker and all these things. So we're going with White. You can feel free to correct us. but Whiter posted the Cleveland Bitcoin monthly meetup, which is Friday, july tenth, seven PM.
+
+to nine PM at Saucy Brewworks in Cleveland. So White, you w you know, we're gonna be reaching out to you and getting you the twenty one thousand sats. And so thank you and for posting your meetup on the page and we're gonna give you some value back. so again, so we're gonna do this again next week. And so hopefully, you know, folks will take some time and f find your local meetup. You don't even have to be the organizer. You know, find your local meetup and post about it on our site.
+
+And you know, we're gonna be sending those those sets to you, the person who posted it. And then it's up to you. Maybe you wanna give them back to that meetup, maybe you want to give them to the organizer, make up for meetup.com fees or whatever else. But at the end of the day, I mean they're gonna be your sets. You're the one providing the value to the show, which is sharing out the meetup. So so thank you, Whiter. And for the other folks who have boosted there we have had some other
+
+Folks used this tool in the past. So thank you all. And we hope that you get some more use out of this, and hopefully we'll be able to provide some value back to you. So I think that's that's mostly what I want to talk about. We're going to talk about the website a little bit more later in the show. but that's what I wanted to use kind of my opening segment for. So I think with that, we are going to introduce Shannon from Columbus Bitcoin. So welcome to the show.
+
+Reed (11:45.803)
+And why don't you take a minute and introduce yourself and tell us a little bit about your meetup?
+
+Shannon ( Columbus Bitcoin) (11:51.76)
+Yeah, good to be on guys. Appreciate it. Yeah, I organized the Columbus Bitcoin meetup in out of Columbus, Ohio, where a Bitcoin meetup that's currently in its sixth year of life, which is a fairly long time. There's some meetups have been around longer, but i it it's a l it's been a long road. yeah, we generally do one meetup a month and we try to do like quarterly events which kind of keep things
+
+the the one meetup a month generally like a it's a social kind of get together where people can get together, talk about Bitcoin, kind of get it off their chest, let their significant other breathe a sigh of relief so they can come and talk. And then the events are more of like a an educational seminar, almost like a baby conference. They're about three hours long. we'll get some guest speakers to come in and talk.
+
+You know, and we do that with a lot of partners. I see like a lot of the people you've previously had in your episodes, like the free market kids, we've had them come and talk and kind of display their games and everything. it's it's a pretty good time. and and just like Rev, we when the square point of sale came out with Bitcoin, we were able to actually
+
+move to a location to get a private room where you could pay for food and drinks in Bitcoin, which is great. And it it's kind of strange, but people still complain. I don't know if you can ever please everybody, I guess. But that's generally one of the complaints you would always hear up until that point. So man, I wish I could wish I could pay in Bitcoin. And then you find a place that they can pay in Bitcoin and they'll complain about something else. But so is life.
+
+Reed (13:43.098)
+So one of the things that we a common question for us to get kind of kicked off here a little bit with, and it's something I don't know, I'm I I I always feel kind of interested. I I think maybe it's because like back in the day, I guess it doesn't really happen so much anymore, but back back in the day when I used to listen to big Bitcoin podcasts, seemed like every time somebody'd come on a show, it would be like the first opening question, like, Tell us about how you found Bitcoin. It's like your Bitcoin origin story. Well, here we like to hear about meetup origin stories.
+
+So I'd love to hear just about like, you know, what was the first meetup you ever attended? Like how was it like getting the Columbus Bitcoin meetup like started or off the ground or any kind of meetup meetup origin stories you think might be interesting? I'd love to hear more about that.
+
+Shannon ( Columbus Bitcoin) (14:29.521)
+Okay, yeah, our meetup origin story essentially got created on Twitter. there was a couple people, you know, everyone follows people and sometimes you notice you're from the general same location. And they just kinda wanted to get together and have a few drinks. Wasn't really like a a meetup just yet, so to speak. It was just like, Hey, you're into Bitcoin, we're into Bitcoin. Let's get together Tuesday night, have some drinks. And that was kind of the first meetup. We had six people come to that one.
+
+of the six, three are still around today. one of the guys that was there, he he was really into he was out of Toledo, Ohio, and he had been in Bitcoin for a substantial amount of time. I wanna say he got into it maybe probably around twenty eleven. And but he was all like, you know, going to the conferences, going to BitBlockboom, just traveling around and and he would go
+
+in the state of Ohio, he would go to Cleveland, he'd go to like the t Toledo one and he'd come to Columbus. So he was trying really hard to get all these meetups actually started. And and he did a great job. And then one day he just kind of just disappeared. He just disappeared into the Bitcoin ether, never to be heard from again. And at that moment in time our meetup had grown from this original six people. We probably had about twelve or fifteen coming at that moment in time.
+
+And it was either, you know, we could watch this little community that's starting to grow fall apart, or we could, you know, pick up the pieces and and run with it. And we we you know, I I I I don't want to say it was me, but I mean we were able to get through that and we were very fortunate that River moved from San Francisco and their headquarters is now here in Columbus, Ohio. So we were able to partner
+
+with River and basically kind of through that partnership we've been able to hold meetups actually like in River's home office which is actually like you know if you're a Bitcoiner it's pretty cool to be there especially getting to meet you know some of the people like like River is by far the best Bitcoin company th that I'm aware of. A lot of people ha you know, I might be slightly skewed
+
+Shannon ( Columbus Bitcoin) (16:55.153)
+in my vision just because I know everybody that works there, but the people that work there are th they're amazing. They're real Bitcoiners and the energy you can get from walking into a place like that is a contagious. So we've grown from that meager six to we probably have about eighty regulars that they're not there every single meetup, but
+
+for the larger events they usually turn out and that that's usually a great time when that does happen.
+
+Reed (17:31.897)
+Sorry, did you say eighty? Eighty regulars? Wow. That's a huge meetup. That's awesome.
+
+Shannon ( Columbus Bitcoin) (17:34.171)
+Yeah. Yeah. Yeah.
+
+Yeah, yeah. That those don't come to just the regular social ones because generally what it we've been going around for so long. you know, everyone's got life. They got kids, they got work, they got things they gotta do. so the social ones don't really bring everybody together, but the events when they happen. And again, there's four of those a year and generally everybody comes out for those.
+
+rev (18:01.868)
+I remember seeing those some of the river meetups when I was playing around on Twitter more. And they did a really good job of doing some video promotion of it. It made it real exciting. Like, man, this meetup seems fucking awesome. I wanna I I w I was considering making the trip out to Columbus just to check it out. it's a little out of my range, obviously, but
+
+It was enticing, you know, the the video aspect. And I I see I've seen that you do post some recordings of the the speakers on YouTube now too. What's that like? How do you go ahead.
+
+Shannon ( Columbus Bitcoin) (18:39.077)
+Yeah, we we
+
+Shannon ( Columbus Bitcoin) (18:42.915)
+generally, one of our members we're fortunate to have Logan. he's a big Noster lover. He's BTC for clubs. he has a company called Logemedia, and I'm not doxing anybody because he openly promotes this, but he's a videographer, photographer. And w we had been doing these for a while and about it was about three years ago, he found out
+
+found out about the meetup, you know, then you kinda learn everyone's skill set when they come and they're talking. And he came to one of these events and just absolutely loved it. And he was like, This would be great if we could record this. And I'm like, well, you know, you have all the equipment. He's like, would you be willing to do that? And and you know, he was all for it. So he does all our recording for the speakers that come there. And you just generally get their permission. Like we've had spe
+
+Speakers in the past. Well, before we were doing the recordings of any presentations people had, we would just kind of take pictures. And that way, it's not really to dox anybody, but it's really hard to sell something to someone because you when you're trying to promote like a meetup, you're essentially trying to get somebody to come to it. And how I look at meetups is it's great. Like if you've been in Bitcoin, you know, five, six years, one year or whatever.
+
+I I'm trying to get people to come to meetups that just heard about Bitcoin. I'm not trying to get you to buy Bitcoin. I will never tell you to buy Bitcoin. I'll tell you I'm buying Bitcoin and I'll tell you why I am doing it. But you know, you as a person need to come to that conclusion yourself. And I'll gladly point you in the right direction where you can educate yourself, but I want these new people to come, I want them to get involved. And in order to get them involved, it's really hard to sell a Bitcoin meetup when
+
+Everyone wants to make Bitcoin so private. Like, you know, no no pictures of faces, don't dox anybody. So you know, we would just kind of do like this little twenty, thirty second video of of just like quick jump cuts of just showing like, hey, there's food, hey, there's drinks, hey, there's people having a good time, hey, somebody's talking. And Logan was amazing in helping us do that. And I think it really helped us grow. And yeah, but that's how we started recording them.
+
+Shannon ( Columbus Bitcoin) (21:11.811)
+I I wish we had recorded a long time ago, but we just didn't have the the skill set there to do that.
+
+rev (21:19.98)
+Yeah, it is kind of interesting. The the meetups do seem like I think a lot of people have assumptions about what a Bitcoin meetup is. And if there's no pictures and media around it, it is like going into a black hole, you know, where you you kind of just have to take this leap of faith. You heard good things about meetups and maybe about Columbus specifically, and if there's nothing to see, you can't imagine yourself there.
+
+Reed (21:20.141)
+Yeah, totally.
+
+rev (21:48.972)
+without some sort of pictures of the place and the you know what's going on and how it's gonna go. And so it I think it is very helpful. Th like you said though, it's pretty tricky because a lot of Bitcoiners are like, dude, don't I don't want it like I don't want a recording of me like going to these meetups. Like I've gotten to the point where I'm thinking about the flock cameras and, you know, like tracking my license plate, going around all these different things and they're gonna be easily like not l let alone the the freaking cell phone in your pocket, right? Driving around everywhere recording where you're going.
+
+But anyways, yeah, it's it can be a little difficult to
+
+you know, t toe that line of like creating some good media that promotes the meetup while still respr respecting the privacy of the the attendees. has that been difficult? Has there been much consideration about it? What's the what's the I guess the protocol around that?
+
+Shannon ( Columbus Bitcoin) (22:43.567)
+Yeah, we'll generally let everyone know, like at these events, like we will be recording. No one's you know, no names or anything like that are gonna be revealed, but you you might be in the background of something for a split second. And if you really have a problem with it, come to me and I'll make sure that you're not in it or your face is blurred out. you know, then we get the permission of the speakers. We usually try to have at least three speakers. We try to do like an an hour to hour and a half of like presentations, then an hour
+
+hour and a half, two hours of like social time. you know, we get their permission and then some some of the speakers sometimes, you know, I I understand, you know, they don't want you know, they like the to be anonymous as well. one of those we had a seed signer out and it, you know, that that was amazing, but he's big on privacy. So it's like, well, this is before we recording, but it's like, you know, well when we take pictures, we'll make sure, you know, certain, you know, you're not revealed in any aspect.
+
+So we we try to cover our bases. we've only had one or two people that's ever came up to us and said, Hey, I don't want to be in any pictures or anything. So it's generally not too bad. Most people are pretty you know, pretty relaxed with it as long as, you know, it's not s you know, a picture and like, hey, this is you know, Joe Bitcoin, you know, at you know, ex got com or whatever.
+
+Reed (24:07.171)
+Yeah, right when you mentioned that, it kinda reminded me we had this episode, I can't remember when, like maybe a month ago, month and a half ago. but the title was Big Upsides, Small Risks. And Rev and I it was an we didn't have a guest that that week, but one of the things that Rev and I talked to a l a lot about is this you know, there is you know, not ev certainly not everybody, but there are some people who have this kind of like paranoia, right, about
+
+being in person and like you said, with the pictures and trying to keep their face off of things and things like that. and obviously like it it it you know we're not downplaying the importance of remaining private, especially when you want to remain priv private. that's super important. but for the people who aren't attending meetups be for for these reasons, we really think that they're missing out on on a lot of upside. so it's, you know
+
+These these things like this is a common topic that comes up, I feel like, in Bitcoin. So I was actually I I thought this these recordings and stuff like that, that's actually really cool. It's something we don't see very often from Bitcoin meetups. Taking the time, you gotta have all the equipment and infrastructure set up, then you're dealing with all these privacy concerns. So I think it's really admirable that you guys have have gone through the
+
+you know, all this process and all this trouble to to get all this set up. Because now this stuff gets to live on. Right. Now more people than just the people at your meetup get to enjoy this content but also learn from this content. Right. Now the the value is just growing from from your content. so yeah, but when it comes to the logistics, one of the questions I had was so I I haven't had the chance to to watch any of the videos yet, but
+
+When you guys do it, do you allow for any kind of audience like Q and A or anything like that? Like how d or is it just like the speaker and then you cut the video and then it's back to regular meetup?
+
+Shannon ( Columbus Bitcoin) (26:10.777)
+No, it it we do the speaker, you know, they go through and get the talk and sometimes y you know, a as they're talking, you know, about whatever topic it is, they will say something that lends itself to a question. So people in the audience, you know, all you gotta do is just raise your hand and the you know, you can ask a question and then at the end of it generally, you know, we leave that open to any questions people may have. like again, for the past two years we've been recording them mostly
+
+do all my social media on X. I I hate calling it X. It's still Twitter to me. But yeah. We post it there. And we also put it on YouTube. And again, that's for our members that can't make it that evening so that they get a chance to get the value from from it later, you know, at their own convenience. And again, it's it's available to anyone in the world that would be interested in watching. We keep a backup of it.
+
+Reed (26:46.969)
+Same.
+
+Shannon ( Columbus Bitcoin) (27:09.335)
+on YouTube, it's really easy to find. Just type Columbus Bitcoin in the search bar and it'll come up. I think there's probably I think there's close to twenty five videos now. It's like about over like eleven or twelve hours worth of just talking heads, so to speak. But yeah, it makes it it makes it really nice for people. People have really enjoyed that aspect of it 'cause they again, you know, everyone's got life and something comes up at the last moment and you're looking forward to going to something, then all of a sudden you can't. You can still
+
+get to see 'cause we've had some really interesting people come there. We've had like you know, like fireside, you know, chat sessions with like Alexander Leishman. We've had the Secretary of State, Frank LaRose, there. You know, it's a interesting mix of people.
+
+rev (27:59.32)
+Yeah, I don't know how if you think about it the same way I do, but I see big Bitcoin as a revolutionary act. I mean, we're we're just coming out of this two hundred and fiftieth anniversary of the revolution of, you know, the United States. And, you know, if we wanna live this meme of fix the money, fix the world, ultimately that's gonna require a revolution because the fiat system is so deeply entrenched that
+
+in order to change anything, it will have to be revolutionary. And to document this revolution is important. And maybe the people participating in the revolution, I'm I'm sure that the founding fathers were not too super excited. They they definitely wanted some privacy in
+
+crafting and participating in the revolution early on, but it was incredibly important that there was documentation of it so that they could be recognized for this achievement that they accomplished. And so I think that the this idea of of keeping some documentation of what's going on is going to be incredibly valuable in the future, should the the revolution succeed, should should the the the money get fixed in the world get fixed.
+
+I don't know if you have an opinion on that, but I that's just my response to this whole idea.
+
+Shannon ( Columbus Bitcoin) (29:19.865)
+Yeah, I yeah, I don't really have an opinion, but it is nice to see. Like I've gone onto a most people have like an Amazon Prime account and you get like prime video with it. If you search Bitcoin on it, there are some older Bitcoin movies you can watch for free. There's surprisingly a lot of Bitcoinslash crypto movies on there or documentaries. And it's really neat to watch something. I got involved in Bitcoin in like twenty sixteen.
+
+But it's really neat to see like, you know, archival footage from like twenty thirteen of what a conference was like and just how how much it has changed in just the amount of time that I've been involved in Bitcoin. so yeah, I I do think they're recording it for historical purposes. there there's definitely some value in that.
+
+Reed (30:12.323)
+God, that's such a great point. I didn't even think about that. But yeah, that's absolutely what you're doing is is it's it's an archive. I think when what I was thinking about it more like we we've talked about put like podcasts, right? Like this it's this is a podcast about Bitcoin meetups, right? So we talk about Bitcoin meetups, but we also talk about podcasts. And one of the points that we've brought up in the past is that you know, we you know, you're talking about Twitter or X or whatever.
+
+we do a lot of our stuff on Nasser and like it it it seems like there's like a little bit of a a fracturing, right? You ca I think it kinda used to be pretty much all the Bitcoiners, we were all on Twitter together and it was times were good. but now, you know, the community is is split, you know, n not down the middle. but I I don't and and I think there's a lot of Bitcoiners who aren't even doing the social media thing at all. And so
+
+Having a podcast, for example, is a great way because it seems like no matter where you're hanging out on the internet, podcasts are part of everyone's daily routine, right? Or maybe not daily, but at least that's how they're checking in on the Bitcoin community. And so by posting your stuff on on X and on YouTube, you know, you're actually it's kind of like your own little podcast, right? Like it's you're putting the content out there, it gets to live on.
+
+and in a lot of ways, I think you might be bridging some communities or at least having the opportunity to bridge communities. So I think it's I I mean I think it's really cool. but actually maybe a segue here because you know you guys bring in all these great speakers and you get to record them. one of the things I know we wanted to talk about here was the Midwest Bitcoin Summit that's coming up. And I'll be honest, when I clicked on the
+
+Midwest Bitcoin Summit, like the first thing that jumped off the page to me, there are a ridiculous number of speakers at this at this conference. Like like way more than I thought. so it's I don't know. I started and I'm not gonna lie, I was actually literally checking out flights because it seems like it's gonna be a killer event. so I don't know. Do you would you like to talk for a few minutes or like tell us about what your role is or introduce what the
+
+Reed (32:37.687)
+Midwest Bitcoin Summit is.
+
+Shannon ( Columbus Bitcoin) (32:40.367)
+Yeah, actually, the Midwest Bitcoin Summit is we've had in Columbus there have been summits, so to speak. That they've been they're put on by Andrew Birchwell. He runs an organization called the Ohio Blockchain Council, which they kind of work with essentially like l local governments and stuff like that, trying to get legislation passed that, you know, favors Bitcoin or at least protects it. he's always put on a event called Amplify.
+
+And that's a like a one day, like five hour event. and they were they were awesome. But th this is a full blown like two day event conference that's happening. I think there's gonna be close to a hundred and fifty speakers, which is i insane. It's absolutely insane. And there is so much stuff right now, just because I am here at Ground Zero, I have nothing
+
+do with it other than Andrew Tillman is the gentleman behind the Midwest Bitcoin Conference. I am in communication with him and anything that I can do to help facilitate, I will we will have a booth present at the conference. But because I am here in Columbus, I I'm getting contacted by people that I've never even heard of before. just because they're wanting to set up something on the side. Like if you go to
+
+like the Nashville conference or the Vegas conference, you're fully aware that the conference itself is just part of it. There's side events happening everywhere. And it's looking to be that's what's going to happen here in Columbus as well. everyone's trying to start up something on the side. And I think it's going to be absolute madness. And the conference is going to be at the Columbus Convention Center, which is right in downtown Columbus, right next to an area that's
+
+referred to as the Short North. And the Short North is a strange area, especially if you're a visitor, 'cause it's the type of place you can go to. It's just nothing but bars and restaurants. And you can go and eat a a two hundred dollar steak at one place. You can walk next door and have a hundred dollar martini at a rooftop bar. And then you can go one more door down and this is down the street.
+
+Shannon ( Columbus Bitcoin) (35:08.475)
+from Lehigh University, OSU. So you can go next door and then you can drink with a paternity two dollar beers to like five in the morning. So it it's kind of a a high end yet a party area at the same time. So it's gonna be a really interesting time when all these people show up for it.
+
+rev (35:32.226)
+One of the most interesting things about this Midwest Bitcoin Summit is that there is this overlap with the a big cannabis conference. I don't remember the name of it.
+
+Shannon ( Columbus Bitcoin) (35:42.374)
+Yes.
+
+rev (35:44.898)
+But this comes into this idea of culture jamming. And there's a a guy in the Meschadel, Shadrack, who's pretty been pretty big on like we don't have we we shouldn't be trying to orange pill just anyone. We should focus on the communities that are primed for Bitcoin. And the cannabis community is prime for Bitcoin because they're pretty well suppressed financially. Especially I don't know what the laws are like in Ohio right now around cannabis or anything, but I know here in Michigan it's been a nightmare.
+
+For these cannabis businesses to have just reasonable financial accessibility. And so it's it's it's pretty interesting that this that there's this overlap where there's these two giant conferences gonna be kind of jammed together. and so there should be some good cross-pollination between the cannabis culture and this Bitcoin culture all in the same space.
+
+Shannon ( Columbus Bitcoin) (36:42.223)
+Yeah, I do agree. It's an industry like like a again here as far as like the you know, it's legal with dispensaries and everything, but I do believe the dispensaries can only accept cash, you know, which causes a problem for them as far as you know, managing the the cash, you know, on hand, which you'd have to worry about you know, like a possible robbery or something like that. And then you're dealing with moving at the cash, you know, from day to day operations of
+
+You know, Bitcoin, you know, could be a a good answer for the problems that they face, at least how their their industry's being treated legally. So yeah, I I do think it is a good mesh of people meeting for this.
+
+Reed (37:28.131)
+I've heard stories too, right, that they can't even like so once they get the cash, that they can't move the cash across state lines because it's quote unquote like drug money. Right? Like it's it's it's ridiculous the way the industry that industry has been treated financially and the way that the federal government decides to enforce these laws that all the states, even if you're going from one state that allows it to another state that allows it, it's not the money and the products and the
+
+Shannon ( Columbus Bitcoin) (37:38.961)
+Yeah, yeah.
+
+Reed (37:57.22)
+They're not allowed to cross state lines, which is pretty wild.
+
+Reed (38:04.167)
+and and actually I was wondering too, because Rev, y you know, you said that's one of the more interesting things and and I actually totally agree. but I couldn't I c I actually was looking a little bit on the website. It's not mentioned anywhere on the not that I could find on the Miz Midwest Bitcoin Summit website. Do you know the name of the of that other conference in case people who are listening to the show might be interested in checking it out?
+
+Reed (38:36.055)
+Do we lose Shanna?
+
+Shannon ( Columbus Bitcoin) (38:38.981)
+No, I I'm here. I I not off the top of my head, but I can look it up really quick.
+
+Reed (38:40.696)
+okay.
+
+gotcha.
+
+rev (38:44.35)
+yeah, no sweat. I I w I was listening to a podcast of another local Bitcoiner in my my region, Stacey, who does the the Bitcoin Nova podcast, and she had Andrew on recently to talk about this all and so that's that's how I'm kinda like hip to it all. And it sounds like with one general admission ticket, you will be you will have access to both conferences.
+
+Reed (38:45.892)
+No sé.
+
+rev (39:09.312)
+And so in addition to all the side events and all the stuff going on, you're gonna have like more than enough to do and plenty of people to meet because you're gonna be able to meet all these heavy hitters from the the Bitcoin culture and then all the heavy hitters from the cannabis culture. So if you like cannabis and you like Bitcoin, this is a one killer place to go to. And not even to mention that, like we we talked with Biddish from Cleveland.
+
+a few episodes ago and he was talking about, you know, getting the Cleveland crew to come down there, set up a booth, try and do some aggregation of of products off NoSter, for people to to purchase with Bitcoin. And so it's like we talk about regional events a lot on this show where the regional events allow this opportunity for cross pollination between the other local meetups. And this is just going to be like another great example of a of a
+
+a convergence, an opportunity for anyone within a few hours range to go and meet each other and hang out and and you know realize like hey there's local Bitcoiners just a few hours away from me everywhere in any direction.
+
+Shannon ( Columbus Bitcoin) (40:21.221)
+Yeah, definitely. yeah, the it's called the Ohio Cannabis Health and Business Summit. But yeah, like you mentioned, the one ticket does cover both events. And yeah, but it it will be great. I'm actually working on putting together like a kick like the conference itself is September twenty third and twenty fourth, which is a Wednesday and Thursday. And the Tuesday right before it, which generally most people, if you're coming to it, would would be in town on Tuesday.
+
+I'm working on putting together like a pleb kind of like Midwest, you know, summit kickoff party. And it's kind of gonna be like an invite only and it's not like I'm holding invites from people. I just can't invite everybody to it just because you I just physically couldn't rent a place big enough for that. But if you're you know, a Bitcoiner in a meetup somewhere, just send me a message on on X.
+
+at Columbus Bitcoin dot com and I'll make sure you get the information once I get everything finalized, where to be.
+
+rev (41:29.656)
+So it sounds like that's the that's the cross pollination event you want to go to. If you're in Columbus, if you're in Cincinnati, if you're in Louisville, you're in Indianapolis, you know, you're within range of this, you know, that's the one place where you're gonna get to go and meet everybody. And I like that invite only kind of format for this kind of stuff because like you said, it just is difficult. I mean, talk about having eighty the these big meetups, like there's gotta be a lot.
+
+involved in just organizing all that. Do you do you manage all all that organization yourself or do you have some help with that? How do you go about dealing with these larger meetups?
+
+Shannon ( Columbus Bitcoin) (42:11.109)
+No, I I actually handle it myself. It's the one thing about like running a meetup is a lot of people may or may not realize, but it you cannot do successfully do it for free. I I wish there was a way to do that, but if you want to run a meetup, it's gonna cost you money. so you know that that you know, it involves, you know, renting a place that can hold a hundred people. so you know, you're looking at like if you wanna do it like an
+
+like a hundred person event, you know, you're looking at it's probably gonna run you seven to eight hundred dollars by the time you know you rent a location and order like fifteen, twenty pizzas for the people there. you know, we do them for free. but again, we have our members, we're kind of self funded, so to speak, where you know, a a lot of it does come out of my pocket, but I d I don't mind donating that to the calls. But you know, we do ask for donations.
+
+You know, and we leave a jar there. If you'd like to donate some money, great. But you know, don't feel obligated to. but but that is the one thing about it. You know, it's not it's not free. I wish it was. But
+
+rev (43:21.144)
+Well that's the whole value for value ethos, right? It's like, all right, I'm I'm putting value out there. If you got value from it, push it back in our direction. And I think this is basically just a a cultural capital issue of getting people to understand like, hey, you know, I I'm putting this out there I would
+
+Very much appreciate at least a little bit of value pushed in my direction. And if you can't afford it, it's here for you, right? You can come and enjoy it. Lake Satoshi is very much like that, where they they only charge 21 tick $21 a ticket to come to this event. And they provide a lot of stuff. You know, you're you're gonna get like ten times that value by going to that meetup, but going to that event.
+
+But so like I talk about this concept of the eight forms of capital, or a actually it's more like nine forms now. I've added a a ninth form. And and so like coming from your perspective, surely you're you're putting this money, you're you're saying like, all right, I'm gonna spend some of my financial capital, some of my Bitcoin, some of whatever I've got going on.
+
+to keep these events going and and contribute to the community. I'm is there are are you getting something out of it? you know, can making making social connections, building relationships, you know, how how is that playing out? Is is it's gonna be sustainable for you going forward?
+
+Shannon ( Columbus Bitcoin) (44:48.699)
+Yeah, it's it's not like you know, anything that's financially you know, by all means don't put yourself in like a financial burden. yeah, I can it's something I can afford to do. And what I get out of it and you'll see a lot of times when the the big Bitcoin conferences happen, like the ones in Vegas, like on the social media, you know, there'll be people slamming it and they'll be calling it like a like a shit coin conference and this is that and this is that. And to me, like the conference
+
+Going to it, y you know, you get to like see the Expo Center and the booth and you you can go see somebody talk that you've always kind of like in enjoyed their opinion. But it's always been about meeting the people there. That's where I've always found the most fun. And I'm not a people person. I I generally don't like people, but I like Bitcoiners. And that's what keeps the meetup going for me, is I I generally enjoy
+
+just meeting people from all different walks of life. Like we all have different career paths that we came from, or you know, religions or ethnic background, yet we've all ended up at this same fork in the road that that led to Bitcoin. And I always kind of enjoy hearing, you know, other people's Bitcoin story or how they got into it or, you know, or why they're into it. And that'll always keep me going. I
+
+I I can't get enough of it. You get a certain energy from it that I I can't really describe.
+
+Reed (46:26.733)
+Hundred percent agree. I mean that's it we I think it was actually all all the way back on I I think I was gonna say episode one, but I don't think it was actually in episode one. But we've talked about before, you know, w what is it that Bitcoin meetup organizers are getting out of all this? Because just like you say, you know, I you know, certainly I'm in the red you know, in the red, right? Like I I we've we accept
+
+donations and stuff like that and we've had some other ways of you know, there have been a couple of events that we've kind of charged for. but at the end of the day, you know, it's thirty bucks a month at a minimum just for meetup dot com. and then other things come up all the time. And so again, I'm kinda like you. I'm I'm fine to just it's I I'm getting a lot out of the meetup. And so I'm okay like spending some of my
+
+you know, capital to to make the meetup happen and and hopefully bring some value to other people. And just like Rev was saying, I'm accumulating capital in other areas, right? Like I'm growing this community and and I'm getting benefit from that. They're getting benefit from that. And so we're all kind of growing this thing together. but yeah, I think it it's important to think about sustainability. but you know you've got a a lot of the the tools in in place for that.
+
+and I can't remember if you said it, but like so when you're throwing these, you know, I like side parties or invite only things, are are these free or are you charging tickets for these to to try to cover the cost of the venue?
+
+Shannon ( Columbus Bitcoin) (48:08.481)
+No, this this will be free. The the one I'm throwing will be free. I I'm try hopefully I'll be able to raise enough. There'll be no cover charge, but I I'm trying to raise enough where it would be like a free happy hour. That's the goal. I don't know if that'll happen, but I'm not quite sure what that ticket goes to, especially 'cause I like to drink. so but yeah, I I don't believe in charging anything, even for the other events that we do quarterly. It's it's free admission.
+
+Reed (48:10.938)
+cool.
+
+Reed (48:37.783)
+It's good one I so I'm the same way. I never like to charge. and so I'll just tell I'll just convey to you some of the advice that I've received, in fact some of it on this very podcast. which is it I think it's important to at least have the ask to have you know, when people are walking in the door into this into the free event. you know, if I obviously this is optional, but like you know, it would
+
+it feels very appropriate to just say, you know, it's free event, but, you know, we're accepting donations. And even if it's just a lightning QR code that you have on the table, at least then people can say, wow, like thank you so much for throwing this event and we of course we'd like to give back. We just didn't know how or where. So I think having the option it it it helps out with that the sustainability aspect, I think a little bit.
+
+Shannon ( Columbus Bitcoin) (49:30.637)
+Right, yeah, yeah. I agree, that's a good idea.
+
+Reed (49:36.792)
+Okay. well we are we're a little bit early here, but we're heading kind of getting close to the hour mark. And one thing, Shannon, I think we actually we did talk a little bit pre-show, but one of the things that we didn't mention is before we close out this part of the episode, we like to give I guess you first an opportunity to talk about any kind of key takeaways from this episode, anything that you thought that you wanted to bring up that we didn't have a chance to bring up.
+
+or anything else that you wanted to say before we reach the end of the episode here. So I'll turn it back over to you if there's anything you wanted to to kind of close us out with.
+
+Shannon ( Columbus Bitcoin) (50:14.853)
+Well, the the only thing I could really think of, really is for other people that have maybe they're trying to start a meetup or they have just started and you know, having gone through it for six years, if I could give any advice, it would just be to start off, just be consistent. You know, if you're gonna do it once a month, and and that's the hardest part. The hardest part is being consistent. So let's say if you're gonna do it at the last Wednesday of every month at
+
+six or seven PM no matter what, you have to be there. So you have to make yourself available. Someone's got, you know, if someone shows up, someone needs to be there for that. So you just need to be consistent. don't give up. try to have a little bit of thick skin about it because, you know, one month, you know, you may have starting off like you know, say you have nobody, then you know, now you have like ten or fifteen people coming.
+
+And then all of a sudden, you know, at your next meetup, it might just be two or three. You know, don't let that deter you really. It's just everyone has life going on. You know, everyone's got parents they have to deal with, family, kids, you know, career. And then, you know, on top of that, everyone knows life happens, people can have vehicle problems, etc. So i if you have like a a dead meetup that happens, don't don't let it bother you. just
+
+show up next month and see what happens. try to make it fun. So and this is where things come into where I say it costs money. Like again, it it costs money to rent out a venue. But you know, you can do things for relatively low amount of money that that still are kind of fun. Like if you have a a logo for your meetup, you can go on to like an Etsy store and get stickers printed out with your logo. And it might be like five or ten bucks. You know, just something to
+
+you you know, little things to hand out when people do come to the meetup just to have a little souvenir trinket. I found like refrigerator magnets or something that's kinda tangible that are pretty cheap to get made. and and another thing really is a lot of people you'd mentioned Biddish earlier. I'm pretty good friends with him. And you kinda need to he's deep in the nostril and this is kind of where our opinions differ a little.
+
+Shannon ( Columbus Bitcoin) (52:43.899)
+But I feel you kind of need to to step out of the echo chamber a little bit. Like when you get into like Noster, that's great. Like, you know, but most of the time, like in Noster, if if someone's there, they're they're already a Bitcoiner. You know, maybe they haven't actually taken self-custody of it, but they know what the concept is. They understand what a hardware is. And so like you need to kind of reach out
+
+And and I know these places that are like Bitcoiner focused, l like Noster, what is it like the OrangeApp, Sat Lannis, things like that are great for Bitcoiners, but the only people that are gonna find you are Bitcoiners. You you gotta kinda reach out and you know, I don't like paying the fee for meetup dot com, but we've had so many people, you know, come and find out about us through meetup dot com. You know, I wish
+
+It it's overpriced and you know, I'll never argue that it it shouldn't cost that much 'cause it's a little ridiculous, but it is a great resource to get people to get the message out there, you know, that you are having this meetup.
+
+rev (54:00.288)
+So would you say you're you're you kinda mentioned it, but like it sounds like your goal is to really bring Bitcoin to people that don't know about it. Get people to go ahead.
+
+Shannon ( Columbus Bitcoin) (54:12.66)
+It it's the
+
+S sorry, no, it it's mainly t to to bring Bitcoiners together that already 'cause there's not too much you're gonna like if someone's a diehard Bitcoiner, like they're anaster, that means that they they know how to set a wallet up. they most likely know or they could regurgitate the information that all the talking heads have spit out about Bitcoin. Bitcoin's digital capital, yada yada, yada, yada, yada. so so you're not really gonna like teach them much or point them in a direction. They've already
+
+they're already on the same page with you. So I try to get the meetup is a like a a community of people that are like that to kind of bring them together and let them know, hey, there's someone kind of like me right here in my hometown. And, you know, we can talk and we have a a telegram channel where our our members, you know, communicate. But at the same time, it needs to be friendly for someone that just walked in and
+
+they don't understand what Bitcoin is. so yeah, I like to get people that are just now finding Bitcoin. That that's the funnest thing to me. Someone that's willing to show up at this Bitcoin event that that really doesn't have a clue what it is. so it it's kind of it's kind of a fine line you kind of have to walk to make it a place where both people feel welcome.
+
+And th there's not really a playbook for that. You just kinda gotta play that by ear.
+
+rev (55:48.96)
+It's certainly not something that you can prescribe. But like what what do you think is like the what what have you found to be effective in so you mentioned meetup dot com as being an effective tool for
+
+Allowing people to find this meetup and and come and and ask the questions. I is there anything in addition to that to getting these like pre-coiners, so to speak, to to come and and check it out and then get in get in the telegram, start asking questions, get involved. What are some of those other techniques that you found to be useful?
+
+Shannon ( Columbus Bitcoin) (56:27.845)
+I don't again like putting on I would say the biggest draw is again like doing like the like media for it. if you're able to put on a small event and and again like i if if you're i in like whatever city you're in, it's amazing like what you can find that you didn't know when once you start looking. Like you know, we have editors
+
+that work for the consensus network here in Columbus. again, we have people that we can lean on from River. one thing that's neat about the meetup is you you actually when like Bitcoiners get together, it if they're motivated to do something, you don't really like need to help them or encourage them. That they will come together and and if they're motivated to do something, they're gonna do it.
+
+So you get to see the birthing of ideas and projects that never happened before. I got to witness the birth of a couple Bitcoin companies just coming out of the meetup. And you know, again, just getting the the word out there, again putting some kind of media like i if you don't want to dox anybody, like like Cleveland's really good about it. They'll take pictures and they'll just put like, you know, like a bitcoin symbol on over everybody's face. That way, you know, no one
+
+see who you are, but you can at least see pictures of a wow and you can count You can go, wow, there was twenty two people here that night, you know, maybe I should check that out. and again it it's kind of hard to draw people to it. So again that's how the events kind of help out is if you can find somebody in your area that you know maybe they they work in the Bitcoin industry or or maybe they're r you know
+
+in the pro they write articles or they do a podcast or something like that or or even or even they could be someone with an opinion that's not afraid to speak publicly. if you can have something like to advertise as an an attraction for them to come and see. It's not just, hey, come have a few drinks, you know, let's eat some pizza and talk Bitcoin. It's like, hey, you know, we're gonna do this. Or you could even do
+
+Shannon ( Columbus Bitcoin) (58:49.753)
+something small, like a like a workshop that's really simple. When it become come use Bitcoin for the first time. And, you know, all that is is just, you know, teaching someone to set up a a lightning wallet and, you know, just let you know, give some sats, let bounce it around to the other people there, let experience it. But I yeah, I would say the biggest thing is trying to find a way to create an attraction, a reason to come.
+
+rev (59:16.322)
+We talk about that a lot. Like just what is the incentive to come to the meetup and then to keep coming back? And so I guess if I'm gonna give my final thoughts on the the the aggregate of this discussion, it's like the the rec the the recording in in the media of it is not only important for promoting the meetup, and if you can do it in a way that's thoughtful
+
+Of everyone's privacy, it can be incredibly effective. As I mentioned at the beginning, it's like I was I saw that that media of the Columbus meetup and I was like, Yeah, man, I want to go to that. And reads like looking at the website for the mid Midwest Bitcoin, somebody's Yeah, I want to go to that. And so you guys have got that going on. And in addition to that, it's just like holding the door open.
+
+Right. So y if if you're consistent and you can hold keep the door held open so that these these new people can come in, feel ushered in, then everything can grow. And you get the cross pollination with the Columbus guys, with the c with the Cincinnati folks, the Louisville folks, right? All these people that are in the area. You build up this this network that all of a sudden
+
+is bigger than just your local meetup and you realize that there's local Bitcoiners everywhere. I just think it's it's it is the revolution, you know? This is the what we're doing is laying the groundwork for the new parallel system that can evolve and all of a sudden over time, the six years, right? Six years from six people, now you're at these 80 person quarterly events
+
+And now this giant summit where you have to make the the pre you know, the pre party an invite only thing is amazing, man. It's just it's a it's a a testament to like what you can do in and really six years is a short period of time. If you plant a f an apple tree
+
+rev (01:01:26.88)
+In s in six years you're finally gonna get like really get the yields of the fruit of that tree. You know, that's that's what you're looking at. That's not a long time. People plant apple trees all the time. And so really I mean i it kinda I you mentioned this fella that and I think I know who you're referencing here from Toledo. Going around like Johnny Appleseed, starting up interacting with meetups, getting everybody stoked, you know, and then disappearing.
+
+But that work was done and then the the reverberations of that work continue today and to to lead you to where you're at, you know. We all have a role to play. And if we can just keep holding the door open, more people will come and join us.
+
+Reed (01:02:16.067)
+Yeah man, well said. and I'll I'll keep mine short. You know, I I I'll I'll go back to you know something that comes up all the time on this, which is consistency, but also variety. Right. And and Shannon, I know you meant you know, you mentioned and and really kind of underscored the importance of consistency. I think that's pr you know, one of the most important things that a Bitcoin meetup organizer can do is to be consistent.
+
+but you also mentioned things like you know, make it fun, right? Find ways to to mix it up. you know, you've you've got the socials, you know, but then you do these quarterly events, right? Where you bring in the speakers and then you do these other regional things and now you have this the the big summit. you know, and the other thing too, right, is with the summit, it's not only a Bitcoin thing now, right? Now there's like this other side kind of convention that you can go and interact with them too, with the
+
+I see I tried to write it down quickly here. Ohio Health and Cannabis Summit. Was that right? I just wanna make sure I got the name right. All right.
+
+Shannon ( Columbus Bitcoin) (01:03:20.357)
+Yeah. yeah, Ohio Cannabis Health, yep.
+
+Reed (01:03:24.311)
+Ohio Cannabis Health. Great. Okay, great. so yeah, I mean I I think these these are all ways that you can bring Bitcoiners together, but also kinda keep everything fresh. and so I it sounds to me like you guys have really one of the premier meetups going on here. And so I applaud, you know, all the work that you guys have done. it's been really great hearing from you and and hearing about all the stuff that you have going on. So
+
+I guess I can just kind of wrap us up by saying, you know, thanks for sure for for coming on the show and for taking taking some of your valuable time. And we mentioned Noster briefly and I think we we covered during the pre show that you've got a Noster N pub and we do some cool stuff with the show to to help we you know, we we're kind of quote unquote like plugged into the Noster network. in a way that we think, you know, we
+
+there's not really options to to plug into some of these other walled gardens, whether that be X or YouTube or any of these other places that are significantly more difficult to to plug like let's say a podcast like ours into. so hopefully you'll get a little bit more miles on your N Pub. You know, it'll be in the show notes. you'll be foc you'll be featured here on our website as a guest.
+
+And you know, maybe people will go and and find you on X, but also hopefully find you your on Noster as well.
+
+Shannon ( Columbus Bitcoin) (01:04:52.721)
+I I appreciate that. I'll I'll tr make a conscious effort to spend a little more time on Noster. now that well I think X is mostly taken over by all the suit corners. So yeah, I may make a conscious effort to get on Noster more often.
+
+Reed (01:05:09.551)
+Yeah, I like to s you know, and and maybe you'll hear a little bit if you if you decide to hang out for the second part of the show that we're gonna be starting here in a minute. But I like to think of it's not so much like Noster versus Twitter. Like 'cause Noster has a lot other a a lot of other tools beyond just the social stuff. You know, like for me personally, I don't know, people who follow me on Nos like I'm not a very social person. Like I don't I'm not posting all the time. Like one one t you know
+
+Note a day? Like maybe. Like I wouldn't call myself like the greatest follow, like social follow. I like Nasser because of all the other stuff that you get along with it. and and some of that other stuff is is still being developed and still working. but because you have a community of Bitcoiners, you get this community of people who just birth products into existence, just like kind of like you were talking about. And so
+
+We're starting to see w a lot with a lot of the AI tools that are coming out, sort of an explosion of of new features and tools and things that are plugging into Noster that really kind of can't be plugged in anywhere else. so I guess that's maybe like a I didn't really plan to have a Noster pitch as part of this, but maybe that's like a little a little at least maybe not a pitch, right? It's why I like Noster. You can take it for what you want, I guess.
+
+Okay, well I think what that means is we're getting ready to transition to the other part of the show, which is our value for value section. So just like we talked about before, Shannon, you're more than welcome to hang out with us. we basically what we're doing is we're gonna go over, you know, we get boosts sent to the show, which are sent to us in the form of sats. some of those come with messages that we like to read off, and we also like to recognize all of our top contributors.
+
+So that's what we're gonna start off with. but I guess before we do, just wanted to give, you know, one more thank you to Shannon for coming on the show. and just make sure you have, you know, one last final word for us. If if you wanted to drop your your handle for Twitter or X or anything any any other links or anything like that you'd like like to show, wanna give you a chance to go ahead and do that.
+
+rev (01:07:29.91)
+Yeah, tell us about your meetup one last time, the the next one that's coming up.
+
+Shannon ( Columbus Bitcoin) (01:07:34.01)
+Okay, yeah, our next one will be on july twenty eighth at the Daily Growler in Upper Arlington, Ohio from six to nine PM I mean yeah, six to nine. Generally it lasts to it drags around to about ten, but advertised six to nine. And yeah, mainly if you want to try to find me, if you just on anything, if it's just Columbus Bitcoin, that'll be me that turns up. It could be meetup X
+
+Telegram, whatever. And lastly, if you do manage to make it to the Midwest Bitcoin Summit, we will have a booth there in the Expo Center. stop by and say hi.
+
+Reed (01:08:20.683)
+Awesome. Yeah, thanks, man. All right. Yeah, a hundred percent.
+
+Shannon ( Columbus Bitcoin) (01:08:23.665)
+Thanks for having me.
+
+Reed (01:08:28.311)
+Okay, so let's I guess when we're starting off our value for value section of the show, the place we like to start is with our leaderboards. so sorry you'd think I would have this by now, I would have a routine down and I would have all this up. Okay, here we go. so what I'm gonna do is we we had don't have a ton of changes to our leaderboards, but I'm gonna hit the leaderboards real quick. and then before we get into going through all the boosts.
+
+I'm gonna take a minute and talk a little bit about some of the new features that have come to the website since our last episode. but first let's start with our first leaderboard, which is our top episodes. So just like I always say, our top episode leaderboard, one of the cool things about the top episode leaderboard is that if you're new to the show and you like this episode, and you're you know you're kind of thinking, wow, I sh you know, this is gonna be maybe this is going to be one of my new podcasts that I'm gonna add to my feed.
+
+But you know, we're already on this is gonna be episode nineteen. What about all the other eighteen episodes that are in the backlog? That's a lot of episodes. Maybe you don't have time for that. Well, you can take a look here at our top episodes and find out the episodes that people have found the most valuable. And we know that because those are the episodes that they've sent the most stats to. So our top episode here is episode fifteen with BTC Russell. And that one is called Privacy.
+
+Privacy is sovereignty with BTC Wrestle from Columbia, South Carolina. That episode has gotten 281,897 sats. Now, that was a great episode. We talked about a lot of really cool stuff on there. But one of the reasons why we think that it's way up here at the top of the leaderboard is actually more or less all the sats from that episode have been pledged at this point to go to the samurai developers.
+
+And so this would be to the samurai developers, any kind of legal fund that they have, but also just to help out their their families in this time. So BTC Russell got that kicked off. he his lightning address in the podcast feed actually goes directly to Bill and Keone. And since then, Rev and I, we have also pledged our splits from that as well. And so at the end of July, we're gonna see what the totals are for episode 15.
+
+Reed (01:10:56.299)
+And we'll be making a donation of both of our splits from that episode as well. So all of the stats from episode fifteen are going to be going to the samurai developers. And so we're very pleased that that's our our top our top episode here.
+
+Alright, second on leaderboard, our second top episode is episode two, that was with G C and James from Jersey City. meetups are the ultimate web of trust. We've got episod the third place is episode fourteen, that was with Source Node, coming in with one hundred and twelve thousand four hundred and fifty six SATS. our episode with Source Node was called Permaculture for Bitcoin Culture, with SourceNode from Greenville, South Carolina.
+
+next up is episode nine. That was with Sir Spencer, Wolf of Kansas City. that episode's up to ninety-eight thousand six hundred eighteen sats, just shy of a hundred K. and that episode was Growing Slow Build Strong Communities with KC Bitcoiners. And rounding out our top five episodes in fifth place is episode five with Augie at sixty four thousand eight hundred eighty four sats.
+
+A long a longtime favorite of everybody was that episode five. and before I move to the next leaderboard, one thing I wanted to say, there's more than one way that you can measure what is our most valuable episode. One is by SATS, and that's exactly what we have here on this leaderboard. but if you go to our website, localbitcoiners dot com and you go to our stats page, forward class forward slash stats.
+
+one of our leaderboards, episode leaderboards, you can see which episodes have received the most number of boosts. And so we don't really talk about this very often, but the the it's not it tells a little bit of a different story here. If you go to the most number of boosts, our top episode is episode nine with Spencer. And our second top episode is episode one. And so episode one has been sort of a longtime favorite and and really has kind of a lot of valuable information about how to start a meetup
+
+Reed (01:13:07.225)
+how to run a meetup, things like that. another one on here that's in our top supported episodes that wasn't on the leaderboard in third place is episode eight. And that's received twenty so these are twenty-one unique individuals or unique supporters who have supported that. and then we have episode two and episode five, which we I think we talked about those two. So I don't know, just a a different view of if you're looking for what what is our most
+
+know, popular or most valued episode. There are different ways to measure that. And so if you're looking for another way, check out our website.
+
+rev (01:13:44.876)
+I will say that episode one, I've had more than one person reach out to me privately saying like, Hey, I'm I'm gonna start a meetup and I'm listening to episode one to get all the lowdown of how to do it.
+
+And so really if you if you want to start a meetup and you're listening to this show right now and you're like, man, I gotta get in on this this fun, this this cool stuff that's going on. I wanna join the revolution. Well, you can join the revolution and get all the information you need by listening to episode one.
+
+Reed (01:14:17.891)
+Hell yeah. Or at least a good start, right? We we talk about a lot of cool stuff in this podcast, but I think it's a great it's a great place to start, especially if you're looking to start a meetup.
+
+Alright, next leaderboard is this are our top listeners. So these would be the people who have boosted the most number of shows. And so this one we do have a little bit of a change here. So we called out Permanerd last time because Permanerd was missing one. He was you know, at one point he had the perfect record and then and then it seemed like maybe one one got missed because he he double boost one episode and missed another one. So Permanerd apparently has gone back.
+
+and and corrected the situation because now he and Matthew D are both tied for first place with a perfect score of 18 out of 18 episodes boosted. So thank you, Permanerd, and and of course, thank you, Matthew D. so we of course appreciate your longtime support. And then coming in right below them is Noster Gang. and all three of those folks I'm pretty sure we're going to be hearing from in the boost section. These are our you know these these are our core group.
+
+I think that's maybe what we're gonna start calling. I guess we call this top listeners. We've called them rider dies. But it seems kinda like every meetup's got their core group. You know what mean? And I think you guys, you you're really our core group. You're here every episode, you're boosting our show all the time. We get to interact with you on Noster. we're constantly hearing from you. So thank you to our top listeners. And rounding out here our top three because Permanerd and Matthew D are tied for first, Noster gang coming in
+
+And second place then with fourteen episodes boosted. So third place is Shadrach. Shadrach coming in with ten episodes boosted. So thank you, Shadrach, Naster Gang, Matthew D, Permaner. You guys are our core group and we love you guys. Thank you for all the support.
+
+rev (01:16:13.366)
+I wanna jump in real quick. so first of all, I think Nostra Gang has been making an effort to go back and find the episodes that they've missed and boost it. I think maybe they're just kind of doing it piecemeal. But that's a that is a way to I say it every episode, but like if you go back and boost all of the the episodes that we've done and get on this leaderboard
+
+And once again, ties count, so like if everyone's got the the you boosted every episode, you're gonna get recognized for that. This is contributing to all of the the Bitcoin meetup organizers that have been on the show. You're you're sending a little bit of sats to all of And this is your way of saying, like, yeah, I am once again joining the revolution. This is my way of participating in the revolution. I'm gonna put my sats where my mouth is, and I think that this is an important thing to support.
+
+And so and with Shadrax, I think Shadrach boosted an episode. We'll get to it in the boosts, but I'm not sure that the the the identity came through. But anyways, Shadrach has like an amazing episode it kind of tangentially related to what Shadrach is doing. But there's a there's a podcast called the Free Cities Podcast, and recently the Free Cities Podcast had a guy on called his name's Polycarp and he's talking about this archipelago node.
+
+Reed (01:17:21.579)
+okay.
+
+rev (01:17:40.762)
+which is a node which allows you not only to do sort of like what the Start9 node does or the Umbrella node does, where you can download all these other apps and and use your server, your home server to to do all this stuff, right? In addition to doing all that stuff, the archipelago node allows you for some mesh networking capabilities. And in in addition to that, it allows you to earn sats for
+
+creating these connections. And this archipelago node is about to be in the alpha release. And so if you're interested in sort of playing around with what you can do with a Bitcoin node and earn some sats beyond just like running a lightning routing node or whatever, how you can really leverage your home server to earn you some Bitcoin and and to like connect everyone together. This archipelago node is definitely something to be looking into.
+
+I recommend going and finding that Free Cities podcast with Polycarp and listening to it if you're interested because it is fantastic. I I just I couldn't have said all the stuff that Polycarp said better myself. and and you know, there there has been some criticism of it it as far as the claims that they're making or whatever, you know, as far as yeah.
+
+Reed (01:18:59.951)
+I think it was mostly terminol I listed I listened to that episode too. I think a lot of it was just terminology and it's like, Well, that's not what that means. It's like, Well, that's not super important all the time. Like it's it it the message matters.
+
+rev (01:19:09.666)
+The whole thing is like, dude, yes, these nodes, th if you run one of these archipelago nodes, you will be able to connect and do some really fucking cool shit. And it's like it much like a lot of the noser stuff that's coming online right now with the the private messaging and all the stuff, this archipelago node is similar where keep your eye on it, you know. Let that some you just just pay attention.
+
+Reed (01:19:32.4)
+yeah.
+
+Reed (01:19:36.576)
+and before we get to our last leaderboard, I'll just slip in one last note here about the website, which is so Noster Gang. So if you are trying to figure out which episodes you haven't boosted, we actually have a tool for that on the website. So on the stats page, one of the on the episode leaderboard, there's a radio button. If you're logged in with Noster, you can see if you click on that, it will tell you which episodes you've boosted and how much. So you can take a look at the list and
+
+See if you can figure out which which episodes are missing. All right, let's move to our final leaderboard, which are our top boosts. So these are the single biggest boosts ever sent to the show. so I'm gonna go down the list here and and these are messages that we read off every show. And so if you have something that you would like us to read off every show, you know, maybe you're selling a product on us or
+
+Maybe you want to promote your Bitcoin meetup. You know, you want to just get it out there that, hey, the third Thursday of every month, we meet at this time, at this place. well, we'll read it off every single show. All you gotta do is get onto the top boost list, and we'll keep doing that off for as long as you're on the as long as you're on the list. So let's start going through these. number one, we have sorry, there we go. Number one, we've got from Sovereign, which was
+
+three hundred thousand sats and that went to the local Bitcoiners show. So this wasn't an episode boost. this was a boost that came in on the website and it went to the show. So the when when sats get sent to the show, Rev and I get a split, but another a whole third of that goes back into our value for value you know, allotment, right? Where we're we're gonna go out and look for
+
+Podcasts, we're gonna look for nostrils notes, we're gonna look for projects, we're gonna look for other things that we can contribute to that are providing us value. And so that's really what we're using a good chunk of those sats for in this particular case. So, okay. So Sovereign's Boost came in 300,000 sats via localbitcoiners.com. and the message is Sovereign is the geek squad for Bitcoiners and Bitcoin companies. Come check us out at sovereign.io spelled S-O-V-R-E-I-G-N.
+
+Reed (01:21:59.117)
+Thanks, Rev and Reed.
+
+Righty. Second place is also from Sovereign. And this time, rather than boosting the show, Sovereign boosted episode 15, which we already talked about. That was BTC Russell's episode, where all those sats are gonna end up going to Bill and Keone. So that boost comes in 200,000 sats again via localbitcoiners.com from Sovereign. the message is
+
+Sovereign focuses on helping individuals, families, and companies integrate Bitcoin into their personal and professional lives with confidence, recognizing the crucial role it plays in the broader economic picture. If you want to dig deeper into self custody, node running, or point of sale implementation, Sovereign has your back. Thanks to all the Bitcoin meetup organizers out there for keeping the gr grassroots ethos alive. Go to sovereign dot io spelled S O V R E I G N for support on your Bitcoin journey.
+
+Reed (01:22:59.323)
+next up in third place we've got BTC Jack Lobe. he boosted episode two. That was with GC and James from Jersey City, which he has personally declared to me to be his favorite episode. maybe there's been a new one since then that's his favorite, I suppose, but at least at the time he boosted, he said that was his favorite. and he also boosted via localbitcoiners.com 105,000 sats. and his message is
+
+Escape to the listening loft cabin in Wilmington, Vermont, a modern two bedroom retreat featuring a signature vinyl record listening loft, luxury bedding, and a peaceful deck. Perfect for skiing at Mount Snow or a relaxing getaway. Pay in Bitcoin and get twenty percent off. Visit listeningcabin.com for more information. Well thank you, BTC Jackalope, and we hope some folks reach out to you. I think that that seems to me like a pretty good deal, twenty percent off.
+
+So hopefully we'll people will check out your pictures on Noster and go to your website. And finally, sorry, nope, in fourth place, we've got the third boost from Sovereign. So Soven really lightened up the leaderboards here. 100,000 sats coming in on episode 14. and episode 14 was our episode with with SourceNode. Permaculture for Bitcoin Culture. and so their message is.
+
+Here's what I'm thinking. Sovereign focuses on helping individuals, families, and companies integrate Bitcoin into their personal and professional lives with confidence, recognizing the crucial role it plays in the broader economic picture. If you want to dig deeper into self-custody, node running, or point of sale implementation, Sovereign has your back. Thanks to all the Bitcoin meetup organizers out there for keeping the grassroots ethos alive. Go to sovereign.io spelled S O V R E I G N for support on your Bitcoin journey.
+
+Well, thank you to Sovereign so much. You know, you've been a huge supporter of the show. we really appreciate, you know, the sats and we really appreciate what you're doing for Bill and Kioni and for the other Bitcoin meetup organizers out there. you know, a lot of those sets are really going right back out into the community. So we appreciate what you're doing for the show, but we appreciate what you're doing for for Bitcoin meetups as a whole. and finally, our top our f our fifth
+
+Reed (01:25:22.553)
+Top boost, last one on the leaderboard here is sixty-nine thousand four hundred twenty-one sats via fountain. Attend local meetup, and if there isn't one in your area, start one. Local Bitcoiners is an essential part of my 40 HPW. And that was coming in from BTC Russell. So thank you again, BTC Russell. your episodes, top episode of the show. You know, you really brought a lot of value to this show, and we appreciate everything that you're doing for meetups.
+
+and and everything that you've been working on. So thank you again for for your big boost here.
+
+rev (01:25:58.488)
+So all these all these people that are that are in these top boosts, they're they're participants in all of this. What we're trying to get going. The revolution, I will say it over and over again, right? Like this is what we're trying to do here. We're trying to create a parallel system through Bitcoin meetups that allows us to use Bitcoin the way we want to, to use it as money, to transact.
+
+Not if you're in the cannabis industry, which came up in this episode. Now if you're using Bitcoin, you don't have to fucking deal with all the bullshit that goes on with ha having cash. You can use Bitcoin. These are the folks that are like, yeah, Bitcoin is the way forward. This is how we fix the money and fix the world. And so check it out. Check out the listening loft. Check out Sovereign. Go.
+
+Boost the show. boost episode fifteen with with
+
+I got just got bit by a mosquito. BTC Wrestle, sorry. And get those sats going to where, you know, it's gonna be effective. We have financial power, right? We have the the the capital to make some change here. And these guys are putting their money where their mouth is, and we're trying to do our best to like continue that value chain reacting down and continue this revolution to happen. So.
+
+Reed (01:27:00.547)
+BTC Russell. Mm-hmm.
+
+rev (01:27:30.872)
+Thank you all. Very much appreciate it.
+
+Reed (01:27:34.542)
+And while we're giving thanks, let's not forget to shout out the streamers. So top I'll just read off the top how about we'll stick with the top three here. so these are the top three streamers of all time. So first we've got Logues coming in with eleven thousand three hundred eighty eight stats streamed via fountain. I don't have a breakdown here of how many different episodes that is. but I'm I'm wondering Logues might be starting to to creep up there on on
+
+some of these supporter leaderboards.
+
+Yeah, I don't I don't have an easy way of checking that. another longtime streamer, Chad F. Chad F coming in with nine thousand six hundred twenty-eight sats streamed via Castomatic. Thank you, Chad F. And pleb to Polymath with six thousand two hundred forty seven sats via fountain. And we also like to give a go ahead.
+
+rev (01:28:26.35)
+So Plep Plep to Pol Polymath, I I wanna I wanna do do a little special shout out to Pleb de Polymath because Pleb de Polymath is running a meetup in Marion, Indiana. it's it's this dude is doing the work, right? He's she's traveling around. He's not just streaming sats and participating online, but he's on the ground doing some real stuff. He's he's running a meetup and coming to other meetups and participating.
+
+And so I just pleb to polymath, thank you for streaming us the sats. I just wanna give you an extra little shout out there. And Logs is immedi part of the Indiana community as well, you know.
+
+Chad F, the free the free and open the CEO of the free and open internet, man, Chad F is as we we might we might get into it later about what Chad F is working on with the value for value music stuff going on. But all these guys
+
+Reed (01:29:09.081)
+Dude, love to hear it.
+
+Reed (01:29:25.325)
+We do have just yeah, and and just just to for Chad F specifically, so Chad F has actually been helping us out a little bit. He's been maybe, let's call it one of our mentors, let's say. As we this podcast and Rev and I are both learning more and more about the value for value kind of ecosystem. You know, he's interactive with the show, he's playing with us on Noster, he's participating in the games. but even more than that, he is actually he's the the only person that I've ever had.
+
+open a PR on a a project that I've actually worked on. you know, again, not a dev, so I'm a I'm a vibe coder, learning, learning with all you other vibe coders out there. so thank you to to Chat F for all the support you've given the show. And we will continue to learn from you and continue to grow. And finally I just wanted to give a shout out don't forget our top zappers too, right? So top zappers we've got Cleveland Bitcoin
+
+with over twenty one thousand sets, that earned them a spot in the in one of the higher tiers of the supporters page. but also Paul, nuts about you, and and a whole bunch of other people who have zapped us that. So thank you to all of you guys.
+
+rev (01:30:38.592)
+And so th this also gets into like, you know, the the the South Carolina meetup culture is is represented big in our leaderboards. the Indiana meetup culture is represented big. And and it's all through different ways, right? There's there's not just one way you can be represented in the show by participating.
+
+And showing that like yeah we're we're on board with this whole idea of Bitcoin meetups are the way that we do this. And it's it's just play the game with us guys. We're we're we're gonna try and recognize everyone and show that there is a movement happening here.
+
+Reed (01:31:23.353)
+So one of the things, you know, we we like to shout out, right? We like to give back. we continue to try to find ways like how we we've been talking about it for a long time. You know, we recognize all the support that you guys are giving us, like our community. So how can we give back to you? And we've done stuff like we, you know, include zap splits in all of our all of our notes and we do other things for the guests, right? We include them in the splits.
+
+you know, Rev's pretty prolific, right, when it comes to interacting with our community on on Nasser and making sure that the SATs are s are flowing there as well. at the top of the show, we just did a twenty-one thousand sat, you know, value return, right? For for value given to the show, which was in the form of sharing your meetup and boosting the show so we can get your your meetups out there. So I wanted to talk before we get into the boosts, I'll just say we're continuing to work on this.
+
+And we do have some new website features. And and this is hopefully going to continue growing our community and really defining our community and giving our community I think Rev, you've talked about it before, right? Like founding these boundaries, like actually making your community into something that's definable. And so now we have some new tools that will help illustrate that. And so I'd like to sort of debut here a little bit. community feeds.
+
+And so for all the people who have boosted us or streamed us sats or zapped us on Nostart for at least a hundred sats, you are now part of the community. And so if we have your NPUB, you're now your NPUB has been entered into our community on the website. So what does that even mean? Okay, you've been entered in our community. Well, first of all, you're on the supporters page, which we've already talked about that. and but you know, that's just your profile picture and a recognition that you're part of the community.
+
+So now we've taken at the next step. And the next step is these community feeds. And so we have a couple of them built out. we have two. So we have marketplace. So if you're in our community and you are selling stuff on Naster via NIP 99, like if you have NIP 99 items for sale on Noster, they're now going to be featured on our website. So you don't have to boost the show, you don't have to do anything if you just post your stuff to Naster. Well, you're part of our our family.
+
+Reed (01:33:51.908)
+Right, you're part of our community. And so you get to, you know, you'll be featured on our website. So we've got some cool stuff up here. we've got some merch that we sorta ninja launched and haven't really talked about very much. but those are listed in the marketplace. But we've also got some other cool stuff. We've got coffee crunchy hodl butter from Oshi, we've got sound coffee from Otis Bitmeyer, we've got some of the laser engraved stuff that I
+
+have been selling on Noster for a while. and then we have some other stuff that's like if you wanted to see pictures from BTC Jackalope's Vermont cabin vacation rental, he's got those listed as a Noster for sale. we've got stuff from Augie is on here. Augie's got some lip balm on here. I don't maybe some of these things are out of stock. I think some of these might be a little bit old. But the point is we're featuring things that are are being sold on Noster.
+
+from our community and now they're on our website.
+
+Reed (01:34:55.613)
+the second community feed we've got is for events. And so this is, you know, we talk a lot about we're trying to get people to bo boost their meetups, right? So if you boost the meetup, you know, that's where you're gonna get the value back because you end up on the on the kind one feeds, you know, we get to talk about your meetup. you end up in the boost section of the show. but if you didn't have time for that or you didn't know about it, or you you y you know, just didn't take the time to go to localbitcoiners dot com forward slash meetups, doesn't matter.
+
+Because if you've boost if you've posted an event on Naster and you're in our community, it's now in our community feeds and for the events. So we've got some other events coming up. So like Geordie has an event coming up, Bitcoin and Liberty. and that is in Spain. Ken Singulera in Spain. And that's Thursday, July ninth. I'm sure I butchered that. Apologies, Geordie.
+
+let's see, we've got the other ones that we've listed off here already. we've got Bitcoin and Espanol. And so that was Johnny Johnny Fuego, right? And so we talked about that on his episode. Well, he's got it posted as an Oster event. That's Saturday, July eleventh, six PM to nine PM. what else we have here? The bullish market, right? Shout out bullish. So bullish market has their event posted as a nostra event. And guess what? Bullish is in our community.
+
+And so bullish is now featured on the website. We've got Batter C Bitcoiners on here. And then we've got Johnny again posted the local block market number eight, which is coming up Sunday, July twenty-sixth. So these are all events I just those are only for July. So you can go to whatever month you want and check out all the events, even events in the past. You can check out what people had going on. So these are our community feeds and we hope you check them out.
+
+And we hope maybe that gives you a little bit more incentive to to join the community and start participating in some of the Naster stuff that we've got going on.
+
+rev (01:37:00.652)
+Yeah, guys, it's it's just super cool. Like all everyone that is doing a Bitcoin meetup is doing something cool. And if you're doing something cool and you share it on Noster, now it's available for everyone to see when you come to localbitcoiners.com. And and this is localbitcoiners.com hopefully is the place where the local bitcoiners go to figure out what the hip cool things are to do in your area. So let's do it. You know, join us.
+
+Start participating.
+
+Reed (01:37:33.581)
+And we've got other stuff, you know, I'm not saying we're done. You know, if i we want to do even more. Even more for our community. So we we will continue to be brainstorming. We have other community feeds that are gonna get built out, but we have other ideas other than that too in the hopper. So all right, well, thank you for giving me a minute to talk about the website. And I think with that, we're ready to transition to boosts, right?
+
+rev (01:37:57.485)
+That's right. And and we're gonna start off the boosts with five hundred th or five thousand sats via fountain from the one and only Matthew D, who Matthew D is scheduled to come on the show and and really we're gonna go into the lowdown about the the Michigan Bitcoin culture pretty soon here. But Matthew D says, Hope you guys are enjoying the summer. And he's got a son emoji.
+
+Well, hell yeah, Matthew D. I'm I'm enjoying the summer. You know, I'm I'm only like ten minutes away from the the most beautiful sand dune beaches on the the western side of Lake Michigan. And you know it. I'm I'm going over there as much as I can and enjoying the sunshine. I'm I'm not sunning my balls at the beach, unfortunately. That's that's kind of a little faux pas, but
+
+you know, I'm I'm getting as much sun as I possibly can over there and enjoying it. Next we got two
+
+Reed (01:38:57.709)
+Yeah, I haven't been I ha I haven't I haven't been stunning my my balls either. but I will say I even mentioned it the other day. we I don't know about you guys. We we had a pretty long, hard, cold winter here in Massachusetts. And I have really honestly been enjoying the summer. I it was like making mental notes like all winter about how much I was gonna enjoy the summer once this extremely long cold winter was over. So yeah, I've been
+
+Thoroughly enjoying this summer. Thank you, Matthew D.
+
+rev (01:39:30.764)
+Yeah, you go don't forget it, man. That the summertime is the time to go and just take it in. Build up that vitamin D, guys. Next we got two hundred and fifty sats via fountain from Nostergang. I think it would be neat to make a cards against humanity type game for and they say coins against coins for humanity. question mark emoji.
+
+I don't know. Has anyone got this this seems like something that could be done? You could spin it up.
+
+Reed (01:40:03.876)
+I don't I don't think I've ever pl I know I've heard of the game Cards Against Humanity. I've never played it. So I don't I don't know the game well enough to know if there's a like to immediately think of Bitcoin correlations, but it would not shock me. It sounds like it I like the name, Naster Gang. Coins for humanity. Love it.
+
+rev (01:40:23.404)
+Yeah, let's go try it out. Put it out there, put it on a a Nip ninety nine marketplace event, boost the show, and then all of a sudden you can sell that game right on our website. Next we got a hundred sats via localbitcoiners dot com from Anon and it says great points. And that was on Big Upside, Small Risk, the value of Bitcoin meetups, episode thirteen.
+
+And I think we did have some great epis great points in episode thirteen. One of the biggest points was yeah, it's it don't be afraid to show up to the meetup. The meetup is gonna give you way more value than any privacy that you're gonna sacrifice. You can be thoughtful about about how how you go, and
+
+Reed (01:40:57.87)
+We brought it up tonight.
+
+rev (01:41:16.396)
+Bitcoin meetups are a way for you to gain liquidity for your Bitcoin, to gain utility for your Bitcoin. to to build social capital, to build cultural capital. So much is involved when you show up to the Bitcoin meetup. It's very hard to say that it's a bad idea to go.
+
+Next we got two thousand sats via fountain from Jar. And he says, Thanks, gents. And that was on Upping Your Your Meetup Game with Steve Scott and s and Tally, Louisville, Kentucky, episode 18. And that was our most recent episode before our our recording now.
+
+Well thank you, Jarr. I appreciate you listening in and continue Jarr has been a a pretty consistent booster and I appreciate that.
+
+Reed (01:42:09.999)
+Well, at least a longti a and minimally a longtime listener. Because I can remember reading off boosts from Jar from long, long ago, like when we first got started. So thank you, Jar. We know you we know you're a you've been a l a longtime listener.
+
+rev (01:42:23.424)
+And Jared is is is another guy that that gets his forty HPW in and he's boosting other shows and he's involved and and he's paying attention. So definitely part of the the community that we're trying to build. Next we got 420 sats via fountain from Julio with no comment. Upping Your Meetup Game with Scott, Steve, and Tally, Louisville, Kentucky, episode 18. And Julio is one of the
+
+I I I g you founders, you one one of the the the key per people involved in this Chicago Bitcoin collective, forking coin restaurant thing that's going on in Chicago. And man, Julio, I can't thank you enough for for listening to the show and participating because I know what you guys are doing over there is the real deal.
+
+And I'm very happy to continue to work with you on everything. That is gonna be the hub of Chicago. The the the Chicago Bitcoin Collective is amazing. You guys need to go check it out. if you're coming to Lake Satoshi and you're and you're traveling through Chicago to get there, stop at Forking Coin, check out the Chicago Bitcoin Collective. It's a really sick place.
+
+rev (01:43:49.325)
+Next, we got 5,000 sats via localbitcoiners.com, and this is from Whiter. And Whiter says, I'm in agreement with Talia. Social interaction is the way to go. Knowledge of Bitcoin will grow with social interaction. Each group can grow their base through educating those members once the members show interest in certain subjects in the Bitcoin ecosphere. Each member of a group will have their strengths and weaknesses. As a result,
+
+There are tons of opportunities. Education programs within each group can blossom if you grow the members e if you can if you grow the members' time to be a part of a social structure that shows their friendship is valued, in my opinion.
+
+Next Cleveland meetup is on July 10th, 7 p.m. at Saucy Brew Works in Cleveland. Hope to see you guys there. And that was on Upping Your Meetup Game with Steve, Scott, and Tally, Louisville, Kentucky, episode 18. And thanks, Whiter. You know, and this is this is just like another example of, you know, by us trying to do these regional guests.
+
+connecting everyone together, it shows that there is community there, just a couple of ways a couple of hours away, whichever direction you go, there is a Bitcoin meetup for you to find. And the education go ahead.
+
+Reed (01:45:22.479)
+Yeah.
+
+Yeah, I was gonna say so we you know, this is something I I talked about it, you know, I didn't really talk too much about my meetup at the beginning of the show this time, but I did last time. And, you know, we we've transitioned a little bit to, you know we we've changed meetup formats several times, right? We've done the socials, we did these education meetups that were more like lectures. Now then we did this the Socratic seminars for a long time. And then the last couple, we did the round tables.
+
+And that's what we're doing again at the next one of these roundtables. But honestly, the f the focus of the the the upcoming round table is going to be k kind of in line with what you're talking about here. Like how do we lean into our strengths, right? How do we lean into what our community has to offer? And the only like we wouldn't be able to figure that out if it was a lecture, right? Where people are just listening in the audience. And so really, you know, and I think kind of that's what he's saying here, right? That's the social interaction.
+
+And so that's you know, I think consistency and variety. I think it's good to have a little bit of everything. And so I think we, right now are leaning a little bit more on the social side, but it's specifically the social side to figure out how we're gonna grow together. So it's it's kind of right in line with what he's saying.
+
+rev (01:46:43.682)
+Yeah, you you d you don't lean too hard into like what your own idea of the mix the the meetup is. You let the the the different people that are are coming to the meetup show you what the meetup should be. And you offer the educational opportunities in regards to that. And and so the next we've got two thousand sats via fountain from Lake Surfer.
+
+Reed (01:47:04.759)
+Exactly. Well well put.
+
+rev (01:47:12.054)
+And Lake Surfer says, separate money from state. And that's from Upping Your Meetup Game with Scott or with Steve, Scott, and Tally, Louisville, Kentucky, episode 18. And I was at I I I've had the opportunity of meeting Lake Surfer in person, and I can tell you, Lake Surfer is a real dude.
+
+Definitely looking forward to to talking with Lake Surfer again in the future. And I couldn't agree more, man. Separating money from state is the way we do the revolution. This is how we build the parallel system that allows us the freedom to do the things that we do that are normal. Like a lot of the my lifestyle is
+
+Trying to find these ways to circumvent the bullshit of the state, stopping me from just being a normal productive person in society. And so if we can separate money from state, then I am free. We are free to just do what we want to do and provide value to our communities in a productive sense without being extracted from left and right all over the place.
+
+So thank you, Lake Lake Surfer.
+
+Reed (01:48:28.439)
+I was and I was I was actually I if I had been thinking about it ahead of time I might have had it queued up here but and and I can't remember what it was. But some someone boosted a podcast and I saw the boost come in on Noster and I like, this maybe this is good. Let me check out this podcast. And so I checked out the podcast and I didn't know who it was. This isn't a podcast to normally listen to. But it was a great episode and it was kind of about
+
+It it almost sounded to me kind of like a a a message to let's say the Soupcoiners, which is like, can can we not forget why Bitcoin has value? Right? Which is, you know, what what you know, why is this thing valued by anyone for any reason? And and honestly, like the thing that differentiates Bitcoin from from anything else that you can invest in is that it is it's completely separate from the state. Like they can't control it.
+
+And so using your Bitcoin in a sovereign way, it's way different than using your Bitcoin in a permissioned way where you don't even aren't holding the keys or you're trusting someone else to hold it for you. That's not why Bitcoin is valuable. Like start using Bitcoin in the way that it's it's most valuable, which is in your own customs in your own cust custody, you know, in a self sovereign way. And I just thought it's a good message.
+
+to remind all the let maybe the new Bitcoiners out there, right? Who aren't maybe they're not even really Bitcoiners right now. They're more like, I don't know, investors and companies that invest in Bitcoin or something. well take a you know, maybe this is a good message, right? Like maybe you should just be holding the Bitcoin that the companies are buying in st instead of buying the companies and having them do it for you. So anyway, it was just a it was just a good reminder.
+
+And it was something I was thinking of sending out to my need up just to remind some of our folks, you know, why we're actually here.
+
+rev (01:50:27.212)
+You got a lot of freedom, right? This this is what the founding fathers were looking for, is the the ability to say no when the taxes came and all this stuff, right? We just don't want to no, that's not what we agreed to. And guess what? You can't like financially control me. You can't close my bank account. You can't stop me. I'm gonna do what I think is right, and that's it.
+
+So yeah, separate money from state. That's you know, fix the money, fix the world. This is the idea here. next we got sixty-nine well six thousand nine hundred sats via fountain with no with so there's no identity attached to this. And so I'm I'm I'm gonna kinda assume that this might be Shadrach, but I don't know. And so
+
+This person says, pre-listen boost. Appreciate appreciate you guys as always. salute emoji. And that was from Upping Your Meetup Game with Scott, Steve, Tally, Louisville, Kentucky, Episode 18. Well, I appreciate
+
+Reed (01:51:38.169)
+The pre-listen boost the pre-list and boost is a baller move, right? Because that means you're just assuming you're going to be getting this value out. And so we, you know, appreciate it. You you know, I I realize there's no name on this and and maybe it's Shadrach, but whoever it is, you know, is probably a longtime listener of the show if they're doing a a pre boost a pre list and boost. So thank you for that.
+
+rev (01:52:00.108)
+Yes, thank you. And and sixty six thousand nine hundred sats is no small number as far as I'm concerned. That's a that's a lot of sats. Appreciate it.
+
+Reed (01:52:07.265)
+Absolutely. That's that's a huge boost.
+
+rev (01:52:11.072)
+Next we got 980 sats via localbitcoiners.com. And there's a little message here that says a thousand sats intended, but one leg failed. So I don't know what that means. But that's interesting that's come up. And that's from Mr.
+
+Reed (01:52:25.955)
+That's a a feature it's it's a feature I added. when there was a period of time where I I think we we had I can't exactly remember what the problem was, but we we were having some issues with not not all the paym I think actually what it was was maybe we had an episode where someone had a bad a lightning address. That might have been why it it started. And so I added some things. It was like, you know, what what if they send in a boost and but not all the lights
+
+pay. Do we s do we still count it? Does it go on does it go out as an astronaut? Or do we say, well, it didn't go all the way. And so this was kind of my compromise was to say, well you sent us boost, so we definitely want to recognize you. and so we've got the full amount. but, you know, in this particular case, twenty twenty sats it looks like, didn't didn't go through. So I don't know. We did we
+
+rev (01:53:20.526)
+Yeah, it was probably the the two percent split that was supposed to go to fountain or something. Right. Or or w to to like help the fountain integration. But either way, Mr. X, you know, Mr. X is a Michigan Bitcoiner. And I like Mr. X a lot. Mr. X is if you meet that guy, he's like the comedian, dude. The guy's got jokes. I love Mr. X talking with him. He always makes you laugh.
+
+Reed (01:53:24.921)
+Probably. Yeah.
+
+rev (01:53:46.506)
+And Mr. X says, Great discuss, great discussion on value of meetups. Shout out to my homies in the Grand Rapids Bitcoin Meetup group. And that was the Subjective Value of Meetups with Clay Seal, Cincinnati, Ohio, episode 17. And Mr. X, I look forward to to seeing you at Lake Satoshi. I know it's been a long time. We haven't crossed paths in much too long. So thank you for the boost.
+
+Next up we got four hundred and twenty sats via localbitcoiners dot com. Look at this guys. Everyone is boosting from localbitcoiners dot com. It's working. Look this is awesome. Thank you for choosing to boost us through localbitcoiners.com. This is the way we're showcasing that, you know, websites are noster clients and all this stuff can be interoperable. Look at it. localbitcoiners.com.
+
+Reed (01:54:40.941)
+Nostor makes websites cool again. Like let's do it. Let's websites used to be cool back in the day. And then they proceeded to get very not cool. And we but we can make them cool again because of integration with Noster.
+
+rev (01:54:55.616)
+And so this boost from Whiter was the boost that got Whiter 21k sats here. And so all it says is the the pre-filled message. I just posted my meetup on localbit owners.com forward slash meetups. And then there's a there's a link to the meetup that Whiter posted, which we already read, but I'll I'll click on it and read it again.
+
+And this automatically added a link to Plectos. So because once again, a lot of the the clients do not render these these event kinds.
+
+And so it doesn't show up. And and here i funny enough, I click on the the link to Plectos and it says that it won't render. I I can't get it to load. But, you know, it's it's at Saucy Brewworks, right? In Cleveland. I don't remember the exact day. But why d yeah, we got we gotta find it.
+
+Reed (01:55:52.151)
+Let's see, we've got it on the on the meetups it should be on the meetups page.
+
+Yeah, I got it loading here. Here it is. It's no. here it is. Sorry. Yeah, yep. Friday, july tenth, seven PM to nine PM, saucy brewworks, Cleveland.
+
+rev (01:56:12.376)
+There you go. So Whiter just got twenty-one K SATS for posting the meetup via localbitcoiners dot com.
+
+Reed (01:56:20.537)
+for for boosting his meetup, right.
+
+rev (01:56:23.83)
+Right, for for boosting it out. So thank you. And enjoy those sats. Hopefully you do something good with them. Next we got four thousand two hundred and forty-two, forty-two, forty-two via fountain, via or from plebeian on. And plebeian on says V for Ving, thanks, gents. And that was on local bitcoiners, subjective value of meetups with Clay Seal, Cincinnati, Ohio, episode seventeen.
+
+And so Plebby Anon is one of the homies over there at Sovereign.
+
+And you know, Plebey Anon has a podcast through Sovereign, which is called the Becoming Sovereign Podcast. And it's a very noster forward podcast. This is a podcast if you're looking to listen to the folks that are doing the value for value thing, doing the
+
+Circular economy thing doing it all through NoSter, you should check out this podcast. And plebeian on also has people that are not in that ecosystem, and he gets people to talk about stuff that if you've heard this person on a podcast a hundred times, plebey Anon will have them be talking about stuff you've never thought that they would talk about. It's beautiful.
+
+I love listening to it. I look forward to every episode. And I do appreciate the the value for value. You know, we're we're doing this together. We're all in the revolution together, guys. And this Noster thing helps us become unified. Okay. We we become unified through Noster. Nobody can stop us, right? We can we can send this value. We can post all of our information out there. We can't get shadow banned. We can't have our accounts deleted or whatever, right? We can just do it.
+
+rev (01:58:14.732)
+And it's out there, and the information and the cultural capital will persist. Next, we got 100 or 1111 sats via localbitcoiners.com, Rowasticks. Thank you very much from Perma Nerd. And Perma Nerd says, I probably boosted the wrong episode. I can't seem to find the login to fountain on graphing OS using Amber.
+
+It's my usual method of boosting and I'm in the market for a new app, but none none seem to fit the bill. Long live Noster integration on localbitcoiners dot com. And so this is kind of an issue that we've been trying to solve and thankfully local big once again, localbitcoiners dot com makes it easy. Easy enough, apparently. because if you if you play around with these other podcasting two point apps, it's not as you can't necessarily always bring your own wallet and the the the
+
+Boosts don't always propagate everywhere. And I think Chad F is is really starting to try and help make this more of an interoperable system. And and really it seems like Noster is a very good glue to aggregate all of this information together. So if you boost a podcast from any of your favorite apps, if it's Noster integrated, it's gonna show up everywhere else. But Permanerd, thank you for showcasing the fact that localbitcoiners.com
+
+does the trick and you can get your message out there. And then to follow it up, do you do you have something to say, Reed?
+
+Reed (01:59:47.664)
+Yeah, I was just gonna, you know, it's I it it's really so amazing to me to have this website that honestly, you know, I I've raised my hand a number of times, n not a developer, and yet here we are with with a website that does just features that you could only kind of dream of even only a handful of months ago. it's and and I think a lot of that is
+
+Well, first first of all, most of that is Claude. But a lot of it also is the ability the ability for Claude to tap into Noster so easily. Like if we were an a a a Twitter focused podcast, there's all these features that we're it are tr that we're integrating, like none of these features would be available to us. Like it doesn't claude or no claude. Like there's no amount of like unless you're gonna go get permission from Elon or whoever, we're
+
+You can't do this stuff with a website that you're hosting yourself. So it's Noster that makes all this stuff possible. And that's kind of what we're trying to showcase here. Like it's it's the interoperability, but it's also the accessibility. It's it's not a walled garden. It's w it's wide open fields for anyone to participate in.
+
+rev (02:01:08.492)
+The opportunity for a parallel system to exist, for the cultural capital to be propagated up appropriately. You know, we we if you interact with the show through the website, that information is n unstoppable it it goes out there because it's noster based.
+
+Okay, so then we've got one, two, three, four, one thousand two hundred and thirty-four sats via localbitcoiners.com from Permanerd yet again. And Permanerd says, Thanks for the yacht of love. You mentioned a voicemail possibility. It may be a fun addition to have a line for meetup reports similar to the No Agenda podcast. Let people say hey from their meetups and play them on the show. Hopefully I'm boosting the crep correct episode.
+
+And that's from Upping Your Meetup Game with Steve, Scott, and Tally, Louisville, Kentucky, Episode 18. And I think this is gonna come up again because we did kind of put the call out there, like should we do a call in? And that is a really cool idea, Perma Nerd. And I didn't think of that, but you know, if you do listen to the No Agenda show, they do have a section.
+
+Reed (02:02:13.22)
+Millionaire.
+
+rev (02:02:15.916)
+where people just kinda like have these off the cuff recordings and say, Hey, this is so this is us from, you know, the Indiana, the the Indianapolis No Agenda meetup or whatever. And that could be pretty cool if you know, all these big whoever you if you're out there and you run a meetup and you record a little thing, we'll f maybe we can find a way for you to submit that to the show and we can play it. And like I said, I think it's gonna come up
+
+Reed (02:02:42.317)
+Love it. We'll put it on the list.
+
+rev (02:02:44.492)
+Bullish is gonna bullish is gonna give us another idea here coming up about that. And so next we got speaking of bullish, one hundred and eleven sats via fountain from bullish clips and the bullish clips says bullish, and that's on Upping Your Meetup Game with Steve, Scott, and Tally from Louisville, Kentucky, episode 18. Bullish, I know we're gonna hear from you again, so I'm just gonna go to the next one, which is one hundred and eleven sats via fountain from bullish clips, and bullish says
+
+Voicemails sound fun. Maybe Reed can cook up something with NIP A0. NIP A0. Have you heard of this Reed? Might be a support in circle two. And so a circle is a thing that I think Bullish is working on building. I don't I don't know exactly what circle is, but this nip.
+
+Reed (02:03:33.965)
+It's brand new. I heard I he he was messaging he he was noting about it the other day, like yesterday or something. And I kind of came across it actually like today. And so it's a I think it's a desk it's made I think it's supposed to be a desktop client, but it's a desktop nostalgic with some new and interesting features that I haven't had a full amount of time to explore yet, but I know he has a note about it.
+
+and I think NIP A zero has gotta be a typo. and but you know, I am for for someone who spends so much time on Noster and and doing all these Naster things and developing things with Noster with you know, the website and and other things, you'd think I'd be better at all these nip numbers, dude. I'm awful at at the nip numbers, dude. I can never keep them all straight. So I'd love to say that I know what he's talking about. It's nip, you know, forty or
+
+Whatever the hell it is. But I have literally no idea. Sorry, Bullet.
+
+rev (02:04:37.154)
+Well, there's so many of I much like the the bips, right? Like there's just so many bips, like you could ask like the the greatest Bitcoin historian about bips and they you could stump be like, what is bip number this? And they'd be like, I don't fucking know, man. But the whole point is is like
+
+Reed (02:04:47.459)
+Yeah, yeah.
+
+rev (02:04:56.13)
+There's there's maybe a reference here in nip A zero. Maybe we have to do some detective work. But it would be cool. Even better if if we can make the the voice these these shout outs from the meetups
+
+through these voice recordings, a Noster integrated thing. Because once again, permaculture integrate rather than segregate. If we can keep everything in the beak Bitcoin ecosystem and then even narrow it down even more and keep it in the Nostra ecosystem, we're gonna unify each other and we're gonna have that much more strength in once again walking one step forward in the revolution.
+
+Reed (02:05:15.118)
+Yeah.
+
+rev (02:05:39.488)
+Next we got 101 sats via fountain from Nostra Gang with an orange heart and a purple heart. And that's on Local Bitcoiners. Meetups and podcasts are the signal, Ottawa, Canada, Episode 3. So that was with Boomer.
+
+And so that's what I was getting at. Nostergang is going back in the archives and trying to find the ones that they missed and and hit it with a purple heart and an an orange heart. So thank you, Noster Gang. We do appreciate the continued participation. And this is a little bit of a tease for some of the ideas that we've had around these so Nostragang is a pr a prolific.
+
+Reed (02:05:59.317)
+yeah. I see.
+
+rev (02:06:22.786)
+contributor to boosting podcasts and and sort of like a curator, right? Nostra Gang is listening to some stuff, and you might want to listen to what Nostra Gang is listening to. And we may or may not have an ability for you to see what Nostra Gang is listening to via their boosts in the future. And so Nostra Gang, keep it up. Your work is not going to go unrecognized.
+
+It's i y people will will find the value in the podcast that you're listening to and boosting. They're gonna find the signal that you've been finding for yourself.
+
+Reed (02:07:00.335)
+You guys are gonna love it. It's on the list.
+
+rev (02:07:02.892)
+It's on the list. We we're working on a hundred thousand things at once. And it's all it thank you, Claude, for allowing this to to for Reed to be fifteen people at once, with no prior knowledge of anything. It's great. so next we got some boosts that I have well okay. So yeah, the next we got a boost 420 stats via localbitcoiners dot com from me. and I'm just chilling the Southwest Michigan meetup.
+
+Reed (02:07:10.841)
+Ha ha ha
+
+rev (02:07:30.836)
+And the biggest thing to note about this boost is that the Southwest Michigan meetup is gonna be having their last meetup here in July. And that's the third Thursday of the month. That's July sixteenth.
+
+It's the last meetup at this location at the Dwellers Co-working space. And so this is where this meetup has started. It's been there the whole time. Unfortunately, the location is gonna no longer be available to us. So this is the last one that we're gonna be doing there. And it's gonna be a special one. We're gonna try and make it cool. So if you can come to Benton Harbor, Michigan on July 16th, get there by like six thirty or whatever. You we'll we'll be going late, you know, if you can get there late, whatever. Just show up. It's gonna be
+
+a pretty cool meetup. We're gonna try and say goodbye to this location with a bang. So come come to Dwellers Co-working space on July 16th. Hang out with us if you're in the area. It's gonna be cool.
+
+Next, we got 101 sats via fountain from Nostra Gang with an orange heart and a purple heart. And Bitcoin meetups are the ultimate web of trust, Jersey City, episode two. So there you go. Noster Gang is working on it, getting there, keep it up.
+
+Next, we got another boost from me. and this is this is just to kind of exemplify that you don't have to be the organizer of the meetup to boost the meetup on the show. And that's your entry into this 21,000 sat potential payout for participating. And so I'm saying wash the pleb slop off with a fire hose of technical discussion at Chicago BitDevs.
+
+rev (02:09:17.214)
+And so I've got the the link here to the the Chicago BitDebs Socratic Seminar. That's on July ninth. I love Chicago BitDebs. They always bring dude, they've got a fund there to to to get pizza. The beer, the the the fridge is always full of beer, all kinds of different beer that you could want to drink. People got wine. You you could BYOB, whatever, get good food and come check out.
+
+the the Chicago Bit devs. It's at the strike offices down in the loop in Chicago. And so I posted that meetup, you know, I'm not I'm I'm in no position to be like an organizer of that meetup. I have no I just go to it, right? But I know that they're not on Noster. And so I took the liberty of sharing this out, this information out to Noster.
+
+And so here it is. And you can do the same thing. And if you do the same thing, then you are entered in for the possibility next week of getting this 21,000 sat boost, you know, payout for doing that. So go if you go to a meetup, put it on Noster, you might get 21k sats.
+
+Reed (02:10:26.637)
+Yeah, really what we're doing, right, is so we and we I I think since episode one. It's in the outro of every show, but since episode one, we've been saying the dream of this podcast is that we just read off meetup after meetup after meetup after meetup. That's what we want to do. And so what you guys are seeing right now is us learning from the community, right? When people aren't posting their meetups, we're like, well
+
+Let's change the incentives. And so we want this is something we want. Like when you post your meetup, like you're giving us value. This is what we want for the show. And so we're just finding ways to give it back. And I think this is this twenty one thousand sats, you know, I think we're gonna be like quote unquote, like randomly selecting one. Maybe that means we're just gonna pull pull one out of the hat. but you know, I don't know. Maybe maybe we'll split it up. Maybe it'll be a random one.
+
+Maybe it'll be twenty one thousand sats a week and we'll split it up. We you know, we're we're kinda making this up as we go here, but the point is we wanna give value back for the value you're giving us when you post your meetup to Noster.
+
+rev (02:11:39.808)
+If you participate, you will be rewarded is is ultimately the signal that we're trying to send out there. And thankfully, due to the the participation of guys like Sovereign, who are a big player, you know, they're they're a big participant in the Chicago Bitdev's community and in the Fork and Coin and Chicago Bitcoin Collective, these these guys are putting some sats down and we're gonna put those sats back out for for meetups everywhere.
+
+So play around with us, get your meetup out there, get it on Noster where everyone can aggregate it and we can all find it together. We can start once there's a bunch of them, then we can start to do cool shit like maps and you can plan a road trip around all these these meetups that you want to hit with your family, going and finding the local Bitcoiners all across the country, and we can start to unify and the revolution gets stronger. So, you know, 250 years of the United States being in existence, you know what?
+
+We're gonna continue it on and it just doesn't have to be with the dollar, you guys. We can just do it with Bitcoin instead. And all it takes is us to unify and participate that in this together.
+
+Reed (02:12:52.109)
+Can't think of a better way to close out the episode. So, thank you everybody for your participation and continuing to listen to the show. we appreciate hearing all of your feedback and we hope that you you know, let us know what you think of the show. Let us know if you've got cool shit going on. let us know about your meetup. Hopefully you start playing some of the games with us. We look forward to it.
+
+rev (02:13:16.652)
+Yeehaw, roll the outro.
+

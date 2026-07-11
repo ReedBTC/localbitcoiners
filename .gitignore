@@ -34,3 +34,8 @@ bots/CLAUDE.md
 bots/**/__pycache__/
 bots/**/*.pyc
 bots/.claude/
+
+# --- Local-only scratch + secrets (never commit) ---
+tmp/
+*creds*.env
+pi-creds.env

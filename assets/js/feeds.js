@@ -661,8 +661,27 @@ async function loadMarket() {
   }
 }
 
+// Podcast Boosts — episodes the community has boosted on Nostr. Unlike the
+// other tabs this isn't a live relay subscription: it reads the pre-computed
+// /api/community-boosts snapshot (built hourly by bots/community-boosts), so
+// there's no supporter/relay resolution here — just hand the panel to the
+// module and let it fetch. Lazy-imported on first view like the market feed.
+async function loadPodcasts() {
+  const panel = document.getElementById('panel-podcasts')
+  if (!panel) return
+  const list = panel.querySelector('[data-feed-list]')
+  showSkeletons(list)
+  try {
+    const mod = await import('/assets/js/feeds-podcasts.js')
+    await mod.renderPodcasts({ panel, list })
+  } catch (e) {
+    console.error('[feeds] podcast boosts load failed', e)
+    renderPlaceholder(list, 'Couldn’t load podcast boosts', 'Something went wrong reaching the community boosts feed — please try again later.')
+  }
+}
+
 // ── Lazy per-feed dispatch ───────────────────────────────────────────
-const LOADERS = { events: loadEvents, market: loadMarket }
+const LOADERS = { events: loadEvents, market: loadMarket, podcasts: loadPodcasts }
 const loaded = new Set()
 
 function loadFeed(feed) {

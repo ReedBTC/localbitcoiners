@@ -21,7 +21,7 @@
   " />
 
   <title>Community Feeds — Local Bitcoiners</title>
-  <meta name="description" content="Live Nostr feeds from the Local Bitcoiners community — notes, marketplace listings, events, and long-form articles, all in one place." />
+  <meta name="description" content="Live Nostr feeds from the Local Bitcoiners community — events, marketplace listings, podcast boosts, and long-form articles, all in one place." />
   <link rel="canonical" href="https://localbitcoiners.com/feeds" />
   <link rel="icon" type="image/png" href="assets/favicon.png" />
 
@@ -37,7 +37,7 @@
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://localbitcoiners.com/feeds" />
   <meta property="og:title" content="Community Feeds — Local Bitcoiners" />
-  <meta property="og:description" content="Live Nostr feeds from the Local Bitcoiners community — notes, marketplace, events, and articles." />
+  <meta property="og:description" content="Live Nostr feeds from the Local Bitcoiners community — events, marketplace, podcast boosts, and articles." />
   <meta property="og:site_name" content="Local Bitcoiners" />
   <meta property="og:image" content="https://localbitcoiners.com/assets/LocalBitcoiners_banner.png" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -93,21 +93,21 @@
          active feed's trio is mirrored into --accent / --accent-d /
          --tint by the [data-active-feed] rules below so the shared
          chrome (panel, toolbar) can just read --accent. */
-      --notes-accent:    #5e7d3a;  --notes-accent-d:    #46602c;  --notes-tint:    #eef3e2;
+      --podcasts-accent: #5e7d3a;  --podcasts-accent-d: #46602c;  --podcasts-tint: #eef3e2;
       --market-accent:   #d97b0e;  --market-accent-d:   #b8640a;  --market-tint:   #fbefda;
       --events-accent:   #2f6f8f;  --events-accent-d:   #245a75;  --events-tint:   #e6f0f5;
       --articles-accent: #7150a6;  --articles-accent-d: #573c86;  --articles-tint: #efe9f6;
 
-      /* Defaults (Notes) — overridden per active feed. */
-      --accent:   var(--notes-accent);
-      --accent-d: var(--notes-accent-d);
-      --tint:     var(--notes-tint);
+      /* Defaults (Events is the default tab) — overridden per active feed. */
+      --accent:   var(--events-accent);
+      --accent-d: var(--events-accent-d);
+      --tint:     var(--events-tint);
     }
 
     /* Active-feed → accent mapping. Set on <body data-active-feed>. */
-    body[data-active-feed="notes"]    { --accent: var(--notes-accent);    --accent-d: var(--notes-accent-d);    --tint: var(--notes-tint); }
-    body[data-active-feed="market"]   { --accent: var(--market-accent);   --accent-d: var(--market-accent-d);   --tint: var(--market-tint); }
     body[data-active-feed="events"]   { --accent: var(--events-accent);   --accent-d: var(--events-accent-d);   --tint: var(--events-tint); }
+    body[data-active-feed="market"]   { --accent: var(--market-accent);   --accent-d: var(--market-accent-d);   --tint: var(--market-tint); }
+    body[data-active-feed="podcasts"] { --accent: var(--podcasts-accent); --accent-d: var(--podcasts-accent-d); --tint: var(--podcasts-tint); }
     body[data-active-feed="articles"] { --accent: var(--articles-accent); --accent-d: var(--articles-accent-d); --tint: var(--articles-tint); }
 
     html { scroll-behavior: smooth; }
@@ -189,9 +189,9 @@
       color: var(--muted);
       transition: background 0.15s, color 0.15s, border-color 0.15s;
     }
-    .feed-tab--notes    { --tab: var(--notes-accent); }
-    .feed-tab--market   { --tab: var(--market-accent); }
     .feed-tab--events   { --tab: var(--events-accent); }
+    .feed-tab--market   { --tab: var(--market-accent); }
+    .feed-tab--podcasts { --tab: var(--podcasts-accent); }
     .feed-tab--articles { --tab: var(--articles-accent); }
 
     .feed-tab-icon {
@@ -530,6 +530,314 @@
     .market-modal-actions { display: flex; justify-content: flex-end; }
     .market-modal-actions .market-btn { width: auto; padding-left: 1.2rem; padding-right: 1.2rem; }
 
+    /* ── Podcast Boosts cards ─────────────────────────────────────────
+       Episodes the community has boosted on Nostr. The card head shows the
+       art, show name, the episode title (a link to the Fountain episode), a
+       meta row of booster avatars / recency / sats, and a ⋮ menu of
+       show-level subscribe links. A low-profile drawer bar under the head
+       toggles the inline boost thread. Rendered by feeds-podcasts.js. */
+    /* Sort dropdown in the panel head (replaces the episode-count pill). */
+    .pcast-sort { position: relative; flex-shrink: 0; align-self: center; }
+    .pcast-sort-btn {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      padding: 0.3rem 0.7rem; font: inherit; font-size: 0.78rem; font-weight: 600;
+      color: var(--text); background: var(--white);
+      border: 1px solid var(--border); border-radius: 999px; cursor: pointer;
+      white-space: nowrap; transition: border-color 0.12s, background 0.12s;
+    }
+    .pcast-sort-btn:hover { border-color: var(--accent); background: var(--tint); }
+    .pcast-sort-tag { color: var(--muted); }
+    .pcast-sort-cur { color: var(--accent-d); font-weight: 700; }
+    .pcast-sort-caret { color: var(--muted); font-size: 0.85em; }
+    .pcast-sort-menu {
+      position: absolute; top: calc(100% + 4px); right: 0; z-index: 6;
+      min-width: 175px; background: var(--white);
+      border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18); padding: 0.35rem;
+    }
+    .pcast-sort-menu[hidden] { display: none; }
+    .pcast-sort-item {
+      display: block; width: 100%; text-align: left;
+      padding: 0.45rem 0.6rem; font: inherit; font-size: 0.85rem; font-weight: 600;
+      color: var(--text); background: transparent; border: none; border-radius: 6px; cursor: pointer;
+    }
+    .pcast-sort-item:hover { background: var(--tint); color: var(--accent-d); }
+    .pcast-sort-item.is-active { color: var(--accent-d); background: var(--tint); }
+    .pcast-sort-item.is-active::after { content: ' ✓'; float: right; }
+
+    /* minmax(0,1fr) — without the 0 min, a grid item's min-width is its
+       content, so long shownotes/URLs would blow the column (and card) far
+       wider than the container. */
+    .pcast-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem; }
+    .pcast-card {
+      min-width: 0;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      /* No overflow:hidden here — it would clip the ⋮ subscribe dropdown when
+         it opens past the bottom of the card. The media clips its own corners,
+         and the drawer rounds its bottom corners when it's the last child. */
+      transition: box-shadow 0.12s, border-color 0.12s;
+    }
+    .pcast-card:hover { box-shadow: 0 6px 18px rgba(0,0,0,0.08); }
+    .pcast-card.is-open { border-color: var(--accent); box-shadow: 0 6px 18px rgba(0,0,0,0.10); }
+    .pcast-card-head {
+      display: flex;
+      gap: 0.85rem;
+      align-items: flex-start;
+      padding: 0.7rem 0.7rem 0.5rem;
+    }
+    .pcast-card-media {
+      flex-shrink: 0;
+      width: 68px; height: 68px;
+      border-radius: 8px; overflow: hidden;
+      background: var(--tint);
+    }
+    .pcast-card-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .pcast-card-media--none {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.7rem; opacity: 0.55;
+    }
+    .pcast-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; justify-content: center; }
+    .pcast-show {
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em;
+      text-transform: uppercase; color: var(--accent-d);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .pcast-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 0.98rem; font-weight: 700; line-height: 1.25; color: var(--text);
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .pcast-meta {
+      display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;
+      margin-top: 0.25rem; font-size: 0.78rem; color: var(--muted);
+    }
+
+    /* Shownotes teaser (first ~2 lines) + "see full description" link. */
+    .pcast-desc-wrap { margin-top: 0.35rem; }
+    .pcast-desc {
+      margin: 0; font-size: 0.82rem; line-height: 1.4; color: var(--muted);
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+      overflow-wrap: anywhere; word-break: break-word;
+    }
+    .pcast-desc-more {
+      display: inline-block; margin-top: 0.2rem;
+      font-size: 0.78rem; font-weight: 700; color: var(--accent-d); text-decoration: none;
+    }
+    .pcast-desc-more:hover { text-decoration: underline; }
+
+    /* Inline audio player. */
+    .pcast-player-row { padding: 0.1rem 0.7rem 0.2rem; }
+    .pcast-player { width: 100%; display: block; }
+
+    /* Download + Boost action buttons. */
+    .pcast-card-buttons {
+      display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+      padding: 0.4rem 0.7rem 0.65rem;
+    }
+    .pcast-btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.5rem 0.95rem;
+      font: inherit; font-size: 0.85rem; font-weight: 700;
+      border: 1px solid transparent; border-radius: 999px; cursor: pointer;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+    }
+    .pcast-btn-boost { color: #fff; background: #f7931a; border-color: #f7931a; }
+    .pcast-btn-boost:hover { background: #d97b0e; border-color: #d97b0e; }
+    .pcast-btn-bolt { display: inline-flex; width: 15px; height: 15px; }
+    .pcast-btn-bolt svg { width: 100%; height: 100%; display: block; }
+    .pcast-btn-download { color: var(--accent-d); background: var(--white); border-color: var(--border); }
+    .pcast-btn-download:hover { background: var(--tint); border-color: var(--accent); }
+    .pcast-btn-download:disabled { opacity: 0.6; cursor: default; }
+    .pcast-dot { opacity: 0.6; }
+    .pcast-sats { font-weight: 700; color: var(--accent-d); white-space: nowrap; }
+    .pcast-bolt { font-size: 0.85em; }
+
+    /* Avatars — stacked on cards, single on modal rows. Size via --pcast-av. */
+    .pcast-avatars { display: inline-flex; align-items: center; }
+    .pcast-avatars .pcast-avatar + .pcast-avatar { margin-left: -8px; }
+    .pcast-avatar {
+      width: var(--pcast-av, 26px); height: var(--pcast-av, 26px);
+      border-radius: 50%; object-fit: cover; flex-shrink: 0;
+      border: 2px solid var(--white); background: var(--tint);
+      box-sizing: border-box;
+    }
+    .pcast-avatar--none {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--cream-d); color: var(--muted);
+      font-size: 0.6rem; font-weight: 700;
+    }
+    .pcast-avatar.is-interactive { cursor: pointer; }
+    .pcast-avatar.is-interactive:hover { border-color: var(--accent); }
+    .pcast-avatar.is-interactive:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+    .pcast-more-wrap { display: flex; justify-content: center; margin-top: 1.1rem; }
+    .pcast-more-group { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; }
+    .pcast-more-count { font-size: 0.75rem; color: var(--muted); }
+    .pcast-showmore {
+      padding: 0.5rem 1.4rem;
+      font: inherit; font-size: 0.85rem; font-weight: 700;
+      color: var(--accent-d); background: var(--white);
+      border: 1px solid var(--border); border-radius: 999px; cursor: pointer;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .pcast-showmore:hover { background: var(--tint); border-color: var(--accent); }
+
+    /* Episode title links out to the Fountain episode. */
+    .pcast-title-link { color: var(--text); text-decoration: none; }
+    .pcast-title-link:hover { color: var(--accent-d); text-decoration: underline; }
+
+    /* Top-right card cluster: "Listen on Fountain" pill + ⋮ subscribe menu,
+       with the episode air date stacked beneath. */
+    .pcast-card-actions-col { display: flex; flex-direction: column; align-items: flex-end; gap: 0.3rem; align-self: flex-start; flex-shrink: 0; }
+    .pcast-card-aired { font-size: 0.68rem; color: var(--muted); white-space: nowrap; }
+    .pcast-card-actions { display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0; }
+    .pcast-fountain-pill {
+      display: inline-flex; align-items: center; white-space: nowrap;
+      padding: 0.25rem 0.6rem;
+      font-size: 0.72rem; font-weight: 700; line-height: 1;
+      color: var(--accent-d); background: var(--tint);
+      border: 1px solid var(--border); border-radius: 999px; text-decoration: none;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .pcast-fountain-pill:hover { background: var(--white); border-color: var(--accent); }
+
+    /* ⋮ subscribe menu on the card head (top-right) — show-level app links. */
+    .pcast-cardmenu { position: relative; flex-shrink: 0; align-self: flex-start; }
+    .pcast-cardmenu-btn {
+      width: 30px; height: 30px; border-radius: 50%;
+      border: none; background: transparent; color: var(--muted); cursor: pointer;
+      font-size: 1.2rem; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .pcast-cardmenu-btn:hover { background: var(--tint); color: var(--text); }
+    .pcast-cardmenu-menu {
+      position: absolute; top: 34px; right: 0; z-index: 6;
+      min-width: 190px;
+      background: var(--white);
+      border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+      padding: 0.35rem;
+    }
+    .pcast-cardmenu-menu[hidden] { display: none; }
+    .pcast-cardmenu-label {
+      padding: 0.4rem 0.6rem 0.25rem;
+      font-size: 0.66rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--muted);
+    }
+    .pcast-cardmenu-item {
+      display: block; padding: 0.45rem 0.6rem;
+      font-size: 0.85rem; font-weight: 600; color: var(--text);
+      text-decoration: none; border-radius: 6px;
+    }
+    .pcast-cardmenu-item:hover { background: var(--tint); color: var(--accent-d); }
+
+    /* ── Boost drawer — a low-profile full-width toggle under the head. ── */
+    .pcast-drawer {
+      display: flex; align-items: center; gap: 0.4rem; width: 100%;
+      padding: 0.45rem 0.7rem 0.5rem;
+      font: inherit; font-size: 0.78rem; font-weight: 600;
+      color: var(--muted); background: transparent;
+      border: none; border-top: 1px solid var(--border);
+      cursor: pointer; text-align: left;
+      transition: color 0.12s, background 0.12s;
+    }
+    .pcast-drawer:hover { color: var(--accent-d); background: rgba(0,0,0,0.02); }
+    .pcast-drawer:last-child { border-radius: 0 0 10px 10px; }
+    .pcast-drawer-caret { font-size: 0.85em; transition: transform 0.18s; }
+    /* Booster faces + total sats, sitting just after the "N boosts" label. */
+    .pcast-drawer-meta { display: inline-flex; align-items: center; gap: 0.5rem; }
+    .pcast-drawer-meta .pcast-sats { font-weight: 700; color: var(--accent-d); white-space: nowrap; }
+    .pcast-card.is-open .pcast-drawer > .pcast-drawer-caret { transform: rotate(180deg); }
+
+    /* "Hide boosts" control at the bottom of a card's thread. */
+    .pcast-drawer-close {
+      justify-self: start;
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.35rem 0;
+      font: inherit; font-size: 0.8rem; font-weight: 700;
+      color: var(--muted); background: transparent; border: none; cursor: pointer;
+    }
+    .pcast-drawer-close:hover { text-decoration: underline; color: var(--accent-d); }
+
+    /* Thread footer: "see all boosts" (Boost Me Bitch) on the left, hide on the right. */
+    .pcast-details-foot {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.75rem; flex-wrap: wrap;
+    }
+    .pcast-seeall {
+      font-size: 0.8rem; font-weight: 700; color: var(--accent-d); text-decoration: none;
+    }
+    .pcast-seeall:hover { text-decoration: underline; }
+
+    /* ── Inline boost details — indented under the card like a child/thread,
+       marked by a left accent rule and kept tight vertically. ── */
+    .pcast-details {
+      display: grid; gap: 0.6rem;
+      margin: 0 0.7rem 0.85rem 3.3rem;
+      padding: 0.15rem 0 0.15rem 0.95rem;
+      border-left: 2px solid var(--accent);
+    }
+    .pcast-details[hidden] { display: none; }
+    .pcast-boost { border-top: 1px solid var(--border); padding-top: 0.6rem; }
+    .pcast-boost:first-child { border-top: none; padding-top: 0; }
+    .pcast-boost-head { display: flex; align-items: center; gap: 0.55rem; }
+    .pcast-boost-who { min-width: 0; flex: 1; display: flex; flex-direction: column; }
+    .pcast-boost-name {
+      align-self: flex-start;
+      font: inherit; font-size: 0.9rem; font-weight: 700; color: var(--text);
+      background: transparent; border: none; padding: 0; cursor: pointer;
+      max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .pcast-boost-name:hover { color: var(--accent-d); text-decoration: underline; }
+    .pcast-boost-when { font-size: 0.74rem; color: var(--muted); }
+    .pcast-boost-sats { flex-shrink: 0; font-size: 0.88rem; font-weight: 700; color: var(--accent-d); white-space: nowrap; }
+    .pcast-boost-msg {
+      margin-top: 0.3rem; font-size: 0.88rem; line-height: 1.35; color: var(--text);
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .pcast-boost-msg a { color: var(--accent-d); }
+
+    /* Per-boost ⋮ overflow menu */
+    .pcast-more { position: relative; flex-shrink: 0; }
+    .pcast-more-btn {
+      width: 30px; height: 30px; border-radius: 50%;
+      border: none; background: transparent; color: var(--muted); cursor: pointer;
+      font-size: 1.1rem; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .pcast-more-btn:hover { background: var(--tint); color: var(--text); }
+    .pcast-more-menu {
+      position: absolute; top: 34px; right: 0; z-index: 5;
+      min-width: 160px;
+      background: var(--white);
+      border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+      padding: 0.35rem;
+    }
+    .pcast-more-menu[hidden] { display: none; }
+    .pcast-more-item {
+      display: block; width: 100%; box-sizing: border-box; text-align: left;
+      padding: 0.45rem 0.6rem; font: inherit; font-size: 0.85rem; color: var(--text);
+      background: transparent; border: none; border-radius: 6px; cursor: pointer;
+    }
+    .pcast-more-item:hover { background: var(--tint); }
+
+    /* Copy toast */
+    .pcast-toast {
+      position: fixed; left: 50%; bottom: 1.5rem; transform: translate(-50%, 1rem);
+      z-index: 1100;
+      background: var(--text, #1e160a); color: #fff;
+      padding: 0.55rem 1.1rem; border-radius: 999px;
+      font-size: 0.85rem; font-weight: 600;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.18s, transform 0.18s;
+    }
+    .pcast-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+    .pcast-toast.is-error { background: #9b2c2c; }
+
     /* ── Mobile: tabs become a scrollable chip row ── */
     @media (max-width: 640px) {
       .feed-tabs-wrap { top: 56px; } /* nav shrinks on mobile */
@@ -564,6 +872,8 @@
       .feed-tab-sub { display: none; }
       .feed-tab[aria-selected="true"] { border-color: var(--tab); }
       .feed-panels-inner { padding: 1.5rem 1rem 2.5rem; }
+      /* Shallower child indent on narrow screens. */
+      .pcast-details { margin-left: 2.1rem; padding-left: 0.7rem; }
     }
   </style>
   <link rel="stylesheet" href="/assets/css/nav.css" />
@@ -671,19 +981,21 @@
   <div class="feed-tabs" role="tablist" aria-label="Community feeds">
     <button
       type="button"
-      class="feed-tab feed-tab--notes"
+      class="feed-tab feed-tab--events"
       role="tab"
-      id="tab-notes"
-      aria-controls="panel-notes"
-      aria-selected="false"
-      data-feed="notes"
+      id="tab-events"
+      aria-controls="panel-events"
+      aria-selected="true"
+      data-feed="events"
     >
       <span class="feed-tab-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
         </svg>
       </span>
-      <span class="feed-tab-label">Notes</span>
+      <span class="feed-tab-label">Events</span>
     </button>
 
     <button
@@ -706,21 +1018,21 @@
 
     <button
       type="button"
-      class="feed-tab feed-tab--events"
+      class="feed-tab feed-tab--podcasts"
       role="tab"
-      id="tab-events"
-      aria-controls="panel-events"
-      aria-selected="true"
-      data-feed="events"
+      id="tab-podcasts"
+      aria-controls="panel-podcasts"
+      aria-selected="false"
+      data-feed="podcasts"
     >
       <span class="feed-tab-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-          <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
-          <line x1="3" y1="10" x2="21" y2="10"/>
+          <rect x="9" y="2" width="6" height="12" rx="3"/>
+          <path d="M5 10a7 7 0 0 0 14 0"/>
+          <line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/>
         </svg>
       </span>
-      <span class="feed-tab-label">Events</span>
+      <span class="feed-tab-label">Podcast Boosts</span>
     </button>
 
     <button
@@ -748,18 +1060,19 @@
 <main class="feed-panels">
   <div class="feed-panels-inner">
 
-    <section class="feed-panel" id="panel-notes" role="tabpanel" aria-labelledby="tab-notes" data-feed="notes" data-kinds="1" tabindex="0" hidden>
+    <section class="feed-panel is-active" id="panel-events" role="tabpanel" aria-labelledby="tab-events" data-feed="events" data-kinds="31922,31923" tabindex="0">
       <div class="feed-panel-head">
         <div>
-          <h2>Notes</h2>
-          <p>Short posts from the community — kind-1 notes.</p>
+          <h2>Upcoming Events</h2>
         </div>
-        <span class="feed-count" hidden></span>
+        <!-- Month + year dropdowns (populated by feeds.js) — browse events a
+             month at a time. -->
+        <div class="feed-monthnav" data-month-nav hidden></div>
       </div>
       <div class="feed-list" data-feed-list>
         <div class="feed-placeholder">
-          <strong>Notes feed coming online</strong>
-          The layout is ready — live kind-1 notes will load here in the next phase.
+          <strong>Events feed coming online</strong>
+          The layout is ready — NIP-52 calendar events will load here in the next phase.
         </div>
       </div>
     </section>
@@ -779,19 +1092,22 @@
       </div>
     </section>
 
-    <section class="feed-panel is-active" id="panel-events" role="tabpanel" aria-labelledby="tab-events" data-feed="events" data-kinds="31922,31923" tabindex="0">
+    <!-- Podcast Boosts — episodes the LB community has boosted on Nostr.
+         Unlike the other tabs, this feed is not a live relay subscription:
+         it's driven by /api/community-boosts (see functions/api and the
+         bots/community-boosts collector), so it has no data-kinds. -->
+    <section class="feed-panel" id="panel-podcasts" role="tabpanel" aria-labelledby="tab-podcasts" data-feed="podcasts" data-source="community-boosts" tabindex="0" hidden>
       <div class="feed-panel-head">
         <div>
-          <h2>Upcoming Events</h2>
+          <h2>Podcast Boosts</h2>
+          <p>Podcast Episodes Boosted on Nostr by the Local Bitcoiners Community</p>
         </div>
-        <!-- Month + year dropdowns (populated by feeds.js) — browse events a
-             month at a time. -->
-        <div class="feed-monthnav" data-month-nav hidden></div>
+        <span class="feed-count" hidden></span>
       </div>
       <div class="feed-list" data-feed-list>
         <div class="feed-placeholder">
-          <strong>Events feed coming online</strong>
-          The layout is ready — NIP-52 calendar events will load here in the next phase.
+          <strong>Podcast Boosts feed coming online</strong>
+          The layout is ready — boosted episodes will load here in the next phase.
         </div>
       </div>
     </section>
@@ -894,7 +1210,7 @@
 <script>
 (function () {
   'use strict';
-  const FEEDS = ['notes', 'market', 'events', 'articles'];
+  const FEEDS = ['events', 'market', 'podcasts', 'articles'];
   const tablist = document.querySelector('.feed-tabs');
   if (!tablist) return;
   const tabs = Array.from(tablist.querySelectorAll('[role="tab"]'));
@@ -1039,8 +1355,8 @@
 <!-- PWA install affordance -->
 <script src="assets/widgets/pwa-install.js" defer></script>
 
-<!-- Community feeds — lazily hydrates the active feed (Events wired up;
-     Notes / Marketplace / Articles land in later phases). -->
+<!-- Community feeds — lazily hydrates the active feed (Events + Marketplace
+     wired up; Podcast Boosts / Articles land in later phases). -->
 <script type="module" src="/assets/js/feeds.js"></script>
 <script src="/assets/js/nav.js" defer></script>
 </body>
