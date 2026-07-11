@@ -30,6 +30,19 @@ bots/tmp/
 # --- Bots: private docs ---
 bots/CLAUDE.md
 
+# --- Community-boosts data: lives on the VPS (relay.mynostr.app), pushed by
+# the hourly bot via rsync and served by Caddy — deliberately NOT committed,
+# that's the whole point of the VPS-push design (avoids an hourly git
+# push/rebuild). The website reads it via functions/api/community-boosts.js.
+data/community_boosts.json
+
+# --- Community feeds data: same VPS-hosted pattern as community_boosts, one
+# file per kind (NIP-52 events / NIP-99 market / NIP-23 articles), written by
+# bots/community-feeds and served off the VPS — not committed.
+data/community_events.json
+data/community_market.json
+data/community_articles.json
+
 # --- Python ---
 bots/**/__pycache__/
 bots/**/*.pyc
