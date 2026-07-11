@@ -36,6 +36,13 @@ bots/CLAUDE.md
 # push/rebuild). The website reads it via functions/api/community-boosts.js.
 data/community_boosts.json
 
+# --- Community feeds data: same VPS-hosted pattern as community_boosts, one
+# file per kind (NIP-52 events / NIP-99 market / NIP-23 articles), written by
+# bots/community-feeds and served off the VPS — not committed.
+data/community_events.json
+data/community_market.json
+data/community_articles.json
+
 # --- Python ---
 bots/**/__pycache__/
 bots/**/*.pyc
