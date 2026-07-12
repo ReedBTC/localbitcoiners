@@ -33,6 +33,15 @@ import { SimplePool, verifyEvent, nip19 } from '/assets/widgets/nostr-tools.js'
 const SHOW_PUBKEY_HEX = 'c330881e28768381dd8bdfd274341dca0c5882c29b8642ea4bc82f7563264592'
 const KIND_FOLLOW_PACK = 39089
 
+// Hourly events snapshot (Cloudflare Pages Function proxying the file
+// bots/community-feeds pushes to the VPS). It carries the same raw signed
+// calendar events a live relay query would, but already scoped to the show's
+// supporters with NIP-09 deletions + NIP-01 replacements resolved server-side
+// — so a tab open is one cached GET instead of follow-pack resolution + a
+// multi-relay subscription. The live path (resolveSupporters + streamEvents)
+// stays as the fallback when the snapshot is unreachable.
+const EVENTS_SNAPSHOT_URL = '/api/community-events'
+
 // Chunk authors so a single relay filter never carries an unreasonable
 // number of `authors`, which some relays cap or reject.
 const AUTHOR_CHUNK = 50
@@ -215,6 +224,30 @@ function streamEvents(authors, relays, state, onUpdate) {
       subs.push(pool.subscribeMany(relays, filter, handlers))
     }
   })
+}
+
+// Pull the hourly events snapshot. Returns raw signed events (verified here —
+// the transport is untrusted even if the source is our own bot); throws if the
+// endpoint is unreachable or returns a non-array, so the caller can fall back
+// to the live relay path.
+async function fetchEventsSnapshot() {
+  const res = await fetch(EVENTS_SNAPSHOT_URL, { headers: { accept: 'application/json' } })
+  if (!res.ok) throw new Error(`community-events ${res.status}`)
+  const data = await res.json()
+  const events = Array.isArray(data?.events) ? data.events : null
+  if (!events) throw new Error('community-events: unexpected shape')
+  return events.filter((ev) => ev && verifyEvent(ev))
+}
+
+// Fold a batch of raw events into state using the exact same merge + deletion
+// rules streamEvents applies to live events. On a clean snapshot the deletion
+// pass is a no-op (the bot strips deleted/superseded events), but running it
+// keeps this path behaviourally identical to the relay fallback.
+function ingestEvents(state, events) {
+  for (const ev of events) {
+    if (ev.kind === KIND_DELETION) applyDeletion(state, ev)
+    else mergeCalendarEvent(state, ev)
+  }
 }
 
 // Build the render-ready item list from the current state, honouring
@@ -549,10 +582,12 @@ export async function fetchUpcomingEvents(supporters, { limit = 12 } = {}) {
 }
 
 // ── Events tab loader ────────────────────────────────────────────────
-// Cache-first + progressive: paint instantly from localStorage if we have
-// a recent snapshot, then open a live subscription that streams events in
-// and repaints (debounced) as they arrive. Switching months never
-// re-fetches — it re-filters the in-memory state.
+// Cache-first: paint instantly from localStorage if we have a recent
+// snapshot, then refresh from the hourly /api/community-events snapshot (one
+// cached GET). If that endpoint is unreachable, fall back to the live path —
+// resolve supporters and stream events in from relays, repainting (debounced)
+// as they arrive. Switching months never re-fetches — it re-filters the
+// in-memory state.
 async function loadEvents() {
   const panel = document.getElementById('panel-events')
   if (!panel) return
@@ -596,19 +631,31 @@ async function loadEvents() {
     showSkeletons(list)
   }
 
-  // 2. Live refresh.
+  // 2. Refresh — prefer the hourly snapshot, fall back to a live relay query.
   try {
-    const { relays, members: memberList } = await resolveSupporters()
-    state.relays = relays
-    if (!memberList.length) {
-      if (!state.eventsByCoord.size) {
-        renderPlaceholder(list, 'No supporters found', 'Couldn’t reach the follow packs right now — please try again later.')
-      }
-      return
+    let snapshot = null
+    try {
+      snapshot = await fetchEventsSnapshot()
+      state.relays = STATIC_RELAYS
+    } catch (snapErr) {
+      console.warn('[feeds] events snapshot unavailable — querying relays', snapErr)
     }
 
-    // Stream events + deletions, repainting as they land.
-    await streamEvents(memberList, state.relays, state, schedulePaint)
+    if (snapshot) {
+      ingestEvents(state, snapshot)
+    } else {
+      // Fallback: resolve supporters, then stream events + deletions from
+      // relays, repainting as they land.
+      const { relays, members: memberList } = await resolveSupporters()
+      state.relays = relays
+      if (!memberList.length) {
+        if (!state.eventsByCoord.size) {
+          renderPlaceholder(list, 'No supporters found', 'Couldn’t reach the follow packs right now — please try again later.')
+        }
+        return
+      }
+      await streamEvents(memberList, state.relays, state, schedulePaint)
+    }
 
     // Organizer profiles (avatar + name) once the author set is known.
     try {
@@ -633,31 +680,28 @@ async function loadEvents() {
 }
 
 // ── Marketplace tab loader ───────────────────────────────────────────
-// Resolves the same supporter set + outbox relays the Events tab uses, then
-// lazy-imports the heavier marketplace module (which pulls in merch.js's cart
-// / checkout / gift-wrap send) only when the tab is actually opened.
+// Lazy-imports the heavier marketplace module (which pulls in merch.js's cart
+// / checkout / gift-wrap send) only when the tab is actually opened, then hands
+// off to renderMarket. Like the Events tab, the listings now come from the
+// hourly snapshot (renderMarket → loadMarketItems fetches it), so there's no
+// supporter/outbox resolution here — that only runs inside the relay fallback.
 async function loadMarket() {
   const panel = document.getElementById('panel-market')
   if (!panel) return
   const list = panel.querySelector('[data-feed-list]')
   if (!list) return
 
-  // Replace the static placeholder with skeletons up front — resolving the
-  // supporter set + lazy-importing the market module (which pulls in merch.js)
-  // takes a moment, and renderMarket only paints its own skeletons afterwards.
+  // Replace the static placeholder with skeletons up front — lazy-importing the
+  // market module (which pulls in merch.js) takes a moment, and renderMarket
+  // only paints its own skeletons afterwards.
   showSkeletons(list)
 
   try {
-    const { relays, members } = await resolveSupporters()
-    if (!members.length) {
-      renderPlaceholder(list, 'No supporters found', 'Couldn’t reach the follow packs right now — please try again later.')
-      return
-    }
     const mod = await import('/assets/js/feeds-market.js')
-    await mod.renderMarket({ panel, list, relays, members })
+    await mod.renderMarket({ panel, list })
   } catch (e) {
     console.error('[feeds] market load failed', e)
-    renderPlaceholder(list, 'Couldn’t load the marketplace', 'Something went wrong reaching the relays — please try again later.')
+    renderPlaceholder(list, 'Couldn’t load the marketplace', 'Something went wrong reaching the community marketplace — please try again later.')
   }
 }
 

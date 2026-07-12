@@ -22,6 +22,7 @@
  * this module the first time the Marketplace tab is opened.
  */
 import { SimplePool, verifyEvent, nip19 } from '/assets/widgets/nostr-tools.js'
+import { STATIC_RELAYS, fetchProfilesFromPrimal } from '/assets/js/boosts-thread.js'
 import { gradeListing } from '/assets/js/gamma-compliance.js'
 import {
   MERCHANT_HEX,
@@ -46,6 +47,30 @@ const KIND_DELETION = 5
 const AUTHOR_CHUNK = 50
 // Profile-heavy relay added to the query so kind-0s propagate widely.
 const PROFILE_RELAY = 'wss://purplepag.es'
+
+// Hourly marketplace snapshot (Cloudflare Pages Function proxying the file
+// bots/community-feeds pushes to the VPS). Same raw signed NIP-99 listings a
+// live query would return — supporters + the house store, deletions/replaced
+// versions already resolved server-side — as one cached GET. See feeds.js for
+// the fuller rationale; the live fetchMarketEvents path is the fallback.
+const MARKET_SNAPSHOT_URL = '/api/community-market'
+
+// Fetch the marketplace snapshot: raw signed events, verified here (untrusted
+// transport) and deduped by id. Throws if unreachable / malformed so
+// loadMarketItems can fall back to a live relay query.
+async function fetchMarketSnapshot() {
+  const res = await fetch(MARKET_SNAPSHOT_URL, { headers: { accept: 'application/json' } })
+  if (!res.ok) throw new Error(`community-market ${res.status}`)
+  const data = await res.json()
+  const events = Array.isArray(data?.events) ? data.events : null
+  if (!events) throw new Error('community-market: unexpected shape')
+  const byId = new Map()
+  for (const ev of events) {
+    if (!ev || byId.has(ev.id) || !verifyEvent(ev)) continue
+    byId.set(ev.id, ev)
+  }
+  return [...byId.values()]
+}
 
 function isHttpUrl(u) {
   try { const x = new URL(u); return x.protocol === 'https:' || x.protocol === 'http:' }
@@ -526,9 +551,37 @@ function renderManageButton(panel) {
 // sorted item list (Buy Now first, then newest) + the current BTC/USD rate.
 // Exported so the homepage teaser (home-feeds.js) surfaces the same listings
 // the Marketplace tab does without duplicating the fetch/grade/sort logic.
-export async function loadMarketItems({ relays, members }) {
-  const authors = [...new Set([...(members || []), MERCHANT_HEX].map((a) => a.toLowerCase()))]
-  const events = await fetchMarketEvents(authors, relays)
+export async function loadMarketItems({ relays, members } = {}) {
+  // Relays used for the seller kind-0 / lud16 lookup below (and the fallback
+  // listing query). Falls back to the shared static set when the caller hasn't
+  // resolved supporter outbox relays — the snapshot path no longer needs them.
+  let queryRelays = (relays && relays.length) ? relays : STATIC_RELAYS
+
+  // Primary: the hourly community-market snapshot (pre-scoped to supporters +
+  // the house store). Fall back to a live relay query only if it's unreachable.
+  let events
+  try {
+    events = await fetchMarketSnapshot()
+  } catch (e) {
+    console.warn('[market] snapshot unavailable — querying relays', e)
+    let fbMembers = members || []
+    if (!fbMembers.length) {
+      // Tab path passes no members; resolve the supporter set on demand so the
+      // fallback still covers community sellers, not just the house store.
+      // Dynamic import avoids a static cycle with feeds.js (which lazy-imports
+      // this module).
+      try {
+        const feeds = await import('/assets/js/feeds.js')
+        const sup = await feeds.resolveSupporters()
+        fbMembers = sup.members || []
+        if (sup.relays && sup.relays.length) queryRelays = sup.relays
+      } catch (e2) {
+        console.warn('[market] supporter resolution failed', e2)
+      }
+    }
+    const authors = [...new Set([...fbMembers, MERCHANT_HEX].map((a) => a.toLowerCase()))]
+    events = await fetchMarketEvents(authors, queryRelays)
+  }
 
   // Drop listings the seller deleted (NIP-09) BEFORE ingesting — many relays
   // keep serving the 30402 after a kind-5, so this is how a "removed by seller"
@@ -551,11 +604,15 @@ export async function loadMarketItems({ relays, members }) {
   if (!products.length) return { items: [], rate: null }
 
   // Merchant profiles (pfp / name / lud16) drive display AND the Lightning-
-  // payability check. Fetched for EVERY seller incl. the house merchant (its
-  // lud16 is hardcoded for payment, but we still want its pfp + name), in one
-  // pooled kind-0 query — see fetchMerchantProfiles for why not per-merchant.
+  // payability check, for EVERY seller incl. the house merchant (its lud16 is
+  // hardcoded for payment, but we still want its pfp + name). Primal's cache
+  // resolves them in one fast batch — the same source the Events tab uses. The
+  // old per-relay kind-0 query waited maxWait ~4.5s and was the dominant cost of
+  // opening this tab (snapshot fetch is ~100ms); fall back to it only if Primal
+  // comes back empty (both return { name, picture, lud16 }).
   const merchants = [...new Set(products.map((p) => p.merchant))]
-  const profiles = await fetchMerchantProfiles(merchants, relays)
+  let profiles = await fetchProfilesFromPrimal(merchants).catch(() => new Map())
+  if (!profiles.size) profiles = await fetchMerchantProfiles(merchants, queryRelays)
 
   const rate = await getBtcUsd().catch(() => null)
   const items = products
@@ -570,9 +627,11 @@ export async function loadMarketItems({ relays, members }) {
 }
 
 // ── Entry point (Marketplace tab) ────────────────────────────────────
-export async function renderMarket({ panel, list, relays, members }) {
+export async function renderMarket({ panel, list, relays, members } = {}) {
   showSkeletons(list)
-  feedRelays = relays || []
+  // Relay hints for the ⋮ share naddr and the NIP-17 inbox check. On the tab
+  // path no supporter relays are resolved, so fall back to the static set.
+  feedRelays = (relays && relays.length) ? relays : STATIC_RELAYS
 
   // Let the shared nav cart icon open the cart IN PLACE on /feeds (merch.js
   // only wires this on /merch, via its init). Without it the icon would
@@ -594,7 +653,7 @@ export async function renderMarket({ panel, list, relays, members }) {
     return
   }
 
-  const onContact = (item) => openContactModal(item, relays)
+  const onContact = (item) => openContactModal(item, feedRelays)
   const grid = h('div', { class: 'feed-list market-grid' })
   for (const item of items) grid.appendChild(renderCard(item, rate, onContact))
   list.className = ''
