@@ -4,9 +4,8 @@
  *   1. Boosters & Streamers — everyone who sent sats, bucketed into
  *      lifetime tiers (100k+ / 69k+ / 21k+ / under 21k). Totals come
  *      from /data/sats.json (total_sats per sender_npub, boosts AND
- *      streams), the same ledger the Stats leaderboard uses. Hosts are
- *      excluded (we don't rank ourselves); truly anonymous payments
- *      (no npub and no name) are skipped.
+ *      streams), the same ledger the Stats leaderboard uses. Truly
+ *      anonymous payments (no npub and no name) are skipped.
  *   2. Coding Contributors — hardcoded; Reed maintains this by hand.
  *   3. Show Guests — npubs pulled live from /api/guests (the [guests:]
  *      tags in each episode's RSS shownotes).
@@ -23,12 +22,16 @@
   var SATS_URL = '/data/sats.json';
   var GUESTS_URL = '/api/guests';
 
-  // Hosts — shown in their own "Hosts" group (no follow pack), AND counted
-  // in the Supporters tiers by what they've boosted (no longer excluded).
-  var HOSTS = [
+  // Co-hosts — Reed + Rev. Injected into the Show Guests section right before
+  // the earliest-episode (EP002) guests and labelled "co-host" instead of an
+  // episode (they aren't in the RSS [guests:] roster, so we add them by hand).
+  // Also counted in the Supporters tiers by what they've boosted.
+  var CO_HOSTS = [
     { npub: 'npub1xgyjasdztryl9sg6nfdm2wcj0j3qjs03sq7a0an32pg0lr5l6yaqxhgu7s', label: 'Reed' },
     { npub: 'npub1f5pre6wl6ad87vr4hr5wppqq30sh58m4p33mthnjreh03qadcajs7gwt3z', label: 'Rev Hodl' },
   ];
+  var CO_HOST_SET = Object.create(null);
+  CO_HOSTS.forEach(function (c) { CO_HOST_SET[c.npub] = true; });
 
   // Coding Contributors — maintained by hand. Reed will say when to add.
   var CODING_CONTRIBUTORS = [
@@ -57,6 +60,9 @@
   var SHOW_PUBKEY_HEX = 'c330881e28768381dd8bdfd274341dca0c5882c29b8642ea4bc82f7563264592';
   var GUESTS_PACK = 'lb-supporters-guests';
   var CODERS_PACK = 'lb-supporters-coders';
+  // Everyone from all the tier packs combined — links off the "Supporters"
+  // group header (above the 100k tier).
+  var ALL_PACK = 'lb-supporters-all';
 
   function followPackUrl(slug) {
     return 'https://following.space/d/' + slug + '?p=' + SHOW_PUBKEY_HEX;
@@ -190,8 +196,17 @@
     card.appendChild(avatar);
     card.appendChild(nameEl);
 
-    // Show Guests get the episode(s) they were on, linked to /ep###.
-    if (opts.episodes && opts.episodes.length) {
+    // Co-hosts get a plain "co-host" role chip in place of episode links.
+    if (opts.roleLabel) {
+      var roleWrap = document.createElement('span');
+      roleWrap.className = 'sup-eps';
+      var role = document.createElement('span');
+      role.className = 'sup-role';
+      role.textContent = opts.roleLabel;
+      roleWrap.appendChild(role);
+      card.appendChild(roleWrap);
+    } else if (opts.episodes && opts.episodes.length) {
+      // Show Guests get the episode(s) they were on, linked to /ep###.
       var eps = document.createElement('span');
       eps.className = 'sup-eps';
       opts.episodes.forEach(function (pad3) {
@@ -320,7 +335,7 @@
 
   // The Boosters & Streamers group: one section header + note, then a
   // lighter sub-header per tier. `tiers` is [{ title, cards }, …].
-  function renderBoosterGroup(container, title, note, tiers) {
+  function renderBoosterGroup(container, title, note, tiers, packSlug) {
     var live = tiers.filter(function (t) { return t.cards.length; });
     if (!live.length) return;
 
@@ -329,7 +344,7 @@
 
     var head = document.createElement('div');
     head.className = 'sup-section-head';
-    head.appendChild(makeHeadRow('h2', title, null, null));
+    head.appendChild(makeHeadRow('h2', title, null, packSlug));
     if (note) {
       var p = document.createElement('p');
       p.className = 'sup-section-sub';
@@ -405,9 +420,9 @@
 
     function profFor(npub) { return (npub && cache[npub]) || null; }
 
-    function cardFor(npub, label, ring, episodes) {
+    function cardFor(npub, label, ring, episodes, roleLabel) {
       var prof = profFor(npub);
-      return makeCard({ npub: npub, name: (prof && prof.name) || label || null, picture: prof && prof.picture, ring: ring, episodes: episodes });
+      return makeCard({ npub: npub, name: (prof && prof.name) || label || null, picture: prof && prof.picture, ring: ring, episodes: episodes, roleLabel: roleLabel });
     }
 
     // 1. Supporters — boost/stream tiers. One group header + note, then a tier each.
@@ -422,27 +437,40 @@
       root,
       'Supporters',
       'Lifetime sats sent via boosts + streams. Anonymous supporters aren’t shown.',
-      TIERS.map(function (t) { return { title: t.title, cards: buckets[t.id], pack: t.pack, featured: t.featured }; })
+      TIERS.map(function (t) { return { title: t.title, cards: buckets[t.id], pack: t.pack, featured: t.featured }; }),
+      ALL_PACK
     );
 
-    // 2. Show Guests — below the supporters (with their episode link(s)).
-    renderSection(root, 'Show Guests', 'Everyone who’s come on the podcast.',
-      guestNpubs.map(function (n) { return cardFor(n, null, null, epMap[n]); }), GUESTS_PACK);
+    // 2. Show Guests — below the supporters (with their episode link(s)). The
+    //    guest list runs newest-episode-first, so its oldest-aired end is the
+    //    bottom. The co-hosts (Reed + Rev) predate the show's first guests, so
+    //    they sit just AFTER the earliest (EP002) guests — the "before EP002 in
+    //    airing order" side — labelled "co-host" rather than an episode.
+    var guestCards = [];
+    var lastEp002 = -1;
+    guestNpubs.forEach(function (n) {
+      if (CO_HOST_SET[n]) return;   // never double-list a co-host from the RSS roster
+      var eps = epMap[n];
+      guestCards.push(cardFor(n, null, null, eps));
+      if (eps && eps.indexOf('002') !== -1) lastEp002 = guestCards.length - 1;
+    });
+    var coHostCards = CO_HOSTS.map(function (c) { return cardFor(c.npub, c.label, null, null, 'co-host'); });
+    // After the last EP002 guest; if none resolved (e.g. epMap unavailable),
+    // fall back to the very end (still the oldest-aired side of the list).
+    var insertAt = lastEp002 >= 0 ? lastEp002 + 1 : guestCards.length;
+    guestCards.splice.apply(guestCards, [insertAt, 0].concat(coHostCards));
+    renderSection(root, 'Show Guests', 'Everyone who’s come on the podcast.', guestCards, GUESTS_PACK);
 
     // 3. Coding Contributors — small group, centered pfps.
     renderSection(root, 'Coding Contributors', 'Builders who’ve shipped code to the site and bots.',
       CODING_CONTRIBUTORS.map(function (c) { return cardFor(c.npub, c.label); }), CODERS_PACK, true);
-
-    // 4. Hosts — no follow pack; small group, centered pfps.
-    renderSection(root, 'Hosts', 'The folks behind the mic.',
-      HOSTS.map(function (h) { return cardFor(h.npub, h.label); }), null, true);
   }
 
   function collectNpubs(people, guestNpubs) {
     var set = Object.create(null);
     people.forEach(function (p) { if (p.npub) set[p.npub] = true; });
     CODING_CONTRIBUTORS.forEach(function (c) { set[c.npub] = true; });
-    HOSTS.forEach(function (h) { set[h.npub] = true; });
+    CO_HOSTS.forEach(function (c) { set[c.npub] = true; });
     guestNpubs.forEach(function (n) { set[n] = true; });
     return Object.keys(set);
   }
