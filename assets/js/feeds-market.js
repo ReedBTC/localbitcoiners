@@ -611,10 +611,14 @@ export async function loadMarketItems({ relays, members } = {}) {
   // opening this tab (snapshot fetch is ~100ms); fall back to it only if Primal
   // comes back empty (both return { name, picture, lud16 }).
   const merchants = [...new Set(products.map((p) => p.merchant))]
+  // Kick off the BTC/USD rate in parallel with profile resolution — it's
+  // independent of the merchants, and getBtcUsd is timeout-bounded, so it can
+  // overlap the profile fetch and never extend the render.
+  const ratePromise = getBtcUsd().catch(() => null)
   let profiles = await fetchProfilesFromPrimal(merchants).catch(() => new Map())
   if (!profiles.size) profiles = await fetchMerchantProfiles(merchants, queryRelays)
 
-  const rate = await getBtcUsd().catch(() => null)
+  const rate = await ratePromise
   const items = products
     .map((p) => classify(p, profiles.get(p.merchant)))
     .sort((a, b) => {
