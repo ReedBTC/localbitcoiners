@@ -45,6 +45,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "shared"))
 from nostr_utils import load_config, NOSTR_RELAYS  # noqa: E402
@@ -87,10 +88,23 @@ RELAY_CACHE_TTL_SECONDS = 24 * 60 * 60
 
 # Incremental runs filter on `since` (event created_at), so an edit/deletion
 # that takes longer than the hourly window to propagate to any relay we query
-# could slip through. Once a day, force a full-history scan (since=None) to
-# re-sweep everything — catches any missed replacement/deletion and keeps the
-# cache self-healing. Cheap now that the scan is parallel (~a few min).
+# could slip through. Once a day we force a full-history scan (since=None) to
+# re-sweep everything — catches any missed replacement/deletion, and (with the
+# relay cache force-refreshed on that run) backfills the full back-catalog of
+# any member the daily follow-packs refresh just added.
+#
+# Rather than a floating "24h since last reconcile" trigger, the daily deep
+# scan is CLOCK-ANCHORED to the first run at/after RECONCILE_ANCHOR
+# (America/New_York) each day. The follow-packs bot refreshes membership at
+# 05:00 ET; anchoring the deep scan to 05:20 ET stacks it ~20 min behind that
+# refresh (the feeds timer already fires at :20 every hour), so a newly-added
+# member goes live the same morning instead of drifting in up to a day later.
+# The TTL below stays as a fallback ceiling: if the anchored run is ever
+# missed, we still reconcile once the last one is this old.
 FULL_RECONCILE_TTL_SECONDS = 24 * 60 * 60
+RECONCILE_ANCHOR_TZ = ZoneInfo("America/New_York")
+RECONCILE_ANCHOR_HOUR = 5     # 05:20 ET — the first :20 run after follow-packs
+RECONCILE_ANCHOR_MINUTE = 20  # (05:00 ET) so new members backfill same-day
 
 KIND_DELETION = 5
 KIND_PROFILE = 0
@@ -163,13 +177,18 @@ def fetch_profiles(relays, author_hexes, wall):
 
 
 # ── scan-relay resolution (cached) ────────────────────────────────────────────
-def get_scan_relays(members, state):
+def get_scan_relays(members, state, force_resolve=False):
     """The relay set to scan, reused from state unless stale. Resolving the
     per-member outbox union costs ~5 min, so we cache it and only rebuild once
-    a day — hourly runs reuse it and go straight to the (fast) scan."""
+    a day — hourly runs reuse it and go straight to the (fast) scan.
+
+    `force_resolve` bypasses the cache: the daily deep-scan run passes it so a
+    member the follow-packs refresh just added has their NIP-65 outbox relays
+    resolved THIS run, not whenever the relay cache next happens to expire —
+    otherwise their outbox-only content would still lag the backfill."""
     cache = state.get("_scan_relays") or {}
     age = time.time() - cache.get("resolved_at", 0)
-    if RESOLVE_OUTBOX and cache.get("relays") and age < RELAY_CACHE_TTL_SECONDS:
+    if (not force_resolve) and RESOLVE_OUTBOX and cache.get("relays") and age < RELAY_CACHE_TTL_SECONDS:
         print(f"Reusing cached scan-relay set: {len(cache['relays'])} relays "
               f"({int(age // 60)} min old)")
         return cache["relays"]
@@ -181,6 +200,28 @@ def get_scan_relays(members, state):
     return relays
 
 
+def due_for_daily_reconcile(last_reconcile_ts, now=None):
+    """Whether this run should do the daily full-history deep scan.
+
+    Fires once per calendar day (America/New_York), on the first run at/after
+    RECONCILE_ANCHOR — so it stacks ~20 min behind the 05:00 ET follow-packs
+    refresh. The FULL_RECONCILE_TTL_SECONDS ceiling is a fallback: if the
+    anchored run is ever missed (box asleep, timer skipped), we still reconcile
+    once the last one is that old."""
+    now = now if now is not None else time.time()
+    if not last_reconcile_ts:
+        return True                                    # never reconciled → backfill
+    if now - last_reconcile_ts >= FULL_RECONCILE_TTL_SECONDS:
+        return True                                    # fallback ceiling
+    now_local = datetime.fromtimestamp(now, RECONCILE_ANCHOR_TZ)
+    last_local = datetime.fromtimestamp(last_reconcile_ts, RECONCILE_ANCHOR_TZ)
+    anchor_today = now_local.replace(hour=RECONCILE_ANCHOR_HOUR,
+                                     minute=RECONCILE_ANCHOR_MINUTE,
+                                     second=0, microsecond=0)
+    # Due once we're past today's anchor and haven't reconciled since it.
+    return now_local >= anchor_today and last_local < anchor_today
+
+
 # ── main ──────────────────────────────────────────────────────────────────────
 # One combined relay crawl feeds all three feeds. Every content kind + kind-5
 # is fetched in a single (parallel) author-chunked scan, then split by kind —
@@ -190,17 +231,23 @@ def main():
     print(f"{len(members)} unique community members (all follow packs)")
 
     state = load_state()
-    scan_relays = get_scan_relays(members, state)
-    save_state(state)   # persist a freshly-resolved relay cache immediately
 
+    # Decide the scan mode BEFORE resolving relays: a full reconcile force-
+    # refreshes the relay cache so a just-added member's outbox relays are in
+    # the scan set this run (see get_scan_relays / due_for_daily_reconcile).
+    #
     # Incremental once every feed has a cursor; the shared `since` is the
     # oldest cursor (minus overlap) so no feed misses anything. But force a
-    # full-history scan (since=None) when we've never done one, or the last
-    # daily reconcile is stale — this re-sweeps everything so a replacement or
-    # deletion that slipped the hourly propagation window still lands.
+    # full-history scan (since=None) when we've never done one, or the daily
+    # clock-anchored reconcile is due — this re-sweeps everything so a
+    # replacement/deletion that slipped the hourly propagation window still
+    # lands, and backfills any member the follow-packs refresh just added.
     cursors = [state.get(p["name"], {}).get("last_processed") for p in PASSES]
-    reconcile_age = time.time() - (state.get("last_full_reconcile") or 0)
-    full_scan = (not all(cursors)) or reconcile_age >= FULL_RECONCILE_TTL_SECONDS
+    full_scan = (not all(cursors)) or due_for_daily_reconcile(state.get("last_full_reconcile"))
+
+    scan_relays = get_scan_relays(members, state, force_resolve=full_scan)
+    save_state(state)   # persist a freshly-resolved relay cache immediately
+
     since = None if full_scan else (min(cursors) - OVERLAP_SECONDS)
     wall = BACKFILL_WALL_SECONDS if full_scan else INCREMENTAL_WALL_SECONDS
     content_kinds = sorted({k for p in PASSES for k in p["kinds"]})

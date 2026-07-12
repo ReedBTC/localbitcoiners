@@ -63,6 +63,16 @@ CODING_CONTRIBUTORS = [
     "npub177fz5zkm87jdmf0we2nz7mm7uc2e7l64uzqrv6rvdrsg8qkrg7yqx0aaq7",  # Chad Farrow
 ]
 
+# Co-hosts (Reed + Rev). They host every episode, so they're never episode
+# "[guests: …]" in the RSS — but they belong in the Show Guests pack. Added via
+# this hand-maintained list, unioned with the RSS-derived guests (co-hosts
+# first). Mirror any co-host handling the website adds to its guests display so
+# the /supporters page and this pack stay in sync.
+CO_HOSTS = [
+    "npub1xgyjasdztryl9sg6nfdm2wcj0j3qjs03sq7a0an32pg0lr5l6yaqxhgu7s",  # Reed
+    "npub1f5pre6wl6ad87vr4hr5wppqq30sh58m4p33mthnjreh03qadcajs7gwt3z",  # Rev
+]
+
 # Booster tier floors (inclusive), highest first — a supporter lands in the
 # first tier they clear, by lifetime total_sats (boosts + streams). Mirrors
 # TIERS in supporters.js.
@@ -247,7 +257,8 @@ def main():
     relays = list(dict.fromkeys(outbox + NOSTR_RELAYS))
 
     tier_members = compute_tier_members(rows)
-    guests       = compute_guests()
+    # Co-hosts first, then the RSS-derived episode guests (deduped by npub).
+    guests       = list(dict.fromkeys(CO_HOSTS + compute_guests()))
     coders       = list(CODING_CONTRIBUTORS)
 
     print(f"Source: {len(rows)} sats.json rows | {len(guests)} guest npubs | "
