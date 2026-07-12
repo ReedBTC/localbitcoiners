@@ -85,6 +85,10 @@ TIER_PACKS = [
 
 GUESTS_PACK = ("lb-supporters-guests", "Local Bitcoiners — Show Guests")
 CODERS_PACK = ("lb-supporters-coders", "Local Bitcoiners — Coding Contributors")
+# Combined pack: the union of every category above — one-click "follow every
+# Local Bitcoiners supporter". Built from the same sources, deduped by hex, so
+# it always mirrors whatever the per-category packs contain.
+ALL_PACK    = ("lb-supporters-all", "Local Bitcoiners — All Supporters")
 
 NPUB_RE   = re.compile(r"^npub1[02-9ac-hj-np-z]{58}$")
 GUESTS_RE = re.compile(r"\[guests:\s*([^\]]+)\]", re.IGNORECASE)
@@ -193,22 +197,33 @@ def pack_tags(slug, title, member_npubs):
 
 # ── publish ──────────────────────────────────────────────────────────────────
 def process_pack(slug, title, member_npubs, nsec, relays, state):
-    """Publish/refresh one pack unless its member set is unchanged. Empty packs
-    are skipped (the website hides an empty-pack button). Returns True if it
-    published (or would have, in dry-run)."""
+    """Publish/refresh one pack unless its member set is unchanged. Returns True
+    if it published (or would have, in dry-run).
+
+    Empty handling: a pack that computes to no members is skipped ONLY if it was
+    never published. If it previously HAD members and is now empty — e.g. a tier
+    that emptied when its last member graduated to a higher tier — it's
+    republished with no p-tags to CLEAR the now-stale members; otherwise the old
+    event keeps advertising people who no longer belong to that tier. (A tier
+    that still has members after a graduation already self-corrects: its set
+    changed, so it republishes without the graduate. Only the emptied case
+    slipped through.) The website hides an empty-pack section on its own."""
     tags, hexes = pack_tags(slug, title, member_npubs)
-    if not hexes:
-        print(f"  [{slug}] empty — skipping")
-        return False
-
     prev = (state.get(slug) or {}).get("members") or []
+
     if hexes == prev:
-        print(f"  [{slug}] unchanged ({len(hexes)} members) — skipping republish")
+        # Covers "unchanged non-empty" and "still empty / never published".
+        shown = f"{len(hexes)} members" if hexes else "empty, never published"
+        print(f"  [{slug}] unchanged ({shown}) — skipping republish")
         return False
 
-    print(f"  [{slug}] {title}")
-    print(f"           {len(hexes)} members"
-          + (f"  (+{len(hexes) - len(prev)})" if prev else "  (new pack)"))
+    if not hexes:
+        print(f"  [{slug}] now empty — republishing with no members to clear "
+              f"{len(prev)} stale member(s)")
+    else:
+        print(f"  [{slug}] {title}")
+        print(f"           {len(hexes)} members"
+              + (f"  (+{len(hexes) - len(prev)})" if prev else "  (new pack)"))
 
     if DRY_RUN:
         path, event_id = write_dry_run_event(
@@ -264,12 +279,19 @@ def main():
     print(f"Source: {len(rows)} sats.json rows | {len(guests)} guest npubs | "
           f"{len(coders)} coders | relays: {len(relays)}\n")
 
+    # Everyone across every category, deduped by hex in pack_tags — mirrors the
+    # union feeds.js already computes from the per-category packs.
+    all_members = list(guests) + list(coders)
+    for _, slug, _ in TIER_PACKS:
+        all_members += tier_members.get(slug, [])
+
     published = 0
-    # Guests, coders, then tiers high→low.
+    # Guests, coders, tiers high→low, then the combined "everyone" pack.
     published += process_pack(GUESTS_PACK[0], GUESTS_PACK[1], guests, nsec, relays, state)
     published += process_pack(CODERS_PACK[0], CODERS_PACK[1], coders, nsec, relays, state)
     for floor, slug, title in TIER_PACKS:
         published += process_pack(slug, title, tier_members.get(slug, []), nsec, relays, state)
+    published += process_pack(ALL_PACK[0], ALL_PACK[1], all_members, nsec, relays, state)
 
     print(f"\n{published} pack(s) {'previewed' if DRY_RUN else 'published'}.")
 
