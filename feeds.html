@@ -21,7 +21,7 @@
   " />
 
   <title>Community Feeds — Local Bitcoiners</title>
-  <meta name="description" content="Live Nostr feeds from the Local Bitcoiners community — notes, marketplace listings, events, and long-form articles, all in one place." />
+  <meta name="description" content="Live Nostr feeds from the Local Bitcoiners community — events, marketplace listings, podcast boosts, and long-form articles, all in one place." />
   <link rel="canonical" href="https://localbitcoiners.com/feeds" />
   <link rel="icon" type="image/png" href="assets/favicon.png" />
 
@@ -37,7 +37,7 @@
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://localbitcoiners.com/feeds" />
   <meta property="og:title" content="Community Feeds — Local Bitcoiners" />
-  <meta property="og:description" content="Live Nostr feeds from the Local Bitcoiners community — notes, marketplace, events, and articles." />
+  <meta property="og:description" content="Live Nostr feeds from the Local Bitcoiners community — events, marketplace, podcast boosts, and articles." />
   <meta property="og:site_name" content="Local Bitcoiners" />
   <meta property="og:image" content="https://localbitcoiners.com/assets/LocalBitcoiners_banner.png" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -93,21 +93,21 @@
          active feed's trio is mirrored into --accent / --accent-d /
          --tint by the [data-active-feed] rules below so the shared
          chrome (panel, toolbar) can just read --accent. */
-      --notes-accent:    #5e7d3a;  --notes-accent-d:    #46602c;  --notes-tint:    #eef3e2;
+      --podcasts-accent: #5e7d3a;  --podcasts-accent-d: #46602c;  --podcasts-tint: #eef3e2;
       --market-accent:   #d97b0e;  --market-accent-d:   #b8640a;  --market-tint:   #fbefda;
       --events-accent:   #2f6f8f;  --events-accent-d:   #245a75;  --events-tint:   #e6f0f5;
       --articles-accent: #7150a6;  --articles-accent-d: #573c86;  --articles-tint: #efe9f6;
 
-      /* Defaults (Notes) — overridden per active feed. */
-      --accent:   var(--notes-accent);
-      --accent-d: var(--notes-accent-d);
-      --tint:     var(--notes-tint);
+      /* Defaults (Events is the default tab) — overridden per active feed. */
+      --accent:   var(--events-accent);
+      --accent-d: var(--events-accent-d);
+      --tint:     var(--events-tint);
     }
 
     /* Active-feed → accent mapping. Set on <body data-active-feed>. */
-    body[data-active-feed="notes"]    { --accent: var(--notes-accent);    --accent-d: var(--notes-accent-d);    --tint: var(--notes-tint); }
-    body[data-active-feed="market"]   { --accent: var(--market-accent);   --accent-d: var(--market-accent-d);   --tint: var(--market-tint); }
     body[data-active-feed="events"]   { --accent: var(--events-accent);   --accent-d: var(--events-accent-d);   --tint: var(--events-tint); }
+    body[data-active-feed="market"]   { --accent: var(--market-accent);   --accent-d: var(--market-accent-d);   --tint: var(--market-tint); }
+    body[data-active-feed="podcasts"] { --accent: var(--podcasts-accent); --accent-d: var(--podcasts-accent-d); --tint: var(--podcasts-tint); }
     body[data-active-feed="articles"] { --accent: var(--articles-accent); --accent-d: var(--articles-accent-d); --tint: var(--articles-tint); }
 
     html { scroll-behavior: smooth; }
@@ -189,9 +189,9 @@
       color: var(--muted);
       transition: background 0.15s, color 0.15s, border-color 0.15s;
     }
-    .feed-tab--notes    { --tab: var(--notes-accent); }
-    .feed-tab--market   { --tab: var(--market-accent); }
     .feed-tab--events   { --tab: var(--events-accent); }
+    .feed-tab--market   { --tab: var(--market-accent); }
+    .feed-tab--podcasts { --tab: var(--podcasts-accent); }
     .feed-tab--articles { --tab: var(--articles-accent); }
 
     .feed-tab-icon {
@@ -530,6 +530,577 @@
     .market-modal-actions { display: flex; justify-content: flex-end; }
     .market-modal-actions .market-btn { width: auto; padding-left: 1.2rem; padding-right: 1.2rem; }
 
+    /* ── Podcast Boosts cards ─────────────────────────────────────────
+       Episodes the community has boosted on Nostr. The card head shows the
+       art, show name, the episode title (a link to the Fountain episode), a
+       meta row of booster avatars / recency / sats, and a ⋮ menu of
+       show-level subscribe links. A low-profile drawer bar under the head
+       toggles the inline boost thread. Rendered by feeds-podcasts.js. */
+    /* Sort dropdown in the panel head (replaces the episode-count pill). */
+    .pcast-sort { position: relative; flex-shrink: 0; align-self: center; }
+    .pcast-sort-btn {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      padding: 0.3rem 0.7rem; font: inherit; font-size: 0.78rem; font-weight: 600;
+      color: var(--text); background: var(--white);
+      border: 1px solid var(--border); border-radius: 999px; cursor: pointer;
+      white-space: nowrap; transition: border-color 0.12s, background 0.12s;
+    }
+    .pcast-sort-btn:hover { border-color: var(--accent); background: var(--tint); }
+    .pcast-sort-tag { color: var(--muted); }
+    .pcast-sort-cur { color: var(--accent-d); font-weight: 700; }
+    .pcast-sort-caret { color: var(--muted); font-size: 0.85em; }
+    .pcast-sort-menu {
+      position: absolute; top: calc(100% + 4px); right: 0; z-index: 6;
+      min-width: 175px; background: var(--white);
+      border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18); padding: 0.35rem;
+    }
+    .pcast-sort-menu[hidden] { display: none; }
+    .pcast-sort-item {
+      display: block; width: 100%; text-align: left;
+      padding: 0.45rem 0.6rem; font: inherit; font-size: 0.85rem; font-weight: 600;
+      color: var(--text); background: transparent; border: none; border-radius: 6px; cursor: pointer;
+    }
+    .pcast-sort-item:hover { background: var(--tint); color: var(--accent-d); }
+    .pcast-sort-item.is-active { color: var(--accent-d); background: var(--tint); }
+    .pcast-sort-item.is-active::after { content: ' ✓'; float: right; }
+
+    /* minmax(0,1fr) — without the 0 min, a grid item's min-width is its
+       content, so long shownotes/URLs would blow the column (and card) far
+       wider than the container. */
+    .pcast-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem; }
+    .pcast-card {
+      min-width: 0;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      /* No overflow:hidden here — it would clip the ⋮ subscribe dropdown when
+         it opens past the bottom of the card. The media clips its own corners,
+         and the drawer rounds its bottom corners when it's the last child. */
+      transition: box-shadow 0.12s, border-color 0.12s;
+    }
+    .pcast-card:hover { box-shadow: 0 6px 18px rgba(0,0,0,0.08); }
+    .pcast-card.is-open { border-color: var(--accent); box-shadow: 0 6px 18px rgba(0,0,0,0.10); }
+    .pcast-card-head {
+      display: flex;
+      gap: 0.7rem;
+      align-items: flex-start;
+      /* tight right padding so the ⋮ menu hugs the corner */
+      padding: 0.7rem 0.4rem 0.5rem 0.7rem;
+    }
+    .pcast-card-media {
+      display: block; /* also correct when the media is an <a> link */
+      flex-shrink: 0;
+      width: 68px; height: 68px;
+      border-radius: 8px; overflow: hidden;
+      background: var(--tint);
+    }
+    a.pcast-card-media { cursor: pointer; }
+    a.pcast-card-media:hover { box-shadow: 0 0 0 2px var(--podcasts-accent); }
+    .pcast-card-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .pcast-card-media--none {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.7rem; opacity: 0.55;
+    }
+    .pcast-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; justify-content: center; }
+    .pcast-show {
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em;
+      text-transform: uppercase; color: var(--accent-d);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    a.pcast-show-link { text-decoration: none; cursor: pointer; display: block; }
+    a.pcast-show-link:hover { text-decoration: underline; }
+    .pcast-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 0.98rem; font-weight: 700; line-height: 1.25; color: var(--text);
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .pcast-meta {
+      display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;
+      margin-top: 0.25rem; font-size: 0.78rem; color: var(--muted);
+    }
+
+    /* Shownotes teaser (first ~2 lines) + a links row ("see full description"
+       and a compact "Listen on Fountain") beneath it. */
+    .pcast-desc {
+      margin: 0.35rem 0 0; font-size: 0.82rem; line-height: 1.4; color: var(--muted);
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+      overflow-wrap: anywhere; word-break: break-word;
+    }
+    .pcast-links { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.35rem; }
+    .pcast-fountain-link {
+      font-size: 0.78rem; font-weight: 700; color: var(--accent-d); text-decoration: none; white-space: nowrap;
+    }
+    .pcast-fountain-link:hover { text-decoration: underline; }
+
+    /* Inline audio player. */
+    .pcast-player-row { padding: 0.1rem 0.7rem 0.2rem; }
+    .pcast-player { width: 100%; display: block; }
+
+    /* Download + Boost action buttons. */
+    .pcast-card-buttons {
+      display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+      padding: 0.4rem 0.7rem 0.65rem;
+    }
+    .pcast-btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.5rem 0.95rem;
+      font: inherit; font-size: 0.85rem; font-weight: 700;
+      border: 1px solid transparent; border-radius: 999px; cursor: pointer;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+    }
+    .pcast-btn-boost { color: #fff; background: #f7931a; border-color: #f7931a; }
+    .pcast-btn-boost:hover { background: #d97b0e; border-color: #d97b0e; }
+    .pcast-btn-bolt { display: inline-flex; width: 15px; height: 15px; }
+    .pcast-btn-bolt svg { width: 100%; height: 100%; display: block; }
+    .pcast-btn-download { color: var(--accent-d); background: var(--white); border-color: var(--border); }
+    .pcast-btn-download:hover { background: var(--tint); border-color: var(--accent); }
+    .pcast-btn-download:disabled { opacity: 0.6; cursor: default; }
+    .pcast-dot { opacity: 0.6; }
+    .pcast-sats { font-weight: 700; color: var(--accent-d); white-space: nowrap; }
+    .pcast-bolt { font-size: 0.85em; }
+
+    /* Avatars — stacked on cards, single on modal rows. Size via --pcast-av. */
+    .pcast-avatars { display: inline-flex; align-items: center; }
+    .pcast-avatars .pcast-avatar + .pcast-avatar { margin-left: -8px; }
+    .pcast-avatar {
+      width: var(--pcast-av, 26px); height: var(--pcast-av, 26px);
+      border-radius: 50%; object-fit: cover; flex-shrink: 0;
+      border: 2px solid var(--white); background: var(--tint);
+      box-sizing: border-box;
+    }
+    .pcast-avatar--none {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--cream-d); color: var(--muted);
+      font-size: 0.6rem; font-weight: 700;
+    }
+    .pcast-avatar.is-interactive { cursor: pointer; }
+    .pcast-avatar.is-interactive:hover { border-color: var(--accent); }
+    .pcast-avatar.is-interactive:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+    .pcast-more-wrap { display: flex; justify-content: center; margin-top: 1.1rem; }
+    .pcast-more-group { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; }
+    .pcast-more-count { font-size: 0.75rem; color: var(--muted); }
+    .pcast-showmore {
+      padding: 0.5rem 1.4rem;
+      font: inherit; font-size: 0.85rem; font-weight: 700;
+      color: var(--accent-d); background: var(--white);
+      border: 1px solid var(--border); border-radius: 999px; cursor: pointer;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .pcast-showmore:hover { background: var(--tint); border-color: var(--accent); }
+
+    /* Episode title links out to the Fountain episode. */
+    .pcast-title-link { color: var(--text); text-decoration: none; }
+    .pcast-title-link:hover { color: var(--accent-d); text-decoration: underline; }
+
+    /* Media column: episode art with the air date tucked directly beneath it. */
+    .pcast-media-col { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; flex-shrink: 0; }
+    .pcast-card-aired { font-size: 0.66rem; color: var(--muted); white-space: nowrap; text-align: center; }
+
+    /* ⋮ subscribe menu on the card head (top-right) — show-level app links. */
+    .pcast-cardmenu { position: relative; flex-shrink: 0; align-self: flex-start; }
+    .pcast-cardmenu-btn {
+      width: 30px; height: 30px; border-radius: 50%;
+      border: none; background: transparent; color: var(--muted); cursor: pointer;
+      font-size: 1.2rem; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .pcast-cardmenu-btn:hover { background: var(--tint); color: var(--text); }
+    .pcast-cardmenu-menu {
+      position: absolute; top: 34px; right: 0; z-index: 6;
+      min-width: 190px;
+      background: var(--white);
+      border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+      padding: 0.35rem;
+    }
+    .pcast-cardmenu-menu[hidden] { display: none; }
+    .pcast-cardmenu-label {
+      padding: 0.4rem 0.6rem 0.25rem;
+      font-size: 0.66rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--muted);
+    }
+    .pcast-cardmenu-item {
+      display: block; padding: 0.45rem 0.6rem;
+      font-size: 0.85rem; font-weight: 600; color: var(--text);
+      text-decoration: none; border-radius: 6px;
+    }
+    .pcast-cardmenu-item:hover { background: var(--tint); color: var(--accent-d); }
+
+    /* ── Boost drawer — a low-profile full-width toggle under the head. ── */
+    .pcast-drawer {
+      display: flex; align-items: center; gap: 0.4rem; width: 100%;
+      padding: 0.45rem 0.7rem 0.5rem;
+      font: inherit; font-size: 0.78rem; font-weight: 600;
+      color: var(--muted); background: transparent;
+      border: none; border-top: 1px solid var(--border);
+      cursor: pointer; text-align: left;
+      transition: color 0.12s, background 0.12s;
+    }
+    .pcast-drawer:hover { color: var(--accent-d); background: rgba(0,0,0,0.02); }
+    .pcast-drawer:last-child { border-radius: 0 0 10px 10px; }
+    .pcast-drawer-caret { font-size: 0.85em; transition: transform 0.18s; }
+    /* Booster faces + total sats, sitting just after the "N boosts" label. */
+    .pcast-drawer-meta { display: inline-flex; align-items: center; gap: 0.5rem; }
+    .pcast-drawer-meta .pcast-sats { font-weight: 700; color: var(--accent-d); white-space: nowrap; }
+    .pcast-card.is-open .pcast-drawer > .pcast-drawer-caret { transform: rotate(180deg); }
+
+    /* "Hide boosts" control at the bottom of a card's thread. */
+    .pcast-drawer-close {
+      justify-self: start;
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.35rem 0;
+      font: inherit; font-size: 0.8rem; font-weight: 700;
+      color: var(--muted); background: transparent; border: none; cursor: pointer;
+    }
+    .pcast-drawer-close:hover { text-decoration: underline; color: var(--accent-d); }
+
+    /* Thread footer: "see all boosts" (Boost Me Bitch) on the left, hide on the right. */
+    .pcast-details-foot {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.75rem; flex-wrap: wrap;
+    }
+    .pcast-seeall {
+      font-size: 0.8rem; font-weight: 700; color: var(--accent-d); text-decoration: none;
+    }
+    .pcast-seeall:hover { text-decoration: underline; }
+
+    /* ── Inline boost details — indented under the card like a child/thread,
+       marked by a left accent rule and kept tight vertically. ── */
+    .pcast-details {
+      display: grid; gap: 0.6rem;
+      margin: 0 0.7rem 0.85rem 3.3rem;
+      padding: 0.15rem 0 0.15rem 0.95rem;
+      border-left: 2px solid var(--accent);
+    }
+    .pcast-details[hidden] { display: none; }
+    .pcast-boost { border-top: 1px solid var(--border); padding-top: 0.6rem; }
+    .pcast-boost:first-child { border-top: none; padding-top: 0; }
+    .pcast-boost-head { display: flex; align-items: center; gap: 0.55rem; }
+    .pcast-boost-who { min-width: 0; flex: 1; display: flex; flex-direction: column; }
+    .pcast-boost-name {
+      align-self: flex-start;
+      font: inherit; font-size: 0.9rem; font-weight: 700; color: var(--text);
+      background: transparent; border: none; padding: 0; cursor: pointer;
+      max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .pcast-boost-name:hover { color: var(--accent-d); text-decoration: underline; }
+    .pcast-boost-when { font-size: 0.74rem; color: var(--muted); }
+    .pcast-boost-sats { flex-shrink: 0; font-size: 0.88rem; font-weight: 700; color: var(--accent-d); white-space: nowrap; }
+    .pcast-boost-msg {
+      margin-top: 0.3rem; font-size: 0.88rem; line-height: 1.35; color: var(--text);
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .pcast-boost-msg a { color: var(--accent-d); }
+    /* Shared reply/repost/like/zap bar (boost-actions.css) under each comment —
+       scoped-down here: no divider line, smaller + tighter than the boosts page. */
+    .pcast-boost .note-actions {
+      margin-top: 0.15rem; padding-top: 0; border-top: none; gap: 0.05rem;
+    }
+    .pcast-boost .note-actions button { font-size: 0.72rem; padding: 0.2rem 0.4rem; gap: 0.25rem; }
+    .pcast-boost .note-actions .lb-icon { font-size: 0.82rem; }
+
+    /* Per-boost ⋮ overflow menu */
+    .pcast-more { position: relative; flex-shrink: 0; }
+    .pcast-more-btn {
+      width: 30px; height: 30px; border-radius: 50%;
+      border: none; background: transparent; color: var(--muted); cursor: pointer;
+      font-size: 1.1rem; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .pcast-more-btn:hover { background: var(--tint); color: var(--text); }
+    .pcast-more-menu {
+      position: absolute; top: 34px; right: 0; z-index: 5;
+      min-width: 160px;
+      background: var(--white);
+      border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+      padding: 0.35rem;
+    }
+    .pcast-more-menu[hidden] { display: none; }
+    .pcast-more-item {
+      display: block; width: 100%; box-sizing: border-box; text-align: left;
+      padding: 0.45rem 0.6rem; font: inherit; font-size: 0.85rem; color: var(--text);
+      background: transparent; border: none; border-radius: 6px; cursor: pointer;
+    }
+    .pcast-more-item:hover { background: var(--tint); }
+
+    /* Copy toast */
+    .pcast-toast {
+      position: fixed; left: 50%; bottom: 1.5rem; transform: translate(-50%, 1rem);
+      z-index: 1100;
+      background: var(--text, #1e160a); color: #fff;
+      padding: 0.55rem 1.1rem; border-radius: 999px;
+      font-size: 0.85rem; font-weight: 600;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.18s, transform 0.18s;
+    }
+    .pcast-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+    .pcast-toast.is-error { background: #9b2c2c; }
+
+    /* ── Articles cards ───────────────────────────────────────────────
+       NIP-23 long-form articles. Each card shows the cover, title, an
+       author byline (clickable avatar + name → copy npub), a one-line
+       summary, and a foot row with a "Read Full Article" link + a ⋮ menu
+       (copy naddr). Rendered by feeds-articles.js. */
+    .art-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem; }
+    .art-card {
+      position: relative;
+      display: flex; gap: 0.85rem; align-items: flex-start;
+      min-width: 0; padding: 0.8rem;
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 10px;
+      transition: box-shadow 0.12s, border-color 0.12s;
+    }
+    .art-card:hover { box-shadow: 0 6px 18px rgba(0,0,0,0.08); }
+    .art-card-media {
+      flex-shrink: 0; width: 92px; height: 92px;
+      border-radius: 8px; overflow: hidden; background: var(--tint);
+    }
+    .art-card-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .art-card-media--none {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.9rem; opacity: 0.5;
+    }
+    .art-card-media--link { cursor: pointer; }
+    .art-card-media--link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .art-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+    .art-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.05rem; font-weight: 700; line-height: 1.25; color: var(--text);
+      padding-right: 1.6rem; /* clear the corner ⋮ menu */
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .art-title-link { cursor: pointer; }
+    .art-title-link:hover { text-decoration: underline; }
+    .art-title-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .art-byline { display: flex; align-items: center; gap: 0.45rem; font-size: 0.78rem; color: var(--muted); }
+    .art-byline-name {
+      font: inherit; font-weight: 600; color: var(--accent-d);
+      background: none; border: none; padding: 0; cursor: pointer;
+      max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .art-byline-name:hover { text-decoration: underline; }
+    .art-dot { opacity: 0.6; }
+    .art-byline-when { white-space: nowrap; }
+    .art-summary {
+      margin: 0; font-size: 0.85rem; line-height: 1.4; color: var(--muted);
+      display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+      overflow-wrap: anywhere;
+    }
+
+    /* Foot row: Read link (left) + ⋮ menu (right). */
+    .art-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-top: 0.15rem; }
+    .art-read {
+      font: inherit; font-size: 0.82rem; font-weight: 700; color: var(--accent-d);
+      background: none; border: none; padding: 0; cursor: pointer;
+    }
+    .art-read:hover { text-decoration: underline; }
+    .art-more { position: absolute; top: 0.5rem; right: 0.5rem; }
+    .art-more-btn {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: none; background: transparent; color: var(--muted); cursor: pointer;
+      font-size: 1.1rem; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .art-more-btn:hover { background: var(--tint); color: var(--text); }
+    .art-more-menu {
+      position: absolute; top: 32px; right: 0; z-index: 6; min-width: 180px;
+      background: var(--white); border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18); padding: 0.35rem;
+    }
+    .art-more-menu[hidden] { display: none; }
+    .art-more-item {
+      display: block; width: 100%; box-sizing: border-box; text-align: left;
+      padding: 0.45rem 0.6rem; font: inherit; font-size: 0.85rem; color: var(--text);
+      background: transparent; border: none; border-radius: 6px; cursor: pointer;
+    }
+    .art-more-item:hover { background: var(--tint); }
+
+    /* Author avatar — sized via --art-av on the element. */
+    .art-avatar {
+      width: var(--art-av, 26px); height: var(--art-av, 26px);
+      border-radius: 50%; object-fit: cover; flex-shrink: 0;
+      background: var(--tint); box-sizing: border-box;
+    }
+    .art-avatar--none {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--cream-d); color: var(--muted);
+      font-size: 0.62rem; font-weight: 700; line-height: 1;
+    }
+    .art-avatar--btn { cursor: pointer; transition: box-shadow 0.12s; }
+    .art-avatar--btn:hover { box-shadow: 0 0 0 2px var(--accent); }
+
+    /* Copy toast (self-contained; mirrors the podcasts feed's toast). */
+    .art-toast {
+      position: fixed; left: 50%; bottom: 1.5rem; transform: translate(-50%, 1rem);
+      z-index: 1100; background: var(--text, #1e160a); color: #fff;
+      padding: 0.55rem 1.1rem; border-radius: 999px;
+      font-size: 0.85rem; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+      opacity: 0; pointer-events: none; transition: opacity 0.18s, transform 0.18s;
+    }
+    .art-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+    .art-toast.is-error { background: #9b2c2c; }
+
+    /* Load-more (shared shape with the podcasts feed's control). */
+    .art-more-wrap { margin-top: 0.6rem; }
+    .art-more-group { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; }
+    .art-showmore {
+      padding: 0.5rem 1.3rem; font: inherit; font-size: 0.85rem; font-weight: 700;
+      color: var(--accent-d); background: var(--white);
+      border: 1px solid var(--border); border-radius: 999px; cursor: pointer;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .art-showmore:hover { background: var(--tint); border-color: var(--accent); }
+    .art-more-count { font-size: 0.75rem; color: var(--muted); }
+
+    /* ── Shared feed toggle pill (panel head) ─────────────────────────
+       A default-off switch that widens a feed. Used by the Articles tab
+       ("Include short articles") and the Events tab ("Include virtual
+       events"). Accent is contextual via body[data-active-feed]. */
+    .art-toolbar { display: flex; align-items: center; align-self: center; }
+    .feed-head-controls { display: flex; align-items: center; gap: 0.85rem; flex-shrink: 0; flex-wrap: wrap; }
+    .feed-toggle {
+      display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer;
+      user-select: none;
+    }
+    .feed-toggle-input {
+      position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;
+    }
+    .feed-toggle-track {
+      position: relative; flex-shrink: 0;
+      width: 38px; height: 22px; border-radius: 999px;
+      background: var(--border); transition: background 0.15s;
+    }
+    .feed-toggle-thumb {
+      position: absolute; top: 2px; left: 2px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: var(--white); box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+      transition: transform 0.15s;
+    }
+    .feed-toggle-input:checked + .feed-toggle-track { background: var(--accent); }
+    .feed-toggle-input:checked + .feed-toggle-track .feed-toggle-thumb { transform: translateX(16px); }
+    .feed-toggle-input:focus-visible + .feed-toggle-track { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .feed-toggle-label { font-size: 0.82rem; font-weight: 600; color: var(--text); white-space: nowrap; }
+
+    /* ── Article reader (full-width in-panel takeover) ────────────────
+       When a card is opened, the list + panel head hide and this renders
+       in their place: a back bar, cover, title, byline, summary, then the
+       sanitized markdown body (.art-prose). Mirrors MyNostr's reader. */
+    .art-reader {
+      position: relative;
+      max-width: 720px; margin: 0 auto; padding: 0.25rem 0 2rem;
+      animation: art-fade 0.16s ease-out;
+    }
+    @keyframes art-fade { from { opacity: 0; } to { opacity: 1; } }
+    /* Floating back pill (left) + ⋮ (right). position:fixed, NOT sticky: a
+       global `overflow-x:hidden` on <body> makes it a non-scrolling scroll-
+       container, which breaks position:sticky for its descendants. JS
+       (positionFloatingControls) sets top/left each scroll so they hug the
+       article column's gutters and never rise above the article top. */
+    .art-reader-back {
+      position: fixed; z-index: 45;
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.45rem 0.9rem; font: inherit; font-size: 0.82rem; font-weight: 700;
+      color: var(--accent-d); background: var(--white);
+      border: 1px solid var(--border); border-radius: 999px; cursor: pointer;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.14);
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .art-reader-back:hover { border-color: var(--accent); background: var(--tint); }
+    /* ⋮ is pinned to the article's top-right (absolute, scrolls away with the
+       article) — not floating like the back pill. */
+    .art-reader-more { position: absolute; top: 0.5rem; right: 0.5rem; z-index: 5; }
+    .art-reader-more .art-more-btn {
+      width: 34px; height: 34px; color: var(--accent-d);
+      background: var(--white); border: 1px solid var(--border);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.14);
+    }
+    .art-reader-more .art-more-btn:hover { background: var(--tint); }
+    .art-reader-cover {
+      width: 100%; aspect-ratio: 16 / 9; margin-bottom: 1.1rem;
+      border-radius: 12px; overflow: hidden; background: var(--tint);
+      border: 1px solid var(--border);
+    }
+    .art-reader-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .art-reader-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.9rem; font-weight: 800; line-height: 1.15; color: var(--text);
+      margin: 0 0 0.7rem;
+    }
+    .art-reader-byline { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.9rem; }
+    .art-reader-who { display: flex; flex-direction: column; }
+    .art-reader-name {
+      align-self: flex-start; font: inherit; font-size: 0.92rem; font-weight: 700; color: var(--text);
+      background: none; border: none; padding: 0; cursor: pointer;
+    }
+    .art-reader-name:hover { text-decoration: underline; }
+    .art-reader-when { font-size: 0.78rem; color: var(--muted); }
+    .art-reader-summary {
+      margin: 0 0 1.4rem; padding: 0 0 1.1rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 1.05rem; line-height: 1.55; color: var(--muted); font-style: italic;
+    }
+    /* Interaction bar (reply / repost / like / zap) at the foot — the shared
+       .note-actions bar from boost-actions.css, left-aligned, no divider line. */
+    .art-reader-foot { margin-top: 2rem; }
+    .art-reader-foot .note-actions {
+      justify-content: flex-start; gap: 0.4rem;
+      margin-top: 0; padding-top: 0; border-top: none;
+    }
+
+    /* ── Prose typography for the markdown body ──
+       Light-theme reimplementation of MyNostr's `prose prose-invert` look:
+       comfortable measure, generous vertical rhythm, styled headings /
+       lists / quotes / code / tables. */
+    .art-prose { font-size: 1.02rem; line-height: 1.7; color: var(--text); overflow-wrap: anywhere; }
+    .art-prose > :first-child { margin-top: 0; }
+    .art-prose p { margin: 0 0 1.15rem; }
+    .art-prose h1, .art-prose h2, .art-prose h3, .art-prose h4 {
+      font-family: 'Playfair Display', Georgia, serif;
+      line-height: 1.25; color: var(--text); margin: 2rem 0 0.8rem; font-weight: 700;
+    }
+    .art-prose h1 { font-size: 1.6rem; }
+    .art-prose h2 { font-size: 1.35rem; }
+    .art-prose h3 { font-size: 1.15rem; }
+    .art-prose h4 { font-size: 1.02rem; }
+    .art-prose a { color: var(--accent-d); text-decoration: underline; text-underline-offset: 2px; }
+    .art-prose a:hover { color: var(--accent); }
+    /* Inline nostr @-mentions (npub/nprofile) — match the note-body chip look. */
+    .art-prose a.nostr-mention { color: var(--orange); font-weight: 600; text-decoration: none; }
+    .art-prose a.nostr-mention:hover { text-decoration: underline; }
+    .art-prose ul, .art-prose ol { margin: 0 0 1.15rem; padding-left: 1.4rem; }
+    .art-prose li { margin: 0.3rem 0; }
+    .art-prose li > ul, .art-prose li > ol { margin: 0.3rem 0; }
+    .art-prose blockquote {
+      margin: 0 0 1.15rem; padding: 0.35rem 0 0.35rem 1rem;
+      border-left: 3px solid var(--accent); color: var(--muted); font-style: italic;
+    }
+    .art-prose img {
+      display: block; max-width: 100%; height: auto;
+      margin: 1.2rem auto; border-radius: 8px; max-height: 70vh; object-fit: contain;
+    }
+    .art-prose hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    .art-prose code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.88em; background: var(--tint); color: var(--accent-d);
+      padding: 0.1em 0.35em; border-radius: 5px;
+    }
+    .art-prose pre {
+      margin: 0 0 1.15rem; padding: 0.9rem 1rem; overflow-x: auto;
+      background: var(--tint); border: 1px solid var(--border); border-radius: 8px;
+    }
+    .art-prose pre code { background: none; color: var(--text); padding: 0; font-size: 0.85rem; }
+    .art-prose table {
+      width: 100%; border-collapse: collapse; margin: 0 0 1.15rem; font-size: 0.92rem;
+      display: block; overflow-x: auto;
+    }
+    .art-prose th, .art-prose td { border: 1px solid var(--border); padding: 0.45rem 0.7rem; text-align: left; }
+    .art-prose th { background: var(--tint); font-weight: 700; }
+    .art-prose-fallback { white-space: pre-wrap; overflow-wrap: anywhere; }
+
     /* ── Mobile: tabs become a scrollable chip row ── */
     @media (max-width: 640px) {
       .feed-tabs-wrap { top: 56px; } /* nav shrinks on mobile */
@@ -564,6 +1135,24 @@
       .feed-tab-sub { display: none; }
       .feed-tab[aria-selected="true"] { border-color: var(--tab); }
       .feed-panels-inner { padding: 1.5rem 1rem 2.5rem; }
+      /* Shallower child indent on narrow screens. */
+      .pcast-details { margin-left: 2.1rem; padding-left: 0.7rem; }
+      /* Articles: smaller cover thumb + tighter reader headings. */
+      .art-card-media { width: 72px; height: 72px; }
+      .art-reader-title { font-size: 1.5rem; }
+      .art-prose { font-size: 1rem; }
+      /* Events head: keep the controls at the top-right beside the "Events"
+         title (align-items:flex-start top-aligns them), stacking the month/year
+         dropdowns UNDER the "Include virtual events" toggle rather than off to
+         its right (which ran off-screen). flex-wrap is only a safety net for
+         very narrow screens where the column can't fit beside the title. The
+         two dropdowns stay side-by-side (.feed-monthnav is its own row). */
+      .feed-panel-head { flex-wrap: wrap; align-items: flex-start; }
+      .feed-head-controls {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.55rem;
+      }
     }
   </style>
   <link rel="stylesheet" href="/assets/css/nav.css" />
@@ -671,19 +1260,21 @@
   <div class="feed-tabs" role="tablist" aria-label="Community feeds">
     <button
       type="button"
-      class="feed-tab feed-tab--notes"
+      class="feed-tab feed-tab--events"
       role="tab"
-      id="tab-notes"
-      aria-controls="panel-notes"
-      aria-selected="false"
-      data-feed="notes"
+      id="tab-events"
+      aria-controls="panel-events"
+      aria-selected="true"
+      data-feed="events"
     >
       <span class="feed-tab-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
         </svg>
       </span>
-      <span class="feed-tab-label">Notes</span>
+      <span class="feed-tab-label">Events</span>
     </button>
 
     <button
@@ -706,21 +1297,21 @@
 
     <button
       type="button"
-      class="feed-tab feed-tab--events"
+      class="feed-tab feed-tab--podcasts"
       role="tab"
-      id="tab-events"
-      aria-controls="panel-events"
-      aria-selected="true"
-      data-feed="events"
+      id="tab-podcasts"
+      aria-controls="panel-podcasts"
+      aria-selected="false"
+      data-feed="podcasts"
     >
       <span class="feed-tab-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-          <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
-          <line x1="3" y1="10" x2="21" y2="10"/>
+          <rect x="9" y="2" width="6" height="12" rx="3"/>
+          <path d="M5 10a7 7 0 0 0 14 0"/>
+          <line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/>
         </svg>
       </span>
-      <span class="feed-tab-label">Events</span>
+      <span class="feed-tab-label">Podcast Boosts</span>
     </button>
 
     <button
@@ -748,18 +1339,24 @@
 <main class="feed-panels">
   <div class="feed-panels-inner">
 
-    <section class="feed-panel" id="panel-notes" role="tabpanel" aria-labelledby="tab-notes" data-feed="notes" data-kinds="1" tabindex="0" hidden>
+    <section class="feed-panel is-active" id="panel-events" role="tabpanel" aria-labelledby="tab-events" data-feed="events" data-kinds="31922,31923" tabindex="0">
       <div class="feed-panel-head">
         <div>
-          <h2>Notes</h2>
-          <p>Short posts from the community — kind-1 notes.</p>
+          <h2>Events</h2>
         </div>
-        <span class="feed-count" hidden></span>
+        <div class="feed-head-controls">
+          <!-- "Include virtual events" toggle (mounted by feeds.js). Off by
+               default → events with no location are hidden. -->
+          <div data-virtual-toggle></div>
+          <!-- Month + year dropdowns (populated by feeds.js) — browse events a
+               month at a time. -->
+          <div class="feed-monthnav" data-month-nav hidden></div>
+        </div>
       </div>
       <div class="feed-list" data-feed-list>
         <div class="feed-placeholder">
-          <strong>Notes feed coming online</strong>
-          The layout is ready — live kind-1 notes will load here in the next phase.
+          <strong>Events feed coming online</strong>
+          The layout is ready — NIP-52 calendar events will load here in the next phase.
         </div>
       </div>
     </section>
@@ -779,19 +1376,22 @@
       </div>
     </section>
 
-    <section class="feed-panel is-active" id="panel-events" role="tabpanel" aria-labelledby="tab-events" data-feed="events" data-kinds="31922,31923" tabindex="0">
+    <!-- Podcast Boosts — episodes the LB community has boosted on Nostr.
+         Unlike the other tabs, this feed is not a live relay subscription:
+         it's driven by /api/community-boosts (see functions/api and the
+         bots/community-boosts collector), so it has no data-kinds. -->
+    <section class="feed-panel" id="panel-podcasts" role="tabpanel" aria-labelledby="tab-podcasts" data-feed="podcasts" data-source="community-boosts" tabindex="0" hidden>
       <div class="feed-panel-head">
         <div>
-          <h2>Upcoming Events</h2>
+          <h2>Podcast Boosts</h2>
+          <p>Podcasts Boosted w/Nostr by the Local Bitcoiners Community</p>
         </div>
-        <!-- Month + year dropdowns (populated by feeds.js) — browse events a
-             month at a time. -->
-        <div class="feed-monthnav" data-month-nav hidden></div>
+        <span class="feed-count" hidden></span>
       </div>
       <div class="feed-list" data-feed-list>
         <div class="feed-placeholder">
-          <strong>Events feed coming online</strong>
-          The layout is ready — NIP-52 calendar events will load here in the next phase.
+          <strong>Podcast Boosts feed coming online</strong>
+          The layout is ready — boosted episodes will load here in the next phase.
         </div>
       </div>
     </section>
@@ -800,7 +1400,6 @@
       <div class="feed-panel-head">
         <div>
           <h2>Articles</h2>
-          <p>Long reads — NIP-23 long-form articles.</p>
         </div>
         <span class="feed-count" hidden></span>
       </div>
@@ -894,7 +1493,7 @@
 <script>
 (function () {
   'use strict';
-  const FEEDS = ['notes', 'market', 'events', 'articles'];
+  const FEEDS = ['events', 'market', 'podcasts', 'articles'];
   const tablist = document.querySelector('.feed-tabs');
   if (!tablist) return;
   const tabs = Array.from(tablist.querySelectorAll('[role="tab"]'));
@@ -1039,8 +1638,8 @@
 <!-- PWA install affordance -->
 <script src="assets/widgets/pwa-install.js" defer></script>
 
-<!-- Community feeds — lazily hydrates the active feed (Events wired up;
-     Notes / Marketplace / Articles land in later phases). -->
+<!-- Community feeds — lazily hydrates the active feed (Events + Marketplace
+     wired up; Podcast Boosts / Articles land in later phases). -->
 <script type="module" src="/assets/js/feeds.js"></script>
 <script src="/assets/js/nav.js" defer></script>
 </body>

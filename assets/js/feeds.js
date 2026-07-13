@@ -7,10 +7,10 @@
  * (100k / 69k / 21k / other / guests / coders) into one membership set,
  * then each feed only shows content authored by those pubkeys.
  *
- * Phase 1 wires up the EVENTS tab (NIP-52 calendar events, kinds
- * 31922/31923), rendered with the same card as the Meetups page via the
- * shared renderer in calendar-events.js. The Notes / Marketplace /
- * Articles tabs keep their static placeholder until later phases.
+ * The EVENTS tab (NIP-52 calendar events, kinds 31922/31923) is rendered
+ * with the same card as the Meetups page via the shared renderer in
+ * calendar-events.js; Marketplace, Podcast Boosts, and Articles each lazy-
+ * import their own module (feeds-market / feeds-podcasts / feeds-articles).
  *
  * Feeds load lazily: a tab's fetch only fires the first time that tab
  * becomes active (driven by the `lb:feed-activate` event dispatched from
@@ -32,6 +32,15 @@ import { SimplePool, verifyEvent, nip19 } from '/assets/widgets/nostr-tools.js'
 // show npub — same constant supporters.js / bots/follow-packs use).
 const SHOW_PUBKEY_HEX = 'c330881e28768381dd8bdfd274341dca0c5882c29b8642ea4bc82f7563264592'
 const KIND_FOLLOW_PACK = 39089
+
+// Hourly events snapshot (Cloudflare Pages Function proxying the file
+// bots/community-feeds pushes to the VPS). It carries the same raw signed
+// calendar events a live relay query would, but already scoped to the show's
+// supporters with NIP-09 deletions + NIP-01 replacements resolved server-side
+// — so a tab open is one cached GET instead of follow-pack resolution + a
+// multi-relay subscription. The live path (resolveSupporters + streamEvents)
+// stays as the fallback when the snapshot is unreachable.
+const EVENTS_SNAPSHOT_URL = '/api/community-events'
 
 // Chunk authors so a single relay filter never carries an unreasonable
 // number of `authors`, which some relays cap or reject.
@@ -215,6 +224,30 @@ function streamEvents(authors, relays, state, onUpdate) {
       subs.push(pool.subscribeMany(relays, filter, handlers))
     }
   })
+}
+
+// Pull the hourly events snapshot. Returns raw signed events (verified here —
+// the transport is untrusted even if the source is our own bot); throws if the
+// endpoint is unreachable or returns a non-array, so the caller can fall back
+// to the live relay path.
+async function fetchEventsSnapshot() {
+  const res = await fetch(EVENTS_SNAPSHOT_URL, { headers: { accept: 'application/json' } })
+  if (!res.ok) throw new Error(`community-events ${res.status}`)
+  const data = await res.json()
+  const events = Array.isArray(data?.events) ? data.events : null
+  if (!events) throw new Error('community-events: unexpected shape')
+  return events.filter((ev) => ev && verifyEvent(ev))
+}
+
+// Fold a batch of raw events into state using the exact same merge + deletion
+// rules streamEvents applies to live events. On a clean snapshot the deletion
+// pass is a no-op (the bot strips deleted/superseded events), but running it
+// keeps this path behaviourally identical to the relay fallback.
+function ingestEvents(state, events) {
+  for (const ev of events) {
+    if (ev.kind === KIND_DELETION) applyDeletion(state, ev)
+    else mergeCalendarEvent(state, ev)
+  }
 }
 
 // Build the render-ready item list from the current state, honouring
@@ -408,12 +441,21 @@ function groupItems(items) {
   return out
 }
 
-function renderMonth(panel, allItems, year, month) {
+// A calendar event counts as "in-person" when its `location` tag is populated.
+// Events with no location (virtual) are hidden from the Events tab by default;
+// the "Include virtual events" toggle shows them.
+function hasLocation(item) {
+  const loc = item?.parsed?.location
+  return typeof loc === 'string' && loc.trim() !== ''
+}
+
+function renderMonth(panel, allItems, year, month, includeVirtual = true) {
   const list = panel.querySelector('[data-feed-list]')
   list.className = ''
   list.innerHTML = ''
 
-  const matches = groupItems(allItems).filter((g) => {
+  const visible = includeVirtual ? allItems : allItems.filter(hasLocation)
+  const matches = groupItems(visible).filter((g) => {
     const ym = eventYearMonth(g)
     return ym.year === year && ym.month === month
   })
@@ -502,6 +544,37 @@ function buildMonthNav(panel, onChange) {
   return { year: parseInt(yearSel.value, 10), month: parseInt(monthSel.value, 10) }
 }
 
+// "Include virtual events" toggle for the Events panel head (shared pill markup
+// with the Articles tab's toggle). Off by default → events with no `location`
+// tag are hidden. Calls onChange(checked) on flip.
+function buildVirtualToggle(panel, onChange) {
+  const mount = panel.querySelector('[data-virtual-toggle]')
+  if (!mount) return
+  mount.innerHTML = ''
+
+  const input = document.createElement('input')
+  input.type = 'checkbox'
+  input.className = 'feed-toggle-input'
+  input.setAttribute('role', 'switch')
+  input.addEventListener('change', () => onChange(input.checked))
+
+  const thumb = document.createElement('span')
+  thumb.className = 'feed-toggle-thumb'
+  const track = document.createElement('span')
+  track.className = 'feed-toggle-track'
+  track.setAttribute('aria-hidden', 'true')
+  track.appendChild(thumb)
+
+  const label = document.createElement('span')
+  label.className = 'feed-toggle-label'
+  label.textContent = 'Include virtual events'
+
+  const wrap = document.createElement('label')
+  wrap.className = 'feed-toggle'
+  wrap.append(input, track, label)
+  mount.appendChild(wrap)
+}
+
 // ── Shared supporter resolution ──────────────────────────────────────
 // Resolve the show's write outbox, then the union of every follow-pack
 // member into one { relays, members } set. Exported so the homepage
@@ -549,10 +622,12 @@ export async function fetchUpcomingEvents(supporters, { limit = 12 } = {}) {
 }
 
 // ── Events tab loader ────────────────────────────────────────────────
-// Cache-first + progressive: paint instantly from localStorage if we have
-// a recent snapshot, then open a live subscription that streams events in
-// and repaints (debounced) as they arrive. Switching months never
-// re-fetches — it re-filters the in-memory state.
+// Cache-first: paint instantly from localStorage if we have a recent
+// snapshot, then refresh from the hourly /api/community-events snapshot (one
+// cached GET). If that endpoint is unreachable, fall back to the live path —
+// resolve supporters and stream events in from relays, repainting (debounced)
+// as they arrive. Switching months never re-fetches — it re-filters the
+// in-memory state.
 async function loadEvents() {
   const panel = document.getElementById('panel-events')
   if (!panel) return
@@ -567,9 +642,10 @@ async function loadEvents() {
     relays: STATIC_RELAYS,
     year: new Date().getFullYear(),
     month: new Date().getMonth(),
+    includeVirtual: false,  // hide no-location (virtual) events until toggled on
   }
 
-  const paint = () => renderMonth(panel, computeItems(state), state.year, state.month)
+  const paint = () => renderMonth(panel, computeItems(state), state.year, state.month, state.includeVirtual)
 
   // Debounced repaint so a burst of streamed events doesn't thrash the DOM.
   let paintTimer = null
@@ -577,6 +653,9 @@ async function loadEvents() {
     clearTimeout(paintTimer)
     paintTimer = setTimeout(paint, 200)
   }
+
+  // "Include virtual events" toggle (off by default) — repaints from state.
+  buildVirtualToggle(panel, (on) => { state.includeVirtual = on; paint() })
 
   // Dropdowns render immediately; changing them repaints from state.
   const sel = buildMonthNav(panel, (year, month) => {
@@ -596,19 +675,31 @@ async function loadEvents() {
     showSkeletons(list)
   }
 
-  // 2. Live refresh.
+  // 2. Refresh — prefer the hourly snapshot, fall back to a live relay query.
   try {
-    const { relays, members: memberList } = await resolveSupporters()
-    state.relays = relays
-    if (!memberList.length) {
-      if (!state.eventsByCoord.size) {
-        renderPlaceholder(list, 'No supporters found', 'Couldn’t reach the follow packs right now — please try again later.')
-      }
-      return
+    let snapshot = null
+    try {
+      snapshot = await fetchEventsSnapshot()
+      state.relays = STATIC_RELAYS
+    } catch (snapErr) {
+      console.warn('[feeds] events snapshot unavailable — querying relays', snapErr)
     }
 
-    // Stream events + deletions, repainting as they land.
-    await streamEvents(memberList, state.relays, state, schedulePaint)
+    if (snapshot) {
+      ingestEvents(state, snapshot)
+    } else {
+      // Fallback: resolve supporters, then stream events + deletions from
+      // relays, repainting as they land.
+      const { relays, members: memberList } = await resolveSupporters()
+      state.relays = relays
+      if (!memberList.length) {
+        if (!state.eventsByCoord.size) {
+          renderPlaceholder(list, 'No supporters found', 'Couldn’t reach the follow packs right now — please try again later.')
+        }
+        return
+      }
+      await streamEvents(memberList, state.relays, state, schedulePaint)
+    }
 
     // Organizer profiles (avatar + name) once the author set is known.
     try {
@@ -633,36 +724,73 @@ async function loadEvents() {
 }
 
 // ── Marketplace tab loader ───────────────────────────────────────────
-// Resolves the same supporter set + outbox relays the Events tab uses, then
-// lazy-imports the heavier marketplace module (which pulls in merch.js's cart
-// / checkout / gift-wrap send) only when the tab is actually opened.
+// Lazy-imports the heavier marketplace module (which pulls in merch.js's cart
+// / checkout / gift-wrap send) only when the tab is actually opened, then hands
+// off to renderMarket. Like the Events tab, the listings now come from the
+// hourly snapshot (renderMarket → loadMarketItems fetches it), so there's no
+// supporter/outbox resolution here — that only runs inside the relay fallback.
 async function loadMarket() {
   const panel = document.getElementById('panel-market')
   if (!panel) return
   const list = panel.querySelector('[data-feed-list]')
   if (!list) return
 
-  // Replace the static placeholder with skeletons up front — resolving the
-  // supporter set + lazy-importing the market module (which pulls in merch.js)
-  // takes a moment, and renderMarket only paints its own skeletons afterwards.
+  // Replace the static placeholder with skeletons up front — lazy-importing the
+  // market module (which pulls in merch.js) takes a moment, and renderMarket
+  // only paints its own skeletons afterwards.
   showSkeletons(list)
 
   try {
-    const { relays, members } = await resolveSupporters()
-    if (!members.length) {
-      renderPlaceholder(list, 'No supporters found', 'Couldn’t reach the follow packs right now — please try again later.')
-      return
-    }
     const mod = await import('/assets/js/feeds-market.js')
-    await mod.renderMarket({ panel, list, relays, members })
+    await mod.renderMarket({ panel, list })
   } catch (e) {
     console.error('[feeds] market load failed', e)
-    renderPlaceholder(list, 'Couldn’t load the marketplace', 'Something went wrong reaching the relays — please try again later.')
+    renderPlaceholder(list, 'Couldn’t load the marketplace', 'Something went wrong reaching the community marketplace — please try again later.')
+  }
+}
+
+// Podcast Boosts — episodes the community has boosted on Nostr. Unlike the
+// other tabs this isn't a live relay subscription: it reads the pre-computed
+// /api/community-boosts snapshot (built hourly by bots/community-boosts), so
+// there's no supporter/relay resolution here — just hand the panel to the
+// module and let it fetch. Lazy-imported on first view like the market feed.
+async function loadPodcasts() {
+  const panel = document.getElementById('panel-podcasts')
+  if (!panel) return
+  const list = panel.querySelector('[data-feed-list]')
+  showSkeletons(list)
+  try {
+    const mod = await import('/assets/js/feeds-podcasts.js')
+    await mod.renderPodcasts({ panel, list })
+  } catch (e) {
+    console.error('[feeds] podcast boosts load failed', e)
+    renderPlaceholder(list, 'Couldn’t load podcast boosts', 'Something went wrong reaching the community boosts feed — please try again later.')
+  }
+}
+
+// Articles — NIP-23 long-form (kind 30023) from the community. Like the market
+// and podcast feeds this reads a pre-computed snapshot (/api/community-articles,
+// built hourly by bots/community-feeds) rather than a live subscription, so
+// there's no supporter/relay resolution here — the module fetches, verifies, and
+// renders the list plus its in-panel reader. Lazy-imported on first view (it
+// pulls in the vendored marked + DOMPurify for the reader body).
+async function loadArticles() {
+  const panel = document.getElementById('panel-articles')
+  if (!panel) return
+  const list = panel.querySelector('[data-feed-list]')
+  if (!list) return
+  showSkeletons(list)
+  try {
+    const mod = await import('/assets/js/feeds-articles.js')
+    await mod.renderArticles({ panel, list })
+  } catch (e) {
+    console.error('[feeds] articles load failed', e)
+    renderPlaceholder(list, 'Couldn’t load articles', 'Something went wrong reaching the community articles feed — please try again later.')
   }
 }
 
 // ── Lazy per-feed dispatch ───────────────────────────────────────────
-const LOADERS = { events: loadEvents, market: loadMarket }
+const LOADERS = { events: loadEvents, market: loadMarket, podcasts: loadPodcasts, articles: loadArticles }
 const loaded = new Set()
 
 function loadFeed(feed) {

@@ -93,31 +93,42 @@ function withTimeout(promise, ms, fallback) {
 
 // ── BTC/USD price oracle (for fiat-priced listings) ──────────────────
 // Listings are commonly priced in USD; Lightning settles in sats, so we
-// need a spot rate. Cached for the page session. Two independent sources
-// so a single outage doesn't block checkout.
+// need a spot rate. Cached for the page session. Two independent sources,
+// raced in parallel with a per-request timeout so a single slow/hung endpoint
+// can never stall a caller (e.g. the /feeds Marketplace render) — the fastest
+// healthy source wins, and if both fail/time out we resolve null.
+const RATE_TIMEOUT_MS = 2500
 let _rate = null
 let _ratePromise = null
+
+function fetchJsonWithTimeout(url, ms = RATE_TIMEOUT_MS) {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), ms)
+  return fetch(url, { signal: ctrl.signal })
+    .then((r) => r.json())
+    .finally(() => clearTimeout(timer))
+}
+
 async function getBtcUsd() {
   if (_rate) return _rate
   if (_ratePromise) return _ratePromise
   _ratePromise = (async () => {
-    const sources = [
-      async () => {
-        const j = await fetch('https://mempool.space/api/v1/prices').then(r => r.json())
-        return Number(j.USD)
-      },
-      async () => {
-        const j = await fetch('https://api.coinbase.com/v2/prices/BTC-USD/spot').then(r => r.json())
-        return Number(j?.data?.amount)
-      },
-    ]
-    for (const src of sources) {
-      try {
-        const v = await src()
-        if (Number.isFinite(v) && v > 0) { _rate = v; return v }
-      } catch { /* try next */ }
+    const validRate = (v) => {
+      if (Number.isFinite(v) && v > 0) return v
+      throw new Error('invalid rate')
     }
-    return null
+    // Both start immediately (array literal); Promise.any resolves with the
+    // first that yields a valid rate, and rejects only if all do (→ null).
+    const sources = [
+      fetchJsonWithTimeout('https://mempool.space/api/v1/prices').then((j) => validRate(Number(j.USD))),
+      fetchJsonWithTimeout('https://api.coinbase.com/v2/prices/BTC-USD/spot').then((j) => validRate(Number(j?.data?.amount))),
+    ]
+    try {
+      _rate = await Promise.any(sources)
+      return _rate
+    } catch {
+      return null
+    }
   })()
   return _ratePromise
 }

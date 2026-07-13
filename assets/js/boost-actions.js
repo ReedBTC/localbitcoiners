@@ -170,7 +170,7 @@ function ensureLoggedIn() {
 }
 
 // ── Action bar ───────────────────────────────────────────────────────
-function buildActionBar(ev, cardEl) {
+export function buildActionBar(ev, cardEl) {
   const bar = document.createElement('div')
   bar.className = 'note-actions'
 
@@ -435,16 +435,15 @@ async function handleLike(ev, btn) {
   if (icon) icon.textContent = '♥'
 
   try {
-    await window.LBLogin.signAndPublish({
-      kind: 7,
-      content: '+',
-      tags: [
-        ['e', ev.id],
-        ['p', ev.pubkey],
-        ['k', '1'],
-        ['client', 'localbitcoiners.com'],
-      ],
-    })
+    // Addressable targets (kind 30000–39999, e.g. long-form 30023) carry an
+    // `a` coordinate alongside the `e` id, and the real `k`. Kind-1 stays
+    // byte-identical to before (no `a`, k='1').
+    const kind = ev.kind || 1
+    const isAddressable = kind >= 30000 && kind < 40000
+    const tags = [['e', ev.id]]
+    if (isAddressable && ev.dTag) tags.push(['a', `${kind}:${ev.pubkey}:${ev.dTag}`])
+    tags.push(['p', ev.pubkey], ['k', String(kind)], ['client', 'localbitcoiners.com'])
+    await window.LBLogin.signAndPublish({ kind: 7, content: '+', tags })
   } catch (e) {
     likedIds.delete(id)
     btn.setAttribute('aria-pressed', 'false')
@@ -481,15 +480,18 @@ async function handleRepost(ev, btn) {
         })
       } catch { content = '' }
     }
+    // NIP-18: kind-6 reposts kind-1 only; any other kind uses the generic
+    // kind-16, and addressable targets add an `a` coordinate. Kind-1 stays
+    // byte-identical (kind 6, no `a`).
+    const kind = ev.kind || 1
+    const isAddressable = kind >= 30000 && kind < 40000
+    const tags = [['e', ev.id, '']]
+    if (isAddressable && ev.dTag) tags.push(['a', `${kind}:${ev.pubkey}:${ev.dTag}`, ''])
+    tags.push(['p', ev.pubkey], ['k', String(kind)], ['client', 'localbitcoiners.com'])
     await window.LBLogin.signAndPublish({
-      kind: 6,
+      kind: kind === 1 ? 6 : 16,
       content,
-      tags: [
-        ['e', ev.id, ''],
-        ['p', ev.pubkey],
-        ['k', String(ev.kind || 1)],
-        ['client', 'localbitcoiners.com'],
-      ],
+      tags,
     })
     showToast('Reposted')
   } catch (e) {

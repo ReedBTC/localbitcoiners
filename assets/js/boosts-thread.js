@@ -218,6 +218,14 @@ function renderSegmentsInto(el, segments, opts = {}) {
   }
 }
 
+// Exposed for other read-only renderers (e.g. the Podcast Boosts feed) that
+// want to show verbatim community text with the same safe, tokenized
+// treatment used here — nostr: mentions become chips, URLs become links,
+// and everything else is a plain text node (never innerHTML). Callers that
+// don't render a full note tree should pass { inEmbed: true } so a quoted
+// note degrades to a chip instead of triggering an embed fetch.
+export { parseSegments, renderSegmentsInto }
+
 function buildMentionEl(seg) {
   const profile = seg.data.pubkey ? profileCache.get(seg.data.pubkey) : null
 

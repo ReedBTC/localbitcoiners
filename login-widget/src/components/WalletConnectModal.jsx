@@ -106,7 +106,7 @@ export default function WalletConnectModal({ user, onClose, onConnected }) {
       />
 
       <div
-        className="fixed inset-0 z-[79] flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto overflow-x-hidden"
+        className="fixed inset-0 z-[79] flex items-start sm:items-center justify-center p-3 pt-20 sm:p-4 overflow-y-auto overflow-x-hidden"
         role="dialog"
         aria-label="Connect Lightning Wallet"
         onClick={(e) => { if (e.target === e.currentTarget && !connecting) requestClose() }}

@@ -38,7 +38,13 @@
 // v22: stale-while-revalidate now revalidates assets with the server
 // (cache:'no-cache') so the SW can't re-cache a copy up to 4h stale from the
 // browser HTTP cache — deploys propagate within a navigation, not hours.
-const VERSION = 'lb-v24';
+// v25: /feeds bundle lands on main (Podcast Boosts + Articles tabs,
+// snapshot-first Events/Market, external V4V boosting, supporters co-hosts +
+// follow packs). Bump evicts stale stale-while-revalidate copies of the many
+// changed /assets files (feeds*.js, merch.js, supporters.js, boosts-thread.js,
+// boost-actions.js, value-block.js, login-widget.js) so returning visitors get
+// the new code on first navigation instead of after a 2nd revalidate.
+const VERSION = 'lb-v25';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
