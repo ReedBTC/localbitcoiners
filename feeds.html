@@ -835,6 +835,264 @@
     .pcast-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
     .pcast-toast.is-error { background: #9b2c2c; }
 
+    /* ── Articles cards ───────────────────────────────────────────────
+       NIP-23 long-form articles. Each card shows the cover, title, an
+       author byline (clickable avatar + name → copy npub), a one-line
+       summary, and a foot row with a "Read Full Article" link + a ⋮ menu
+       (copy naddr). Rendered by feeds-articles.js. */
+    .art-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem; }
+    .art-card {
+      position: relative;
+      display: flex; gap: 0.85rem; align-items: flex-start;
+      min-width: 0; padding: 0.8rem;
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 10px;
+      transition: box-shadow 0.12s, border-color 0.12s;
+    }
+    .art-card:hover { box-shadow: 0 6px 18px rgba(0,0,0,0.08); }
+    .art-card-media {
+      flex-shrink: 0; width: 92px; height: 92px;
+      border-radius: 8px; overflow: hidden; background: var(--tint);
+    }
+    .art-card-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .art-card-media--none {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.9rem; opacity: 0.5;
+    }
+    .art-card-media--link { cursor: pointer; }
+    .art-card-media--link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .art-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+    .art-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.05rem; font-weight: 700; line-height: 1.25; color: var(--text);
+      padding-right: 1.6rem; /* clear the corner ⋮ menu */
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .art-title-link { cursor: pointer; }
+    .art-title-link:hover { text-decoration: underline; }
+    .art-title-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .art-byline { display: flex; align-items: center; gap: 0.45rem; font-size: 0.78rem; color: var(--muted); }
+    .art-byline-name {
+      font: inherit; font-weight: 600; color: var(--accent-d);
+      background: none; border: none; padding: 0; cursor: pointer;
+      max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .art-byline-name:hover { text-decoration: underline; }
+    .art-dot { opacity: 0.6; }
+    .art-byline-when { white-space: nowrap; }
+    .art-summary {
+      margin: 0; font-size: 0.85rem; line-height: 1.4; color: var(--muted);
+      display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+      overflow-wrap: anywhere;
+    }
+
+    /* Foot row: Read link (left) + ⋮ menu (right). */
+    .art-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-top: 0.15rem; }
+    .art-read {
+      font: inherit; font-size: 0.82rem; font-weight: 700; color: var(--accent-d);
+      background: none; border: none; padding: 0; cursor: pointer;
+    }
+    .art-read:hover { text-decoration: underline; }
+    .art-more { position: absolute; top: 0.5rem; right: 0.5rem; }
+    .art-more-btn {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: none; background: transparent; color: var(--muted); cursor: pointer;
+      font-size: 1.1rem; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .art-more-btn:hover { background: var(--tint); color: var(--text); }
+    .art-more-menu {
+      position: absolute; top: 32px; right: 0; z-index: 6; min-width: 180px;
+      background: var(--white); border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18); padding: 0.35rem;
+    }
+    .art-more-menu[hidden] { display: none; }
+    .art-more-item {
+      display: block; width: 100%; box-sizing: border-box; text-align: left;
+      padding: 0.45rem 0.6rem; font: inherit; font-size: 0.85rem; color: var(--text);
+      background: transparent; border: none; border-radius: 6px; cursor: pointer;
+    }
+    .art-more-item:hover { background: var(--tint); }
+
+    /* Author avatar — sized via --art-av on the element. */
+    .art-avatar {
+      width: var(--art-av, 26px); height: var(--art-av, 26px);
+      border-radius: 50%; object-fit: cover; flex-shrink: 0;
+      background: var(--tint); box-sizing: border-box;
+    }
+    .art-avatar--none {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--cream-d); color: var(--muted);
+      font-size: 0.62rem; font-weight: 700; line-height: 1;
+    }
+    .art-avatar--btn { cursor: pointer; transition: box-shadow 0.12s; }
+    .art-avatar--btn:hover { box-shadow: 0 0 0 2px var(--accent); }
+
+    /* Copy toast (self-contained; mirrors the podcasts feed's toast). */
+    .art-toast {
+      position: fixed; left: 50%; bottom: 1.5rem; transform: translate(-50%, 1rem);
+      z-index: 1100; background: var(--text, #1e160a); color: #fff;
+      padding: 0.55rem 1.1rem; border-radius: 999px;
+      font-size: 0.85rem; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+      opacity: 0; pointer-events: none; transition: opacity 0.18s, transform 0.18s;
+    }
+    .art-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+    .art-toast.is-error { background: #9b2c2c; }
+
+    /* Load-more (shared shape with the podcasts feed's control). */
+    .art-more-wrap { margin-top: 0.6rem; }
+    .art-more-group { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; }
+    .art-showmore {
+      padding: 0.5rem 1.3rem; font: inherit; font-size: 0.85rem; font-weight: 700;
+      color: var(--accent-d); background: var(--white);
+      border: 1px solid var(--border); border-radius: 999px; cursor: pointer;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .art-showmore:hover { background: var(--tint); border-color: var(--accent); }
+    .art-more-count { font-size: 0.75rem; color: var(--muted); }
+
+    /* ── Shared feed toggle pill (panel head) ─────────────────────────
+       A default-off switch that widens a feed. Used by the Articles tab
+       ("Include short articles") and the Events tab ("Include virtual
+       events"). Accent is contextual via body[data-active-feed]. */
+    .art-toolbar { display: flex; align-items: center; align-self: center; }
+    .feed-head-controls { display: flex; align-items: center; gap: 0.85rem; flex-shrink: 0; flex-wrap: wrap; }
+    .feed-toggle {
+      display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer;
+      user-select: none;
+    }
+    .feed-toggle-input {
+      position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;
+    }
+    .feed-toggle-track {
+      position: relative; flex-shrink: 0;
+      width: 38px; height: 22px; border-radius: 999px;
+      background: var(--border); transition: background 0.15s;
+    }
+    .feed-toggle-thumb {
+      position: absolute; top: 2px; left: 2px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: var(--white); box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+      transition: transform 0.15s;
+    }
+    .feed-toggle-input:checked + .feed-toggle-track { background: var(--accent); }
+    .feed-toggle-input:checked + .feed-toggle-track .feed-toggle-thumb { transform: translateX(16px); }
+    .feed-toggle-input:focus-visible + .feed-toggle-track { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .feed-toggle-label { font-size: 0.82rem; font-weight: 600; color: var(--text); white-space: nowrap; }
+
+    /* ── Article reader (full-width in-panel takeover) ────────────────
+       When a card is opened, the list + panel head hide and this renders
+       in their place: a back bar, cover, title, byline, summary, then the
+       sanitized markdown body (.art-prose). Mirrors MyNostr's reader. */
+    .art-reader {
+      position: relative;
+      max-width: 720px; margin: 0 auto; padding: 0.25rem 0 2rem;
+      animation: art-fade 0.16s ease-out;
+    }
+    @keyframes art-fade { from { opacity: 0; } to { opacity: 1; } }
+    /* Floating back pill (left) + ⋮ (right). position:fixed, NOT sticky: a
+       global `overflow-x:hidden` on <body> makes it a non-scrolling scroll-
+       container, which breaks position:sticky for its descendants. JS
+       (positionFloatingControls) sets top/left each scroll so they hug the
+       article column's gutters and never rise above the article top. */
+    .art-reader-back {
+      position: fixed; z-index: 45;
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.45rem 0.9rem; font: inherit; font-size: 0.82rem; font-weight: 700;
+      color: var(--accent-d); background: var(--white);
+      border: 1px solid var(--border); border-radius: 999px; cursor: pointer;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.14);
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .art-reader-back:hover { border-color: var(--accent); background: var(--tint); }
+    /* ⋮ is pinned to the article's top-right (absolute, scrolls away with the
+       article) — not floating like the back pill. */
+    .art-reader-more { position: absolute; top: 0.5rem; right: 0.5rem; z-index: 5; }
+    .art-reader-more .art-more-btn {
+      width: 34px; height: 34px; color: var(--accent-d);
+      background: var(--white); border: 1px solid var(--border);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.14);
+    }
+    .art-reader-more .art-more-btn:hover { background: var(--tint); }
+    .art-reader-cover {
+      width: 100%; aspect-ratio: 16 / 9; margin-bottom: 1.1rem;
+      border-radius: 12px; overflow: hidden; background: var(--tint);
+      border: 1px solid var(--border);
+    }
+    .art-reader-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .art-reader-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.9rem; font-weight: 800; line-height: 1.15; color: var(--text);
+      margin: 0 0 0.7rem;
+    }
+    .art-reader-byline { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.9rem; }
+    .art-reader-who { display: flex; flex-direction: column; }
+    .art-reader-name {
+      align-self: flex-start; font: inherit; font-size: 0.92rem; font-weight: 700; color: var(--text);
+      background: none; border: none; padding: 0; cursor: pointer;
+    }
+    .art-reader-name:hover { text-decoration: underline; }
+    .art-reader-when { font-size: 0.78rem; color: var(--muted); }
+    .art-reader-summary {
+      margin: 0 0 1.4rem; padding: 0 0 1.1rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 1.05rem; line-height: 1.55; color: var(--muted); font-style: italic;
+    }
+    /* Interaction bar (reply / repost / like / zap) at the foot — the shared
+       .note-actions bar from boost-actions.css, left-aligned, no divider line. */
+    .art-reader-foot { margin-top: 2rem; }
+    .art-reader-foot .note-actions {
+      justify-content: flex-start; gap: 0.4rem;
+      margin-top: 0; padding-top: 0; border-top: none;
+    }
+
+    /* ── Prose typography for the markdown body ──
+       Light-theme reimplementation of MyNostr's `prose prose-invert` look:
+       comfortable measure, generous vertical rhythm, styled headings /
+       lists / quotes / code / tables. */
+    .art-prose { font-size: 1.02rem; line-height: 1.7; color: var(--text); overflow-wrap: anywhere; }
+    .art-prose > :first-child { margin-top: 0; }
+    .art-prose p { margin: 0 0 1.15rem; }
+    .art-prose h1, .art-prose h2, .art-prose h3, .art-prose h4 {
+      font-family: 'Playfair Display', Georgia, serif;
+      line-height: 1.25; color: var(--text); margin: 2rem 0 0.8rem; font-weight: 700;
+    }
+    .art-prose h1 { font-size: 1.6rem; }
+    .art-prose h2 { font-size: 1.35rem; }
+    .art-prose h3 { font-size: 1.15rem; }
+    .art-prose h4 { font-size: 1.02rem; }
+    .art-prose a { color: var(--accent-d); text-decoration: underline; text-underline-offset: 2px; }
+    .art-prose a:hover { color: var(--accent); }
+    .art-prose ul, .art-prose ol { margin: 0 0 1.15rem; padding-left: 1.4rem; }
+    .art-prose li { margin: 0.3rem 0; }
+    .art-prose li > ul, .art-prose li > ol { margin: 0.3rem 0; }
+    .art-prose blockquote {
+      margin: 0 0 1.15rem; padding: 0.35rem 0 0.35rem 1rem;
+      border-left: 3px solid var(--accent); color: var(--muted); font-style: italic;
+    }
+    .art-prose img {
+      display: block; max-width: 100%; height: auto;
+      margin: 1.2rem auto; border-radius: 8px; max-height: 70vh; object-fit: contain;
+    }
+    .art-prose hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    .art-prose code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.88em; background: var(--tint); color: var(--accent-d);
+      padding: 0.1em 0.35em; border-radius: 5px;
+    }
+    .art-prose pre {
+      margin: 0 0 1.15rem; padding: 0.9rem 1rem; overflow-x: auto;
+      background: var(--tint); border: 1px solid var(--border); border-radius: 8px;
+    }
+    .art-prose pre code { background: none; color: var(--text); padding: 0; font-size: 0.85rem; }
+    .art-prose table {
+      width: 100%; border-collapse: collapse; margin: 0 0 1.15rem; font-size: 0.92rem;
+      display: block; overflow-x: auto;
+    }
+    .art-prose th, .art-prose td { border: 1px solid var(--border); padding: 0.45rem 0.7rem; text-align: left; }
+    .art-prose th { background: var(--tint); font-weight: 700; }
+    .art-prose-fallback { white-space: pre-wrap; overflow-wrap: anywhere; }
+
     /* ── Mobile: tabs become a scrollable chip row ── */
     @media (max-width: 640px) {
       .feed-tabs-wrap { top: 56px; } /* nav shrinks on mobile */
@@ -871,6 +1129,10 @@
       .feed-panels-inner { padding: 1.5rem 1rem 2.5rem; }
       /* Shallower child indent on narrow screens. */
       .pcast-details { margin-left: 2.1rem; padding-left: 0.7rem; }
+      /* Articles: smaller cover thumb + tighter reader headings. */
+      .art-card-media { width: 72px; height: 72px; }
+      .art-reader-title { font-size: 1.5rem; }
+      .art-prose { font-size: 1rem; }
     }
   </style>
   <link rel="stylesheet" href="/assets/css/nav.css" />
@@ -1062,9 +1324,14 @@
         <div>
           <h2>Upcoming Events</h2>
         </div>
-        <!-- Month + year dropdowns (populated by feeds.js) — browse events a
-             month at a time. -->
-        <div class="feed-monthnav" data-month-nav hidden></div>
+        <div class="feed-head-controls">
+          <!-- "Include virtual events" toggle (mounted by feeds.js). Off by
+               default → events with no location are hidden. -->
+          <div data-virtual-toggle></div>
+          <!-- Month + year dropdowns (populated by feeds.js) — browse events a
+               month at a time. -->
+          <div class="feed-monthnav" data-month-nav hidden></div>
+        </div>
       </div>
       <div class="feed-list" data-feed-list>
         <div class="feed-placeholder">
@@ -1113,7 +1380,6 @@
       <div class="feed-panel-head">
         <div>
           <h2>Articles</h2>
-          <p>Long reads — NIP-23 long-form articles.</p>
         </div>
         <span class="feed-count" hidden></span>
       </div>

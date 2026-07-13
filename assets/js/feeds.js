@@ -7,10 +7,10 @@
  * (100k / 69k / 21k / other / guests / coders) into one membership set,
  * then each feed only shows content authored by those pubkeys.
  *
- * Phase 1 wires up the EVENTS tab (NIP-52 calendar events, kinds
- * 31922/31923), rendered with the same card as the Meetups page via the
- * shared renderer in calendar-events.js. The Notes / Marketplace /
- * Articles tabs keep their static placeholder until later phases.
+ * The EVENTS tab (NIP-52 calendar events, kinds 31922/31923) is rendered
+ * with the same card as the Meetups page via the shared renderer in
+ * calendar-events.js; Marketplace, Podcast Boosts, and Articles each lazy-
+ * import their own module (feeds-market / feeds-podcasts / feeds-articles).
  *
  * Feeds load lazily: a tab's fetch only fires the first time that tab
  * becomes active (driven by the `lb:feed-activate` event dispatched from
@@ -441,12 +441,21 @@ function groupItems(items) {
   return out
 }
 
-function renderMonth(panel, allItems, year, month) {
+// A calendar event counts as "in-person" when its `location` tag is populated.
+// Events with no location (virtual) are hidden from the Events tab by default;
+// the "Include virtual events" toggle shows them.
+function hasLocation(item) {
+  const loc = item?.parsed?.location
+  return typeof loc === 'string' && loc.trim() !== ''
+}
+
+function renderMonth(panel, allItems, year, month, includeVirtual = true) {
   const list = panel.querySelector('[data-feed-list]')
   list.className = ''
   list.innerHTML = ''
 
-  const matches = groupItems(allItems).filter((g) => {
+  const visible = includeVirtual ? allItems : allItems.filter(hasLocation)
+  const matches = groupItems(visible).filter((g) => {
     const ym = eventYearMonth(g)
     return ym.year === year && ym.month === month
   })
@@ -535,6 +544,37 @@ function buildMonthNav(panel, onChange) {
   return { year: parseInt(yearSel.value, 10), month: parseInt(monthSel.value, 10) }
 }
 
+// "Include virtual events" toggle for the Events panel head (shared pill markup
+// with the Articles tab's toggle). Off by default → events with no `location`
+// tag are hidden. Calls onChange(checked) on flip.
+function buildVirtualToggle(panel, onChange) {
+  const mount = panel.querySelector('[data-virtual-toggle]')
+  if (!mount) return
+  mount.innerHTML = ''
+
+  const input = document.createElement('input')
+  input.type = 'checkbox'
+  input.className = 'feed-toggle-input'
+  input.setAttribute('role', 'switch')
+  input.addEventListener('change', () => onChange(input.checked))
+
+  const thumb = document.createElement('span')
+  thumb.className = 'feed-toggle-thumb'
+  const track = document.createElement('span')
+  track.className = 'feed-toggle-track'
+  track.setAttribute('aria-hidden', 'true')
+  track.appendChild(thumb)
+
+  const label = document.createElement('span')
+  label.className = 'feed-toggle-label'
+  label.textContent = 'Include virtual events'
+
+  const wrap = document.createElement('label')
+  wrap.className = 'feed-toggle'
+  wrap.append(input, track, label)
+  mount.appendChild(wrap)
+}
+
 // ── Shared supporter resolution ──────────────────────────────────────
 // Resolve the show's write outbox, then the union of every follow-pack
 // member into one { relays, members } set. Exported so the homepage
@@ -602,9 +642,10 @@ async function loadEvents() {
     relays: STATIC_RELAYS,
     year: new Date().getFullYear(),
     month: new Date().getMonth(),
+    includeVirtual: false,  // hide no-location (virtual) events until toggled on
   }
 
-  const paint = () => renderMonth(panel, computeItems(state), state.year, state.month)
+  const paint = () => renderMonth(panel, computeItems(state), state.year, state.month, state.includeVirtual)
 
   // Debounced repaint so a burst of streamed events doesn't thrash the DOM.
   let paintTimer = null
@@ -612,6 +653,9 @@ async function loadEvents() {
     clearTimeout(paintTimer)
     paintTimer = setTimeout(paint, 200)
   }
+
+  // "Include virtual events" toggle (off by default) — repaints from state.
+  buildVirtualToggle(panel, (on) => { state.includeVirtual = on; paint() })
 
   // Dropdowns render immediately; changing them repaints from state.
   const sel = buildMonthNav(panel, (year, month) => {
@@ -724,8 +768,29 @@ async function loadPodcasts() {
   }
 }
 
+// Articles — NIP-23 long-form (kind 30023) from the community. Like the market
+// and podcast feeds this reads a pre-computed snapshot (/api/community-articles,
+// built hourly by bots/community-feeds) rather than a live subscription, so
+// there's no supporter/relay resolution here — the module fetches, verifies, and
+// renders the list plus its in-panel reader. Lazy-imported on first view (it
+// pulls in the vendored marked + DOMPurify for the reader body).
+async function loadArticles() {
+  const panel = document.getElementById('panel-articles')
+  if (!panel) return
+  const list = panel.querySelector('[data-feed-list]')
+  if (!list) return
+  showSkeletons(list)
+  try {
+    const mod = await import('/assets/js/feeds-articles.js')
+    await mod.renderArticles({ panel, list })
+  } catch (e) {
+    console.error('[feeds] articles load failed', e)
+    renderPlaceholder(list, 'Couldn’t load articles', 'Something went wrong reaching the community articles feed — please try again later.')
+  }
+}
+
 // ── Lazy per-feed dispatch ───────────────────────────────────────────
-const LOADERS = { events: loadEvents, market: loadMarket, podcasts: loadPodcasts }
+const LOADERS = { events: loadEvents, market: loadMarket, podcasts: loadPodcasts, articles: loadArticles }
 const loaded = new Set()
 
 function loadFeed(feed) {
