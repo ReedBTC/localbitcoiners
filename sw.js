@@ -44,7 +44,7 @@
 // changed /assets files (feeds*.js, merch.js, supporters.js, boosts-thread.js,
 // boost-actions.js, value-block.js, login-widget.js) so returning visitors get
 // the new code on first navigation instead of after a 2nd revalidate.
-const VERSION = 'lb-v25';
+const VERSION = 'lb-v26';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

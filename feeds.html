@@ -1153,6 +1153,11 @@
         align-items: flex-end;
         gap: 0.55rem;
       }
+      /* Podcast Boosts: the title block is too wide to share a row here, so the
+         sort pill wraps onto its own line. Left-aligned it would sit at the
+         panel's left edge, and its right-anchored menu (min-width 175px) would
+         open past the left edge of the screen — so pin the pill right. */
+      .pcast-sort { margin-left: auto; }
     }
   </style>
   <link rel="stylesheet" href="/assets/css/nav.css" />
@@ -1384,7 +1389,7 @@
       <div class="feed-panel-head">
         <div>
           <h2>Podcast Boosts</h2>
-          <p>Podcasts Boosted w/Nostr by the Local Bitcoiners Community</p>
+          <p>Podcasts Boosted w/Nostr by the Local Bitcoiners <a href="/supporters">Community</a></p>
         </div>
         <span class="feed-count" hidden></span>
       </div>
