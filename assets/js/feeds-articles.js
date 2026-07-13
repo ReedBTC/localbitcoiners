@@ -362,10 +362,123 @@ function repaintCards(cardsEl) {
   })
 }
 
+// ── Inline nostr mentions ────────────────────────────────────────────
+// NIP-23 bodies embed people as `nostr:npub1…` / `nostr:nprofile1…` — both as
+// bare text and inside markdown links. Left untouched they render as an ugly
+// raw bech32 (or, for links, a dead `nostr:` href). We turn each into an
+// @-mention chip pointing at njump, then repaint the label to @displayName once
+// the author kind-0 resolves. (note/nevent/naddr quotes are intentionally left
+// as-is here — the reader isn't a full note-tree renderer.)
+const NOSTR_MENTION_RE = /nostr:(npub1[a-z0-9]+|nprofile1[a-z0-9]+)/gi
+
+function pubkeyFromBech32(bech32) {
+  try {
+    const d = nip19.decode(bech32)
+    if (d.type === 'npub') return d.data
+    if (d.type === 'nprofile') return d.data.pubkey
+  } catch {}
+  return ''
+}
+
+function mentionLabel(pubkey, ident) {
+  const p = profileFor(pubkey)
+  if (p && p.name && p.name.trim()) return '@' + p.name.trim()
+  return '@' + (ident ? ident.slice(0, 12) + '…' : 'npub')
+}
+
+function mentionAnchor(pubkey, bech32) {
+  let ident = bech32
+  try { ident = nip19.npubEncode(pubkey) } catch {}
+  return h('a', {
+    class: 'nostr-mention', href: 'https://njump.me/' + ident,
+    target: '_blank', rel: 'noopener noreferrer', 'data-mention-pk': pubkey,
+  }, mentionLabel(pubkey, ident))
+}
+
+// Rewrite `nostr:` mentions in a sanitized tree into @-mention chips. Returns
+// the set of referenced pubkeys so the caller can resolve their profiles.
+function linkifyMentions(container) {
+  const pks = new Set()
+
+  // Markdown links written as [label](nostr:npub…): rewrite the dead nostr:
+  // href to njump, and if the visible label is just the raw bech32, name it.
+  container.querySelectorAll('a[href^="nostr:"], a[href^="NOSTR:"]').forEach((a) => {
+    const bech32 = a.getAttribute('href').replace(/^nostr:/i, '')
+    const pk = pubkeyFromBech32(bech32)
+    if (!pk) { a.setAttribute('href', 'https://njump.me/' + bech32); return }
+    let ident = bech32
+    try { ident = nip19.npubEncode(pk) } catch {}
+    a.setAttribute('href', 'https://njump.me/' + ident)
+    a.classList.add('nostr-mention')
+    a.setAttribute('data-mention-pk', pk)
+    const txt = (a.textContent || '').trim()
+    if (!txt || /^(nostr:)?n(pub|profile)1[a-z0-9]+…?$/i.test(txt)) {
+      a.textContent = mentionLabel(pk, ident)
+    }
+    pks.add(pk)
+  })
+
+  // Bare mentions sitting in text nodes (not already inside a link/code block).
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      if (!node.nodeValue || node.nodeValue.indexOf('nostr:') === -1) return NodeFilter.FILTER_REJECT
+      if (node.parentElement && node.parentElement.closest('a, code, pre')) return NodeFilter.FILTER_REJECT
+      return NodeFilter.FILTER_ACCEPT
+    },
+  })
+  const textNodes = []
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) textNodes.push(n)
+
+  for (const node of textNodes) {
+    const text = node.nodeValue
+    NOSTR_MENTION_RE.lastIndex = 0
+    const frag = document.createDocumentFragment()
+    let last = 0, matched = false, m
+    while ((m = NOSTR_MENTION_RE.exec(text))) {
+      const pk = pubkeyFromBech32(m[1])
+      if (!pk) continue
+      matched = true
+      if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)))
+      frag.appendChild(mentionAnchor(pk, m[1]))
+      pks.add(pk)
+      last = m.index + m[0].length
+    }
+    if (!matched) continue
+    if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)))
+    node.parentNode.replaceChild(frag, node)
+  }
+
+  return pks
+}
+
+// Once mention author profiles resolve, swap the truncated-npub labels for
+// @displayName in place (chips carry data-mention-pk).
+function repaintMentions(container) {
+  container.querySelectorAll('a[data-mention-pk]').forEach((a) => {
+    const pk = a.getAttribute('data-mention-pk')
+    let ident = pk
+    try { ident = nip19.npubEncode(pk) } catch {}
+    a.textContent = mentionLabel(pk, ident)
+  })
+}
+
+async function resolveMentionProfiles(container, pks) {
+  const need = [...pks].filter((pk) => pk && !profileFor(pk))
+  if (!need.length) return
+  for (let i = 0; i < need.length; i += PROFILE_CHUNK) {
+    try {
+      const got = await fetchProfilesFromPrimal(need.slice(i, i + PROFILE_CHUNK))
+      for (const [pk, prof] of got) { profiles.set(pk, prof); setCachedProfile(pk, prof) }
+    } catch { /* leave as truncated npub */ }
+  }
+  repaintMentions(container)
+}
+
 // ── Reader (markdown body) ───────────────────────────────────────────
 // marked → sanitized HTML. Kind-30023 content is Markdown by NIP-23; render it,
 // but never trust the output — DOMPurify strips scripts/embeds/handlers, then we
 // harden links (new tab) and images (no-referrer, lazy) on the sanitized tree.
+// Returns the set of pubkeys mentioned inline (for async profile resolution).
 function renderMarkdownInto(container, markdown, title) {
   let src = String(markdown || '')
   // Drop a leading H1 that just repeats the title — the reader already shows
@@ -388,7 +501,7 @@ function renderMarkdownInto(container, markdown, title) {
   } catch {
     // Fall back to plain text if the parser chokes on malformed input.
     container.appendChild(h('p', { class: 'art-prose-fallback', text: src }))
-    return
+    return linkifyMentions(container)
   }
 
   const clean = DOMPurify.sanitize(html, {
@@ -409,6 +522,8 @@ function renderMarkdownInto(container, markdown, title) {
     img.removeAttribute('width')
     img.removeAttribute('height')
   })
+
+  return linkifyMentions(container)
 }
 
 // Open the full-width in-panel reader: hide the list + panel head, render the
@@ -445,7 +560,10 @@ function openReader(ctx, a) {
   ])
 
   const proseEl = h('div', { class: 'art-prose' })
-  renderMarkdownInto(proseEl, a.content, a.title)
+  const mentionPks = renderMarkdownInto(proseEl, a.content, a.title)
+  // Inline @-mentions paint immediately as truncated npubs; resolve their
+  // profiles in the background and repaint to @displayName in place.
+  if (mentionPks && mentionPks.size) resolveMentionProfiles(proseEl, mentionPks)
 
   // Nostr interaction bar (reply / repost / like / zap) on the article itself,
   // same builder the boost notes use. The event carries kind 30023 + d-tag so

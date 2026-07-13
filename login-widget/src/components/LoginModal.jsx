@@ -45,7 +45,7 @@ export default function LoginModal({ onLogin, onClose }) {
     // modal (z-[70/71]) when launched from inside it via the inline
     // Sign-in button. Standalone use is unaffected.
     <div
-      className={`fixed inset-0 bg-black/70 flex items-start sm:items-center justify-center z-[80] p-3 sm:p-4 overflow-y-auto overflow-x-hidden transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}
+      className={`fixed inset-0 bg-black/70 flex items-start sm:items-center justify-center z-[80] p-3 pt-20 sm:p-4 overflow-y-auto overflow-x-hidden transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}
       onMouseDown={requestClose}
       role="dialog"
       aria-modal="true"

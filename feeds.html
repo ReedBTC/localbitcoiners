@@ -1068,6 +1068,9 @@
     .art-prose h4 { font-size: 1.02rem; }
     .art-prose a { color: var(--accent-d); text-decoration: underline; text-underline-offset: 2px; }
     .art-prose a:hover { color: var(--accent); }
+    /* Inline nostr @-mentions (npub/nprofile) — match the note-body chip look. */
+    .art-prose a.nostr-mention { color: var(--orange); font-weight: 600; text-decoration: none; }
+    .art-prose a.nostr-mention:hover { text-decoration: underline; }
     .art-prose ul, .art-prose ol { margin: 0 0 1.15rem; padding-left: 1.4rem; }
     .art-prose li { margin: 0.3rem 0; }
     .art-prose li > ul, .art-prose li > ol { margin: 0.3rem 0; }
@@ -1138,6 +1141,17 @@
       .art-card-media { width: 72px; height: 72px; }
       .art-reader-title { font-size: 1.5rem; }
       .art-prose { font-size: 1rem; }
+      /* Events head: let the controls drop to their own full-width row under the
+         title, and stack the month/year dropdowns UNDER the "Include virtual
+         events" toggle (not off to its right, which ran off-screen). The two
+         dropdowns stay side-by-side (.feed-monthnav is its own row). */
+      .feed-panel-head { flex-wrap: wrap; }
+      .feed-head-controls {
+        width: 100%;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.55rem;
+      }
     }
   </style>
   <link rel="stylesheet" href="/assets/css/nav.css" />
