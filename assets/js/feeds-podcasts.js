@@ -33,7 +33,6 @@ import { buildActionBar, configureBoostActions } from '/assets/js/boost-actions.
 const API_URL = '/api/community-boosts'
 const VALUE_API = '/api/value'   // Podcast Index value-block proxy (splits)
 const INITIAL_CARDS = 30       // episodes rendered per "load more" batch
-const MAX_AVATARS = 3          // booster faces shown on a card face
 
 // ── Tiny DOM helper (same contract as feeds-market.js / merch.js's h) ──
 function h(tag, attrs = {}, children = []) {
@@ -67,18 +66,6 @@ function fmtSats(n) {
   if (n < 1000) return String(n)
   const k = n / 1000
   return (k < 10 ? k.toFixed(1).replace(/\.0$/, '') : Math.round(k)) + 'k'
-}
-
-// Compact relative time for the card meta row: 3d, 5h, 2w, then a date.
-function relTime(unixSec) {
-  if (!unixSec) return ''
-  const s = Math.max(0, Math.floor(Date.now() / 1000 - unixSec))
-  if (s < 60) return 'just now'
-  const m = Math.floor(s / 60);   if (m < 60) return m + 'm ago'
-  const hr = Math.floor(m / 60);  if (hr < 24) return hr + 'h ago'
-  const d = Math.floor(hr / 24);  if (d < 7) return d + 'd ago'
-  const w = Math.floor(d / 7);    if (w < 5) return w + 'w ago'
-  return new Date(unixSec * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function fullDate(unixSec) {
@@ -457,17 +444,22 @@ function episodeCard(item) {
   const { ep, show, boosts, distinctBoosters, totalSats, latest } = item
   const detailsId = 'pcast-d-' + (++cardUid)
 
-  const media = isSafeImg(ep.image)
-    ? h('div', { class: 'pcast-card-media' }, h('img', { src: ep.image, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }))
-    : h('div', { class: 'pcast-card-media pcast-card-media--none' }, '🎙')
-
-  // Booster faces, total sats, and recency of the latest boost all live on the
-  // drawer bar (next to "N community boosts"), so the head stays clean.
-  const avatars = h('span', { class: 'pcast-avatars' },
-    distinctBoosters.slice(0, MAX_AVATARS).map((b) =>
-      avatarEl(profileFor(b.booster_pubkey), b.booster_npub, { size: 22 })))
-
   const bmbUrl = boostMeBitchLink(item)
+
+  // Episode art — links to the episode's Boost Me Bitch page (its full boost
+  // feed), the same target as the episode title and show name below.
+  const mediaImg = isSafeImg(ep.image)
+    ? h('img', { src: ep.image, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' })
+    : null
+  const mediaClass = 'pcast-card-media' + (mediaImg ? '' : ' pcast-card-media--none')
+  const media = bmbUrl
+    ? h('a', { class: mediaClass, href: bmbUrl, target: '_blank', rel: 'noopener noreferrer', title: 'See all boosts on Boost Me Bitch' }, mediaImg || '🎙')
+    : h('div', { class: mediaClass }, mediaImg || '🎙')
+
+  // Booster faces on the drawer bar — every distinct booster, stacked.
+  const avatars = h('span', { class: 'pcast-avatars' },
+    distinctBoosters.map((b) =>
+      avatarEl(profileFor(b.booster_pubkey), b.booster_npub, { size: 22 })))
 
   // A Fountain episode URL, when we have one (present on ~98% of episodes).
   const link = episodeLink(boosts, show)
@@ -485,22 +477,24 @@ function episodeCard(item) {
   const descText = htmlToText(ep.description)
   const descP = descText ? h('p', { class: 'pcast-desc', text: descText }) : null
 
-  // Links row under the description: "See full description →" (BMB page) and a
-  // compact "Listen on Fountain" link, tucked together instead of a big pill in
-  // the corner.
-  const linksRow = (bmbUrl || fountainUrl)
+  // A compact "Listen on Fountain" link under the description. (The old "See
+  // full description →" link was dropped — the art, show name, and title all
+  // link to the Boost Me Bitch page now.)
+  const linksRow = fountainUrl
     ? h('div', { class: 'pcast-links' }, [
-        bmbUrl
-          ? h('a', { class: 'pcast-desc-more', href: bmbUrl, target: '_blank', rel: 'noopener noreferrer' }, 'See full description →')
-          : null,
-        fountainUrl
-          ? h('a', { class: 'pcast-fountain-link', href: fountainUrl, target: '_blank', rel: 'noopener noreferrer', title: 'Listen on Fountain' }, 'Listen on Fountain ↗')
-          : null,
+        h('a', { class: 'pcast-fountain-link', href: fountainUrl, target: '_blank', rel: 'noopener noreferrer', title: 'Listen on Fountain' }, 'Listen on Fountain ↗'),
       ])
     : null
 
+  // Show name — links to the Boost Me Bitch page like the art + title.
+  const showEl = show?.title
+    ? (bmbUrl
+        ? h('a', { class: 'pcast-show pcast-show-link', href: bmbUrl, target: '_blank', rel: 'noopener noreferrer', title: 'See all boosts on Boost Me Bitch' }, show.title)
+        : h('div', { class: 'pcast-show', text: show.title }))
+    : null
+
   const body = h('div', { class: 'pcast-card-body' }, [
-    show?.title ? h('div', { class: 'pcast-show', text: show.title }) : null,
+    showEl,
     titleEl,
     descP,
     linksRow,
@@ -555,7 +549,6 @@ function episodeCard(item) {
   const drawerMeta = h('span', { class: 'pcast-drawer-meta' }, [
     avatars,
     totalSats > 0 ? h('span', { class: 'pcast-sats' }, [`${fmtSats(totalSats)} `, h('span', { class: 'pcast-bolt', 'aria-hidden': 'true', text: '⚡' })]) : null,
-    h('span', { class: 'pcast-when', title: 'Most recent community boost', text: relTime(latest) }),
   ])
   const drawer = h('button', {
     class: 'pcast-drawer', type: 'button',
@@ -925,7 +918,7 @@ function repaintProfiles(cards) {
     const holder = cardEl.querySelector('.pcast-avatars')
     if (!holder) return
     holder.innerHTML = ''
-    for (const b of it.distinctBoosters.slice(0, MAX_AVATARS)) {
+    for (const b of it.distinctBoosters) {
       holder.appendChild(avatarEl(profileFor(b.booster_pubkey), b.booster_npub, { size: 22 }))
     }
   })
