@@ -1141,13 +1141,14 @@
       .art-card-media { width: 72px; height: 72px; }
       .art-reader-title { font-size: 1.5rem; }
       .art-prose { font-size: 1rem; }
-      /* Events head: let the controls drop to their own full-width row under the
-         title, and stack the month/year dropdowns UNDER the "Include virtual
-         events" toggle (not off to its right, which ran off-screen). The two
-         dropdowns stay side-by-side (.feed-monthnav is its own row). */
-      .feed-panel-head { flex-wrap: wrap; }
+      /* Events head: keep the controls at the top-right beside the "Events"
+         title (align-items:flex-start top-aligns them), stacking the month/year
+         dropdowns UNDER the "Include virtual events" toggle rather than off to
+         its right (which ran off-screen). flex-wrap is only a safety net for
+         very narrow screens where the column can't fit beside the title. The
+         two dropdowns stay side-by-side (.feed-monthnav is its own row). */
+      .feed-panel-head { flex-wrap: wrap; align-items: flex-start; }
       .feed-head-controls {
-        width: 100%;
         flex-direction: column;
         align-items: flex-end;
         gap: 0.55rem;
