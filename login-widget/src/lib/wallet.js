@@ -46,6 +46,24 @@ const listeners = new Set()
 let unsubNwc = null
 let unsubWebln = null
 
+// Who's signed in, as far as the wallet facade is concerned. The WebLN
+// at-rest flag is per-pubkey, so getStatus() needs a pubkey to answer
+// "does this user have a remembered extension wallet?" — and getStatus()
+// is called from notify() with no arguments. Keeping the pubkey here is
+// what lets the snapshot carry `remembered` without every call site
+// having to thread a user through.
+let currentPubkey = null
+
+/** Tell the facade which user is signed in (null on logout). Fires a
+ *  status notification so the identity dot re-evaluates `remembered`
+ *  against the new pubkey. */
+export function setUserContext(user) {
+  const pk = user?.pubkey || null
+  if (pk === currentPubkey) return
+  currentPubkey = pk
+  notify()
+}
+
 function ensureWiring() {
   if (!unsubNwc) unsubNwc = nwc.onChange(notify)
   if (!unsubWebln) unsubWebln = webln.onChange(notify)
@@ -68,13 +86,19 @@ export function onChange(fn) {
 
 /**
  * Snapshot of the active wallet:
- *   { connected: true, kind: 'nwc'|'webln', alias?, ownerNpub? }
- *   { connected: false, kind: null, hasStoredBlob, ownerNpub? }
+ *   { connected: true,  kind: 'nwc'|'webln', alias?, ownerNpub? }
+ *   { connected: false, kind: null, remembered, hasStoredBlob, ownerNpub? }
  *
  * Connected NWC takes precedence over connected WebLN per the
- * selection rule above. The disconnected branch deliberately omits
- * any "stored WebLN" hint — that would need a per-pubkey lookup
- * the snapshot doesn't have context for, and no consumer reads it.
+ * selection rule above.
+ *
+ * `remembered` means "this user enabled a browser extension here before
+ * and it's still installed" — i.e. the next boost will engage it with a
+ * single tap and no paste. It is deliberately NOT the same as connected:
+ * enable() hasn't run, so isReady() stays false and payment paths still
+ * route through ensureReady(). It exists purely so the identity dot can
+ * keep showing a wallet without us prodding the extension on page load
+ * (see the prewarm() note).
  */
 export function getStatus() {
   if (nwc.isReady()) {
@@ -98,10 +122,9 @@ export function getStatus() {
   return {
     connected: false,
     kind: null,
+    remembered: !!(currentPubkey && webln.hasStoredFlag(currentPubkey) && webln.isAvailable()),
+    rememberedKind: 'webln',
     hasStoredBlob: !!nwcSnap.hasStoredBlob,
-    // hasStoredWebln intentionally omitted — would need a pubkey
-    // arg to compute correctly under per-pubkey scoping, and no
-    // consumer reads it.
     ownerNpub: nwcSnap.ownerNpub || null,
   }
 }
@@ -214,6 +237,37 @@ export async function ensureReady(currentUser) {
     }
   }
 
+  return false
+}
+
+/**
+ * Page-load warm-up. Unlike ensureReady(), this NEVER calls into the
+ * browser extension.
+ *
+ * We used to run the full ensureReady() here, which fired a WebLN
+ * enable() with no user gesture behind it while the page was still
+ * hydrating. On a busy page (/feeds opening its relay sockets and
+ * batching profile fetches) an extension can be slow to answer that
+ * call, and extensions serve a page from a single request pipe: the
+ * stalled enable() then sat in front of everything the user actually
+ * asked for. The visible result was a wallet that looked disconnected,
+ * a connect modal that took seconds to open (the signer check was stuck
+ * behind the same pipe), and a "your wallet extension didn't respond"
+ * timeout on a wallet that was working fine.
+ *
+ * So: NWC still warms up (its unlock is a relay socket + a decrypt, all
+ * our own I/O and worth doing early), while WebLN just reports itself as
+ * `remembered` in getStatus() and waits for the user's first tap — which
+ * is a real gesture, the moment extensions are reliable. The only thing
+ * lost is a few hundred ms on the first boost of a session.
+ */
+export async function prewarm(currentUser) {
+  if (isReady()) return true
+  try {
+    if (await nwc.ensureReady(currentUser)) return true
+  } catch (e) {
+    console.warn('[lb-wallet] nwc prewarm failed', e?.message || e)
+  }
   return false
 }
 

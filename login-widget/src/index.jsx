@@ -88,11 +88,18 @@ function initialUser() {
 }
 
 let currentUser = initialUser()
+// initialUser() bypasses setUser(), so seed the facade here as well —
+// otherwise the identity dot can't see a remembered wallet until the
+// background restore finishes.
+wallet.setUserContext(currentUser || null)
 
 function setUser(u) {
   // Coerce any falsy non-undefined value to null so consumers can
   // discriminate "restoring" (undefined) from "logged out" (null).
   currentUser = (u === undefined) ? undefined : (u || null)
+  // The WebLN at-rest flag is per-pubkey, so the wallet facade needs to
+  // know who's signed in before it can report a remembered extension.
+  wallet.setUserContext(currentUser || null)
   for (const fn of listeners) {
     try { fn(currentUser) } catch {}
   }
@@ -196,7 +203,7 @@ function ensureRealRestore() {
         // path makes the next boost publish instantly instead of
         // paying the unlock cost on the click. ensureReady is
         // idempotent and short-circuits when nothing is configured.
-        wallet.ensureReady(result.user).catch(() => {})
+        wallet.prewarm(result.user).catch(() => {})
         consumePendingAction()
       } else if (result?.kind === 'permanent') {
         forceLogoutWithMessage('Session expired — please sign in again.')
@@ -348,7 +355,7 @@ function LoginPromptHost() {
         // WebLN re-enables silently if the user previously enabled it
         // here. No-op for fresh accounts that haven't connected
         // either.
-        wallet.ensureReady(u).catch(() => {})
+        wallet.prewarm(u).catch(() => {})
         // If a boost or wallet-connect was waiting on login, run it now.
         consumePendingAction()
       }}
@@ -660,7 +667,7 @@ const api = {
             setUser(result.user)
             // Pre-warm wallet — see the equivalent call in
             // ensureRealRestore for the rationale.
-            wallet.ensureReady(result.user).catch(() => {})
+            wallet.prewarm(result.user).catch(() => {})
           } else if (result?.kind === 'permanent') {
             forceLogoutWithMessage('Saved session was invalid — please sign in again.')
           }

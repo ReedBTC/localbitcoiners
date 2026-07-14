@@ -98,7 +98,12 @@ export default function IdentityDropdown({
       {/* Wallet section */}
       <div className="px-4 py-3 border-b border-neutral-800 space-y-2">
         <p className="text-[11px] text-neutral-500 uppercase tracking-wide">⚡ Lightning Wallet</p>
-        {walletStatus.connected ? (
+        {/* `remembered` = a browser extension this user already enabled here,
+            still installed, not yet engaged this page load (we no longer prod
+            it before the user asks — see wallet.prewarm). It engages on the
+            first boost tap, so present it as connected rather than making the
+            user re-connect something they never disconnected. */}
+        {walletStatus.connected || walletStatus.remembered ? (
           <>
             <p className="text-xs text-neutral-300 truncate">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5 align-middle" />
@@ -203,7 +208,10 @@ export default function IdentityDropdown({
 // implements get_info; if not, fall through to a plain "Connected".
 function walletKindLabel(status) {
   const alias = sanitizeAlias(status.alias)
-  if (status.kind === 'webln') {
+  // A remembered-but-not-yet-engaged wallet has no live `kind` (nothing is
+  // active) — fall back to what we remember it was.
+  const kind = status.kind || (status.remembered ? status.rememberedKind : null)
+  if (kind === 'webln') {
     return alias ? `Browser extension · ${alias}` : 'Browser extension'
   }
   if (alias) return `Connected · ${alias}`

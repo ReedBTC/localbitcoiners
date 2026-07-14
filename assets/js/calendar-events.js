@@ -8,6 +8,7 @@
  * Vendored nostr-tools — same bundle the rest of the site uses.
  */
 import { SimplePool, verifyEvent, nip19 } from '/assets/widgets/nostr-tools.js'
+import { ensureLoginWidget } from '/assets/js/widget-loader.js'
 
 export const KIND_DATE_EVENT = 31922
 export const KIND_TIME_EVENT = 31923
@@ -379,24 +380,6 @@ async function runEventAction(action, parsed, btn) {
   } finally {
     if (btn) btn.disabled = false
   }
-}
-
-// Load the Nostr login widget bundle if it isn't already present; it sets
-// window.LBLogin synchronously on evaluation, so wait one microtask after
-// onload before resolving. Idempotent across cards + pages.
-let widgetPromise = null
-function ensureLoginWidget() {
-  if (window.LBLogin) return Promise.resolve()
-  if (widgetPromise) return widgetPromise
-  widgetPromise = new Promise((resolve, reject) => {
-    const s = document.createElement('script')
-    s.src = '/assets/widgets/login-widget.js'
-    s.async = true
-    s.onload = () => { Promise.resolve().then(resolve) }
-    s.onerror = () => { widgetPromise = null; reject(new Error('login widget failed to load')) }
-    document.head.appendChild(s)
-  })
-  return widgetPromise
 }
 
 function copyNpub(pubkeyHex) {

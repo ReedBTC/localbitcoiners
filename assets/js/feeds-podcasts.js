@@ -29,6 +29,7 @@ import {
 } from '/assets/js/boosts-thread.js'
 import { fromApiValue, applyExternalOverrides } from '/assets/js/value-block.js'
 import { buildActionBar, configureBoostActions } from '/assets/js/boost-actions.js'
+import { ensureLoginWidget } from '/assets/js/widget-loader.js'
 
 const API_URL = '/api/community-boosts'
 const VALUE_API = '/api/value'   // Podcast Index value-block proxy (splits)
@@ -343,22 +344,12 @@ function downloadMp3Button(url, ep) {
 }
 
 // ── Boost wiring ─────────────────────────────────────────────────────
-// The boost modal + payment live in the login-widget bundle (window.LBLogin).
-// Lazy-load it on first boost click (mirrors episode-enhance.js's loader).
-let widgetPromise = null
-function ensureWidgetLoaded() {
-  if (window.LBLogin) return Promise.resolve()
-  if (widgetPromise) return widgetPromise
-  widgetPromise = new Promise((resolve, reject) => {
-    const s = document.createElement('script')
-    s.src = '/assets/widgets/login-widget.js'
-    s.async = true
-    s.onload = () => Promise.resolve().then(resolve)
-    s.onerror = () => { widgetPromise = null; reject(new Error('Failed to load boost widget')) }
-    document.head.appendChild(s)
-  })
-  return widgetPromise
-}
+// The boost modal + payment live in the login-widget bundle (window.LBLogin),
+// lazy-loaded on first boost click. The loader is shared with every other
+// trigger on the page — this one awaits /api/value first, so a nav Boost
+// click can easily land mid-flight and would otherwise pull the 1MB bundle
+// a second time. See widget-loader.js.
+const ensureWidgetLoaded = ensureLoginWidget
 
 // After openExternalBoost, the widget's gate chain (session restore / wallet
 // unlock) can run for several seconds on a cold widget before any modal shows.

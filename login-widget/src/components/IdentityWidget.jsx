@@ -110,7 +110,7 @@ export default function IdentityWidget({
           profile={profile}
           npub={npub}
           size={26}
-          walletDot={!!walletStatus?.connected}
+          walletDot={!!(walletStatus?.connected || walletStatus?.remembered)}
         />
         <span
           className="hidden sm:inline text-sm font-medium max-w-[120px] truncate"

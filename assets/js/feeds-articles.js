@@ -26,23 +26,11 @@ import { fetchProfilesFromPrimal, setCachedProfile } from '/assets/js/boosts-thr
 import { buildActionBar, configureBoostActions } from '/assets/js/boost-actions.js'
 import { marked } from '/assets/widgets/marked.esm.js'
 import DOMPurify from '/assets/widgets/dompurify.esm.js'
+import { ensureLoginWidget } from '/assets/js/widget-loader.js'
 
 // The reply/repost/like/zap actions publish via the login-widget bundle
 // (window.LBLogin), lazy-loaded on first need. Mirrors feeds-podcasts.js.
-let widgetPromise = null
-function ensureWidgetLoaded() {
-  if (window.LBLogin) return Promise.resolve()
-  if (widgetPromise) return widgetPromise
-  widgetPromise = new Promise((resolve, reject) => {
-    const s = document.createElement('script')
-    s.src = '/assets/widgets/login-widget.js'
-    s.async = true
-    s.onload = () => Promise.resolve().then(resolve)
-    s.onerror = () => { widgetPromise = null; reject(new Error('Failed to load login widget')) }
-    document.head.appendChild(s)
-  })
-  return widgetPromise
-}
+const ensureWidgetLoaded = ensureLoginWidget
 
 const API_URL = '/api/community-articles'
 const KIND_ARTICLE = 30023

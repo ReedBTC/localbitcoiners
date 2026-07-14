@@ -44,7 +44,13 @@
 // changed /assets files (feeds*.js, merch.js, supporters.js, boosts-thread.js,
 // boost-actions.js, value-block.js, login-widget.js) so returning visitors get
 // the new code on first navigation instead of after a 2nd revalidate.
-const VERSION = 'lb-v26';
+// v27: wallet pre-warm no longer calls WebLN enable() on page load (it wedged
+// the extension's request pipe on /feeds and surfaced as a dead wallet dot +
+// "extension didn't respond"), plus a single-flight guard on enable(). Every
+// widget trigger sitewide now shares one loader promise (new widget-loader.js,
+// precached below), so a second trigger can't re-inject a bundle already in
+// flight. Evicts login-widget.js and the pages carrying inline loaders.
+const VERSION = 'lb-v27';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
@@ -80,6 +86,7 @@ const PRECACHE_URLS = [
   '/assets/js/calendar-events.js',
   '/assets/js/boost-actions.js',
   '/assets/js/nav.js',
+  '/assets/js/widget-loader.js',
   '/assets/js/sw-register.js',
 ];
 

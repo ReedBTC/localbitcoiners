@@ -114,10 +114,20 @@ function setStoredFlag(on, pubkey) {
  * regress the cross-user leak the per-pubkey rewrite was meant to
  * fix, so this throws rather than silently writing nothing.
  *
+ * Single-flight: extensions serve every request from a page through one
+ * pipe, so a second enable() issued while the first is still outstanding
+ * doesn't race it — it queues behind it. If the first one is wedged (an
+ * unrendered permission prompt, a busy extension worker), the second
+ * inherits the stall and dies on the same timeout, turning a slow
+ * extension into a hard error for a user who did nothing wrong. Callers
+ * with an outstanding call in flight get that call's result instead.
+ *
  * Throws on missing pubkey / unavailable / refused / timeout. The
  * caller (wallet facade or WalletConnectModal) translates these into
  * UI-level messages.
  */
+let inFlight = null   // { pubkey, promise } — see single-flight note above
+
 export async function enable({ pubkey, timeoutMs = 15000 } = {}) {
   if (!pubkey) {
     throw new Error('Sign in before connecting your browser extension.')
@@ -125,28 +135,43 @@ export async function enable({ pubkey, timeoutMs = 15000 } = {}) {
   if (!isAvailable()) {
     throw new Error('No WebLN provider detected — install a browser extension like Alby first.')
   }
-  await withTimeout(
-    Promise.resolve(window.webln.enable()),
-    timeoutMs,
-    'Your wallet extension didn\'t respond. Try again, or check that it\'s unlocked.',
-  )
-  // Best-effort alias. Some providers don't implement getInfo at all
-  // (or implement it only inside a paywalled tier). Treat any failure
-  // as "alias unknown" — the connection still works.
-  let alias = null
-  try {
-    const info = await withTimeout(
-      Promise.resolve(window.webln.getInfo()),
-      5000,
-      'info-timeout',
+  // Same user, call already outstanding → hand back the in-flight one.
+  // A different pubkey can't share the result (the flag is per-pubkey),
+  // so let that one settle first rather than piling on the extension.
+  if (inFlight) {
+    if (inFlight.pubkey === pubkey) return inFlight.promise
+    await inFlight.promise.catch(() => {})
+  }
+  const promise = (async () => {
+    await withTimeout(
+      Promise.resolve(window.webln.enable()),
+      timeoutMs,
+      'Your wallet extension didn\'t respond. Try again, or check that it\'s unlocked.',
     )
-    alias = info?.node?.alias || info?.alias || null
-  } catch {}
-  isActive = true
-  activeAlias = alias
-  setStoredFlag(true, pubkey)
-  notify()
-  return { alias }
+    // Best-effort alias. Some providers don't implement getInfo at all
+    // (or implement it only inside a paywalled tier). Treat any failure
+    // as "alias unknown" — the connection still works.
+    let alias = null
+    try {
+      const info = await withTimeout(
+        Promise.resolve(window.webln.getInfo()),
+        5000,
+        'info-timeout',
+      )
+      alias = info?.node?.alias || info?.alias || null
+    } catch {}
+    isActive = true
+    activeAlias = alias
+    setStoredFlag(true, pubkey)
+    notify()
+    return { alias }
+  })()
+  inFlight = { pubkey, promise }
+  try {
+    return await promise
+  } finally {
+    if (inFlight?.promise === promise) inFlight = null
+  }
 }
 
 /**

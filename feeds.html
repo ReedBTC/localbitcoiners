@@ -1562,21 +1562,44 @@
 (function () {
   'use strict';
 
-  let widgetPromise = null;
+  // Shares one promise (window.__lbWidgetLoad) with every other trigger on
+  // this page — assets/js/widget-loader.js for the module-side callers,
+  // nav.js for the bug-report item. This page has the most competing
+  // triggers of any, and the bundle is 1MB: without a shared promise, a
+  // podcast-boost click (which awaits /api/value before injecting) racing a
+  // nav Boost click appends a second <script> for a bundle already in flight.
+  // The HTTP cache serves that duplicate, but the ~1MB parse+execute is paid
+  // twice — on the click where the user is waiting on the modal. Keep this in
+  // sync with widget-loader.js.
   function ensureWidgetLoaded() {
-    if (widgetPromise) return widgetPromise;
-    widgetPromise = new Promise((resolve, reject) => {
+    if (window.LBLogin) return Promise.resolve();
+    if (window.__lbWidgetLoad) return window.__lbWidgetLoad;
+
+    window.__lbWidgetLoad = new Promise((resolve, reject) => {
+      const existing = document.querySelector('script[src*="login-widget.js"]');
+      if (existing) {
+        const started = Date.now();
+        const iv = setInterval(() => {
+          if (window.LBLogin) { clearInterval(iv); resolve(); return; }
+          if (Date.now() - started > 15000) {
+            clearInterval(iv);
+            window.__lbWidgetLoad = null;
+            reject(new Error('login widget load timed out'));
+          }
+        }, 60);
+        return;
+      }
       const s = document.createElement('script');
       s.src = 'assets/widgets/login-widget.js';
       s.async = true;
       s.onload = () => { Promise.resolve().then(resolve); };
       s.onerror = () => {
-        widgetPromise = null;
+        window.__lbWidgetLoad = null;
         reject(new Error('Failed to load login widget'));
       };
       document.head.appendChild(s);
     });
-    return widgetPromise;
+    return window.__lbWidgetLoad;
   }
 
   const boostPh = document.querySelector('[data-lb-boost-trigger="show"]');

@@ -222,23 +222,48 @@
     upgrade();
   }
 
-  // ── Lazy widget loader (mirrors index.html's ensureWidgetLoaded) ──
-  // The login-widget bundle is ~250KB and only needed on boost click.
-  var widgetPromise = null;
+  // ── Lazy widget loader ───────────────────────────────────────────
+  // The login-widget bundle is only needed on a boost click, but this
+  // file runs alongside other triggers (nav.js's bug-report item, and
+  // each host page's own boost placeholder), so all of them share one
+  // promise on window.__lbWidgetLoad. A private per-trigger promise
+  // isn't enough: window.LBLogin stays undefined for the whole ~1MB
+  // download, so two triggers firing inside that window each append a
+  // <script> for a bundle already in flight — the HTTP cache serves the
+  // duplicate, but the ~1MB parse+execute is paid twice. This is a classic
+  // script and can't import assets/js/widget-loader.js — same contract,
+  // reached through the global. Keep the two in sync.
   function ensureWidgetLoaded() {
-    if (widgetPromise) return widgetPromise;
-    widgetPromise = new Promise(function (resolve, reject) {
+    if (window.LBLogin) return Promise.resolve();
+    if (window.__lbWidgetLoad) return window.__lbWidgetLoad;
+
+    window.__lbWidgetLoad = new Promise(function (resolve, reject) {
+      // Another loader may already have a tag in flight — wait on it
+      // instead of injecting (and re-evaluating) the bundle a second time.
+      var existing = document.querySelector('script[src*="login-widget.js"]');
+      if (existing) {
+        var started = Date.now();
+        var iv = setInterval(function () {
+          if (window.LBLogin) { clearInterval(iv); resolve(); return; }
+          if (Date.now() - started > 15000) {
+            clearInterval(iv);
+            window.__lbWidgetLoad = null;
+            reject(new Error('login widget load timed out'));
+          }
+        }, 60);
+        return;
+      }
       var s = document.createElement('script');
       s.src = '/assets/widgets/login-widget.js';
       s.async = true;
       s.onload = function () { Promise.resolve().then(resolve); };
       s.onerror = function () {
-        widgetPromise = null;
+        window.__lbWidgetLoad = null;
         reject(new Error('Failed to load boost widget'));
       };
       document.head.appendChild(s);
     });
-    return widgetPromise;
+    return window.__lbWidgetLoad;
   }
 
   function readEpData() {

@@ -634,21 +634,43 @@
 (function () {
   'use strict';
 
-  let widgetPromise = null;
+  // Shares one promise (window.__lbWidgetLoad) with every other trigger on
+  // the page — nav.js's bug-report item, and episode-enhance.js, which also
+  // runs here. A private per-trigger promise isn't enough: window.LBLogin
+  // stays undefined for the whole ~1MB download, so two triggers firing inside
+  // that window each append a <script> for a bundle already in flight — the
+  // HTTP cache serves the duplicate, but the ~1MB parse+execute is paid twice. Keep in sync with assets/js/widget-loader.js.
   function ensureWidgetLoaded() {
-    if (widgetPromise) return widgetPromise;
-    widgetPromise = new Promise((resolve, reject) => {
+    if (window.LBLogin) return Promise.resolve();
+    if (window.__lbWidgetLoad) return window.__lbWidgetLoad;
+
+    window.__lbWidgetLoad = new Promise((resolve, reject) => {
+      // Another loader may already have a tag in flight — wait on it
+      // instead of injecting (and re-evaluating) the bundle a second time.
+      const existing = document.querySelector('script[src*="login-widget.js"]');
+      if (existing) {
+        const started = Date.now();
+        const iv = setInterval(() => {
+          if (window.LBLogin) { clearInterval(iv); resolve(); return; }
+          if (Date.now() - started > 15000) {
+            clearInterval(iv);
+            window.__lbWidgetLoad = null;
+            reject(new Error('login widget load timed out'));
+          }
+        }, 60);
+        return;
+      }
       const s = document.createElement('script');
       s.src = 'assets/widgets/login-widget.js';
       s.async = true;
       s.onload = () => { Promise.resolve().then(resolve); };
       s.onerror = () => {
-        widgetPromise = null;
+        window.__lbWidgetLoad = null;
         reject(new Error('Failed to load login widget'));
       };
       document.head.appendChild(s);
     });
-    return widgetPromise;
+    return window.__lbWidgetLoad;
   }
 
   // Wire every show-boost trigger (nav pill + the "Become a Supporter" CTA).
