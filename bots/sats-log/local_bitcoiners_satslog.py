@@ -1905,6 +1905,10 @@ def git_autopush():
         "data/sats.csv", "data/sats.json", "data/fountain-api.csv",
         "data/zaps.csv", "data/zaps.json", "data/leaderboards.csv",
         "data/meetups.csv", "data/meetups.json",
+        # Not derived data: once a zapped note ages off the relays its zap-tag
+        # count is unrecoverable, and a later regen would silently mis-book
+        # our_sats. Ship the cache so the split fractions stay reproducible.
+        "data/zapped-notes-cache.json",
     ]
     try:
         subprocess.run(
@@ -1919,8 +1923,12 @@ def git_autopush():
             print("  [autopush] no changes to commit")
             return
         subprocess.run(["git", "add"] + files, cwd=REPO_ROOT, check=True)
+        # Commit these paths only. Without the pathspec `git commit` writes the
+        # whole index, so anything a human left staged when the timer fires gets
+        # published under "Update sats log" — that's how dae0c53 ended up being
+        # a lone zapped-notes-cache.json commit.
         subprocess.run(
-            ["git", "commit", "-m", "Update sats log"],
+            ["git", "commit", "-m", "Update sats log", "--"] + files,
             cwd=REPO_ROOT, check=True, capture_output=True,
         )
         subprocess.run(["git", "push"], cwd=REPO_ROOT, check=True, capture_output=True)
