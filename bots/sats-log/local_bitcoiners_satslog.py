@@ -105,6 +105,10 @@ MEETUPS_JSON     = REPO_ROOT / "data" / "meetups.json"
 # Local Bitcoiners Nostr identity — used to query zap receipts addressed to us.
 LB_NPUB = "npub1cvcgs83gw6pcrhvtmlf8gdqaegx93qkznwry96jteqhh2cexgkfq45rtya"
 LB_HEX  = npub_to_hex(LB_NPUB)
+# npub_to_hex returns None rather than raising, so a typo here would silently
+# zero out every zap query instead of failing. This one's a constant: fail loud.
+if LB_HEX is None:
+    raise ValueError(f"LB_NPUB is not a decodable npub: {LB_NPUB}")
 
 # Columns for data/zaps.csv. Independent from sats.csv (different dataset,
 # different grain — one row per kind 9735 zap receipt addressed to LB).

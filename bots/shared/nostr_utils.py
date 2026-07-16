@@ -81,9 +81,22 @@ def hex_to_npub(hex_pubkey):
     return bech32.bech32_encode('npub', converted)
 
 def npub_to_hex(npub):
-    """Convert npub bech32 to hex pubkey."""
-    hrp, data = bech32.bech32_decode(npub)
-    decoded   = bech32.convertbits(data, 5, 8, False)
+    """Convert npub bech32 to hex pubkey. Returns None if `npub` isn't one.
+
+    Malformed npubs are routine, not exceptional: they reach us verbatim from
+    donor boost comments and from the RSS [guests:] marker, and a single typo'd
+    character makes bech32 undecodable. Returning None lets callers skip the one
+    bad npub instead of aborting a whole publish run — a trailing 'j' on Ep. 019's
+    guest npub crash-looped boost-publisher for 3.5 days (2026-07-09 → 07-12)."""
+    try:
+        hrp, data = bech32.bech32_decode(npub)
+    except Exception:
+        return None
+    if hrp != "npub" or data is None:
+        return None
+    decoded = bech32.convertbits(data, 5, 8, False)
+    if decoded is None or len(decoded) != 32:
+        return None
     return bytes(decoded).hex()
 
 def event_id_to_nevent(event_id_hex, author_hex=None):
@@ -195,9 +208,8 @@ def follow_all(target_npubs, nsec, relays=None, dry_run=False):
 
     target_hexes = []
     for n in target_npubs:
-        try:
-            h = npub_to_hex(n)
-        except Exception:
+        h = npub_to_hex(n)
+        if h is None:
             print(f"  [follow] skipping malformed npub: {n}")
             continue
         if h != author_hex:
@@ -241,6 +253,9 @@ def build_zap_split_tags(npubs, relays=None):
     tags = []
     for npub in npubs:
         hex_pk = npub_to_hex(npub)
+        if hex_pk is None:
+            print(f"  [zap] skipping malformed npub: {npub[:24]}...")
+            continue
         lud16  = get_lud16(hex_pk, relays)
         if lud16:
             tags.append(["zap", hex_pk, relays[0], "1"])

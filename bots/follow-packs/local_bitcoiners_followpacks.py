@@ -181,12 +181,11 @@ def pack_tags(slug, title, member_npubs):
     ]
     seen, hexes = set(), []
     for npub in member_npubs:
-        try:
-            h = npub_to_hex(npub)
-        except Exception:
+        h = npub_to_hex(npub)
+        if h is None:
             print(f"    [warn] dropping undecodable npub: {npub[:16]}…")
             continue
-        if not re.fullmatch(r"[0-9a-f]{64}", h or "") or h in seen:
+        if h in seen:
             continue
         seen.add(h)
         hexes.append(h)

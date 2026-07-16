@@ -100,9 +100,16 @@ def build_note_tags(note_text, nsec):
     tags       = []
 
     mentioned = re.findall(r'nostr:(npub1[a-z0-9]+)', note_text)
-    seen_hex  = set()
+    mentioned_hexes = []
     for npub in mentioned:
         hex_pk = npub_to_hex(npub)
+        if hex_pk is None:
+            print(f"  [tags] skipping malformed npub: {npub[:24]}...")
+            continue
+        mentioned_hexes.append(hex_pk)
+
+    seen_hex  = set()
+    for hex_pk in mentioned_hexes:
         if hex_pk not in seen_hex:
             tags.append(["p", hex_pk])
             seen_hex.add(hex_pk)
@@ -113,8 +120,7 @@ def build_note_tags(note_text, nsec):
     for ht in re.findall(r'#(\w+)', note_text):
         tags.append(["t", ht.lower()])
 
-    guest_hexes = [npub_to_hex(n) for n in mentioned]
-    unique_hexes = list(dict.fromkeys(guest_hexes))
+    unique_hexes = list(dict.fromkeys(mentioned_hexes))
     unique_hexes = [h for h in unique_hexes if h != author_hex]
 
     zappable_guests = []
