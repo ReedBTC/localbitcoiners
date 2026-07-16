@@ -536,7 +536,38 @@
        meta row of booster avatars / recency / sats, and a ⋮ menu of
        show-level subscribe links. A low-profile drawer bar under the head
        toggles the inline boost thread. Rendered by feeds-podcasts.js. */
-    /* Sort dropdown in the panel head (replaces the episode-count pill). */
+    /* Air-date range buttons + sort dropdown in the panel head (they replace
+       the episode-count pill). */
+    .pcast-controls {
+      display: flex; align-items: center; gap: 0.5rem;
+      flex-shrink: 0; align-self: center;
+    }
+    /* 1W / 1M / All — deliberately borderless and touching: the faint tint on
+       the selected segment is the only chrome, and it's what reveals that the
+       neighbours are buttons with the same footprint. */
+    .pcast-range { display: flex; flex-shrink: 0; }
+    .pcast-range-btn {
+      /* Near-square: the min-width and the vertical padding are tuned to land
+         the box at roughly 32x30, so the three read as one tight block. */
+      min-width: 2rem; padding: 0.5rem 0.35rem;
+      font: inherit; font-size: 0.72rem; font-weight: 700; line-height: 1.2;
+      color: var(--muted); background: transparent;
+      border: none; border-radius: 6px; cursor: pointer;
+      transition: background 0.12s, color 0.12s;
+    }
+    /* Tint of the active feed's accent. The solid --tint is the fallback for
+       engines without color-mix; it lands in the same place visually. */
+    .pcast-range-btn:hover {
+      color: var(--accent-d);
+      background: var(--tint);
+      background: color-mix(in srgb, var(--accent) 7%, transparent);
+    }
+    .pcast-range-btn.is-active {
+      color: var(--accent-d);
+      background: var(--tint);
+      background: color-mix(in srgb, var(--accent) 14%, transparent);
+    }
+
     .pcast-sort { position: relative; flex-shrink: 0; align-self: center; }
     .pcast-sort-btn {
       display: inline-flex; align-items: center; gap: 0.25rem;
@@ -1154,10 +1185,11 @@
         gap: 0.55rem;
       }
       /* Podcast Boosts: the title block is too wide to share a row here, so the
-         sort pill wraps onto its own line. Left-aligned it would sit at the
-         panel's left edge, and its right-anchored menu (min-width 175px) would
-         open past the left edge of the screen — so pin the pill right. */
-      .pcast-sort { margin-left: auto; }
+         range buttons + sort pill wrap onto their own line together. Left-
+         aligned they'd sit at the panel's left edge, and the sort menu's
+         right-anchored popover (min-width 175px) would open past the left edge
+         of the screen — so pin the group right. */
+      .pcast-controls { margin-left: auto; }
     }
   </style>
   <link rel="stylesheet" href="/assets/css/nav.css" />

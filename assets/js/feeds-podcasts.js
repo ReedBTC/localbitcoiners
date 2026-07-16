@@ -14,8 +14,10 @@
  * call we make is a single batched profile lookup for booster names/avatars,
  * which the JSON doesn't carry.
  *
- * Ordering: episodes are sorted by their most-recent boost, so a freshly
- * boosted but otherwise old episode still surfaces at the top.
+ * Ordering: episodes are ranked by how many distinct people boosted them,
+ * with total sats as the tiebreaker, and scoped by default to episodes that
+ * aired in the last week — so the feed reads as "what the community is
+ * boosting right now." Both are user-switchable in the panel head.
  *
  * Entry point: renderPodcasts({ panel, list }) — lazy-imported by feeds.js
  * the first time the tab is opened.
@@ -763,18 +765,66 @@ const SORT_OPTIONS = [
   ['boosts', 'Most boosts'],
   ['sats', 'Most sats'],
 ]
-// Every comparator falls back to most-recent-boost so ties are stable.
-// 'count' ranks by distinct people, 'boosts' by raw boost volume — they differ
-// on the ~16% of episodes where someone boosted the same episode repeatedly.
+// Every comparator breaks ties on total sats, then on most-recent-boost so the
+// order stays stable. 'count' ranks by distinct people, 'boosts' by raw boost
+// volume — they differ on the ~16% of episodes where someone boosted the same
+// episode repeatedly.
+const bySats = (a, b) => b.totalSats - a.totalSats || b.latest - a.latest
 const SORTERS = {
-  recent: (a, b) => b.latest - a.latest,
-  episode: (a, b) => (b.ep.published || 0) - (a.ep.published || 0) || b.latest - a.latest,
-  count: (a, b) => b.distinctBoosters.length - a.distinctBoosters.length || b.latest - a.latest,
-  boosts: (a, b) => b.boosts.length - a.boosts.length || b.latest - a.latest,
-  sats: (a, b) => b.totalSats - a.totalSats || b.latest - a.latest,
+  recent: (a, b) => b.latest - a.latest || b.totalSats - a.totalSats,
+  episode: (a, b) => (b.ep.published || 0) - (a.ep.published || 0) || bySats(a, b),
+  count: (a, b) => b.distinctBoosters.length - a.distinctBoosters.length || bySats(a, b),
+  boosts: (a, b) => b.boosts.length - a.boosts.length || bySats(a, b),
+  sats: bySats,
 }
 function sortItems(items, key) {
   return [...items].sort(SORTERS[key] || SORTERS.recent)
+}
+
+// ── Air-date range filter ────────────────────────────────────────────
+// Scopes the feed to episodes that *aired* recently (ep.published), which is
+// independent of when they were boosted — an old episode boosted today is in
+// the feed's data but out of the 1W view.
+const RANGE_OPTIONS = [
+  ['1w', '1W', 7],
+  ['1m', '1M', 30],
+  ['all', 'All', null],
+]
+function filterItems(items, key) {
+  const days = (RANGE_OPTIONS.find((o) => o[0] === key) || [])[2]
+  if (!days) return items
+  const cutoff = Date.now() / 1000 - days * 86400
+  return items.filter((it) => (it.ep.published || 0) >= cutoff)
+}
+// Pick the opening range: 1W unless it's empty (a quiet week would leave the
+// feed blank), then widen until something's there.
+function defaultRange(items) {
+  for (const [key] of RANGE_OPTIONS) {
+    if (filterItems(items, key).length) return key
+  }
+  return 'all'
+}
+
+// Borderless 1W/1M/All segmented control — the selected segment's faint tint
+// is the only chrome, which is what gives the group its shape.
+function rangeControl(initialKey, onPick) {
+  const wrap = h('div', { class: 'pcast-range', role: 'group', 'aria-label': 'Filter by episode air date' })
+  const btns = RANGE_OPTIONS.map(([key, label]) =>
+    h('button', {
+      class: 'pcast-range-btn', type: 'button',
+      title: label === 'All' ? 'All episodes' : `Episodes aired in the last ${label === '1W' ? '7 days' : '30 days'}`,
+      onclick: () => { setActive(key); onPick(key) },
+    }, label))
+  function setActive(key) {
+    btns.forEach((el, i) => {
+      const on = RANGE_OPTIONS[i][0] === key
+      el.classList.toggle('is-active', on)
+      el.setAttribute('aria-pressed', on ? 'true' : 'false')
+    })
+  }
+  setActive(initialKey)
+  wrap.append(...btns)
+  return wrap
 }
 
 // "Sort: X ▾" dropdown for the panel head — matches the card ⋮ menus
@@ -815,15 +865,19 @@ function sortControl(initialKey, onPick) {
   return wrap
 }
 
-// Put the sort dropdown in the panel head (replacing the episode-count pill).
-function mountSortControl(panel, initialKey, onPick) {
+// Put the range buttons + sort dropdown in the panel head (replacing the
+// episode-count pill), as one right-aligned group.
+function mountControls(panel, { sortKey, rangeKey, onSort, onRange }) {
   const head = panel.querySelector('.feed-panel-head')
   if (!head) return
   const count = head.querySelector('.feed-count')
   if (count) count.hidden = true
-  const existing = head.querySelector('.pcast-sort')
+  const existing = head.querySelector('.pcast-controls')
   if (existing) existing.remove()
-  head.appendChild(sortControl(initialKey, onPick))
+  head.appendChild(h('div', { class: 'pcast-controls' }, [
+    rangeControl(rangeKey, onRange),
+    sortControl(sortKey, onSort),
+  ]))
 }
 
 // ── Entry point ──────────────────────────────────────────────────────
@@ -863,13 +917,21 @@ export async function renderPodcasts({ panel, list }) {
   const profilesReady = loadBoosterProfiles(items)
   loadMentionProfiles(items)
 
-  let sortKey = 'recent'
-  let sorted = sortItems(items, sortKey)
+  let sortKey = 'count'
+  let rangeKey = defaultRange(items)
+  let sorted = sortItems(filterItems(items, rangeKey), sortKey)
   let shown = 0
   const cards = h('div', { class: 'pcast-list' })
   const moreWrap = h('div', { class: 'pcast-more-wrap' })
 
   function renderMore() {
+    if (!sorted.length) {
+      cards.appendChild(h('div', { class: 'feed-placeholder' }, [
+        h('strong', { text: 'No episodes in this window' }),
+        'Nothing the community boosted aired in this time range — try a wider one.',
+      ]))
+      return
+    }
     const next = sorted.slice(shown, shown + INITIAL_CARDS)
     for (const it of next) {
       const el = episodeCard(it)
@@ -890,16 +952,28 @@ export async function renderPodcasts({ panel, list }) {
     }
   }
 
+  function rebuild() {
+    sorted = sortItems(filterItems(items, rangeKey), sortKey)
+    shown = 0
+    cards.innerHTML = ''
+    moreWrap.innerHTML = ''
+    renderMore()
+    repaintProfiles(cards)
+  }
+
   function applySort(key) {
     if (key === sortKey) return
     sortKey = key
-    sorted = sortItems(items, key)
-    shown = 0
-    cards.innerHTML = ''
-    renderMore()
+    rebuild()
   }
 
-  mountSortControl(panel, sortKey, applySort)
+  function applyRange(key) {
+    if (key === rangeKey) return
+    rangeKey = key
+    rebuild()
+  }
+
+  mountControls(panel, { sortKey, rangeKey, onSort: applySort, onRange: applyRange })
 
   list.className = ''
   list.innerHTML = ''
