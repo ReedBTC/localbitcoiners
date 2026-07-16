@@ -52,3 +52,8 @@ bots/.claude/
 tmp/
 *creds*.env
 pi-creds.env
+
+# --- Frontend verification harness: LAN preview server that fakes the CF Pages
+# Functions (/api/*) plus saved snapshot JSON and headless-Chrome CDP drivers.
+# Machine-local and regenerable — snapshots are re-pulled from prod on demand.
+scratchpad/

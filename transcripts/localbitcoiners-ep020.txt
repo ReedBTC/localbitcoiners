@@ -1,0 +1,700 @@
+rev (00:01)
+Hey, local Bitcoiners, Rev Hodel, and as always, back with Reed. In this recording, we are talking with the Chicago Bitcoin Collective. This has been a recording that we've had book for a long time. We're really excited to talk about it. I am a member of the Chicago Bitcoin Collective, and I'm proud to be, and so it's it's really cool to have Brady, John, and Foys on the show to
+
+Foise (00:10)
+So you
+
+rev (00:30)
+Dig into all the cool stuff that's happening over there in Chicago at the collective. but before we get into it with them, I as usual I'm gonna tell my most recent meetup adventure story, and that is the social meetup in Grand Rapids at Two Guys Brewing. And it was a it was a pretty just standard issue meetup. I I as tradition so far, the last several months I've been
+
+bringing compost for an the actually kind of the organizer of the meetup, Buffalo. been bringing compost to him. So I dropped off another load of compost at his place before I got over to the meetup. had some good food discussion. you know, the the as Lake Satoshi is coming up and so PF, one of the organizers of Lake Satoshi, was back in town
+
+Foise (01:16)
+you
+
+rev (01:24)
+And so he ended up coming to that
+
+to this social meetup and it was good to to get a little bit of an idea of of what's gonna happen over there at Lake Satoshi. I I was asking him, Well, are you guys ready? What's going on? He's like, What is there to do? People are just gonna show up and we're gonna have a killer time. So, yeah, the meetup was great. Not not too much pr in particular to talk about there, but
+
+The biggest thing is that these meetups keep happening and that I keep going and so does so does everyone else. And so that's the idea here. This is a place where we can go get together and build cultural capital. Reed, how about you? What's been going on?
+
+Reed (02:02)
+Yeah, man. so I've mentioned it the last few episodes, but our next meetup is coming up on Sunday. Sunday, July nineteenth, six p.m. to nine p.m. Heavy culture cooperative, East Hampton Mass. I've already mentioned this before. We're gonna do the round table format. And I actually I sent out my message to everybody today asking if they had topics or to start thinking about topics, and I sort of sent out my pre
+
+kind of seed question to get everything kicked off, which is I want to talk about all the stuff that we've been learning here on this podcast about how to mix it up. Like how do we get some variety like built into the meetup? You know, we've been doing the Socratic seminars for a long time. Now we've done, we've got one of these round tables under our belt. We're going to do it again. But there's we, you know, how many ideas have we come up with on this show about different types of meetups? And so I was going to talk about some of those.
+
+and see if anybody was interested and see if maybe we can get some more I don't know get some more fun, right? Get some more variety like mixed into the meetup. So that's gonna be my topic, but it's gonna be, you know, open session. And I had one other quick story I wanted to tell. this sort of happened in between meetups. So you know we've gotten the circular economy going a little bit. And when I the very the like the
+
+The very first time I brought up the idea of a circular economy and started talking about how, you know, it doesn't have to be Bitcoin stuff. It could be anything. And one of the guys was like, Well, you know, I'd really like to buy a kayak. And it was like kind of jokingly. but after the meetup, one of the guys r went up to him and was like, Hey, actually I have a kayak that I would be willing to sell you for SATS. And so that transaction went down just recently and the
+
+The dude who sold it, he took the sats, he donated the sats to the meetup. So it was like it was like half a million sats. So that's gonna go into our, you know, our pizza fund and and to pay for our meetup dot com fees. And we might be having a party this fall, it'll go into that fund. So that's all very well appreciated. And if you're listening, you know who you are. But yeah, that was the quick story I had and a success story for our circular economy, getting that going. So
+
+But yeah, really looking forward to this episode. We've been looking forward to this for a long time. so yeah, so I'll turn it over. I guess John, if you wanted to get us started, introduce yourself, talk about the meetup a little bit, and then and kinda hand it off.
+
+Jon Gordon (04:38)
+Awesome. Thanks, Revan and Reed for having us on. I'm John Gordon, a co-founder of SoundHSA and Nosfabrica, and here the Chicago Bitcoin Collective and Forking Coin. I'm really, really passionate about building at this intersection of Bitcoin, Noster, and healthcare and really building communities. I lived in Austin, Texas for a couple of years and was working out of the Bitcoin Commons down there. Traveled quite a bit, explored Bitcoin meetups around the world, everywhere from
+
+El Salvador and El Zante to Bitcoin Acasi and other meetups and coming back to Chicago with my wife and daughter, and now we we have a newborn son, proud father too, now really important to build community in in Chicago. And and I as I'd been in and out of Austin and coming back home, I grew up in the North Suburbs. I had connected with Foise here, who was putting on
+
+Different meetups, really hustling on the cooking side, grilling burgers, going by the lake, doing whatever we could to get Bitcoiners together and really started connecting with other Chicago Bitcoiners here and saying, Hey, why don't why don't we have a physical space in Chicago? It's such a big city and deep history and financial markets and commodity trading. Why isn't there more of a Bitcoin presence other than a bit devs? And and so Foy Foisey.
+
+And Brady here can give a more background as well. And then three others on our team, Julio, Mike, and Kevin. We all got together and said, hey, let's let's build a get a physical home for Bitcoiners in Chicago. And so we've moved really quickly from an idea a year ago and a at on-chain golf outing, Julio and I were to force some there that that Brady actually helped put together into getting a physical space and now opening up.
+
+full service restaurant and Bitcoin Hub, the Chicago Bitcoin Collective for Bitcoiners in Chicago. So love for for Foise and and then Brady to give some background on on themselves. But we feel like we we're in the right place at the right time to build the momentum for for Bitcoin and in a state that is now particularly unkind to Bitcoin and and Bitcoiners. So maybe we'll get into that a little bit too here in Illinois. But it's been awesome connecting and
+
+Kinda getting people out of the woodworks. We knew Bitcoiners were here and and we were seeing it happen in in real time.
+
+Foise (07:10)
+Yeah, yeah, I'll pretty want to jump in really quick
+
+btcbrady21 (07:11)
+Love it.
+
+Yeah, yeah, of course. John hit the nail on the head there. my name is Brady, Brady Paglisi, on X on BTC Brady twenty one. Thank you guys for hosting us today. me personally, you know, born and raised in Chicago, found Bitcoin mid twenty seventeen, really just, you know, been a part of this community for coming up on a decade now. like John, you know, I've worked at some of these co working spaces around the country. I lived in
+
+Denver, Colorado, for a few years and got to work out of the space in Denver. it was just an amazing experience to be around Bitcoiners. whether you're working on the same project or different projects. me personally, I worked for Unchained, got the experience to work with you know, full service Bitcoin financial services company, doing everything from multi-signature collaborative custody to Bitcoin-backed loans.
+
+As John mentioned, kind of made the introduction between John and Julio last year at the Unchained golf outing. And, you know, when you put a couple of Bitcoiners together, you're really able to make some magic happen. we bought the building in February and we've been putting in a lot of hard work and ready to open our doors open to the public for our full service restaurant and bar coming up this weekend.
+
+Foise (08:36)
+Nice. Yeah, I'm Foiz. So I'm coming to Chicago. I've been in Chicago for like the past five years now. By way of the East Coast, I was in Philadelphia, New York City, hail from Dallas, Texas. So, you know, I've been cooking for pretty much my whole life. I've been in restaurants for over 20 years now. And, you know, first couple of years in Chicago.
+
+At least the first year I was really looking for some Bitcoin action. You know, going on the meetup.com, all that kind of stuff and really found like a pretty big gap between either it's BitDev's downtown or you're going way out to the suburbs. So at that time I was kind of like Ravenswood area and basically just started putting together my own little meetups in my local garden.
+
+community garden because we had a little grill there and stuff and you know I just from being on Bitcoin Twitter and things definitely knew I could attract some some Bitcoiners with a couple of grilled steaks so started doing those and you know it just it evolved the first couple there's only one or two people showing up finally make my way out to bit devs and start meeting a lot of other people tell them what I'm doing there and in that area and
+
+You know, just started to grow and grow until I needed like a space to put people in. And then that's when we kind of started to talk more about putting this together, you know, what that would look like, what kind of spaces we could utilize. And we basically knew from the beginning that we wanted it to be obviously like very Bitcoin oriented to have a place for us to congregate.
+
+but we would clearly need like some type of front-facing entity or revenue stream. And just because of my background, I've had, you know, concepts, just been sitting on concepts for years for different spaces or different styles of cuisine. So I keep, you know, I keep telling everyone it could have been anything. It could have been a coffee shop, could have been like a retail, you know, preserves and all kinds of stuff, but.
+
+It just so happened that this space we found, maybe the third or fourth place that I saw, maybe like the first or second place that Julio saw, it just looked perfect. You know, it was already built out as a full service restaurant downstairs, had the square footage upstairs that we knew we could utilize for kind of this clubhouse co-working space. And had a few more meetups just really to see who wanted to.
+
+take the ball and run with it. And we didn't put this together in a back room. We were out there just seeing who wanted to get involved and whoever I was willing to follow along with, was willing to take the next steps.
+
+Reed (11:52)
+Dude, that sounds so amazing. yeah, I definitely I can't wait to to dive into some of those topics a little bit more. maybe the first thing I wanted to kind of start off with was just, you know, I've been hearing from Rev, right? So I'm from Massachusetts, like I run the Western Mass Bitcoin meetup. but you know, Rev's right in your neighborhood there, and he already said he's a member and and everything now. but it kind of sounds like Chicago has got a a pretty serious meetup scene going on.
+
+Foise (12:16)
+you
+
+you you
+
+Reed (12:21)
+And it sounds like from from the way that you guys are describing this, Chicago Bitcoin Collective, now that with the physical location and stuff, you guys might sort of become the hub of everything that's going on there. Like could you I don't know, do you guys want to talk about
+
+or explain like what the Chicago meetup scene is is like? Like are are there multiple meetups right now in Chicago? Like I think there are multiple bit devs, right?
+
+btcbrady21 (12:50)
+Yeah, we're doing a couple of different meetups. us personally, the Chicago Bitcoin Collective and Forking Coin, we host between six and ten meetups throughout the month. And that ranges from a coffee meetup on the first Tuesday of every month, a Bitcoin 101, where we really cover the Bitcoin fundamentals all the way through our technical meetup, which is our bit devs Socratic seminar type style.
+
+there is two of those in Chicago on a monthly basis. One held the second Thursday of the month at the strike office downtown, and the other the third Thursday of the month over at Fork and Coin. And we really act as a a solid medium between the suburbs and the city. We're about 15 minutes away from O'Hare Airport towards the city and another 15-20 minutes away from the West Loop.
+
+So we kind of act as a perfect middle ground for people from the suburbs to travel over to the city. Someone landing at O'Hare that's, you know, traveling downtown for the week or the weekend and needs a place to stop to grab some food or a place to hang out with some Bitcoiners. as far as events go, I mean there there are plenty of events. They are just spread out. we have a few downtown in Chicago, and there's a few out in the suburbs. So we felt like we were a perfect middle ground to bring everybody together here in Chicago.
+
+Foise (14:14)
+Yeah, even before the collective started up and we had the space, it got to the point where there was a meetup every week. So, know, four throughout the month between the coffee meetup that basically was where me and John met, and I think I might have even met Brady there. So there was like this consistent coffee meetup that was happening in Portage Park.
+
+There was bit-devs the week after. There was typically something in the suburbs like the third week. And then I was doing my meetups on the fourth week of the month. So we were kind of like observing each other's, you know, when we were all doing things and try to space them out. So, you know, before the collective even opened, there was like a good scene happening here in Chicago.
+
+Jon Gordon (15:05)
+Yeah, and over the last couple of years, I'd I'd hosted a breakfast downtown with Joe Carlosari. We had a book signing with Nick Battia last summer at one of our members, Kevin's co-work space. So we'd kind of been testing the waters, I would say, and seeing who else, more from the social perspective, wanted to get together with Bitcoiners, BitDebs, downtown at Strike's office, as Brady mentioned. That's the longest running meetup in in the city. but there had been this BOB, which was now we've rebranded it.
+
+It was called Bitcoin Open Blockchain. Like now we're calling it Bitcoin Only Bitcoin at this point. If that meetup had been like at least eight to ten years old, several thousand people in a meetup group that one of our our members still kinda had the handle on just as as a legacy. but so we're doing a social meetup. We've hosted Brian Jones, who of Hoddle House, a Bitcoin architect from Atlanta on s on a Sunday afternoon.
+
+And we've got Illinois Bitcoin Council kind of meeting or this afternoon kind of soiree at at our space in in August. And then we're planning a bigger value for value summit in mid-September, where we'll have a full concert nearby at Avondale Music Hall, Freedom Tech workshops, and really in a Bitcoin bodega.
+
+So that'll be September 14th and 15th. I think we'll get into that a little bit further, deeper on. But want to mention that because I think for us, and you mentioned our Chicago Bitcoin Collective and our physical hub, we definitely see ourselves being the hub for Bitcoin activity in Chicago and are there to have that physical space. I think you guys talk about it a lot in your in your episodes, but just finding where that physical space is going to be, where's the consistency, what's the hospitality like, what's the food like. You know, we have all these a lot of these variables under
+
+our control now be and really being able to to be creative with the food side of it that that foys will get into and and create more of this homey environment that I think, you know, definitely Bitcoin Park has done an amazing job and and Nashville doing. And then you see what what happens when you have a a front end and just an open door like a pub key in New York or DC, because our we want in such a big city, there's three million people, you know, eight million people in the greater area in Chicago. And so from a Bitcoin perspective, we're
+
+really so so early for from an adoption standpoint. So seeing what Bitcoin looks like in action, getting the one on one workshops, paying in Bitcoin. We have we're using Square terminals. So all of that, just getting to build on the infrastructure that's already in place and seeing who wants to be a part of it. You know, really as Foise said and and and Brady as well, having we had several you know workshops meetings, see who who wants to be involved or who would want to plan.
+
+Or get involved. And so we have over 40 members of the collective already. And so that upstairs club clubhouse co-working space is open for members to use, whether that's a community member, say, hey, you want to come in once a month to twice a week from at the co-working tier all the way up to builder tier, where you will give 24-7 access really to that upstairs space as you build trust and want to get more and more involved.
+
+and then you also get discounts to the restaurant. As the restaurant will be opening up, we see it evolving more into this daytime space. Grab your food, come and hang out with Bitcoiners. We have a courtyard in the backyard. And and really felt meant to be, is as voice said, we didn't really look at a lot of places. It's just felt right. It was it's a neighborhood called Portage Park, north side of Chicago, right across the street from a park, and in an area that's very walkable and has we think a clientele on the restaurant side that's already really interested in what we're doing.
+
+But is very drivable being at the junction of two major highways for Chicago. Cause that's I think the biggest issue. I don't know if you guys see this in Western Mass. I know Rev, you drive around everywhere in the Midwest for meetups, but that can be a big deterrent if you've got to get in the car during rush hour or to go an hour one way and and back and back to family. So we think the consistency and the placement of the of the hub can really bring in a wider number of people throughout the year.
+
+rev (19:15)
+One of the big things that stood out to me and and one of the big biggest things that I was most excited about actually talking about traveling from a a a ways away. You know, I used to I I was going to the Chicago Bitdevs ever as as much as often as I could. I tried to get there every month. But the parking was horrible you know, you had to pay like fourteen bucks to put go in a parking garage somewhere.
+
+And you're still dealing with all the traffic. And so the beautiful thing about the Chicago Bitcoin Collective is that you can park right on the street for free. At least the the couple times that I've gone there, I've been able to get there so far. The parking's been easy, which is a huge benefit. and then the other thing that I thought was really cool was that you guys
+
+The the progress that was made between when I've when I went there the first time and then the second time I visited was huge. And it's it just really felt like because there were so many people working together, cooperating, there there it's not just a couple guys and you having to pay somebody else to to get the help. No, there's enough of you guys to where it seems like you guys DIY'd the whole darn thing together. and and it really shows like the energy in that space, you can feel it that you guys created it.
+
+I don't know if you wanna if you've got any stories about putting the put the space together, g cooperating, getting it going, but it definitely shines through when you when you s when you get there.
+
+Jon Gordon (20:42)
+Well I well our chef happens to also be an electrician and a handyman and a contractor and all the above. So maybe boys, you you did a lot of the the grunt work there and the even the upstairs and then the definitely in the restaurant and the creativity to what it looks like today. Maybe you go into some of that process or turning the concept into reality.
+
+Foise (21:01)
+Yeah, we spent the first, maybe the first two months just working on the upstairs, just kind of focusing in on the CBC space because we knew we had to kind of get that off the ground and it was definitely going to take a lot longer to get the restaurant up and running.
+
+So if we wanted any chance of, you know, at seeing a little bit of dent in our like burn rate once we got into the space, we knew we had to get the upstairs going pretty quickly. So yeah, we spent like the first two months doing that. did luckily enough have another contractor through Julio, like a friend of Julio, who basically did all the work at cost. So that was huge.
+
+He really saved us a ton of time. But the first day we got into the building after they closed on it, we literally started tearing down the walls. We went to see the space and we're like, oh, this wall is just go hollow through to the next room. And then next thing you know, we're tearing the closet apart. We're tearing the wall down and just reimagining the whole space up there. But yeah, I mean.
+
+a little bit of electrical work, some carpentry. We had enough tools between me and the other contractor and some of the other partners. Even to this day, since then, my tools are scattered all over the space. So I gotta start cleaning those up pretty soon. But once we got pretty comfortable with the upstairs, built some nice table tops, built some desks and things like that. It's funny,
+
+just with going into all this, like the design and who's going to do what. The six of us don't have a long rapport with one another, so we're almost not sure what each other is capable of. So when I'm like, yeah, I'll just build that, and they're like, are you sure about that? And then doing it and then being totally happy that everyone's impressed.
+
+So just keep working with that and gaining each other's trust over time and seeing what we're definitely all capable of has made us all a little more relaxed as we've moved further through this. I mean, downstairs, and Brady, please jump in. Brady's been right there with me the whole time grabbing the tools that I need.
+
+helping me cut wood, stain things, paint everything. What do you think,
+
+you
+
+Reed (25:26)
+That's a all of that's like a unbelievable story. you know it I couldn't I was laughing too. But, you know, r so re Rev's I'm stealing your thing, Rev. Re Rev's got this thing, he's got this little saying that we've been we've said a few times on the show and and in other places too. It's D I Y or G F Y. And it sounds like you guys are like the embodiment of that. And it made me think it made me think too, like I and and 'cause I didn't really appreciate the fact so it
+
+When you were doing the intro, did you say you bought the building? So this is your building. And that's why you can do all this renovation and stuff. You just go in there and do what you want, right? Is that did I understand correctly? Dude. That is so unbelievable. I mean, the the speed at which this whole thing you you know, from concept a year ago, you buying a building is n no small undertaking. So that that's just incredibly impressive from
+
+from you know, just hearing this whole story, I don't think I really understood the magnitude of of everything that you guys had going on. so I don't know. I maybe right now I w we talked about the building a little bit. that was great. I still have some questions about the Chicago Bitcoin collective in general, but I d I don't know. Do we want to was there we mentioned the food side before.
+
+Did did you guys wanna talk about some of the food side, some of like the what you got for fork and coin and and the restaurant and stuff?
+
+Foise (26:57)
+Yeah, I mean, just kind of trailing off of what we just talking about. know, once CBC was put together upstairs, we kind of refocused everything downstairs. Like I said, the place was already built out as a full service restaurant. So, you know, the kitchen was there, everything that we needed. The bar was already pretty much put together. We really just had to put our own.
+
+kind of vibe over the place. So, you know, I love working with my hands. I definitely have like an artistic side. So just like putting out what I think would look good to these guys, kind of like showing them, using some AI tools to do that, putting the colors together, obviously, the orange and everything like that. And
+
+kind of putting the dining room together so that everything looked really good. And as far as the menu and the food, this is like, again, some of these concepts I've been working on for a while. And when I saw this, I saw how big the bar was at this space compared to the size of the dining room. I mean, it's not a huge dining room, but it is a big bar and it's almost equal seating between the two. So I was like, okay, I have like this.
+
+this bar menu that I've been working on. A lot of my food's Japanese and Asian influence forward. So all kinds of ingredients throughout all the Asian countries, Thai, Chinese, Japanese, lots of Filipino flavors as well. And kind of bringing all of those elements to
+
+like a quick service bar menu like a pub and comfort food. So, you know, things that can go out, you can eat with your hands, you can eat with a cocktail or two, easy to eat at the bar. It's not like a big plate of food with several sides and things like that. Comes out of the kitchen, the kitchen nice and quick. So, you know, just building on that menu and that concept to fit the space really well. And I think we...
+
+are succeeding at that. We started to brand off as like a pub because we really are like, we want to be a public house, a place that everybody can come and speak their mind and enjoy some food and drink together. But that word pub gives a connotation of like an old Irish pub or like a dive bar or something like that. Also looking for a way to
+
+tell people that it leans towards Asian-influenced ingredients. So what we did end up calling it was an American izakaya. If you're not familiar with the word izakaya, it's basically a pub and grill in Japan.
+
+So some of the food, I've got the menu in front of me. we're doing like some of the, basically, like I said, everything's share style. So everything kind of comes out as it's prepared. So you've got some smaller share items, some bigger share stuff, traditional Japanese fried chicken called karage, all the way over to something that you'd see more in a pub, like a fish and chips, but with like a miso marinade.
+
+black garlic malt vinegar. We're doing a really awesome burger that has like this Filipino style pickle on it. It's like a pickled daikon and carrot. Super awesome burger. And then we've got some bigger stuff. know, hanger steak, big bone and pork chop that's off the grill with like this awesome Japanese house curry that we're making. And then of course, know, John's not gonna let me go on this one if I don't mention it via
+
+Both of our 35 pound fryers are full of beef tallow. And the fries that we're getting in are a bigger cut, but from the same company who's making the steak and shake fries. So our fries are all blanched in tallow, and then we're frying those in tallow as well.
+
+rev (31:31)
+Another cool thing that it seems like there's an effort being made is to to find ingredients from Bitcoiners as well. I don't it d I d off off hand I don't remember who but do you have anybody that you've been getting ingredients from?
+
+Jon Gordon (31:31)
+Yeah.
+
+Mm.
+
+Foise (31:41)
+Absolutely.
+
+Jon Gordon (31:44)
+Yeah.
+
+Yeah, definitely. That's that's where I was gonna go next. And certainly the the health component and Bitcoin aspect of things where you're when you pay in Bitcoin, as we know, we can we're buying higher quality goods, right? And and so actually tomorrow I'm going to get a whole cow, half it will be for the restaurant, half for me, but that's sourced in Bitcoin. we have our wine, you know, good friend Ben Justin, we had an Izakaya night that that we served.
+
+Piny Lane wine. It's all all natural. We have olive oil coming from Italy, SATS oil. And then you know, really one of our big goals for the restaurant is absolutely sourcing as many products as we can in Bitcoin. And so we know there are some products like coffee. We've we've had some discussions. produce a local, local guy at a farmers market who accepts Bitcoin. And he was even he was using
+
+Strike and was like, hey, actually you use Square, you can just turn it on right here and turn it on on Square for him. who someone that that Foys actually knows from from the Chicago community. So if you have products out there, if you have something that you'd want to see on the menu, you know, we're definitely all all ears. And I think that combination of showing, yeah, it's we're we're frying in beef tallow. This is healthy food, it's elevated food in an area that's generally you know, there are definitely some
+
+some nice restaurants around, but even still you go to maybe like a nicer higher end restaurant, but you're still eating food that's laced with seed oils, right? And you know it's like, okay, this still isn't really, really healthy. And so having that that aspect where people can come and enjoy and and and try our delicious fries or the burger or the fish and chips. and have more of this community aspect as well. The the the dine dining that foys
+
+mentioned but the supper clubs is something we're gonna be doing as well. So w Mondays and Tuesdays when the restaurants close to the public, we'll be doing some member member nights, specific tasting menus, again more of this this Japanese flair, which you for our Bitcoiner purposes, and throwback to Satoshi Nakamoto, obviously there's a lot of ties to to Japan and and Julio had quite the
+
+the the gallery of of bitcoin art so he almost single handedly helped supply a lot of the art that's on the walls both in in the restaurant and and upstairs. there is certainly a nod to Bitcoin downstairs. We're trying not to make it too overwhelming for folks, but it's certainly gonna be an opportunity where we think you come and grab a drink and and you see the big fractal or you see the block height or something else you know related to Bitcoin around and maybe start asking questions. That's a great opportunity
+
+To have a natural conversation with someone, you know, about Bitcoin, about why the money's broken. And so so absolutely, Rev, that's a huge part. Hopefully we can get some get some, you know, we're getting some land from you, whatever else we can source. I I think part of even having the the the cow or half cow of the plan is it'll be, of course, there's only a certain amount of of cuts from the cow, so it'll be more of like a special, special menu items or for specific events.
+
+You know, I think even as Americans, we gotten used to certain cuts, whether it's a ribeye, New York strip, or or whatever, but there's only certain amount on the cow. So we're gonna use the cow creatively. We definitely wanna have bone broth on tap, come winter time. So Chicago, we get our seasons. Right now, summertime shy, it's a great time to be outside. But I think come come winter time you're gonna be want wanting some of the bone broth.
+
+rev (35:25)
+So there was a funny thing that came up in the group chat where I think there was an article that about the restaurant that was in like like a local Chicago kind of article. And then somebody on Reddit was was discussing like, God, there's this Bitcoiners restaurant opening up. and and they were being kind of critical of it. But then when when I came to the the Bit Devs there with you guys were doing Burger Night.
+
+The restaurant wasn't like technically open yet, but you guys were serving food to the you know, you had the neighborhood coming in there. The place was packed and you guys sold out of burgers. And so it's like, yeah, maybe the the the idea that this is a Bitcoin place seems like people don't really care. They just wanna come check it out and maybe the word got out that you had some high quality food in there.
+
+Foise (36:14)
+I think it's been, you know, we did make a kind of a conscious effort not to push too hard in the beginning of the at least the promotion of the restaurant that it is Bitcoin related or Bitcoin adjacent. But what we've seen and you know, that might that might have been a good idea. But what we've seen is now that we've actually gotten people in the door, they've had the food.
+
+They either A, don't care or now, like they don't care that it has anything to do with Bitcoin and they're totally on board because they're enjoying it or now they're interested. They're kind of like, you know, what is your relation to Bitcoin? We've had multiple people, either folks that have come to the Superclub events or even people just on Instagram DMing us.
+
+you know, asking us what is the Bitcoin aspect of the restaurant.
+
+rev (37:16)
+So Brady, I think you were you were taking people's orders and stuff when I went in there. So I guess you probably have the best perception of of how the the general public is seeing this space walking in there for the first time. What do you think? Are people loving it?
+
+Foise (39:11)
+I think for me too, I'm at the point where I'm not trying to sell people on this anymore. I am here to proof of concept. I'm doing it, we are doing it. We started the company with Bitcoin. It's totally based on Bitcoin, backed by Bitcoin. Our ethos, how we're...
+
+sourcing the food and how we're cooking the food, all again comes back to that. So at this point, I feel like I don't have to tell people, we're just going to do it and show them that, you know, when they come around in a couple of years and they're like, what are you doing that's working so well? Then we might have their ear.
+
+Jon Gordon (41:36)
+Yeah.
+
+Foise (41:41)
+I think John and Brady, either one of them could speak to like Denver and like what they're doing on their side. But even looking at it from my experience in restaurants, know, what we're doing upstairs is something that other restaurants don't have the same way that maybe another co-working space or clubhouse or something doesn't have a restaurant. And you know, when I come back to saying
+
+proof of concept, it's the same thing there. Not only do we have a Bitcoin standard, which is also going to put us ahead of the game as far as working in a restaurant where the margins are paper thin, but utilizing the rest of the space of the building and also owning the building.
+
+Jon Gordon (42:26)
+Yeah, that was definitely you know what part of the plan from the beginning and something that should grow over time organically as we've had members who've who wanted to get involved or ways that we could use the space. Like for now, as even the the way Foy's described, we kind of started upstairs, got the coworking ready to go and in shape for events and and co working and hanging out, and then now the restaurant, got our health license, liquor license should be any day now.
+
+getting close to that and and fully opening up and just running a solid bar restaurant. And and as Foy said, a lot of the margins they do get pinched and you see lower quality products because you're cost cutting, right? And so to not have to do those things and to try to keep providing quality experience as as well is a key point of this and and have people you want to come come and hang out with. Yeah, I think the sky's the limit for us and and what we can put together. Certainly we have also a garage in the back.
+
+As again, as it gets cold here, it's a prime place for Bitcoin mining. I think that's something that the space in Denver has done really well, right? Is downstairs and they're they're heating the space with with miners. And I think that's gonna be a next step for us probably come winter as it gets cold again and we can put some some effort into really optimizing that the space in the back that we have. But for now, even just the courtyard and the patio.
+
+We had a barbecue and and tweeted out and got a nice retweet from Jack Dorsey because we had a nice plate of barbecue in front of the Square stand. Right. And like I think for everything Square's doing, it's really incredible because it makes it so easy for millions of businesses to turn on Bitcoin payments. But I think we're really gonna be embodying that from day one and and building in this ecosystem where there's so there's so many amazing builders. Another aspect for us that
+
+We're offering for members already and something that I think we can test out in in the public too in terms of onboarding to Bitcoin is using AGCache, which is eCash based gift cards for Bitcoin. Right. And so we now and it's tied to your square terminal. So we can issue basically gift cards, someone can top up their in the AG cache app where they can connect to Cash App, basically buy SATS directly into a gift card, and then
+
+Boom, spend that at forking coin restaurant or have a separate wallet that you can spend anywhere, you know, interoperable with Lightning. And so I think it's those onboarding opportunities that we're also gonna have to see. cause I think the more circular economy we can spur on and transactions that we can enable, even like you started the show with Reed and the kayak, then we had members bring in a soldering station, we had another member bring a 3D printing station.
+
+So we don't we only have so much physical footprint for for these things, but I think for people who wanna come and learn and and contribute, certainly having multiple revenue streams, starting with the the bar restaurant, obviously liquor alcohol sells too, but for us it's not gonna be in a way that's too boisterous for the community. For us it's really important that, you know, we're not gonna be open super late, but it will be a place you can come and, you know, grab a beer and and and talk and
+
+hang out in the back and enjoy enjoy the nice weather. We've got a bit of a rooftop as well. So yeah, I think we'll see how it evolves and I think it will change a little bit with the seasons and how we can utilize both our space, potential neighbors, and then certainly the park that's across the street for more kind of physical activity oriented folks.
+
+rev (46:00)
+thought it was really cool how you guys got the the space and figured out any way possible to immediately get the local Bitcoiners in there and and seeing it, participating it, you know, interacting with it. And so there's been like kind of these phased approaches to from where where it's literally there's like drywall dust and there's a meetup going on in there, to now it's it's you've got some some like you said, the solder stations up and there's a little bit more organization up there.
+
+But I'm just curious as to like what what has been the response or how are the the members that are coming there on a on a regular basis finding ways to utilize the space and interact with it? I know there's one story as an example, like Stacy had started doing haircuts every once in a while. So I don't know if anyone has, you know, just how are the the members really taking advantage of the fact that they've got the space available to them?
+
+Foise (48:59)
+Yeah, I mean, I, you know, from the beginning, was all kept saying to these guys, you know, I can't use a co-working space. I'm not going to sit down on my laptop and code because I cook with my hands all day. So I also want this to be a space for folks that do other things. So, you know, that's where like the soldering station falls into place. There's just room there for other things to happen.
+
+You know Stacey coming in and doing haircuts was really cool to see Just we wanted the members to Be welcome in there from the beginning not even the members were just any Bitcoiners Especially the ones that were participating in those initial meetups to kind of talk about this stuff To come in and you know see the space whenever they wanted hang out
+
+help out if they were and we had plenty of members like come in and literally like do free work and really help us like move forward on the stuff. So we wanted it to be like a community thing and I think that it definitely has been and you know like you said Rev coming in there and like sawdust on the ground kind of thing or you know drywall dust all over the place like that.
+
+Those were some good meetups and we wanted people in there then so they could see what this is like evolving into.
+
+rev (51:43)
+Well, real quick, I wanna I want to jump in.
+
+so like imagine this. I I park my car on the street for free. I walk in with my cooler to the Chicago Bitcoin Collective. It's for bit devs. I set up my my stuff that I got for sale at the bodega, right? I this is kind of the the early version of it, but when I was there, I just set my stuff up on the table. You can see what I have for sale. I walk down to the restaurant, I order a burger and fries, I pay with Bitcoin. The burger and fries comes to me while I'm sitting there enjoying the Bit Devs meetup.
+
+I mean, come on guys. This is like this place is amazing. and the the burger and fries, like it's tallow, it's high quality food. you can't beat it. So that that that was kind of it's just like like Reed was saying, that you've got the makings of everything that you the kind of experience that you'd want going to a Bitcoin meetup is totally available at the Chicago Bitcoin Fork Fork and Coin restaurant.
+
+now I think that we've we've kind of teased around with everything else. It's time to talk about this value for value summit that's coming up.
+
+Jon Gordon (52:48)
+Yeah, yeah, that that's really I think that description there, Rev, that was like Bitcoin bliss, right? You've got everything around you that you need and now all it takes is that individual initiative to make it happen and you have something valuable to sell, right? And so you're you're homesteading, doing permaculture, you've got goods that you're that you've got ready to go, whether it's eggs or honey or lamb, and and so certainly a huge part of our value for value summit in Chicago is is gonna be the bodega as is Brady was hinting at, and something that we're
+
+That'll be the launch for a year-round stand that we'll have and for folks that have products that are certainly targeting a Bitcoin market or Bitcoiner can have year-round. but to be able to post up outside in the courtyard, have interactions with individuals. we're gonna be doing a folks will gather kind of Monday afternoon. This is September 14th, so it should be pretty nice weather in Chicago. And
+
+Have a chance to really dig in on the music side of value for value, meet some of the artists. So we'll have Skardust and Abel James as well, who will be playing a show that night. But kind of the Monday afternoon, setting the stage a little bit. Open Mike will be in town. He's put in some Bitcoiners have probably been at some of the concerts in Nashville and Vegas and other places where you stream sats directly to the musicians. Right. You have Spotify, YouTube that take a huge cut of any of of
+
+anyone's music and it's very difficult to make it as an independent artist. And so being able to feature these musicians, we're actually going to be doing like dinner and a show Monday night. So you'll get an experience of the food at Fork and Coin in the in the late afternoon, early evening. We'll bust folks over to the Avondale Music Hall, which is about 10 minutes away, and have a a concert, a lot of fun, stream sats to the artists. That'll also be open to the public. our full summit will be
+
+Probably more on like the more intimate side, probably in like the 60 to 80 person range is really like our capacity. Like it's not a huge space, and so really be high signal folks in the room. but the concert can fit a another hundred or so from from the local community, from the local bands. And then Tuesday is really where we'll dig in even further on all things freedom tech.
+
+And so certainly on the Noster side, using the tools from an open source communication and identity protocol that we have on Noster, some things my company, Nost Fabrica, has been building on on the brainstorm side and really establishing this web of trust, right? Because what we're doing here in in the physical space, very much at Chicago Bitcoin Collective, is establishing this this web of trust and and connecting folks that we can do with with Noster from an identity perspective. And then of course, Bitcoin, Lightning, ECash from
+
+And really creating these marketplaces right for for folks to come and interact. we'll have conduit marketplace. So Eric as well, he's he's gonna be in and and they're one of one of the one of the early sponsors. my partners Avi Burra and Vitor Pamplona will be there. We'll dig in a lot again, as I said, on the Noster side. So Keith from Seed Signer.
+
+Bitcoin one on one holding your own keys. You can't have a Bitcoin Freedom Tech Forum without some reminders and updates, everything that SeedSigner's been doing and others on on the Bitcoin custody side. So we're still forming a bit of what the the workshops will be. We'll have again the restaurant will be closed. So we'll have the full upstairs, downstairs, outside to utilize to really see what's gonna be the most productive for getting everybody in the room and and coming in. Certainly many of our our local members we hope and will be there. but it's
+
+A broader time for what we think for the Midwest to shine. Open Mike's doing a concert. Sam Means has been the format's playing that weekend in Minneapolis. And then the following week is the Midwest Bitcoin Summit, which is gonna be a much bigger scaled event that one of our members, Andrew Tillman,'s putting on in Columbus, Ohio. So if you want to come start it out in Chicago, road trip to Minneapolis and then Columbus, you know, you could have a full solid two weeks.
+
+of of hanging out with Bitcoiners, working on Freedom Tech, enjoying pretty much the best weather of the year, the this this part of the country. So yeah, we're we're really stoked to to put in putting ourselves out on the map. And the theme throughout very much that you guys cover week in, week out, is value for value. And it's seeing what is this economic model that can really support individual creators, merchants, entrepreneurs, and then ultimately connecting communities and and enabling folks to
+
+exchange right exchange value back and forth and so we're we're stoked and oprady e foys if you have anything else you want to add you know we'll be serving food throughout again I mentioned the dinner probably be more in this omakase style that we've done more handheld food hanging out outside and then we'll serve food as well throughout you know on Tuesday and and certainly a lunch service too so we're excited.
+
+Yeah, I'll I'll share briefly and then I actually gotta run to help get the little ones down. and and Brady and and foys can fill in any gaps, but really is is connecting with with open mic. He's he runs Toonster and also one of the biggest music venues in Minneapolis. So he's super well connected in in the music scene. And so as we were starting to think about an event like this, we're just out in Vegas and met Noah and her band Scardust is gonna be touring from Israel and said, Hey, why don't you guys come and s come stop in Chicago?
+
+And and boom, got got our headliner. I'm good friends with Abel James, from the Austin community. He's played a few of these shows. yeah, come here. I got my little one calling for me. So yeah, it's we'll see. It's gonna I think it'll come together pretty well two months from tonight. And having that expertise is is is huge. and then knowing, you know, hey, Bitcoiners will show up, want to stream sats and show this this is possible. You know, in Vegas I think over a million and a half sats.
+
+We're streamed live to the artists. So I think for the artists it's cool exposure and then leaning on kind of our local community. So I'll leave it at that. I got I got my daughter calling me here. So thank you guys so much. See y'all soon.
+
+Foise (1:00:41)
+Waiter John, thank you, bro. We'll see you soon.
+
+Yeah, I I really I'm super interested in the value for value music stuff. mean, you my obviously on my side, the Bitcoin bodega side is something that I was kind of doing on my own and then had some ideas to put something together like we were talking about early on doing like a block party, something like that. But, you know, in my head, I see it as like a literal bodega.
+
+If you don't know what a bodega is, it's basically like a deli, like a sandwich stop, like the corner store kind of thing. In the Northeast, they call them bodegas. You can walk in, you can get a hot sandwich, you you can get your drinks, your chips, necessities, your everyday necessities, and you can get out of there. So, you know, why can't all of those items be, you know, sourced from the Bitcoin community?
+
+with the food there and then there's plenty of people selling things on Noster. We could definitely put that all together. So that was kind of where the idea for that came from. On the music side, my time in New York, I found myself always living with musicians or some type of musical artists, whether they were producers or rappers or whatever. So we were having all these underground.
+
+like shows that are at our places, at warehouses or like abandoned storefronts. And then seeing how Wave Lake was doing things and some of these other like, John said, Toonster. you know, this, I started to come across those.
+
+started to come across those a little later after New York, but that's like stuff I immediately started sending out to those people that I met. Like, yo, check this out. You can post your music. You can get paid directly from the listener because you're losing a lot to some of these other services. And I'd really like to see that grow for sure. And I think that kind of putting this together and read, like you said, you have that space available so that it would be really cool to.
+
+see what you could put some fielders out and maybe put together. And if we could even make our way out there too to help out, would be awesome.
+
+Right, that's pretty, yeah, mean like John was like, talk to open mind. I
+
+mean, I don't know if I've met him, but it seems like he is the guy.
+
+btcbrady21 (1:04:31)
+Yeah, I mean our members have been an amazing support of what we're doing here. I mean, like we said, the you know, this all started very public facing. You know, we were going to these regular meetups that we
+
+rev (1:04:49)
+And it is just such a it's the right size. We talk about this a lot of the you know, the kind of the dumb barge number of a of a Bitcoin meetup or I think that the space, while it is small, that is actually a good thing because it allows for this to to nurture this ability to take advantage of the the strengths of the members and to and to give space for them to contribute because
+
+If it was this huge sp I don't know I don't know necessarily how big Denver is. I've been to Bitcoin Park. That's certainly much larger than than what's going on here at at the Chicago Bitcoin Collective. But I could imagine that, you know, at Bitcoin Park, it's so big that, you know, sure you get to kind of know everyone, but can everyone really contribute to what's going on? I doubt it. But at the Chicago Bitcoin Collective, it seems like it's just the right size where people can can have a s a nice space to get together, but also be a big part of it.
+
+Foise (1:05:53)
+Yeah, like, you know, the three T's that Brady mentioned, it's almost how this even came together, like the whole... And if you look at any of these other spaces, the Denver space and things like that, you know, folks have brought their time, they brought their talent. So, you know, we didn't try to copy the Denver space. You know, it's awesome to think that we could heat the whole place with miners, but that's...
+
+not necessarily any of our talents. I haven't been there, but I've seen photos of what they put together at the Denver space and there's some master craft plumbing going on down there. And I'm pretty sure that one of the guys involved is the one that's doing that. So it's like, you have to utilize the talent of the people around you. can't try to replicate it so much as you should.
+
+you know, go, go towards your own talents and your, and utilize that time. And that's kind of how this came together here as well.
+
+Reed (1:07:27)
+Yeah, it's funny when so when I first started hearing forkin coin, or I guess you know what, I I actually kinda think that I think I started hearing about the Chicago Bitcoin Collective and having a a space for for Bitcoin location. And I like, wow, that's so cool, you know, like you guys have talked about a the country, around the world. but I think it's it's
+
+I think Foyce, you mentioned it, you know, during Like having additional revenue streams is really the way that you make this sustainable. And I think, you know, the way that you guys have it wired up here, like with memberships, but then also the co working space and then also the restaurant.
+
+Foise (1:08:13)
+It's almost like hitting a...
+
+It's almost like we hit a block. Like that's how... That's almost how lucky that we might have gotten to put this all... for this all to fall together like it did.
+
+Reed (1:08:28)
+about making sure you use every bit of the cow and trying to find creative ways of of being, you know, basically super efficient. And I think having those multiple revenue streams is really going to be a game changer in terms of like longer term sustainability. And I don't know if there are other physical
+
+Foise (1:08:48)
+Totally.
+
+you
+
+Yeah, I mean, it was great to see you there the other day, Rev. I hope I get to see you out there again soon and Reid, good to see you again. Glad we got to finally get on this call. It's been a wait, but I think it was perfect timing.
+
+rev (1:09:58)
+All right.
+
+And I guess I'll just wrap it up with kind of talking following up with Brady's building in the bear market. you know, if you if you can make it work in the bear market, then obviously the bull market's gonna be a lot easier on you. And I've got a saying that kind of follows leads into that and you know, when the price is going up you work faster and when the price is going down you work harder.
+
+And I feel like you guys are working really hard and taking advantage of that downward price movement. You know, the more memberships and the the more value you can provide right now, that's gonna lead to a lot of sats in the treasury or whatever you guys are doing to hang on to those for when the price goes back up again and then you're gonna have a lot of capital to work with to make the place even better. And not not only that, but members to go along with it to to make it awesome too. So
+
+I appreciate you guys coming on and spending the time with us talking tonight and really happy that we finally got a chance to talk about it. and yeah, I'm looking forward to the Value for Value, Value for Value Summit. I will definitely be there and if not well certainly before then I'll be coming as a member as often as I can.
+
+Foise (1:11:47)
+Thank you guys so much, really appreciate
+
+Yeah, I'm gonna have to jump off. I do really appreciate that you guys do the value for value reads. I mean, that was something that really helped me out early on, you know, getting reads on on rabbit hole recap and stuff to get people to come out to the to some of the meetups. So it's awesome that you guys do that. Definitely keep doing that and providing that service.
+
+All right, guys, thanks so much. Peace.
+
+Reed (1:17:55)
+And I guess before we leave this this concept of, you know, how how do you get the community involved? I'll be on so I was poking around your website and I saw I mean there's a button on here for anybody can just to have you guys host a meetup. And you know, we t I don't know if we really talked about it too much, but you know, we have talked about it many, many times on this show and it's always at the to on everybody's mind when you talk to other Bitcoin meetup organizers. You finding a space is the hardest part.
+
+It's honestly and you guys are coming with every all the bells and whistles, like everything a Bitcoin meetup organizer could ever want. you guys are offering. And so having that, you know, just offering that just even just offering that out to the community is a huge that's a huge thing. And it's really cool to hear people
+
+kinda taking you up on that, whether it's a Bitcoin meetup or not, whether it's like the haircut thing or whatever anybody else wants to do, it sounds like you guys are just like, look, as long as utilizing this asset that is this space as much as humanly possible, like that's how we're all gonna win And I think that's it's just such the right attitude. I I love to see it. I love to see it. but before we get yeah, yeah,
+
+rev (1:19:19)
+So just a little thing to note, I mean, it looks like South Carolina represented big on the on those episode leaderboards and Kansas City. So Kansas City's kind of the only one that had an opportunity to have two guests from the one meetup culture, but
+
+Either way, man, it's a people liked the Kansas City meetup culture and what they had to say and people liked what the South Carolina folks had to say. kinda interesting over time to see, you know, what what this these leaderboards might reveal about the meetup cultures across the country or world.
+
+White paper soap, yeah, you can you can get
+
+soap and and other tallow related products from from Matthew D. and and Matthew D is actually scheduled to come on the show. So we're gonna be hearing about Matthew D's perspective on the Michigan Bitcoin culture coming up here in a little bit.
+
+Yeah, biggest thing to pay attention to coming out out of Shadrach's realm lately is the the archipelago alpha release archipelago node. do some digging around, looking to to if you're interested in trying out this archipelago node. It's it's definitely pretty cool. And Nostragang is you know, one of the ways that Noster Gang is really adding value to the show now is by not only boosting our pot podcast, but
+
+So many other great high signal podcasts which now we have the ability to aggregate for our community. So Noster Gang's work is gonna be paying off for the local Bitcoiners community as well.
+
+Reed (1:25:29)
+so I guess one of the th a topic that's come up on the show quite a couple of we've been fortunate enough to have a couple of guests come on with some experience in this. we had Bidish on. we also had Sir Spencer on. And so we're you know, we Rev and I, I feel like, you know, learning about the value for value music space. It's something that's been super interesting for us.
+
+rev (1:25:29)
+Right.
+
+Reed (1:25:58)
+you guys didn't catch it. So I we have a new in Western Mass we have a new Bitcoin meetup venue and it's a small concert venue. And so like they don't have shows on Sundays and our meetups are on Sundays. And so we just get the space basically. and they're pumped to have us and so that's kind of gotten me more interested too. Like, hey, you know, talk about utilizing assets. Like is do I have an asset here that I need to be doing a better job of utilizing? Like maybe there's some for V stuff I should be doing
+
+I don't know, anything you guys would like to share for V concert idea came together, like how you were reaching out to the artists, like how some of the technical side of that, like what kind of equipment that you need, or like what what are the inputs that really, you know, that can make this, you know, I've got an idea for a V for V concert, turning that idea into reality. you curtain stuff is I mean, I that's where I live, right? I love to hear on all the technical side of stuff so
+
+Anything you're willing to share there, I'd be super interested to hear.
+
+Yeah, man.
+
+Thanks so much for coming on.
+
+I mean me the same advice. I've asked multiple people this for advice and they've all said talk to open mic. Like that's consistent advice that I've gotten this whole time, so but
+
+rev (1:33:47)
+So is that is that
+
+the segue into some of those sets going right back out now? Is it is it is it the time?
+
+Reed (1:34:26)
+Yeah, it seems like, you know, and n not not to jump necessarily right into it, but it it almost kinda seems like the the theme of the show know, is how do you use what you have in the most efficient way possible? Like how how do you take how do you get the maximum benefit out of any asset that you have? know, certainly asset that you guys are cultivating here and an asset that we talk about all the time on the show is the community.
+
+You know, the community is the asset. you know, it's something that we all benefit from and it's something that should be taken care of. and the more you take care of your community, the more the community is gonna take care of you. And so it's all the stuff that you guys have going on, it's just I guess my perception of of everything that you guys explained on this episode is just you guys started off on the right from like day one.
+
+Like absolute ground zero, you're this thing with the most strong, stable foundation that I don't know, I couldn't I can't even think of how you could have done you know, things bet in a better way. So it's just so exciting to hear about everything you on.
+
+Yeah, well, I mean, we we've talked about it recently, at least Rev and I, and you know, it's you know, luck is what there's the saying for that, right? It's like the it's like the intersection of preparation meets opportunity, right? And you guys were prepared and you found the opportunity and you just snatched right onto So cool.
+
+yeah.
+
+Absolutely. And dude, I am definitely gonna have to find to Chicago. I I gotta get out I you know dude it holding this podcast it's just it's so brutal for me. Like I get so much FOMO like hearing about all these like ridiculously cool spaces all over and man, you guys are right at top of the list. I'm my way there at some point.
+
+rev (1:39:18)
+We'll get to when we do the boosts 'cause they were boosted in. Yeah. But the big difference is that the the key difference between these meetups and the meetups that we'll be reading off in the boosts is that these are kind of like featured meetups because they were able to make a Nostra event to go along with that meetup which now qualifies them for this twenty one K sat zap.
+
+Reed (1:39:22)
+Thanks, guys. and like we talked about before, you guys are welcome to hang and participate in in that value for section. we do have some stuff that we kind of read off.
+
+And so bit of a flow to it, but yeah, it's also just open discussion. you're more than welcome to hang yeah, and just thanks so much for coming on and it was such a you know, such a great meetup scene to learn about. I think everybody's gonna be excited to hear about this one.
+
+Thanks, man.
+
+Okay, so with that, I think we're ready to transition to the value for value section. so our value for value section starts with our leaderboards. I have we go. leaderboard we like to talk about episodes. I say this pretty much every week, reason why we have this leaderboard
+
+rev (1:40:59)
+Spin that wheel.
+
+Reed (1:41:15)
+Is twenty, which is crazy that we've already got twenty episodes in the bag. but if you're new to the show, going back and listening to twenty episodes is is tough. You know, we we think that all of our episodes are great. I think there's definitely key takeaways in every single one that would be valuable information for you to have. but who's got the time? You know what I mean? It's a r it's a really to say, you should go back and listen to all twenty of our episodes.
+
+So instead what we have is we have our top And we think sats are the standard. You know, the the best way to measure what our most valuable episode is is the episode that brought in the most value of the most currency the world has ever seen, which is Bitcoin. And so we have our is episode fifteen with BTC Russell with two hundred and eighty eight hundred ninety seven sats.
+
+So that episode was fantastic. called the title of it is Privacy is Sovereignty with BTC Russell from Columbia, South Carolina. And for those of you who don't remember or who haven't, whole thing kicked
+
+rev (1:42:29)
+We'll we'll probably find some time to talk about piecemeal through through these boosts, I think. We can kind of find ways to to discuss some of this stuff. but yeah, I guess th does that mean we're we're getting ready to to recognize some boosters?
+
+Reed (1:42:45)
+up and we said, you know what, we're gonna do
+
+rev (1:42:48)
+Alrighty. Okay, so I'm not in exactly the right place. Here we go. So the first boost we have, 420 sats via localbitcoiners.com. Thank you for boosting from the website. And I believe this NPUB isn't rendering, but I believe it's from Logs. and that is he's got three race car emojis and a meetup attached, which we've already read off, but the it's indie Bitcoin meetup number 58.
+
+July 15th at Union Jack Pub and all the information you need to get to that meetup is linked right there in the noster note. It's available on our website. You can find it on our N pub on our feed. It's that's the cool thing about this, is that meetup information is now in many, many places. so so thank you. I'm I'm assuming it's Logues for boosting the meetup and making the noster event for it. And I don't and Logues is not running the indie meetup, so he took the liberty of just
+
+Getting all the information about that meetup, made the event, and there you go. Now everybody gets to s to have access to that information because of his work. And he could have won, he almost won twenty one thousand sets for the effort too. Next up we got four hundred and twenty sats via fountain from undisciplined. I and I guess I should read the episode that Logs boosted. and it was just a a show level boost.
+
+Reed (1:44:12)
+BT with
+
+rev (1:44:13)
+No partic
+
+no particular episode from from that meetup boost from Logs. Okay, so next we four hundred and twenty-one stats via fountain from Undisciplined. Following up on your comments about Stacker News, it's not that they want it to be siloed away from Noster. It w it started before NoSter was a thing and they're building integration. Right now it's similar to Fountain. If you have an MPub, your posts can go out to NoSter relays and be broadcast as notes, but not everyone does and their posts live entirely on the site.
+
+I believe further integration is on the devs roadmap. And that was from local bitcoiners, permaculture for Bitcoin culture with SourceNode, Greenville, So South Carolina, episode 14. So maybe Undisciplined was going back and and listening to our our section, our our boost section about I must I do remember talking about Stacker News at some point and and being maybe it came off as being frustrated that they don't have they're not just doing they're not an Oster client.
+
+outright. and so it sounds like they're working their way there. And and I wasn't aware of this. And I think we actually discovered, I was wondering why we weren't ever seeing these stacker news noster notes. And I think it's because the stacker news noster notes are actually not kind one notes. They come in as long form notes, which is actually maybe a a good opportunity to talk about some of these website features that we've been building out. But thank you for the boost. Before we get into that undisciplined, I I I appreciate the the clarification on that.
+
+Reed (1:45:42)
+down now down to fourth, ninety eight thousand six hundred eighteen sats, growing slow build strong community with KC Bitcoiners, and of course that was with Sir Spencer Wolf who we of course mentioned tonight. And he comes up very frequently because that show honestly was very pivotal in in our whole understanding of this value for value ecosystem.
+
+rev (1:45:39)
+like I said, I I guess I wasn't aware.
+
+Reed (1:46:04)
+And so we really appreciate Spencer educating us and and kind of holding our hand a and teaching us some of these these core principles that have now really embedded themselves into the show. So that was a fantastic episode. Highly recommend you go check that one out. And finally, fifth place, episode five with sixty-four thousand nine hundred and eighty-five sats, also leaderboards forever. This was our episode with Augie.
+
+The meetup is the Farmers Market, Kansas City, Missouri. And so those are our top five episodes. If you haven't gone back and listened to those, I would highly, highly recommend it.
+
+This is true.
+
+rev (1:47:19)
+So yeah, Stacker News, apparently their Noster integration makes all these, all their notes, long form notes, which now show up on our long form notes section of our website in the the feeds. Looks like we got a duplicate boost from Undip Disciplined. So thanks for doubling up there. next we got 111 sats via fountain from Noster Gang. I love how you guys are just building, building, building shaka emoji.
+
+Recording the revolution with Shannon, Columbus, Ohio, episode nineteen. And that's right, Noster Gang, we are building, building, building. And we mentioned it a little bit before, but this is another opportunity to talk about some of the the feeds. and so we've got this podcast boost feed, community feed. Yeah, absolutely. Cause Noster Gang is you know, that that's a person who is pushing
+
+Reed (1:47:56)
+else someday, We're as long
+
+leaderboard, top listeners. these are the core group, these are our top listeners. And so these are the listeners who have boosted the most number all time. So have episodes supported. So we have a tie here for first place between, of Matthew D and went back and and
+
+rev (1:48:17)
+the really weighting
+
+a lot of the value of the of where these these podcasts show up on this feed.
+
+Reed (1:48:45)
+got through the boosts of every episode. Now it's been him here. It sounds like they're in it for the long haul. So if you want to get onto the t top supporters leaderboard, the good news is this leaderboard, we respect ties. So we only are gonna read off three, but if five people are tied for first, all five. And that'll just be first place. Then we'll read off second place after that. And so got a tie for first. So we've and Permanerd.
+
+boy and I ha I you know, I j just today I listened to the most recent episode of the Yada podcast with with Permanerd and and Oshi. And boy, you know, right after I listened to it I was like, I really had something to say, in response to something that Permanerd had said about our show and now I can't remember what it is. So sorry, Permanerd, but if you haven't had the chance to catch out catch definitely go and do that.
+
+and I think Matthew D's got the what w I forget This something paper soap company or could you remind me? There you go.
+
+Definitely looking forward to You know, it's we've had a few times now, right, where we've had our top supporters come on the show. It's fantastic. And so so yeah, and you know, we're gonna be coming out. There's there will be more things. Like hopefully if you haven't figured that out by now from the way that we're building out the website and rolling out new features, there will be more things. So you know, we we really do want to give value back to and we hope that we're doing that.
+
+So this is our small way right there will be more. All right, second place on our top listeners leaderboard is No Ster Gang with 16 episodes boosted. And Noster Gang's been going back. We've been getting boosts from her from some older episodes, which is I always like to see. You know, we like to think a lot of our episodes of evergreen. You know, we're not in here talking about price or talking about
+
+super time things other than what the next meetup coming up is. so we think a lot of these episodes do stand the test of time and Nostergang maybe you can let us know. You know, I haven't gone back and listened to some of the older episodes, but you have let us know if those things are still holding holding up here over the last boy, dude, we're almost up to like six months here. So time is time is flying.
+
+And third place we have Shadrach with ten episodes boosted. and thank you, Shadrach. Shadrach spent a to the show for sure. He's been boosting us I think beginning. And so thank you so much for your support. You know, we always appreciate the comments that you have. we love reading off your boosts, and we took we really appreciate the fact that you've been, you know, one of the ride or dies part of the core group here on the
+
+dude. Dude, I can't wait to talk about that feature. I don't know. I guess we haven't really talked about it, but I would
+
+rev (1:52:54)
+So if we're trying to build cultural capital here, this is you know, the podcasts are kind at the the the base of that intellectual capital. Right. This is why we do the forty HP W get entropy in your forty HP W is to get a lot of information in aggregate. And so if we can see all the other information that the people in our community are getting and we get that information too, now we've all got the same information. Now we've got cultural capital. So this is like a very, very cool
+
+Reed (1:53:46)
+to
+
+rev (1:53:24)
+resource for everybody to check out. And it also creates an incentive for you to boost podcasts. Maybe they're not not recognizing value for value and reading it off and, you know, recognizing all their supporters or anything, but now you can just boost the podcast in order to ping it into this feed and let other people know in our community that this is something you think is worth listening to. Okay.
+
+Reed (1:53:47)
+why we're trying to lean into some of these to some of these different ways of recognizing community members. We think that reading off the biggest boosts of all time, I mean, first of all, these these boosts are huge. Like these are mega boosts. And so they deserve serious shout outs, right? and the coolest thing about these is that people are
+
+rev (1:54:10)
+That's
+
+true too. Yeah, we're all the th they're all part of our community. Next we got a hundred and eleven sats via fountain from bullish clips. Funnily enough, I didn't know what nip a zero was until y'all mentioned voicemails in episode eighteen. Then I remembered that the Noster CEO, Derek Ross, created Yakback.app a while back, which is geared towards voice messages under a minute. I know how bullish you are on noster integrations, so when
+
+When you do add support for voicemails on the site, it'll appear on Yakback and Circle or hashtag Circle. This is why I noster. And that was on recording the revolution with Shannon, Columbus, Ohio, episode 19. so yeah, thanks Bullish for letting us know that this this is a real thing that we can do with Noster directly integrated, super cool. sounds like people would be interested in playing around with.
+
+leaving some voicemails. I don't know how we work that into this section. but we'll we'll think about it and see what what kind of games we can play so y'all can tell us some stories about your latest meetup. I think the best idea is doing the the no agenda style you know just calling in from the meetup itself and you can say like hey we're so and so this is bit-ish from Cleveland Bitcoin meetup and then everyone just like hey you know and just it'd just be mic something fun like that.
+
+Reed (1:55:29)
+personal and node running, or point
+
+rev (1:55:36)
+but thanks for that, bullish. We'll we'll think about it a little bit more. If anyone else has ideas, let us know. two hundred and twenty-one sats via fountain. hashtag circle is a web client with NIP07 login, so it can be used on mobile as well. I use it on iOS with the and that was that's all we got there. so I'm I'm assuming this is this is bullish again, letting us know that that's hashtag circle is
+
+Reed (1:56:04)
+way to
+
+rev (1:56:06)
+a web client, but it can also be used on mobile, probably through the
+
+Reed (1:56:16)
+to hold the ship
+
+rev (1:56:13)
+just pinning it to your home screen or whatever. and so that was on rec yeah, PW, that thank you. That that's what I mean. recording the revolution with Shannon, Columbus, Ohio, episode nineteen.
+
+Next up, we got 1,237 sats via fountain from God's Death. God's Death says, Thank you, gentlemen. And that was on Recording the Revolution with Shannon, Columbus, Ohio, episode 19. Good to see you back boosting again, God's Death. and now we can see that you've been boosting other stuff like the Fundamentals of Fundamentals podcast that just came out. So isn't that cool? God's Death is another prolific podcast booster, and now you're gonna be able to see all the podcasts that God's Death likes.
+
+Reed (1:57:05)
+or at
+
+rev (1:56:56)
+through this communities feed on our website and you'll get you'll get the same signal that he's getting in his forty HPW.
+
+Next up, we got 2121 sats via fountain from KT from Katie. Join us for our first ever third Tuesday monthly Green Bay, Wisconsin, and Fox River area meetup. All right, a brand new meetup has been born, you guys. Tuesday, July 21st at 6 p.m. at All Shook Up Tavern. Pizza will be provided and drinks available for purchase with BTC or Fiat.
+
+This is will be a casual social event to connect local Bitcoiners and future Bitcoiners together. Let's build our local network. and that's on Recording the Revolution with Shannon, Columbus, Ohio, episode 19. And so this is a really cool story. Katie kind of put the word out there saying, Hey, I want to start a meetup. if anyone wants to help, I could use it to get it going over here in that this Green Bay Fox River area in Wisconsin. And I was able to kind of reach out to some of the group chats that I'm in.
+
+and see if there was anybody that might that was in that area to to work with her on that. And I ended up finding somebody who was interested. I connected them and here they are. They're they're starting to meet up together in the first one's on Tuesday, July 21st, 6 p.m. at All Shook Up Tavern. So a great example of like, hey, if you even are looking to start a meetup and you don't know who you can start it with, you can boost the show looking for it. And maybe I'll be able to connect you. Maybe some of the other community members will step up and join you on that effort.
+
+Reed (1:58:54)
+sats via fountain.
+
+rev (1:58:35)
+so thanks Katie for the boost and letting everyone know about this awesome new meetup. Everyone should go check it out. the Milwaukee crew if you're if you're listening here, that's not too far for you guys. You can check it out. I don't know how far it is from Madison. I know there's a Madison meetup, but anyways, check it out.
+
+Reed (1:58:56)
+And the message is attend your local meetup and if there isn't one in your area, start one. Local Bitcoiners is an essential part of my 40 HPW and signed BTC Wrestle. And
+
+rev (1:58:56)
+It's happening.
+
+Yeah, and everyone in Green Bay and in Fox River is going to get a lot out of having this great community asset and a new bit Bitcoin meetup to attend and participate in. Next we got thirty-four hundred sats via localbitcoiners.com. Out of five thousand sats intended, one leg failed from Matthew D. And Matthew D did DM us and said that he saw which leg failed and he went and sent the sats directly to that.
+
+that intended recipient. So that's really cool of you to make even that extra effort, Matthew D, to get the sats where you want where they were gonna go up based on the splits and everything. and it's cool that local Bitcoiners will tell you, you know, where the sats didn't, you know, gives gives you this information. Really love that a lot of people are are boosting from the website as well.
+
+Just lets us know that all this work we are doing to build the website out and add all these features. You know, you guys are in there and you're you're clicking around in the website and you're using it. So thanks, Matthew D. And Matthew D says, glad to hear cool things happening in in that other city south of the border, home of that one school, Columbus. Much love from Ann Arbor, home of the good guys. Smiley emojis. So there must be some sort of sporting rivalry between the schools of whatever schools in Ann Arbor and whatever school is in.
+
+Reed (2:00:30)
+But then next on the list is Paul. Paul sent us 2100 sats. We've got our account. Maybe, maybe we're going a little bit wild, sending ourselves some sats. We got nuts about you, Supreme. sats.
+
+rev (2:00:27)
+Columbus, Ohio. unfortunately
+
+Yeah, Ohio. Yeah. Matth Matthew D is
+
+is you know, must really love Michigan and not really love Ohio. And maybe it's from this sporting rivalry that he's referencing. Yeah. love it. You got you guys can you can take shots back and forth through our boost section all day. I don't mind. and so that was from recording the revolution with Shannon, Columbus, Ohio, episode nineteen. and we're I'm really looking forward to talking with Matthew D and really showcasing what
+
+Reed (2:00:48)
+You know, the sets that go to if you zap our notes, those go to our Rev got kind of a back out to the community.
+
+rev (2:01:11)
+what there is to like about the Michigan Bitcoin culture that's coming up here I'll say it again. next we got 101 sats via fountain from Nostergang again. and they say I miss the roller skating heydays. And that was on the meetup is the farmers market, Kansas City, Missouri, Ohio or Ms. Kansas City, Missouri, episode five. Wow. Sorry about that. And that was with Augie.
+
+Reed (2:01:35)
+meetup on Noster. Not this show
+
+rev (2:01:37)
+Yeah, man. Too many talking to Satan Ohio too much. But so yeah, so Noster Gang is going back and boosting old episodes, but they're s they're giving context to prove that they are actually listening to it. Because if you go back and listen to Meetup is the Farmer's Market, episode five with Augie, you'll find out that they were just getting started with a they were talking about a meet the next meetup was at a roller rink. So,
+
+There you go, Nostergang. You're much like Shadrach, proving that you did listen. Otherwise, you're not boosting. But you know, Permanerd's way of just boost sprinting to get on that that leaderboard is fine too. Because as we say every time, by by boosting by boosting each episode, you are giving a little bit of sats to that Bitcoin community too. And so you're spreading the sats out amongst the Bitcoin culture and just showing that you care about Bitcoin culture in general by getting on that leaderboard.
+
+Reed (2:02:19)
+our website is going
+
+rev (2:02:33)
+Whether you listen to the episodes or not, surely we'd appro prefer you listen to all of it because they're all there's so much you're gonna learn. but if you obviously don't have time and you want to get on the leaderboard, go ahead and boost them all. Next we got 500 stats via localbitcoiners.com from Battersea Bitcoiners. And this message is saying boosting my meetup from localbitcoiners.com forward slash meetups. And they have the the noster event.
+
+Reed (2:03:13)
+right?
+
+rev (2:03:00)
+In here, Batters C Bitcoiners, July twenty-sixth. And actually it's maybe I wonder if which one's correct. So it's it's July twenty-sixth in the title, but then the date of the meetup is July twenty-second. July I see, I see. So it's probably meetup number twenty-six. It's four battery sea big coiners meetup in July, the twenty-sixth meetup overall, and that's on July twenty second.
+
+Reed (2:03:14)
+We're doing tw for anyone who lists their that aren't Rev or myself. Like we listed ours, but that's more just we have I should probably let me read it off the actual site here.
+
+rev (2:03:29)
+we figured it out better. C Bitcoiners.
+
+man. Really you're really making us use our brains here with this one. Goodness gracious. All right, but no, I think actually you're probably right. It's probably July year 2026. But yeah, the the the big point is is the Wednesday, July 22nd, you can go to Little Bianca 132 North Kote Road, Clam Clamfham Junction, London.
+
+Reed (2:03:44)
+We've got indie bitcoin Jack
+
+from someone other than Rev or myself would be Permanerd. So thank you, Permanerd. and you know what? Actually, I think that might have been the
+
+rev (2:04:02)
+Borough of Wadsworth Wadsworth, Greater London, England, Southwest one one, six QZ United Kingdom. What an address. Great. but yeah.
+
+Yeah, I d well I didn't know what I was getting into. I just I didn't look ahead. I just started reading it.
+
+What a tongue twister of a of a meetup of a boost. But thank you so much for Bat Battersea Bitcoiners. 21,000 sats is gonna be heading your way for that boost there. So it was definitely worth the effort and listening to me struggle through reading all that. Okay. Next we got 420 sats via localbitcoiners.com from Alice A.
+
+Reed (2:04:32)
+which you
+
+rev (2:04:43)
+Sacktown Bitcoiners monthly education meetup, Thursday, July 23rd. Find the random door on the side of the library building. And so there's a link here to a meetup.com meetup. I'll click it and see what what it looks like. So yeah, Thursday, July 23rd, 7 p.m. to 9 p.m. at North Not Thomas Library, Sacramento, California. we typically meet at the library community room on the fourth Thursday of each month.
+
+All are welcome and anyone who anyone new to Bitcoin is encouraged to come ask questions or just listen in to better understand the many benefits to humanity Bitcoin offers. We will also facilitate a community goods and services exchange as we start to grow our circular economy. Bring anything you'd like to exchange for SATs. We've had grass fed beef, organic veggies, honey, jewelry, books, pesto, anything really. Get creative. Beautiful. Love to hear that they're trying to build the the
+
+Reed (2:05:49)
+Courtney, British Columbia. So thank you, Permanerd.
+
+rev (2:05:41)
+A circular economy over there at Sacktown, Bitcoiners in Sacramento. Thanks for letting us know about that, Alice A. Did you have anything, Reed?
+
+Reed (2:05:54)
+And you're in in the running here to win the twenty one thousand sats. and the last one we've got is from Batter C Bitcoiners. So Batter C posted
+
+rev (2:06:03)
+Yeah, and you know,
+
+like people w we have plenty of friends that we can talk to, we know a lot of meetup organizers and stuff, but a lot of this the Sacramento LSA had been kind of poking us to to talk with the I think it was LSA, somebody if it wasn't LSA it was somebody that was poking us to talk to Sacramento and then I was I've been reached out by another guy who's been listening to the podcast saying, Hey, there's some this cool thing going on over there near Sacramento and so
+
+We're gonna we're we're probably gonna be trying to make an effort to schedule some recordings with that in that direction. So the point being is like if you got a meetup going on and you wanna get on the show, you know, you can you just interact with us and let us know and and let us know that you're enthusiastic about talking about what's going on at your meetup and what your culture's like and we'll try and head in in that direction, unify the region. I think this last group of this sort of Ohio, Kentucky, Indiana group.
+
+really got to know each other. They they're they're connected now because we've recorded with all those guys. And so I'd like to do the thing the same thing elsewhere. but thank you LSA for letting us know about Sacktown Bitcoiners monthly education meetup July 23rd. You can find the the meetup.com link on the boost. And finally the last boost of the night 100 sats via localbitcoiners.com from LSA and LSA is saying clicking around on the local bitcoiners
+
+website and that was just a local big owner this is just a boost on the website. So thanks for for clicking around and playing around with the the local big owners website. Seems like you figured out how to do some cool stuff with the boosting and everything over there. it will continue to be a cool place to keep clicking around as as we add more of these community feeds and features. yeah so
+
+Reed (2:07:54)
+but we will. and maybe even by next week we'll we'll have a better solution for this. but I think for now what that means is we to
+
+Spin a wheel. So we're on wheelofnames.com and that's you can go do your own research if you want about the randomness of this random number generator. But I've got the three names plugged in here. And you think? Shall I give it a spin? Let's let's go.
+
+Okay, so we got
+
+it's right on a border. Batter one thousand sats. And so
+
+Before this I guess probably before this episode airs, Batter C Bitcoiners you should expect to see twenty one thousand sats show up in your wallet. We will find your note that you boosted this your meetup on and we will zap it. So thank you so much for using the tools for learning. And like I said, this was confusing, but guess figured it out. And so that and for figuring out you got twenty one thousand sats out of it. So thank you so much.
+
+And hopefully we will make this stuff easier. But that's part of the reason for that's why we're doing this this big sat giveaway is because now that people are using the tools, now we get the real feedback. And so now that we've got the feedback, we'll get this all ironed out. So thank you. We appreciate it.
+
+maybe for
+
+rev (2:09:35)
+You know, and in the Chicago Bitcoiners have been talking about this mythical space that everyone can get into and and work and cooperate and collaborate together for a long time for years. And you know, they did it. It's there, it exists now, and it's badass. And it's just getting started. And so, yeah, keep paying attention, go find your way over there. You can be a member for twenty-one dollars a month.
+
+if you're remote and you just want to support what they're what they're doing, you go to the Chicago Bitcoin Collective dot com. You can add join their membership program there for twenty-one dollars a month. You know, you can support you know what they're doing even if you're not coming to the sh the meetups and stuff.
+
+Roll the outro.
+

@@ -536,7 +536,16 @@ function episodeCard(item) {
     }
   }
 
+  // Label the drawer by distinct boosters (matching the faces beside it), and
+  // append the raw boost total only when it differs — on ~84% of episodes the
+  // two are equal, so always showing it would just echo the same number.
+  // Both halves say "local": these counts cover only the LB community's boosts,
+  // not the episode's total, and the card links out to Boost Me Bitch's full
+  // feed — so an unqualified "11 boosts" here would read as that superset.
+  const nBoosters = distinctBoosters.length
   const nBoosts = boosts.length
+  const drawerLabel = `${nBoosters} local booster${nBoosters === 1 ? '' : 's'}`
+    + (nBoosts !== nBoosters ? ` · ${nBoosts} local boosts` : '')
   const drawerMeta = h('span', { class: 'pcast-drawer-meta' }, [
     avatars,
     totalSats > 0 ? h('span', { class: 'pcast-sats' }, [`${fmtSats(totalSats)} `, h('span', { class: 'pcast-bolt', 'aria-hidden': 'true', text: '⚡' })]) : null,
@@ -546,7 +555,7 @@ function episodeCard(item) {
     'aria-expanded': 'false', 'aria-controls': detailsId, onclick: toggle,
   }, [
     h('span', { class: 'pcast-drawer-caret', 'aria-hidden': 'true', text: '▾' }),
-    h('span', { class: 'pcast-drawer-label', text: `${nBoosts} community boost${nBoosts === 1 ? '' : 's'}` }),
+    h('span', { class: 'pcast-drawer-label', text: drawerLabel }),
     drawerMeta,
   ])
 
@@ -750,14 +759,18 @@ async function loadMentionProfiles(items) {
 const SORT_OPTIONS = [
   ['recent', 'Latest boost'],
   ['episode', 'Latest episode'],
-  ['count', 'Most boosts'],
+  ['count', 'Most boosters'],
+  ['boosts', 'Most boosts'],
   ['sats', 'Most sats'],
 ]
 // Every comparator falls back to most-recent-boost so ties are stable.
+// 'count' ranks by distinct people, 'boosts' by raw boost volume — they differ
+// on the ~16% of episodes where someone boosted the same episode repeatedly.
 const SORTERS = {
   recent: (a, b) => b.latest - a.latest,
   episode: (a, b) => (b.ep.published || 0) - (a.ep.published || 0) || b.latest - a.latest,
-  count: (a, b) => b.boosts.length - a.boosts.length || b.latest - a.latest,
+  count: (a, b) => b.distinctBoosters.length - a.distinctBoosters.length || b.latest - a.latest,
+  boosts: (a, b) => b.boosts.length - a.boosts.length || b.latest - a.latest,
   sats: (a, b) => b.totalSats - a.totalSats || b.latest - a.latest,
 }
 function sortItems(items, key) {

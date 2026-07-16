@@ -50,7 +50,12 @@
 // widget trigger sitewide now shares one loader promise (new widget-loader.js,
 // precached below), so a second trigger can't re-inject a bundle already in
 // flight. Evicts login-widget.js and the pages carrying inline loaders.
-const VERSION = 'lb-v27';
+// v28: /feeds Podcast Boosts drawer counts distinct boosters instead of raw
+// boosts ("1 local booster · 11 local boosts"), + "Most boosters"/"Most boosts"
+// as separate sorts. Bump evicts the stale stale-while-revalidate copy of
+// feeds-podcasts.js so returning visitors get the new wording on first
+// navigation instead of after a 2nd revalidate.
+const VERSION = 'lb-v28';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
