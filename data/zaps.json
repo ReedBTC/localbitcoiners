@@ -1,8 +1,9 @@
 {
-  "generated_at": "2026-07-15T08:48:07Z",
+  "generated_at": "2026-07-16T08:48:17Z",
   "source": "zaps.csv",
-  "row_count": 142,
+  "row_count": 143,
   "rows": [
+    {"settled_at": "2026-07-16T04:35:46Z", "zap_receipt_id": "748f3ad9733437076d6950615a8adb6838dcb3471ac39991a54472e4a24ba69c", "zapped_event_id": null, "sender_npub": "npub1p2u3tjffwlrxk47xhajdtqjjmdrwt5p845k8ux4vn23mf0p2udusts3xce", "sender_name": null, "sats": 21000, "message": "Just got to listening these. Great stuff"},
     {"settled_at": "2026-07-15T03:50:01Z", "zap_receipt_id": "30aaf589591b0d2db6e8acc4be667409f9d58dbbb8bd32110dc4739edd6855ca", "zapped_event_id": "1ee5cadad921d747beaea865804c0ad50bfd356c932a3b6adaf2637538ae871a", "sender_npub": "npub1rng2fsg5a835efg73d3h347pqdd09hwqtldzmka93h9dhz9pm5fsr2rujd", "sender_name": null, "sats": 2, "message": "𑣲𝄞"},
     {"settled_at": "2026-07-13T14:59:41Z", "zap_receipt_id": "54ea2ddb863e96fc7c91bd2ef4357523842af04418a5390dab59e2ae7ed27bf2", "zapped_event_id": "71b9d8b4b3fdc2de37aa06a2fe0c8844b5e013bdf0873968b76526333647285d", "sender_npub": "npub18mv07htjfsut45rucsg8v8kxg9sq2aqf5e0sxtfyunky9shrkhdssf9ktc", "sender_name": null, "sats": 42, "message": "Onward 🫡"},
     {"settled_at": "2026-07-05T11:57:26Z", "zap_receipt_id": "fea6dfb4626059523af94fcb4ab2849bd603f972a6427e1edea0db0ab915623f", "zapped_event_id": "06b3335c655439cb41e844330d7be55a1599e03a1337c8bdcb53784387a28b83", "sender_npub": "npub1dgpt04w4c88wc0g262xaw8zvlm4mvwtmjhl0tn2sxtyjywsn6q4qt8ka3a", "sender_name": null, "sats": 13, "message": null},
