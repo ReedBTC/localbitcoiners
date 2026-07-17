@@ -28,8 +28,10 @@
  * where they left off.
  */
 
+import { NDKNip07Signer } from '@nostr-dev-kit/ndk'
 import * as nwc from './nwc.js'
 import * as webln from './webln.js'
+import { getNDK } from './ndk.js'
 
 // One-shot migration of legacy globals from before the shared-browser
 // leak fix. Runs at module load.
@@ -53,14 +55,17 @@ let unsubWebln = null
 // what lets the snapshot carry `remembered` without every call site
 // having to thread a user through.
 let currentPubkey = null
+let currentNpub = null
 
 /** Tell the facade which user is signed in (null on logout). Fires a
  *  status notification so the identity dot re-evaluates `remembered`
  *  against the new pubkey. */
 export function setUserContext(user) {
   const pk = user?.pubkey || null
-  if (pk === currentPubkey) return
+  const np = user?.npub || null
+  if (pk === currentPubkey && np === currentNpub) return
   currentPubkey = pk
+  currentNpub = np
   notify()
 }
 
@@ -119,11 +124,18 @@ export function getStatus() {
     }
   }
   const nwcSnap = nwc.getStatus()
+  // `remembered` covers both at-rest shapes: a WebLN extension this user
+  // enabled here before (still installed), or an NWC blob saved under
+  // this user's npub that prewarm deliberately didn't unlock (NIP-07
+  // sessions defer the extension decrypt to the first tap — see
+  // prewarm()). Either engages on the next boost tap without a re-connect.
+  const weblnRemembered = !!(currentPubkey && webln.hasStoredFlag(currentPubkey) && webln.isAvailable())
+  const nwcRemembered = !!(nwcSnap.hasStoredBlob && currentNpub && nwcSnap.ownerNpub === currentNpub)
   return {
     connected: false,
     kind: null,
-    remembered: !!(currentPubkey && webln.hasStoredFlag(currentPubkey) && webln.isAvailable()),
-    rememberedKind: 'webln',
+    remembered: weblnRemembered || nwcRemembered,
+    rememberedKind: weblnRemembered ? 'webln' : (nwcRemembered ? 'nwc' : 'webln'),
     hasStoredBlob: !!nwcSnap.hasStoredBlob,
     ownerNpub: nwcSnap.ownerNpub || null,
   }
@@ -263,6 +275,17 @@ export async function ensureReady(currentUser) {
  */
 export async function prewarm(currentUser) {
   if (isReady()) return true
+  // NWC's unlock decrypts the stored URI *via the signer*. For a NIP-07
+  // session that decrypt is a window.nostr.nip04/44 call — an extension
+  // round-trip with no user gesture behind it, the exact page-load
+  // anti-pattern this function exists to avoid (a stalled call occupies
+  // the extension's single request pipe and the first real tap queues
+  // behind it). Defer it: getStatus() reports the blob as `remembered`
+  // so the identity dot stays lit, and the first boost tap runs the
+  // unlock through ensureReady() with a real gesture behind it. Other
+  // signer kinds (nsec, NIP-46 bunker) don't touch the extension, so
+  // they still warm eagerly.
+  if (getNDK()?.signer instanceof NDKNip07Signer) return false
   try {
     if (await nwc.ensureReady(currentUser)) return true
   } catch (e) {

@@ -232,6 +232,22 @@ export async function restoreSession(record) {
       // we still catch "extension is now signed in as someone else"
       // before signing under the wrong pubkey.
       const signer = new NDKNip07Signer()
+      // Pre-seed the signer's cached user from the saved record BEFORE
+      // attaching it: NDK's `set signer` setter immediately calls
+      // signer.user() → blockUntilReady() → window.nostr.getPublicKey(),
+      // which would fire the exact no-gesture page-load extension call
+      // the comment above forbids — and cache its (possibly wedged)
+      // promise in _userPromise for the whole session. A stalled call
+      // here occupies the extension's single request pipe and every
+      // later gesture-backed call (signEvent, webln.enable) queues
+      // behind it and dies on its timeout. Seeding private fields on
+      // the vendored signer is deliberate; sign()/encrypt() don't read
+      // them (they call window.nostr directly), and verifySignerMatches
+      // does its own fresh getPublicKey() so account-change detection
+      // stays honest.
+      signer._pubkey = record.pubkey
+      signer._user = ndk.getUser({ pubkey: record.pubkey })
+      signer._userPromise = Promise.resolve(signer._user)
       ndk.signer = signer
       await connectAndWait(ndk)
       await ensureUserWriteRelays(ndk, record.pubkey)
@@ -294,10 +310,26 @@ export async function verifySignerMatches(ndk, record) {
   if (!ndk?.signer) return { kind: 'transient' }
   if (!isHex64(record?.pubkey)) return { kind: 'transient' }
   try {
-    const signerUser = await withTimeout(ndk.signer.user(), 10000, '__timeout__')
-    const reported = signerUser?.pubkey
+    let reported
+    if (ndk.signer instanceof NDKNip07Signer && window.nostr?.getPublicKey) {
+      // Ask the extension directly instead of via signer.user():
+      // restoreSession pre-seeds the signer's _userPromise from the
+      // saved record (so it would just echo the record back — vacuous),
+      // and NDK caches that promise forever, so one wedged page-load
+      // call would poison every later check. A direct call is fresh
+      // each time and runs here, behind a real user gesture — the
+      // moment extensions are reliable.
+      reported = await withTimeout(
+        Promise.resolve(window.nostr.getPublicKey()),
+        10000,
+        '__timeout__',
+      )
+    } else {
+      const signerUser = await withTimeout(ndk.signer.user(), 10000, '__timeout__')
+      reported = signerUser?.pubkey
+    }
     if (typeof reported !== 'string' || !isHex64(reported)) return { kind: 'transient' }
-    if (reported !== record.pubkey) return { kind: 'permanent' }
+    if (reported.toLowerCase() !== record.pubkey.toLowerCase()) return { kind: 'permanent' }
     return { kind: 'ok' }
   } catch {
     return { kind: 'transient' }

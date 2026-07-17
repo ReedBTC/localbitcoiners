@@ -439,7 +439,17 @@ async function sendLegacyDM(sellerHex, text) {
     if (ndk?.signer?.encrypt) return await ndk.signer.encrypt(ndk.getUser({ pubkey: sellerHex }), plaintext, 'nip04')
     throw new Error('No NIP-04 encryption available')
   }
-  const ciphertext = await encrypt(text)
+  // Bounded like the NIP-17 seal in merch.js — a wedged extension pipe
+  // otherwise hangs the order flow on this encrypt forever. Sentinel
+  // (not rejection) so a legitimate encrypt error still surfaces as-is.
+  const TIMED_OUT = Symbol('nip04-timeout')
+  const ciphertext = await Promise.race([
+    encrypt(text),
+    new Promise((res) => setTimeout(() => res(TIMED_OUT), 30000)),
+  ])
+  if (ciphertext === TIMED_OUT) {
+    throw new Error('Your signer didn\'t respond while encrypting the order message. Make sure it\'s unlocked, then try again.')
+  }
   const signed = await window.LBLogin.signEvent({
     kind: 4,
     content: ciphertext,

@@ -813,12 +813,37 @@ async function performZap({
   const invoice = invJson.pr
   if (!invoice) throw new Error('No invoice returned')
 
-  // 4. Pay. WebLN preferred — falls through to manual on failure /
-  // user cancel / no extension.
-  if (typeof window !== 'undefined' && window.webln) {
+  // 4. Pay — one attempt, then fall through to the manual invoice UI.
+  // Never try a second backend after a failed attempt: the first send
+  // may still settle, and a second one risks paying the invoice twice.
+  //
+  // Prefer the widget's wallet facade whenever this user has a wallet
+  // there (connected now, or remembered from a prior session — the
+  // facade unlocks it behind this tap). It brings single-flight
+  // enable() with timeouts, and it covers NWC users, whose wallet this
+  // path used to ignore entirely. The raw-WebLN branch remains only for
+  // extension users who never connected a wallet through the widget.
+  const walletStatus = window.LBLogin?.getNwcStatus?.()
+  if ((walletStatus?.connected || walletStatus?.remembered) && window.LBLogin?.payInvoice) {
+    try {
+      onStatus?.('Paying…')
+      const res = await window.LBLogin.payInvoice(invoice)
+      return { paid: true, method: res?.kind || walletStatus.kind || 'wallet', invoice }
+    } catch (e) {
+      console.warn('[zap] wallet payment failed', e)
+    }
+  } else if (typeof window !== 'undefined' && window.webln) {
     try {
       onStatus?.('Opening wallet…')
-      await window.webln.enable()
+      // enable() is bounded — a wedged extension pipe otherwise pins the
+      // modal on "Opening wallet…" forever. The payment call itself is
+      // deliberately NOT timed out: abandoning an in-flight sendPayment
+      // and showing the manual invoice invites a double-spend.
+      await promiseWithTimeout(
+        Promise.resolve(window.webln.enable()),
+        15000,
+        'Wallet extension didn\'t respond',
+      )
       await window.webln.sendPayment(invoice)
       return { paid: true, method: 'webln', invoice }
     } catch (e) {
@@ -826,6 +851,18 @@ async function performZap({
     }
   }
   return { paid: false, invoice }
+}
+
+// Race a promise against a deadline. The underlying call is abandoned,
+// not cancelled (window.nostr / window.webln expose no abort handle), so
+// only use this on calls that are safe to walk away from — permission
+// prompts and enables, never payments.
+function promiseWithTimeout(promise, ms, message) {
+  let timer
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(message)), ms) }),
+  ]).finally(() => clearTimeout(timer))
 }
 
 // ── Toast ────────────────────────────────────────────────────────────

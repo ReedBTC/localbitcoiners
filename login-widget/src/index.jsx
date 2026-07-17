@@ -23,7 +23,7 @@ import {
   verifySignerMatches,
 } from './lib/sessionPersistence.js'
 import { markStubUser, isStubUser } from './lib/stubUser.js'
-import { getNDK, resetNDK, connectAndWait } from './lib/ndk.js'
+import { getNDK, resetNDK, connectAndWait, signWithTimeout } from './lib/ndk.js'
 import * as wallet from './lib/wallet.js'
 import { applyRecipientOverrides } from './lib/recipientOverrides.js'
 import { pushToast } from './lib/toast.js'
@@ -242,6 +242,29 @@ async function ensureSignerVerified() {
     return false
   }
   return true
+}
+
+// A failed wallet unlock at a boost gate is ambiguous: "no wallet
+// configured" (route to the connect modal) vs "wallet configured but
+// the unlock stalled" — a remembered extension or saved NWC blob that
+// didn't answer in time. The second case used to fall into the first
+// branch, so a slow extension turned into a connect modal telling a
+// connected user they had no wallet. Surface a retryable error toast
+// instead; the user's next tap re-runs the unlock behind a fresh
+// gesture. Deliberately does NOT queue the action — there's no gate
+// completion coming to consume it, and a queued boost popping open
+// minutes later would be a surprise.
+function handleWalletGateFailure(retryAction) {
+  const status = wallet.getStatus()
+  if (status.remembered) {
+    const msg = status.rememberedKind === 'nwc'
+      ? 'Couldn\'t unlock your saved wallet connection — tap Boost to try again.'
+      : 'Your wallet extension didn\'t respond — check that it\'s unlocked, then tap Boost to try again.'
+    try { pushToast({ kind: 'error', message: msg }) } catch {}
+    return
+  }
+  setPendingAction(retryAction)
+  api.openWalletConnect()
 }
 
 // Tiny hook every internal component uses to track the shared user.
@@ -796,13 +819,11 @@ const api = {
           if (ok) {
             api.openShowBoost({ prefillMessage })
           } else {
-            setPendingAction(() => api.openShowBoost({ prefillMessage }))
-            api.openWalletConnect()
+            handleWalletGateFailure(() => api.openShowBoost({ prefillMessage }))
           }
         })
         .catch(() => {
-          setPendingAction(() => api.openShowBoost({ prefillMessage }))
-          api.openWalletConnect()
+          handleWalletGateFailure(() => api.openShowBoost({ prefillMessage }))
         })
       return
     }
@@ -865,13 +886,11 @@ const api = {
             // Re-call openEpisodeBoost — Gate 2 will pass now.
             api.openEpisodeBoost(args)
           } else {
-            setPendingAction(() => api.openEpisodeBoost(args))
-            api.openWalletConnect()
+            handleWalletGateFailure(() => api.openEpisodeBoost(args))
           }
         })
         .catch(() => {
-          setPendingAction(() => api.openEpisodeBoost(args))
-          api.openWalletConnect()
+          handleWalletGateFailure(() => api.openEpisodeBoost(args))
         })
       return
     }
@@ -923,9 +942,9 @@ const api = {
       wallet.ensureReady(currentUser)
         .then((ok) => {
           if (ok) api.openExternalBoost(args)
-          else { setPendingAction(() => api.openExternalBoost(args)); api.openWalletConnect() }
+          else handleWalletGateFailure(() => api.openExternalBoost(args))
         })
-        .catch(() => { setPendingAction(() => api.openExternalBoost(args)); api.openWalletConnect() })
+        .catch(() => handleWalletGateFailure(() => api.openExternalBoost(args)))
       return
     }
 
@@ -1002,6 +1021,18 @@ const api = {
     if (isStubUser(currentUser)) throw new Error('Session still restoring — try again in a moment')
     await wallet.ensureReady(currentUser).catch(() => {})
     if (!wallet.isReady()) {
+      // Same ambiguity as handleWalletGateFailure: a remembered wallet
+      // whose unlock stalled is not "no wallet" — throw a retryable
+      // error for the caller's UI instead of opening the connect modal
+      // over a checkout that already has a wallet.
+      const status = wallet.getStatus()
+      if (status.remembered) {
+        const err = new Error(status.rememberedKind === 'nwc'
+          ? 'Couldn\'t unlock your saved wallet connection. Try again.'
+          : 'Your wallet extension didn\'t respond. Check that it\'s unlocked, then try again.')
+        err.code = 'WALLET_UNRESPONSIVE'
+        throw err
+      }
       this.openWalletConnect()
       const err = new Error('Connect a Lightning wallet to pay')
       err.code = 'NO_WALLET'
@@ -1027,7 +1058,10 @@ const api = {
     ev.content     = template.content || ''
     ev.tags        = Array.isArray(template.tags) ? template.tags : []
     ev.created_at  = template.created_at || Math.floor(Date.now() / 1000)
-    await ev.sign()
+    // Bounded like every internal sign path — a wedged extension pipe or
+    // backgrounded remote signer otherwise hangs the caller's UI forever
+    // (this API serves the zap/reply/repost/like bars and merch checkout).
+    await signWithTimeout(ev)
     return ev.rawEvent()
   },
 
