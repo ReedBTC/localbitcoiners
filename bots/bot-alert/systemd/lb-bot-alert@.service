@@ -1,0 +1,21 @@
+[Unit]
+Description=Local Bitcoiners — open a GitHub issue when %i fails
+Documentation=file:///home/reed/localbitcoiners/bots/bot-alert/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=reed
+# gh reads its auth from ~/.config/gh/hosts.yml, so HOME must be set — systemd
+# does not set it for User= alone, and without it gh runs unauthenticated and
+# the alert silently fails. Mirrors localbitcoiners-bug-watcher.service.
+Environment=HOME=/home/reed
+WorkingDirectory=/home/reed/localbitcoiners/bots/bot-alert
+ExecStart=/usr/bin/python3 /home/reed/localbitcoiners/bots/bot-alert/local_bitcoiners_botalert.py %i
+# The alerter must never become the thing that needs alerting: bound its runtime
+# and let it die quietly rather than hang a failure path.
+TimeoutStartSec=60s
+Nice=10
+StandardOutput=journal
+StandardError=journal
