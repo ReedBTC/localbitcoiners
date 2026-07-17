@@ -205,6 +205,24 @@ async function fetchJsonCapped(url, errLabel) {
   try { return JSON.parse(text) } catch { throw new Error('Response was not valid JSON') }
 }
 
+// Cross-domain LNURL callbacks we've explicitly decided to trust, keyed by
+// lud16 domain. Some custodial wallets serve `.well-known/lnurlp` from their
+// brand domain but issue invoices from a separate API domain. LUD-06 treats
+// `callback` as opaque and does not require it to share the lud16 host, so a
+// strict same-domain rule is stricter than spec — it aborts the leg before an
+// invoice is ever requested, and the recipient's wallet is never contacted.
+// Every website boost to a walletofsatoshi.com guest split failed this way.
+//
+// Keep this narrow and exact-match: the guard exists so a compromised lud16
+// server can't redirect the callback to an arbitrary host, and each entry
+// gives up that protection for one domain. Verify a provider genuinely uses
+// the host before adding it.
+const CALLBACK_HOST_ALLOWLIST = {
+  // Wallet of Satoshi serves lud16 from walletofsatoshi.com, invoices from
+  // livingroomofsatoshi.com (its long-standing API domain).
+  'walletofsatoshi.com': ['livingroomofsatoshi.com'],
+}
+
 export async function fetchLnurlMeta(lud16) {
   if (!LUD16_RE.test(lud16)) throw new Error('Invalid lightning address format')
   const [name, domain] = lud16.split('@')
@@ -228,14 +246,20 @@ export async function fetchLnurlMeta(lud16) {
     throw new Error('LNURL metadata missing valid https callback URL')
   }
   // Constrain the callback host to the lud16 domain (or a subdomain
-  // of it). Without this, a compromised lud16 server can return a
-  // `callback` pointing at any HTTPS URL — internal corp endpoints,
-  // attacker logging endpoints, hangs — and we'd happily issue the
-  // request from the donor's origin.
+  // of it), plus the explicit cross-domain exceptions above. Without
+  // this, a compromised lud16 server can return a `callback` pointing
+  // at any HTTPS URL — internal corp endpoints, attacker logging
+  // endpoints, hangs — and we'd happily issue the request from the
+  // donor's origin.
   try {
     const cbHost = new URL(data.callback).hostname.toLowerCase()
     const lud16Host = domain.toLowerCase()
-    if (cbHost !== lud16Host && !cbHost.endsWith('.' + lud16Host)) {
+    const allowed = CALLBACK_HOST_ALLOWLIST[lud16Host] || []
+    if (
+      cbHost !== lud16Host &&
+      !cbHost.endsWith('.' + lud16Host) &&
+      !allowed.includes(cbHost)
+    ) {
       throw new Error(`callback host ${cbHost} does not belong to ${lud16Host}`)
     }
   } catch (e) {
