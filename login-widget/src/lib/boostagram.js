@@ -158,8 +158,26 @@ const LNURL_FETCH_TIMEOUT_MS = 10_000
  * bytes exceed the cap. The 10s `withTimeout` doesn't bound bytes —
  * a slow trickle of 1 MB/s for 9.9 s passes cleanly — so this guard
  * is the actual DoS defence.
+ *
+ * One automatic retry with a short backoff: LNURL providers behind CDNs
+ * intermittently fail *browser* requests (challenge page / 5xx without
+ * CORS headers surfaces as a hard fetch error) while being otherwise
+ * healthy — the 2026-07-17 getalby wobble failed every getalby leg of a
+ * boost this way. A single retry papers over the transient case without
+ * meaningfully delaying a genuinely-down endpoint (~1.2s added, inside
+ * the leg's existing resolving state). A served LNURL ERROR response is
+ * NOT retried — that's a definitive answer, parsed by the callers.
  */
 async function fetchJsonCapped(url, errLabel) {
+  try {
+    return await fetchJsonCappedOnce(url, errLabel)
+  } catch (e) {
+    await new Promise(r => setTimeout(r, 1200))
+    return fetchJsonCappedOnce(url, errLabel)
+  }
+}
+
+async function fetchJsonCappedOnce(url, errLabel) {
   const ctrl = new AbortController()
   const res = await withTimeout(
     fetch(url, { signal: ctrl.signal }),
@@ -394,17 +412,23 @@ export function signDonationBoostagramWithBurner(template, burnerSk) {
 /**
  * Publish an already-signed kind 30078 to the boostagram relay set.
  * Returns whether at least one relay ack'd. Never throws.
+ *
+ * The pool is shared across calls: a multi-leg boost publishes one event
+ * per leg plus the session receipt, and a per-call SimplePool opened and
+ * closed 4 relay sockets for each of them. SimplePool reconnects lazily,
+ * so keeping it open costs nothing when no boost is running.
  */
+let boostagramPool = null
 export async function publishSignedBoostagram(signedEvent) {
-  const pool = new SimplePool()
+  if (!boostagramPool) boostagramPool = new SimplePool()
   let published = false
   try {
     const results = await Promise.allSettled(
-      pool.publish(BOOSTAGRAM_RELAYS, signedEvent).map(p => withTimeout(p, 6000))
+      boostagramPool.publish(BOOSTAGRAM_RELAYS, signedEvent).map(p => withTimeout(p, 6000))
     )
     published = results.some(r => r.status === 'fulfilled')
-  } finally {
-    pool.close(BOOSTAGRAM_RELAYS)
+  } catch {
+    // publish() itself threw (e.g. relay bookkeeping) — treat as not-acked.
   }
   return { eventId: signedEvent.id, published }
 }
@@ -806,7 +830,12 @@ export async function confirmInvoiceSettled(verifyUrl, paymentHash, { attempts =
   let sawResponse = false
   for (let i = 0; i < attempts; i++) {
     try {
-      const res = await fetch(verifyUrl)
+      // Bounded per poll. The verify URL comes from the LNURL response
+      // (third-party, only https-checked), and this function sits on every
+      // ambiguous-payment path — an endpoint that accepts the connection
+      // but never answers would otherwise stall settlement checks for
+      // minutes on the browser's default fetch timeout.
+      const res = await withTimeout(fetch(verifyUrl), 6000, 'verify-timeout')
       if (res.ok) {
         sawResponse = true
         const data = await res.json().catch(() => null)

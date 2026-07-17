@@ -306,8 +306,15 @@ export async function prewarm(currentUser) {
 export function disconnect(currentUser) {
   if (nwc.isReady()) { nwc.disconnect(); return }
   if (webln.isReady()) { webln.disconnect(currentUser?.pubkey); return }
-  // Defensive cleanup for orphaned at-rest state.
-  if (nwc.getStatus().hasStoredBlob) nwc.disconnect()
+  // Defensive cleanup for orphaned at-rest state — but only state that
+  // belongs to THIS user. An NWC blob saved under a different npub (shared
+  // browser, other account) is inert without that user's signer; wiping it
+  // here would silently delete their saved wallet. It gets cleared on that
+  // account's own next ensureReady/disconnect instead.
+  const nwcSnap = nwc.getStatus()
+  if (nwcSnap.hasStoredBlob && currentUser?.npub && nwcSnap.ownerNpub === currentUser.npub) {
+    nwc.disconnect()
+  }
   if (currentUser?.pubkey && webln.hasStoredFlag(currentUser.pubkey)) {
     webln.disconnect(currentUser.pubkey)
   }

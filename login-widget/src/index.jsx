@@ -26,6 +26,7 @@ import { markStubUser, isStubUser } from './lib/stubUser.js'
 import { getNDK, resetNDK, connectAndWait, signWithTimeout } from './lib/ndk.js'
 import * as wallet from './lib/wallet.js'
 import { bolt11PaymentHash, confirmInvoiceSettled } from './lib/boostagram.js'
+import { isCleanPaymentDecline } from './lib/utils.js'
 import { applyRecipientOverrides } from './lib/recipientOverrides.js'
 import { pushToast } from './lib/toast.js'
 // Side-effect import: installs a same-origin click interceptor that
@@ -1095,12 +1096,12 @@ const api = {
     }
     if (preimage) return { status: 'paid', preimage, kind: active.kind }
 
-    // No clean preimage. A clean decline (insufficient balance, expired
-    // invoice, no route) means the payment definitively never left the
-    // wallet → safe to report unsettled without a verify round-trip.
+    // No clean preimage. A clean decline (user rejected the prompt,
+    // insufficient balance, expired invoice, no route) means the payment
+    // definitively never left the wallet → safe to report unsettled
+    // without a verify round-trip.
     const payMsg = String(payError?.message || payError || '')
-    const cleanDecline = /insufficient|not enough|no funds|balance too low|expired|no route|unable to find route|route not found/i.test(payMsg)
-    if (cleanDecline) return { status: 'unsettled', preimage: null, kind: active.kind, error: payMsg }
+    if (isCleanPaymentDecline(payMsg)) return { status: 'unsettled', preimage: null, kind: active.kind, error: payMsg }
 
     // Ambiguous (timeout, lost reply, no preimage). Confirm out-of-band
     // via LUD-21 before deciding anything.

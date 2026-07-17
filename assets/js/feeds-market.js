@@ -459,7 +459,11 @@ async function sendLegacyDM(sellerHex, text) {
   const relays = await resolveDMRelays(sellerHex)
   const pool = new SimplePool()
   try {
-    await Promise.allSettled(pool.publish(relays, signed))
+    // Bound each relay publish — a hung relay socket otherwise stalls
+    // the order flow here even after every other relay has acked.
+    await Promise.allSettled(pool.publish(relays, signed).map((p) =>
+      Promise.race([p, new Promise((res) => setTimeout(res, 8000))])
+    ))
   } finally {
     try { pool.close(relays) } catch {}
   }

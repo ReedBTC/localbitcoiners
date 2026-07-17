@@ -67,6 +67,7 @@ import {
 } from './boostagram.js'
 import { formatEpisodeComment } from './episodeData.js'
 import { shouldPublishMetadata } from './recipientOverrides.js'
+import { isCleanPaymentDecline } from './utils.js'
 
 /**
  * Compute weight-proportional msats for each recipient.
@@ -126,6 +127,7 @@ function uuid4() {
 // object can't blow out the row.
 function friendlyPayError(msg) {
   if (!msg) return 'Payment failed.'
+  if (/rejected|denied|declined/i.test(msg)) return 'Payment declined in your wallet.'
   if (/insufficient|not enough|no funds|balance too low/i.test(msg)) return 'Not enough balance in your wallet.'
   if (/expired/i.test(msg)) return 'The invoice expired before it could be paid.'
   if (/no route|route not found|unable to find route/i.test(msg)) return 'No payment route to this recipient.'
@@ -340,13 +342,13 @@ async function runLeg({
       return { ...baseResult }
     }
 
-    // No clean preimage. A *clean decline* (insufficient balance, expired
-    // invoice, no route) means the payment definitively never left the
-    // wallet → safe to fail without a verify round-trip. Anything else
-    // (timeout, lost reply, no-preimage, generic error) is ambiguous.
+    // No clean preimage. A *clean decline* (user rejected the prompt,
+    // insufficient balance, expired invoice, no route) means the payment
+    // definitively never left the wallet → safe to fail without a verify
+    // round-trip. Anything else (timeout, lost reply, no-preimage,
+    // generic error) is ambiguous.
     const payMsg = String(payError?.message || payError || '')
-    const cleanDecline = /insufficient|not enough|no funds|balance too low|expired|no route|unable to find route|route not found/i.test(payMsg)
-    if (cleanDecline) {
+    if (isCleanPaymentDecline(payMsg)) {
       update({ status: STATUSES.FAILED, error: friendlyPayError(payMsg) })
       return { ...baseResult }
     }
@@ -550,6 +552,7 @@ export async function presignAllowlistedLegs({
  *   }>,
  *   anySucceeded: boolean,
  *   allSucceeded: boolean,
+ *   anyUncertain: boolean,
  * }>}
  */
 export async function payAllLegs({

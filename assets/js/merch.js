@@ -1569,16 +1569,67 @@ function isBolt11(s) {
   return typeof s === 'string' && /^ln(bc|tb|bcrt)[0-9]/i.test(s.trim())
 }
 
+// Cross-domain LNURL callbacks we explicitly trust, keyed by lud16 domain.
+// Mirrors the widget's boostagram.js allowlist: LUD-06 treats `callback` as
+// opaque, but constraining it to the lud16 host stops a compromised seller
+// endpoint redirecting the invoice request to an arbitrary origin. Each
+// entry gives up that protection for one provider — verify before adding.
+const LNURL_CALLBACK_HOST_ALLOWLIST = {
+  // Wallet of Satoshi serves lud16 from walletofsatoshi.com, invoices from
+  // livingroomofsatoshi.com (its long-standing API domain).
+  'walletofsatoshi.com': ['livingroomofsatoshi.com'],
+}
+
+const LNURL_TIMEOUT = Symbol('lnurl-timeout')
+
+// Bounded fetch → parsed JSON. Seller lud16s come from merchant kind-0
+// profiles (third-party data), so a stalling or dead endpoint must fail
+// the checkout step cleanly instead of hanging it forever.
+//
+// One automatic retry with a short backoff: LNURL providers behind CDNs
+// intermittently fail browser requests (challenge/5xx without CORS looks
+// like a hard fetch error) while healthy for everyone else — the
+// 2026-07-17 getalby wobble. A served LNURL ERROR is NOT retried (it's a
+// definitive answer, thrown from the parse step below).
+async function fetchLnurlJson(url, what) {
+  let res = await withTimeout(fetch(url).catch(() => null), 10000, LNURL_TIMEOUT)
+  if (res === LNURL_TIMEOUT || !res || !res.ok) {
+    await new Promise((r) => setTimeout(r, 1200))
+    res = await withTimeout(fetch(url).catch(() => null), 10000, LNURL_TIMEOUT)
+  }
+  if (res === LNURL_TIMEOUT) throw new Error(`${what} timed out — the seller's Lightning provider isn't responding.`)
+  if (!res || !res.ok) throw new Error(`${what} failed — the seller's Lightning provider couldn't be reached.`)
+  const data = await res.json().catch(() => null)
+  if (!data || typeof data !== 'object') throw new Error(`${what} returned an invalid response.`)
+  if (data.status === 'ERROR') throw new Error(data.reason || `${what} was rejected by the seller's Lightning provider.`)
+  return data
+}
+
 async function fetchInvoice(lud16, amountSats, comment) {
   if (!LUD16_RE.test(lud16)) throw new Error('Seller Lightning address is invalid.')
   const [name, domain] = lud16.split('@')
-  const meta = await fetch(`https://${domain}/.well-known/lnurlp/${encodeURIComponent(name)}`).then(r => r.json())
-  if (meta.tag !== 'payRequest' || !meta.callback) throw new Error('Seller Lightning address did not return a pay endpoint.')
+  const meta = await fetchLnurlJson(`https://${domain}/.well-known/lnurlp/${encodeURIComponent(name)}`, 'Pay-endpoint lookup')
+  if (meta.tag !== 'payRequest' || typeof meta.callback !== 'string' || !meta.callback.startsWith('https://')) {
+    throw new Error('Seller Lightning address did not return a pay endpoint.')
+  }
+  // Constrain the callback host to the lud16 domain (or a subdomain), plus
+  // the explicit exceptions above — same rule as the boost path.
+  const lud16Host = domain.toLowerCase()
+  let cb
+  try {
+    cb = new URL(meta.callback)
+  } catch {
+    throw new Error('Seller Lightning address returned an invalid callback URL.')
+  }
+  const cbHost = cb.hostname.toLowerCase()
+  const allowedHosts = LNURL_CALLBACK_HOST_ALLOWLIST[lud16Host] || []
+  if (cbHost !== lud16Host && !cbHost.endsWith('.' + lud16Host) && !allowedHosts.includes(cbHost)) {
+    throw new Error('Seller Lightning address callback points at an unexpected host.')
+  }
   const amountMsat = amountSats * 1000
   if (amountMsat < (meta.minSendable || 0) || amountMsat > (meta.maxSendable || Infinity)) {
     throw new Error('Order total is outside the seller wallet’s accepted range.')
   }
-  const cb = new URL(meta.callback)
   cb.searchParams.set('amount', String(amountMsat))
   // Attach the identifying comment, truncated to whatever the endpoint
   // allows (LUD-12). Default 0 means comments unsupported → omit.
@@ -1586,7 +1637,7 @@ async function fetchInvoice(lud16, amountSats, comment) {
   if (comment && maxComment > 0) {
     cb.searchParams.set('comment', comment.slice(0, maxComment))
   }
-  const res = await fetch(cb.toString()).then(r => r.json())
+  const res = await fetchLnurlJson(cb.toString(), 'Invoice request')
   if (!res.pr || !isBolt11(res.pr)) throw new Error('Seller wallet did not return a valid invoice.')
   // LUD-21 verify URL, when the endpoint provides one. Kept so the pay
   // step can confirm settlement out-of-band after an ambiguous NWC

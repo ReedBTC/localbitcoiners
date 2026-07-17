@@ -198,13 +198,9 @@ export async function ensureReady(currentUser) {
   // instead of surfacing a rejection. Bound the call so the modal
   // can't get stuck on "Unlocking wallet…" forever. 8 s is plenty for
   // a healthy signer round-trip; anything longer and the signer is
-  // effectively broken and we shouldn't wait further.
-  //
-  // On timeout we wipe the encrypted blob — keeping it would just
-  // make the next modal open hit the same wall. The user falls
-  // through to the connect form and can paste a fresh URI; if their
-  // signer is still broken, encrypt-self will hit a similar timeout
-  // there with the same clear error.
+  // effectively broken and we shouldn't wait further. On failure the
+  // blob is kept (see the catch below) — the failure may be transient
+  // and the user can retry or explicitly reset.
   console.info('[lb-nwc] ensureReady: decrypting blob…')
   let nwcUri
   try {

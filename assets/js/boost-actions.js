@@ -696,6 +696,13 @@ function buildZapModal(targetEvent, recipientProfile) {
         status.textContent = '✅ Zap sent!'
         submit.style.display = 'none'
         setTimeout(close, 1800)
+      } else if (result.uncertain) {
+        // The wallet attempt may have settled even though we couldn't
+        // confirm it. Showing the invoice here would invite paying it a
+        // second time — warn instead, and don't offer a retry.
+        status.classList.add('is-error')
+        status.textContent = 'Couldn\'t confirm whether the zap went through. Check your wallet before zapping again — it may have already been paid.'
+        submit.style.display = 'none'
       } else {
         status.textContent = 'Pay this invoice with your Lightning wallet:'
         invoiceWrap.appendChild(buildInvoiceBlock(result.invoice))
@@ -760,20 +767,26 @@ function buildInvoiceBlock(invoice) {
 async function performZap({
   recipientLud16, recipientPubkey, targetEvent, amountSats, message, onStatus,
 }) {
-  // 1. Resolve LNURL pay endpoint from lud16 (Lightning Address).
+  // 1. Resolve LNURL pay endpoint from lud16 (Lightning Address). The
+  // address comes from an arbitrary Nostr profile, so treat every part
+  // of it as hostile: encode the local part so it can't smuggle path
+  // segments into the .well-known URL, and bound both fetches so a
+  // stalling server can't pin the modal on "Fetching pay request…".
   const [name, domain] = recipientLud16.split('@')
   if (!name || !domain) throw new Error('Invalid Lightning address')
-  const lnurlEndpoint = `https://${domain}/.well-known/lnurlp/${name}`
+  const lnurlEndpoint = `https://${domain}/.well-known/lnurlp/${encodeURIComponent(name)}`
 
   onStatus?.('Fetching pay request…')
-  const lnurlResp = await fetch(lnurlEndpoint).catch(() => null)
-  if (!lnurlResp || !lnurlResp.ok) throw new Error('Could not reach Lightning address')
+  const lnurlResp = await fetchLnurlWithRetry(lnurlEndpoint)
+  if (!lnurlResp) throw new Error('Could not reach Lightning address')
   const lnurlInfo = await lnurlResp.json().catch(() => null)
   if (!lnurlInfo) throw new Error('Invalid pay request response')
   if (lnurlInfo.status === 'ERROR') throw new Error(lnurlInfo.reason || 'LNURL error')
   if (lnurlInfo.tag !== 'payRequest') throw new Error('Endpoint is not a pay request')
   if (!lnurlInfo.allowsNostr) throw new Error('Recipient hasn\'t enabled Nostr zaps')
-  if (!lnurlInfo.callback) throw new Error('No callback URL in pay request')
+  if (typeof lnurlInfo.callback !== 'string' || !lnurlInfo.callback.startsWith('https://')) {
+    throw new Error('No callback URL in pay request')
+  }
 
   const msats = amountSats * 1000
   if (lnurlInfo.minSendable && msats < lnurlInfo.minSendable) {
@@ -800,37 +813,60 @@ async function performZap({
     ],
   })
 
-  // 3. Request the invoice from the LNURL callback.
+  // 3. Request the invoice from the LNURL callback. Keep the LUD-21
+  // verify URL when the endpoint offers one — it's what lets an
+  // ambiguous pay attempt below be resolved as settled/unsettled
+  // instead of guessing.
   onStatus?.('Requesting invoice…')
   const cbUrl = new URL(lnurlInfo.callback)
   cbUrl.searchParams.set('amount', String(msats))
   cbUrl.searchParams.set('nostr', JSON.stringify(zapRequest))
-  const invResp = await fetch(cbUrl.toString()).catch(() => null)
-  if (!invResp || !invResp.ok) throw new Error('Invoice request failed')
+  const invResp = await fetchLnurlWithRetry(cbUrl.toString())
+  if (!invResp) throw new Error('Invoice request failed')
   const invJson = await invResp.json().catch(() => null)
   if (!invJson) throw new Error('Invalid invoice response')
   if (invJson.status === 'ERROR') throw new Error(invJson.reason || 'Invoice error')
   const invoice = invJson.pr
   if (!invoice) throw new Error('No invoice returned')
+  const verify = (typeof invJson.verify === 'string' && invJson.verify.startsWith('https://'))
+    ? invJson.verify
+    : null
 
-  // 4. Pay — one attempt, then fall through to the manual invoice UI.
-  // Never try a second backend after a failed attempt: the first send
-  // may still settle, and a second one risks paying the invoice twice.
+  // 4. Pay — one attempt, never a second backend after a failed one (the
+  // first send may still settle; a second risks paying twice). Outcomes:
+  //   paid       — settled (preimage, or LUD-21 confirmed it)
+  //   uncertain  — attempt was ambiguous and we couldn't confirm either
+  //                way. The modal must NOT show the manual invoice: the
+  //                payment may already have gone through.
+  //   not paid   — definitively unsettled (or no wallet tried at all);
+  //                safe to fall through to the manual invoice UI.
   //
   // Prefer the widget's wallet facade whenever this user has a wallet
   // there (connected now, or remembered from a prior session — the
-  // facade unlocks it behind this tap). It brings single-flight
-  // enable() with timeouts, and it covers NWC users, whose wallet this
-  // path used to ignore entirely. The raw-WebLN branch remains only for
-  // extension users who never connected a wallet through the widget.
+  // facade unlocks it behind this tap). Its payInvoiceVerified is the
+  // settlement-verified primitive the merch checkout uses: a lost NWC
+  // reply is checked against the verify URL instead of being reported
+  // as a clean failure. The raw-WebLN branch remains only for extension
+  // users who never connected a wallet through the widget.
   const walletStatus = window.LBLogin?.getNwcStatus?.()
-  if ((walletStatus?.connected || walletStatus?.remembered) && window.LBLogin?.payInvoice) {
+  if ((walletStatus?.connected || walletStatus?.remembered) && window.LBLogin?.payInvoiceVerified) {
     try {
       onStatus?.('Paying…')
-      const res = await window.LBLogin.payInvoice(invoice)
-      return { paid: true, method: res?.kind || walletStatus.kind || 'wallet', invoice }
+      const res = await window.LBLogin.payInvoiceVerified(invoice, { verify })
+      if (res?.status === 'paid') {
+        return { paid: true, method: res.kind || walletStatus.kind || 'wallet', invoice }
+      }
+      if (res?.status === 'uncertain') {
+        console.warn('[zap] wallet payment uncertain', res?.error)
+        return { paid: false, uncertain: true, invoice }
+      }
+      // 'unsettled' — wallet definitively wasn't charged; manual
+      // invoice below is safe.
+      console.warn('[zap] wallet payment failed', res?.error)
     } catch (e) {
-      console.warn('[zap] wallet payment failed', e)
+      // NO_WALLET / WALLET_UNRESPONSIVE / sign-in gates — nothing was
+      // sent, so the manual invoice fallback is safe.
+      console.warn('[zap] wallet payment not attempted', e)
     }
   } else if (typeof window !== 'undefined' && window.webln) {
     try {
@@ -848,9 +884,54 @@ async function performZap({
       return { paid: true, method: 'webln', invoice }
     } catch (e) {
       console.warn('[zap] WebLN payment failed', e)
+      // A clean decline (user hit Reject, no balance, bad route) means
+      // the extension never sent the payment — manual invoice is safe.
+      // Anything else is ambiguous: confirm settlement via LUD-21 when
+      // we can, and refuse to re-surface the invoice when we can't.
+      const msg = String(e?.message || e || '')
+      const cleanDecline = /rejected|denied|declined|insufficient|not enough|no funds|balance too low|expired|no route|unable to find route|route not found/i.test(msg)
+      if (!cleanDecline) {
+        const settled = await confirmZapSettled(verify)
+        if (settled === 'settled') return { paid: true, method: 'webln', invoice }
+        if (settled !== 'unsettled') return { paid: false, uncertain: true, invoice }
+      }
     }
   }
   return { paid: false, invoice }
+}
+
+// Minimal LUD-21 settlement check for the raw-WebLN zap branch (the
+// widget-facade branch gets this inside payInvoiceVerified). A few short,
+// bounded polls; returns 'settled' | 'unsettled' | 'unknown'. Never throws.
+async function confirmZapSettled(verifyUrl, { attempts = 3, intervalMs = 1500 } = {}) {
+  if (typeof verifyUrl !== 'string' || !verifyUrl.startsWith('https://')) return 'unknown'
+  let sawResponse = false
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await promiseWithTimeout(fetch(verifyUrl), 6000, 'verify timeout')
+      if (res.ok) {
+        sawResponse = true
+        const data = await res.json().catch(() => null)
+        if (data && data.settled) return 'settled'
+      }
+    } catch { /* network blip — try again */ }
+    if (i < attempts - 1) await new Promise(r => setTimeout(r, intervalMs))
+  }
+  return sawResponse ? 'unsettled' : 'unknown'
+}
+
+// Bounded LNURL fetch with one automatic retry on a short backoff.
+// Returns the ok Response, or null when both attempts failed. LNURL
+// providers behind CDNs intermittently fail browser requests
+// (challenge/5xx without CORS surfaces as a hard fetch error) while
+// healthy for server-side callers — the 2026-07-17 getalby wobble.
+async function fetchLnurlWithRetry(url) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const res = await promiseWithTimeout(fetch(url), 10000, 'LNURL request timed out').catch(() => null)
+    if (res && res.ok) return res
+    if (attempt === 0) await new Promise(r => setTimeout(r, 1200))
+  }
+  return null
 }
 
 // Race a promise against a deadline. The underlying call is abandoned,

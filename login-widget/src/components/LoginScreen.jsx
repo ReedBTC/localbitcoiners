@@ -71,6 +71,23 @@ function clearPendingNip46() {
   try { sessionStorage.removeItem(PENDING_NIP46_KEY) } catch {}
 }
 
+// Top-level (stable identity) — safe to use as a JSX element type. The
+// stateful sections below it are deliberately render *helpers* called as
+// `{renderKeySection()}`, NOT components used as `<KeySection />`: an
+// arrow component defined inside LoginScreen gets a new function identity
+// every render, so React treats it as a different element type and
+// unmounts/remounts the whole subtree — which drops input focus (and the
+// mobile keyboard) on every keystroke in the nsec/bunker fields. Calling
+// them as functions inlines their elements into LoginScreen's own tree,
+// so <input> identity is stable across renders.
+const Divider = () => (
+  <div className="flex items-center gap-3">
+    <div className="flex-1 h-px bg-neutral-800" />
+    <span className="text-xs text-neutral-600">or</span>
+    <div className="flex-1 h-px bg-neutral-800" />
+  </div>
+)
+
 export default function LoginScreen({ onLogin, embedded = false }) {
   const isMobile = useIsMobile()
   const [nsecValue, setNsecValue] = useState('')
@@ -583,17 +600,10 @@ export default function LoginScreen({ onLogin, embedded = false }) {
     }
   }
 
-  // ─── Shared sub-components ──────────────────────────────────────────────────
+  // ─── Shared render helpers (see the note above Divider — these must be
+  // called as functions, never used as JSX element types) ─────────────────
 
-  const Divider = () => (
-    <div className="flex items-center gap-3">
-      <div className="flex-1 h-px bg-neutral-800" />
-      <span className="text-xs text-neutral-600">or</span>
-      <div className="flex-1 h-px bg-neutral-800" />
-    </div>
-  )
-
-  const KeySection = () => (
+  const renderKeySection = () => (
     <div className="space-y-3">
       <div className="space-y-1">
         <label htmlFor="nsec-input" className="block text-sm text-neutral-400">
@@ -630,7 +640,7 @@ export default function LoginScreen({ onLogin, embedded = false }) {
     </div>
   )
 
-  const ExtensionSection = () => (
+  const renderExtensionSection = () => (
     <div className="space-y-3">
       <button
         onClick={loginWithExtension}
@@ -657,7 +667,7 @@ export default function LoginScreen({ onLogin, embedded = false }) {
     </div>
   )
 
-  const NostrConnectSection = () => (
+  const renderNostrConnectSection = () => (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-sm text-neutral-400">Nostr Connect</span>
@@ -932,21 +942,21 @@ export default function LoginScreen({ onLogin, embedded = false }) {
           <>
             {hasExtension && (
               <>
-                <ExtensionSection />
+                {renderExtensionSection()}
                 <Divider />
               </>
             )}
-            <KeySection />
+            {renderKeySection()}
             <Divider />
-            <NostrConnectSection />
+            {renderNostrConnectSection()}
           </>
         ) : (
           <>
-            <ExtensionSection />
+            {renderExtensionSection()}
             <Divider />
-            <KeySection />
+            {renderKeySection()}
             <Divider />
-            <NostrConnectSection />
+            {renderNostrConnectSection()}
           </>
         )}
 

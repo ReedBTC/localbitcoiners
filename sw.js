@@ -69,7 +69,17 @@
 // blind-retry — the bug where one coffee order settled four times. Evicts
 // login-widget.js, merch.js and merch.css so /merch + /feeds get it on first
 // navigation.
-const VERSION = 'lb-v31';
+// v32: payment-review sweep. Zaps are settlement-verified (no more manual-
+// invoice fallback after an ambiguous wallet attempt — the double-pay path),
+// merch LNURL fetches are bounded + callback-host-checked, webln.keysend is
+// bounded like sendPayment, LUD-21 verify polls are bounded, user-rejected
+// payments classify as clean declines instead of stalling into UNCERTAIN,
+// and the login inputs no longer remount per keystroke. LNURL fetches also
+// retry once on a short backoff before failing a leg — CDN-fronted
+// providers (getalby, 2026-07-17) intermittently hard-fail browser fetches
+// while staying healthy for server-side callers. Evicts login-widget.js,
+// boost-actions.js, merch.js and feeds-market.js.
+const VERSION = 'lb-v32';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

@@ -25,6 +25,7 @@ import {
   bolt11PaymentHash,
   confirmInvoiceSettled,
 } from './boostagram.js'
+import { withTimeout, isCleanPaymentDecline } from './utils.js'
 import * as wallet from './wallet.js'
 import * as nwc from './nwc.js'
 import {
@@ -42,6 +43,20 @@ export const STATUS = {
   FAILED: 'failed',
   SKIPPED: 'skipped',     // leg's proportional share rounded to 0 sats
   UNCERTAIN: 'uncertain', // paid attempt gave no clean preimage and we can't confirm
+}
+
+// Leave-page guard. LB boosts get this from boostQueue's beforeunload
+// handler, but external boosts run outside that queue — without their own
+// counter, navigating away mid-boost silently interrupts unpaid legs.
+// Same standard incantation as boostQueue's.
+let activeBoosts = 0
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', (e) => {
+    if (activeBoosts === 0) return
+    e.preventDefault()
+    e.returnValue = ''
+    return ''
+  })
 }
 
 /** UUID4 tying every leg of one boost together (boostagram `uuid`). */
@@ -77,6 +92,7 @@ function friendlyError(msg) {
   if (/not_implemented|not implemented|unsupported|method not found/i.test(s)) {
     return 'Your wallet doesn\'t support keysend payments. Try connecting Alby or Mutiny.'
   }
+  if (/rejected|denied|declined/i.test(s)) return 'Payment declined in your wallet.'
   if (/insufficient|not enough|no funds|balance too low/i.test(s)) return 'Not enough balance in your wallet.'
   if (/expired/i.test(s)) return 'The invoice expired before it could be paid.'
   if (/no route|route not found|unable to find route/i.test(s)) return 'No payment route to this recipient.'
@@ -84,9 +100,12 @@ function friendlyError(msg) {
 }
 
 // A clean decline means the payment definitively never left the wallet → safe
-// to FAIL without a settlement round-trip. Anything else is ambiguous.
+// to FAIL without a settlement round-trip. Anything else is ambiguous. On top
+// of the shared classifier: keysend-capability errors (wallet can't keysend at
+// all), which also mean nothing was sent.
 function isCleanDecline(msg) {
-  return /insufficient|not enough|no funds|balance too low|expired|no route|unable to find route|route not found|not_implemented|not implemented|unsupported|method not found/i.test(String(msg || ''))
+  return isCleanPaymentDecline(msg) ||
+    /not_implemented|not implemented|unsupported|method not found/i.test(String(msg || ''))
 }
 
 async function payLnaddressLeg(leg, ctx, update) {
@@ -153,12 +172,22 @@ async function payKeysendLeg(leg, ctx, update) {
       return { status: STATUS.UNCERTAIN, error: 'Couldn’t confirm this keysend — check your wallet.' }
     }
     // WebLN keysend — amount in SATS, plain-string custom records.
+    // Bounded like webln.payInvoice: a wedged extension (broken worker,
+    // unrendered approval popup) otherwise hangs this promise forever and
+    // the external boost modal spins on "paying" with no exit. Generous
+    // 90s because keysend can legitimately block on a human approving a
+    // popup. On timeout we land in the catch below, where a non-clean-
+    // decline message maps to UNCERTAIN — never a "wasn't charged" claim.
     if (!window.webln) throw new Error('No WebLN provider')
-    const res = await window.webln.keysend({
-      destination: leg.recipient.address,
-      amount: leg.sats,
-      customRecords: toWeblnRecords(boostagram, leg.recipient),
-    })
+    const res = await withTimeout(
+      Promise.resolve(window.webln.keysend({
+        destination: leg.recipient.address,
+        amount: leg.sats,
+        customRecords: toWeblnRecords(boostagram, leg.recipient),
+      })),
+      90000,
+      'Your wallet extension didn\'t respond to the keysend in time. It may still be going through — check your wallet before retrying.',
+    )
     if (res?.preimage) return { status: STATUS.PAID }
     return { status: STATUS.UNCERTAIN, error: 'Couldn’t confirm this keysend — check your wallet.' }
   } catch (e) {
@@ -198,21 +227,26 @@ export async function payExternalBoost({
     ...l, status: STATUS.PENDING, error: null, paymentHash: null, verifyUrl: null,
   }))
 
-  for (const leg of legs) {
-    const update = (patch) => { Object.assign(leg, patch); onLeg?.(leg.index, { ...leg }) }
+  activeBoosts++
+  try {
+    for (const leg of legs) {
+      const update = (patch) => { Object.assign(leg, patch); onLeg?.(leg.index, { ...leg }) }
 
-    if (leg.sats <= 0) { update({ status: STATUS.SKIPPED }); continue }
+      if (leg.sats <= 0) { update({ status: STATUS.SKIPPED }); continue }
 
-    try {
-      const result = leg.recipient.type === 'lnaddress'
-        ? await payLnaddressLeg(leg, ctx, update)
-        : await payKeysendLeg(leg, ctx, update)
-      update(result)
-    } catch (e) {
-      // Pre-payment failures (LNURL resolve, below-min, invoice fetch) — these
-      // are definitively not-paid.
-      update({ status: STATUS.FAILED, error: friendlyError(e?.message || e) })
+      try {
+        const result = leg.recipient.type === 'lnaddress'
+          ? await payLnaddressLeg(leg, ctx, update)
+          : await payKeysendLeg(leg, ctx, update)
+        update(result)
+      } catch (e) {
+        // Pre-payment failures (LNURL resolve, below-min, invoice fetch) — these
+        // are definitively not-paid.
+        update({ status: STATUS.FAILED, error: friendlyError(e?.message || e) })
+      }
     }
+  } finally {
+    activeBoosts--
   }
 
   const paidLegs = legs.filter((l) => l.status === STATUS.PAID)

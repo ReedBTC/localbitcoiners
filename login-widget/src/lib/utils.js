@@ -24,6 +24,21 @@ export function isSafeUrl(url) {
   }
 }
 
+// True when a wallet error message means the payment definitively never
+// left the wallet — the user hit Reject in their extension, no balance,
+// expired invoice, no route. Safe to report as failed/unsettled without a
+// settlement round-trip. Anything else (timeout, lost reply, generic
+// error) is ambiguous and must go through LUD-21 verification instead.
+// Shared by payAllLegs, payInvoiceVerified, and the external boost path
+// so the three classifiers can't drift.
+//
+// Deliberately does NOT match bare "cancel"/"cancelled": some wallets use
+// it for requests that may already be in flight, which is exactly the
+// ambiguous case the verify path exists for.
+export function isCleanPaymentDecline(msg) {
+  return /rejected|denied|declined|insufficient|not enough|no funds|balance too low|expired|no route|unable to find route|route not found/i.test(String(msg || ''))
+}
+
 // Strip NWC connection strings (and any bare `secret=...` query
 // values) from a string before logging it. @getalby/sdk and other
 // wallet libs occasionally embed the offending input verbatim in

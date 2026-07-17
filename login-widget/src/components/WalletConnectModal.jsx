@@ -31,15 +31,9 @@ export default function WalletConnectModal({ user, onClose, onConnected }) {
   // installed avoids a dead button on every other browser.
   const [weblnAvailable] = useState(() => wallet.isWeblnAvailable())
 
-  useEffect(() => {
-    function onKey(e) {
-      if (connecting) return  // don't let Esc abandon a flight in progress
-      if (e.key === 'Escape') requestClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [requestClose, connecting])
-
+  // No Esc / backdrop close — site convention for wallet-and-payment
+  // modals is an explicit ✕ only, so a misclick can't discard a pasted
+  // NWC connection string.
   useEffect(() => {
     lockBodyScroll()
     return () => unlockBodyScroll()
@@ -101,7 +95,6 @@ export default function WalletConnectModal({ user, onClose, onConnected }) {
     <>
       <div
         className={`fixed inset-0 bg-black/70 z-[78] transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}
-        onClick={connecting ? undefined : requestClose}
         aria-hidden="true"
       />
 
@@ -109,7 +102,6 @@ export default function WalletConnectModal({ user, onClose, onConnected }) {
         className="fixed inset-0 z-[79] flex items-start sm:items-center justify-center p-3 pt-20 sm:p-4 overflow-y-auto overflow-x-hidden"
         role="dialog"
         aria-label="Connect Lightning Wallet"
-        onClick={(e) => { if (e.target === e.currentTarget && !connecting) requestClose() }}
       >
         <div className={`bg-neutral-900 border border-neutral-700 rounded-lg w-full max-w-sm flex flex-col shadow-[0_25px_60px_-12px_rgba(0,0,0,0.8),0_0_0_1px_rgba(255,255,255,0.04)] my-4 sm:my-8 transition-[opacity,transform] duration-200 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
 

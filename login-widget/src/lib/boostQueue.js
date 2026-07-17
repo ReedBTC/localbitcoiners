@@ -138,6 +138,12 @@ export function submitBoost({
     console.warn('[boostQueue] submitBoost: empty or invalid recipients list')
     return null
   }
+  // A zero/NaN total weight would divide through distributeMsats and turn
+  // every leg's msats into NaN — refuse it here with the other input checks.
+  if (!(Number(splits.totalWeight) > 0)) {
+    console.warn('[boostQueue] submitBoost: totalWeight must be > 0')
+    return null
+  }
   const sats = Number(totalSats) || 0
   if (sats < MIN_TOTAL_SATS) {
     console.warn('[boostQueue] submitBoost: totalSats below minimum')
