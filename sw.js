@@ -55,7 +55,14 @@
 // as separate sorts. Bump evicts the stale stale-while-revalidate copy of
 // feeds-podcasts.js so returning visitors get the new wording on first
 // navigation instead of after a 2nd revalidate.
-const VERSION = 'lb-v28';
+// v29: page-load session restore no longer fires a no-gesture getPublicKey()
+// through NDK's `set signer` side effect (it wedged the extension's request
+// pipe and surfaced as a ~30s boost hang ending in a spurious connect modal),
+// signer verify asks the extension fresh at tap time, remembered-wallet unlock
+// timeouts toast a retry instead of the connect modal, and zap/legacy-DM
+// extension calls are bounded. Evicts login-widget.js, boost-actions.js and
+// feeds-market.js so the fix reaches returning visitors on first navigation.
+const VERSION = 'lb-v29';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
