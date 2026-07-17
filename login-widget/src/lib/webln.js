@@ -182,14 +182,32 @@ export async function enable({ pubkey, timeoutMs = 15000 } = {}) {
  * Errors propagate; callers (payAllLegs / BoostModal) translate them
  * the same way they handle NWC errors.
  */
-export async function payInvoice({ invoice }) {
+export async function payInvoice({ invoice, timeoutMs = 90000 }) {
   if (!isActive) {
     // Belt-and-braces: shouldn't happen because the wallet facade
     // gates this on isReady(), but fail loud if someone routes
     // around it.
     throw new Error('Browser-extension wallet not enabled.')
   }
-  const res = await window.webln.sendPayment(invoice)
+  // Bound the call. Unlike NWC (whose SDK enforces a ~60s reply-timeout
+  // ceiling), window.webln.sendPayment can hang indefinitely when the
+  // extension is wedged — a broken worker (Alby's "client was not
+  // initialized"), an un-rendered approval popup, or an extension that
+  // doesn't fully implement WebLN (Sidecar). Without a bound the leg
+  // sits in PAYING forever and payAllLegs never resolves, so the whole
+  // boost modal spins on "Paying…" with no Retry/Done exit.
+  //
+  // The timeout is generous (90s) because sendPayment can legitimately
+  // block on a human approving a popup. On timeout we throw a message
+  // that deliberately does NOT match payAllLegs's clean-decline regex,
+  // so the leg is treated as AMBIGUOUS, not failed: it runs settlement
+  // verification (LUD-21) and lands PAID or UNCERTAIN — never a blind
+  // "wallet wasn't charged" that could invite a double-paying retry.
+  const res = await withTimeout(
+    Promise.resolve(window.webln.sendPayment(invoice)),
+    timeoutMs,
+    'Your wallet extension didn\'t respond to the payment in time. It may still be going through — check your wallet before retrying.',
+  )
   if (!res || typeof res.preimage !== 'string') {
     throw new Error('Wallet didn\'t return a preimage — payment may not have settled.')
   }

@@ -62,7 +62,7 @@
 // timeouts toast a retry instead of the connect modal, and zap/legacy-DM
 // extension calls are bounded. Evicts login-widget.js, boost-actions.js and
 // feeds-market.js so the fix reaches returning visitors on first navigation.
-const VERSION = 'lb-v29';
+const VERSION = 'lb-v30';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
