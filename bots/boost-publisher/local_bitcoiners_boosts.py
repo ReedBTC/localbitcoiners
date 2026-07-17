@@ -30,13 +30,57 @@ def load_last_seen():
 def save_last_seen(ts):
     STATE_FILE.write_text(ts)
 
-def fetch_transactions(config):
+PAGE_LIMIT = 100
+MAX_PAGES  = 60   # 6000 txs — a backstop against an unbounded crawl, not a target
+
+def fetch_transactions(config, cutoff):
+    """Fetch transactions newer than `cutoff`, paging back until a page's oldest
+    settledAt reaches it.
+
+    This used to be a single un-paginated limit=50 call, which silently lost
+    boosts: 50 txs is only ~8h of history at normal volume, and the window's
+    floor only ever moves forward. Anything that stalls last_seen for longer
+    than the window is deep — a crash loop, an Alby 401, a relay hang — drops
+    every boost older than the floor *permanently*, because once the loop
+    recovers those txs are no longer in the page it fetches. That's how three
+    website boosts from 2026-07-09 were lost: a malformed npub crash-looped this
+    bot for 3.5 days (fixed in nostr_utils by e3f698e), a stream burst pushed
+    the floor past them within hours, and on recovery it simply resumed live.
+    Paging to `cutoff` makes a stall delay notes instead of losing them.
+
+    With no cutoff (no state file yet) there's nothing to page back to, so take
+    a single page rather than crawling the node's entire history.
+    """
     url     = config["ALBY_HUB_URL"]
     token   = config["ALBY_TOKEN"]
     headers = {"Authorization": f"Bearer {token}"}
-    resp    = requests.get(f"{url}/api/transactions?limit=50", headers=headers, timeout=30)
-    resp.raise_for_status()
-    return resp.json()
+    out     = []
+
+    for page in range(MAX_PAGES):
+        resp = requests.get(
+            f"{url}/api/transactions?limit={PAGE_LIMIT}&offset={page * PAGE_LIMIT}",
+            headers=headers, timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        txs  = data if isinstance(data, list) else data.get("transactions", [])
+        if not txs:
+            break
+        out.extend(txs)
+        if not cutoff:
+            break
+        # Pending txs carry settledAt=null; they'd otherwise sort as the oldest
+        # thing on the page and stop the crawl a page in.
+        stamps = [t.get("settledAt") for t in txs if t.get("settledAt")]
+        if stamps and min(stamps) <= cutoff:
+            break
+    else:
+        print(f"[warn] hit MAX_PAGES ({MAX_PAGES}) still newer than {cutoff} — "
+              f"boosts older than that may be missing from this run")
+
+    if len(out) > PAGE_LIMIT:
+        print(f"  [backlog] paged back {len(out)} txs to reach {cutoff}")
+    return out
 
 def main():
     config            = load_config(CREDENTIALS_FILE)
@@ -49,23 +93,36 @@ def main():
     print(f"Polling Alby Hub... (last seen: {last_seen or 'none — processing all'})\n")
 
     try:
-        data = fetch_transactions(config)
+        transactions = fetch_transactions(config, last_seen)
     except Exception as e:
         print(f"[error] Could not reach Alby Hub: {e}")
         return
-
-    transactions = data if isinstance(data, list) else data.get("transactions", [])
 
     # Pre-filter by settledAt before classifying — keeps stale txs out of the
     # classifier's network lookups (kind 30078 / Fountain comments). Source
     # detection is now the classifier's job inside build_note_from_tx.
     candidates = []
+    already    = 0
     for tx in transactions:
         if tx.get("type") != "incoming" or tx.get("state") != "settled":
             continue
         if last_seen and tx.get("settledAt", "") <= last_seen:
             continue
+        # published_events is the dedupe gate, not just a record for topboosts.
+        # last_seen alone can't be one: it's a single high-water mark, so it only
+        # answers "is this newer than the last boost we published", which breaks
+        # the moment it moves backwards or lags — a rewind to recover a backlog
+        # would republish every boost above it. Keying on payment_hash makes a
+        # re-fetch idempotent, so paging back over already-published txs (which
+        # fetch_transactions now does by design) is a no-op instead of a
+        # duplicate storm.
+        if tx.get("paymentHash") in published_events:
+            already += 1
+            continue
         candidates.append(tx)
+
+    if already:
+        print(f"  [dedupe] skipped {already} tx(s) already in published_events\n")
 
     if not candidates:
         print("No new transactions to consider.")
@@ -175,6 +232,13 @@ def main():
             standalone_id = publish_to_nostr(with_header_image(note, STANDALONE_BOOST_IMAGE), nsec, extra_tags=all_tags)
             if standalone_id:
                 record_published_event(published_events, payment_hash, standalone_id, settled_at)
+                # Persist per-boost, not once at the end of the run. The note is
+                # already irreversibly on the relays by this line, so the record
+                # of it has to survive anything that happens to the rest of the
+                # batch: an exception on a later boost would otherwise roll back
+                # both this record and last_seen, and republish this note as a
+                # duplicate on the next tick.
+                save_published_events(published_events)
 
             if boost_board:
                 print("  Publishing reply to boost board...")
