@@ -25,6 +25,7 @@ import {
 import { markStubUser, isStubUser } from './lib/stubUser.js'
 import { getNDK, resetNDK, connectAndWait, signWithTimeout } from './lib/ndk.js'
 import * as wallet from './lib/wallet.js'
+import { bolt11PaymentHash, confirmInvoiceSettled } from './lib/boostagram.js'
 import { applyRecipientOverrides } from './lib/recipientOverrides.js'
 import { pushToast } from './lib/toast.js'
 // Side-effect import: installs a same-origin click interceptor that
@@ -1013,6 +1014,19 @@ const api = {
    * boosts pay through payAllLegs internally rather than this method.
    */
   async payInvoice(invoice) {
+    const active = await this._ensureWalletForPay(invoice)
+    const res = await active.payInvoice({ invoice })
+    return { preimage: res?.preimage || null, kind: active.kind }
+  },
+
+  /**
+   * Shared login + wallet gating for the pay methods. Restores an
+   * at-rest wallet, and on failure throws the same coded errors both
+   * callers translate: NO_WALLET (opens connect modal), WALLET_UNRESPONSIVE
+   * (remembered wallet whose unlock stalled — retryable, do NOT reconnect).
+   * Returns the active wallet adapter on success.
+   */
+  async _ensureWalletForPay(invoice) {
     if (typeof invoice !== 'string' || !invoice) throw new Error('Missing invoice')
     if (!currentUser || currentUser === undefined) {
       this.requestLogin()
@@ -1038,9 +1052,63 @@ const api = {
       err.code = 'NO_WALLET'
       throw err
     }
-    const active = wallet.getActiveWallet()
-    const res = await active.payInvoice({ invoice })
-    return { preimage: res?.preimage || null, kind: active.kind }
+    return wallet.getActiveWallet()
+  },
+
+  /**
+   * Settlement-verified pay. The safe primitive for one-shot payments
+   * like the merch checkout, where a naive `await payInvoice` is a
+   * double-spend hazard: over a flaky NWC link the payment can settle
+   * on Lightning while the wallet's reply (preimage) is lost, so
+   * payInvoice throws even though money moved. A caller that treats
+   * that throw as "failed, safe to retry" re-pays a fresh invoice and
+   * charges the recipient twice (or four times — see the merch bug).
+   *
+   * This mirrors what payAllLegs does for boosts: a missing preimage is
+   * NEVER assumed to be a failure. We classify the outcome instead of
+   * throwing, so the caller can decide whether a retry is safe:
+   *   { status: 'paid',      preimage } — settled (preimage or LUD-21 verify)
+   *   { status: 'unsettled', error }    — definitively NOT paid, safe to retry
+   *   { status: 'uncertain', error }    — unknown; may have paid. Do NOT
+   *                                       silently re-pay; warn + confirm first.
+   *
+   * NO_WALLET / WALLET_UNRESPONSIVE still throw (the caller handles the
+   * wallet-connect prompt); only genuine pay-time outcomes are returned.
+   *
+   * @param {string} invoice  bolt11 to pay
+   * @param {{verify?: string}} [opts]  LUD-21 verify URL for this invoice,
+   *        if the LNURL endpoint provided one — used to confirm settlement
+   *        after an ambiguous pay attempt.
+   */
+  async payInvoiceVerified(invoice, opts = {}) {
+    const active = await this._ensureWalletForPay(invoice)
+    const verify = opts?.verify || null
+    const paymentHash = bolt11PaymentHash(invoice)
+
+    let preimage = null
+    let payError = null
+    try {
+      const res = await active.payInvoice({ invoice })
+      preimage = res?.preimage || null
+    } catch (e) {
+      payError = e
+    }
+    if (preimage) return { status: 'paid', preimage, kind: active.kind }
+
+    // No clean preimage. A clean decline (insufficient balance, expired
+    // invoice, no route) means the payment definitively never left the
+    // wallet → safe to report unsettled without a verify round-trip.
+    const payMsg = String(payError?.message || payError || '')
+    const cleanDecline = /insufficient|not enough|no funds|balance too low|expired|no route|unable to find route|route not found/i.test(payMsg)
+    if (cleanDecline) return { status: 'unsettled', preimage: null, kind: active.kind, error: payMsg }
+
+    // Ambiguous (timeout, lost reply, no preimage). Confirm out-of-band
+    // via LUD-21 before deciding anything.
+    const settlement = await confirmInvoiceSettled(verify, paymentHash)
+    if (settlement === 'settled') return { status: 'paid', preimage: null, kind: active.kind }
+    if (settlement === 'unsettled') return { status: 'unsettled', preimage: null, kind: active.kind, error: payMsg }
+    // 'unknown' — verify URL missing/unreachable. We genuinely can't tell.
+    return { status: 'uncertain', preimage: null, kind: active.kind, error: payMsg }
   },
 
   /**

@@ -1226,11 +1226,22 @@ async function runCheckout(ctx) {
   // partial failure never re-charges a seller who already went through.
   const results = []
   let anyFailure = false
+  let anyUncertain = false
   for (const group of groups) {
     const hex = group.merchant
     let st = session.byMerchant.get(hex)
-    if (!st) { st = { orderId: uuid(), orderPublished: false, paid: false, totalSats: 0 }; session.byMerchant.set(hex, st) }
+    if (!st) { st = { orderId: uuid(), orderPublished: false, paid: false, uncertain: false, totalSats: 0 }; session.byMerchant.set(hex, st) }
     if (st.paid) { results.push({ merchant: hex, orderId: st.orderId, totalSats: st.totalSats, ok: true }); continue }
+    // A seller whose payment we couldn't confirm is NOT auto-retried — re-paying
+    // a possibly-settled invoice is the double-charge we're preventing. Surface
+    // it again as uncertain so the buyer resolves it out-of-band, but never send
+    // another payment for it in this session.
+    if (st.uncertain) {
+      anyUncertain = true
+      results.push({ merchant: hex, orderId: st.orderId, ok: false, uncertain: true,
+        error: `Payment to ${st.sellerName || 'this seller'} couldn't be confirmed — check your wallet or with the seller before paying again.` })
+      continue
+    }
 
     try {
       await processMerchantOrder(group, st, { user, address, email, note, status, logSend })
@@ -1243,6 +1254,13 @@ async function runCheckout(ctx) {
         payBtn.disabled = false
         return
       }
+      if (e?.code === 'PAYMENT_UNCERTAIN') {
+        // Latch it so subsequent passes skip (never re-pay) this seller.
+        st.uncertain = true
+        anyUncertain = true
+        results.push({ merchant: hex, orderId: st.orderId, ok: false, uncertain: true, error: e.message })
+        continue
+      }
       console.error('[merch] merchant order failed', hex, e)
       anyFailure = true
       results.push({ merchant: hex, ok: false, error: friendlyError(e) })
@@ -1250,9 +1268,23 @@ async function runCheckout(ctx) {
     }
   }
 
-  if (anyFailure) {
-    const failed = results.filter(r => !r.ok)
+  if (anyFailure || anyUncertain) {
+    const failed = results.filter(r => !r.ok && !r.uncertain)
+    const uncertain = results.filter(r => r.uncertain)
     const paid = results.filter(r => r.ok)
+    if (uncertain.length) {
+      // At least one payment we can't confirm. Lead with the don't-double-pay
+      // warning. Only re-enable the button when there's a clean failure that's
+      // genuinely safe to retry — a pure-uncertain result has nothing to retry.
+      const parts = [
+        `${uncertain.length} payment${uncertain.length > 1 ? 's' : ''} couldn't be confirmed — your wallet may already have been charged, so ${uncertain.length > 1 ? 'they' : 'it'} won't be retried automatically. Check your wallet (or with the seller) before paying again.`,
+      ]
+      if (paid.length) parts.unshift(`${paid.length} seller${paid.length > 1 ? 's' : ''} paid.`)
+      if (failed.length) parts.push(`${failed.length} other seller${failed.length > 1 ? 's' : ''} failed and can be retried — press “Place order & pay”.`)
+      setStatus(status, 'warn', parts.join(' '))
+      payBtn.disabled = failed.length === 0
+      return
+    }
     setStatus(status, 'error', results.length === 1
       ? failed[0].error
       : `Paid ${paid.length} of ${results.length} sellers. Couldn't complete: ${failed.map(f => f.error).join('; ')}. Press “Place order & pay” to retry the rest.`)
@@ -1278,6 +1310,7 @@ async function processMerchantOrder(group, st, shared) {
 
   const profile = await resolveMerchantProfile(hex)
   const sellerName = profile.name || 'the seller'
+  st.sellerName = sellerName   // remembered for an uncertain re-surface message
   const payLud16 = paymentLud16ForMerchant(hex, profile)
   if (!payLud16) {
     throw new Error(`${profile.name || 'A seller'} in your cart hasn't published a Lightning address, so their payment can't be collected automatically yet.`)
@@ -1305,13 +1338,36 @@ async function processMerchantOrder(group, st, shared) {
     st.orderPublished = true
   }
 
-  // 2. Fetch this merchant's Lightning invoice and pay it.
+  // 2. Fetch this merchant's Lightning invoice and pay it — settlement-verified
+  //    so an ambiguous NWC result (the payment settled on Lightning but the
+  //    wallet's reply carrying the preimage was lost over a flaky relay) is
+  //    NEVER mistaken for a clean failure the buyer can safely retry. That
+  //    mistake re-pays a fresh invoice and double-charges the seller — it's the
+  //    bug where one coffee order settled four times.
   setStatus(status, 'working', `Fetching Lightning invoice from ${sellerName}…`)
   const itemList = group.lines.map(l => `${l.qty}× ${l.product.title}`).join(', ')
-  const invoice = await fetchInvoice(payLud16, totalSats, `LB merch order ${orderId.slice(0, 8)} — ${itemList}`)
+  const { pr: invoice, verify } = await fetchInvoice(payLud16, totalSats, `LB merch order ${orderId.slice(0, 8)} — ${itemList}`)
 
   setStatus(status, 'working', `Approve the payment to ${sellerName} in your wallet…`)
-  const payRes = await window.LBLogin.payInvoice(invoice)   // NO_WALLET propagates
+  // NO_WALLET / WALLET_UNRESPONSIVE still throw (handled up in runCheckout);
+  // genuine pay outcomes come back as a status instead of an exception.
+  const payRes = await window.LBLogin.payInvoiceVerified(invoice, { verify })
+
+  if (payRes.status === 'unsettled') {
+    // Definitively not paid — the wallet wasn't charged, so a retry is safe.
+    throw new Error(payRes.error && /insufficient|not enough|no funds|balance/i.test(payRes.error)
+      ? 'Payment failed: insufficient balance.'
+      : `Payment to ${sellerName} didn't go through — your wallet wasn't charged. You can retry.`)
+  }
+  if (payRes.status === 'uncertain') {
+    // Payment may have settled but we couldn't confirm. Do NOT let the buyer
+    // blind-retry this seller (that's the double-charge). Flag it so runCheckout
+    // surfaces a warning and skips auto-retry for this merchant.
+    const err = new Error(`Payment to ${sellerName} couldn't be confirmed — it may have already gone through, so it won't be retried automatically. Check your wallet (or with ${sellerName}) before paying again.`)
+    err.code = 'PAYMENT_UNCERTAIN'
+    throw err
+  }
+  // status === 'paid' — fall through to the receipt.
 
   // 3. Receipt (kind 17), gift-wrapped to this merchant.
   setStatus(status, 'working', `Confirming payment with ${sellerName}…`)
@@ -1532,7 +1588,11 @@ async function fetchInvoice(lud16, amountSats, comment) {
   }
   const res = await fetch(cb.toString()).then(r => r.json())
   if (!res.pr || !isBolt11(res.pr)) throw new Error('Seller wallet did not return a valid invoice.')
-  return res.pr
+  // LUD-21 verify URL, when the endpoint provides one. Kept so the pay
+  // step can confirm settlement out-of-band after an ambiguous NWC
+  // attempt — the difference between a safe retry and a double-charge.
+  const verify = (typeof res.verify === 'string' && res.verify.startsWith('https://')) ? res.verify : null
+  return { pr: res.pr, verify }
 }
 
 // ── Order bookkeeping + success ──────────────────────────────────────

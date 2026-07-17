@@ -62,7 +62,14 @@
 // timeouts toast a retry instead of the connect modal, and zap/legacy-DM
 // extension calls are bounded. Evicts login-widget.js, boost-actions.js and
 // feeds-market.js so the fix reaches returning visitors on first navigation.
-const VERSION = 'lb-v30';
+// v30: window.webln.sendPayment is now bounded — a wedged extension can no
+// longer freeze the boost modal on "Paying…" forever. Evicts login-widget.js.
+// v31: merch checkout is settlement-verified (payInvoiceVerified + LUD-21) so
+// an ambiguous NWC result no longer looks like a clean failure the buyer can
+// blind-retry — the bug where one coffee order settled four times. Evicts
+// login-widget.js, merch.js and merch.css so /merch + /feeds get it on first
+// navigation.
+const VERSION = 'lb-v31';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
