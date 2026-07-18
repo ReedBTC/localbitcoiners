@@ -120,59 +120,87 @@
       color: var(--cream);
       font-style: italic;
     }
-    .page-header-note {
-      margin: 0.5rem auto 0;
-      font-size: 0.82rem;
-      color: var(--cream);
-      opacity: 0.75;
-    }
-
-    /* ── "Become a Supporter!" CTA ── */
-    .become-supporter {
-      max-width: 1000px;
-      margin: 2rem auto 0;
-      padding: 0 1.25rem;
-    }
-    .become-inner {
-      background: var(--white);
-      border: 1px solid var(--border);
-      border-left: 4px solid var(--green);
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(30, 58, 95, 0.06);
-      padding: 1.5rem 1.5rem 1.6rem;
-      text-align: center;
-    }
-    .become-inner h2 {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: clamp(1.3rem, 3.5vw, 1.7rem);
-      font-weight: 700;
-      color: var(--navy);
-    }
-    .become-inner p {
-      max-width: 560px;
-      margin: 0.5rem auto 1.15rem;
-      font-size: 0.95rem;
-      color: var(--muted);
-    }
-    .become-boost-btn {
-      background: var(--orange);
-      color: #fff;
-      border: none;
-      cursor: pointer;
-      font: inherit;
-      font-size: 1rem;
-      font-weight: 700;
-      padding: 0.7rem 1.5rem;
-      border-radius: 8px;
+    /* Info tooltip after the subtitle (replaced the "(boosters update daily)"
+       note). Hover on desktop, tap/focus on touch. Sits on the navy header, so
+       the tooltip inverts to cream-on-navy to pop. */
+    .info-tip {
+      appearance: none;
+      -webkit-appearance: none;
       display: inline-flex;
       align-items: center;
-      gap: 0.5rem;
-      transition: background 0.15s;
+      justify-content: center;
+      width: 17px;
+      height: 17px;
+      margin-left: 7px;
+      padding: 0;
+      vertical-align: middle;
+      border: 1.5px solid var(--cream);
+      border-radius: 50%;
+      background: transparent;
+      color: var(--cream);
+      font-family: Georgia, 'Times New Roman', serif;
+      font-style: italic;
+      font-size: 0.72rem;
+      font-weight: 700;
+      line-height: 1;
+      cursor: help;
+      position: relative;
+      opacity: 0.8;
+      transition: opacity 0.15s, border-color 0.15s, color 0.15s;
     }
-    .become-boost-btn:hover { background: var(--orange-d); }
-    .become-boost-btn:disabled { opacity: 0.6; cursor: wait; }
-    .become-boost-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
-    .become-boost-btn .lb-label-short { display: none; }
+    .info-tip:hover,
+    .info-tip:focus {
+      opacity: 1;
+      border-color: var(--white);
+      color: var(--white);
+    }
+    /* Keyboard users get a ring; tap/mouse focus (shows the tooltip) does not. */
+    .info-tip:focus { outline: none; }
+    .info-tip:focus-visible { outline: 2px solid var(--cream); outline-offset: 2px; }
+    .info-tip::after {
+      content: attr(data-tip);
+      position: absolute;
+      bottom: calc(100% + 9px);
+      /* Anchored to the icon's right edge (not centered) so it grows leftward
+         and can't run off the right of the screen — the icon sits at the end
+         of the subtitle, near the right edge on wrapped mobile lines. */
+      right: -6px;
+      left: auto;
+      transform: translateY(4px);
+      white-space: normal;
+      width: max-content;
+      max-width: min(240px, 80vw);
+      background: var(--cream);
+      color: var(--navy);
+      font: 600 0.72rem/1.3 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      letter-spacing: 0.01em;
+      padding: 6px 10px;
+      border-radius: 7px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s, transform 0.15s;
+      z-index: 20;
+    }
+    .info-tip::before {
+      content: "";
+      position: absolute;
+      bottom: calc(100% + 4px);
+      left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent;
+      border-top-color: var(--cream);
+      opacity: 0;
+      transition: opacity 0.15s;
+      z-index: 20;
+    }
+    .info-tip:hover::after,
+    .info-tip:focus::after { opacity: 1; transform: translateY(0); }
+    .info-tip:hover::before,
+    .info-tip:focus::before { opacity: 1; }
+    @media (prefers-reduced-motion: reduce) {
+      .info-tip::after { transition: opacity 0.15s; }
+    }
 
     /* ── Supporters grids ── */
     .supporters-wrap {
@@ -431,6 +459,7 @@
   </style>
   <link rel="stylesheet" href="/assets/css/nav.css" />
   <link rel="stylesheet" href="/assets/css/footer.css" />
+  <link rel="stylesheet" href="/assets/css/community-status.css" />
 </head>
 <body>
 
@@ -523,22 +552,14 @@
 <!-- ══════════════════════════════ PAGE HEADER ══════════════════════════════ -->
 <section class="page-header">
   <h1>Supporters</h1>
-  <p>Meet the boosters, streamers, coding contributors, and show guests who power Local Bitcoiners.</p>
-  <p class="page-header-note">(boosters update daily)</p>
-</section>
-
-<!-- ══════════════════════════════ BECOME A SUPPORTER ══════════════════════════════ -->
-<section class="become-supporter">
-  <div class="become-inner">
-    <h2>Become a Supporter!</h2>
-    <p>Log in with Nostr and boost the show — you'll be added to this page within 24 hours.</p>
-    <button type="button" class="become-boost-btn" data-lb-boost-trigger="show" aria-label="Boost the Show">
-      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-        <path fill-rule="evenodd" d="M14.615 1.595a.75.75 0 0 1 .359.852L12.982 9.75h7.268a.75.75 0 0 1 .548 1.262l-10.5 11.25a.75.75 0 0 1-1.272-.71l1.992-7.302H3.75a.75.75 0 0 1-.548-1.262l10.5-11.25a.75.75 0 0 1 .913-.143Z" clip-rule="evenodd"/>
-      </svg>
-      <span class="lb-label-long">Boost the Show</span>
-      <span class="lb-label-short">Boost</span>
-    </button>
+  <p>Meet the boosters, streamers, coding contributors, and show guests who power Local Bitcoiners.<button type="button" class="info-tip" data-tip="Supporters list updates daily" aria-label="Supporters list updates daily">i</button></p>
+  <!-- Community-status chip (community-status.js), same placement as /feeds.
+       Replaced the old "Become a Supporter!" box — its not-member state fires
+       the same show-boost, and its member state shows the visitor's tier. -->
+  <div id="lb-community-status">
+    <div class="lb-cstat lb-cstat--checking" role="status">
+      <span class="lb-cstat__spinner"></span>Checking membership…
+    </div>
   </div>
 </section>
 
@@ -739,6 +760,7 @@
      supporters.js so the grids can paint from cache on first paint. -->
 <script src="/assets/js/episode-enhance.js" defer></script>
 <script src="/assets/js/supporters.js" defer></script>
+<script type="module" src="/assets/js/community-status.js"></script>
 
 <!-- PWA service worker -->
 <script src="/assets/js/sw-register.js" defer></script>

@@ -342,6 +342,14 @@ function ShowBoostHost() {
       user={user || null}
       prefillMessage={state.prefillMessage || ''}
       onClose={() => setShowBoostState(null)}
+      onSettled={(r) => {
+        // Let the community-status chip (community-status.js) know this npub
+        // just boosted the show, so it can flip to its "pending member" state
+        // while the bot adds them to the follow pack. Show boost only.
+        try {
+          window.dispatchEvent(new CustomEvent('lb:show-boost-settled', { detail: r }))
+        } catch {}
+      }}
     />,
     document.body,
   )

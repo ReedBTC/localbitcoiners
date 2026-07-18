@@ -79,7 +79,7 @@
 // providers (getalby, 2026-07-17) intermittently hard-fail browser fetches
 // while staying healthy for server-side callers. Evicts login-widget.js,
 // boost-actions.js, merch.js and feeds-market.js.
-const VERSION = 'lb-v32';
+const VERSION = 'lb-v33';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

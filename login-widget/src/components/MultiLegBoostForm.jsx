@@ -59,6 +59,11 @@ export default function MultiLegBoostForm({
   // guard its close button: null when idle/settled, or
   // { active: true, paid, total } while legs are still in flight.
   onBoostState,
+  // Fires once when the boost settles, with the payAllLegs summary
+  // ({ anySucceeded, allSucceeded, anyUncertain, legs, ... }). Optional —
+  // only the show-boost host wires it, to signal "this npub just boosted"
+  // so the community-status chip can flip to its pending-member state.
+  onSettled,
 }) {
   // Cancellation flag for the presign step. Set true when the form's
   // parent begins to close so a slow signer prompt that resolves after
@@ -266,6 +271,7 @@ export default function MultiLegBoostForm({
       if (cancelledRef.current) return
       setResult(r)
       setPhase('done')
+      try { onSettled?.(r) } catch {}
     })
   }
 

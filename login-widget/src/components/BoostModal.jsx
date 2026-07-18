@@ -48,7 +48,7 @@ const SHOW_EPISODE_META = { number: null, title: '', guid: '', kind: 'show' }
 const SHOW_PRESETS = [100, 420, 3333, 21000]
 const SHOW_SHARE_TAGLINE = 'Posts a kind 1 note to your followers — your message + a link back here.'
 
-export default function BoostModal({ user, onClose, prefillMessage = '' }) {
+export default function BoostModal({ user, onClose, prefillMessage = '', onSettled }) {
   const { visible, requestClose } = useModalTransition(onClose)
 
   // Close guard: while legs are in flight, intercept the ✕ with a
@@ -104,6 +104,7 @@ export default function BoostModal({ user, onClose, prefillMessage = '' }) {
               defaultMessage={prefillMessage}
               onCancelled={requestClose}
               onBoostState={setBoostState}
+              onSettled={onSettled}
             />
           </div>
 

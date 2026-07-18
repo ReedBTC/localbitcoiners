@@ -27,11 +27,9 @@ import {
   KIND_TIME_EVENT,
 } from '/assets/js/calendar-events.js'
 import { SimplePool, verifyEvent, nip19 } from '/assets/widgets/nostr-tools.js'
-
-// The show account that owns the supporter follow packs (hex of the
-// show npub — same constant supporters.js / bots/follow-packs use).
-const SHOW_PUBKEY_HEX = 'c330881e28768381dd8bdfd274341dca0c5882c29b8642ea4bc82f7563264592'
-const KIND_FOLLOW_PACK = 39089
+// Supporter-set resolution lives in one shared module; re-exported below so
+// home-feeds.js keeps importing resolveSupporters from feeds.js unchanged.
+import { resolveSupporters } from '/assets/js/supporter-set.js'
 
 // Hourly events snapshot (Cloudflare Pages Function proxying the file
 // bots/community-feeds pushes to the VPS). It carries the same raw signed
@@ -74,64 +72,6 @@ function setCount(panel, n) {
   if (!c) return
   c.textContent = n === 1 ? '1 upcoming' : `${n} upcoming`
   c.hidden = false
-}
-
-const KIND_RELAY_LIST = 10002
-
-// The show's own NIP-65 outbox (write) relays — where bots/follow-packs
-// publishes the kind-39089 packs. Merged into the query set so we find
-// packs (and thus supporters) that live outside the default relays. We
-// only resolve the SHOW account's list here, not every supporter's
-// (that's the heavier "full outbox" upgrade).
-async function fetchShowOutboxRelays(relays) {
-  const out = new Set()
-  const pool = new SimplePool()
-  try {
-    const evs = await pool
-      .querySync(relays, { kinds: [KIND_RELAY_LIST], authors: [SHOW_PUBKEY_HEX] })
-      .catch(() => [])
-    let best = null
-    for (const ev of evs) {
-      if (!ev || ev.pubkey !== SHOW_PUBKEY_HEX || !verifyEvent(ev)) continue
-      if (!best || (ev.created_at || 0) > (best.created_at || 0)) best = ev
-    }
-    if (best) {
-      for (const t of best.tags || []) {
-        if (!Array.isArray(t) || t[0] !== 'r' || typeof t[1] !== 'string') continue
-        const url = t[1]
-        if (!url.startsWith('wss://') && !url.startsWith('ws://')) continue
-        // NIP-65: unmarked = read+write; only 'read' means not a write relay.
-        if (t[2] === 'read') continue
-        out.add(url)
-      }
-    }
-  } finally {
-    try { pool.close(relays) } catch {}
-  }
-  return [...out]
-}
-
-// ── Follow-pack membership ───────────────────────────────────────────
-// Every p-tag across the show's own kind-39089 packs = the supporter set.
-async function fetchPackMembers(relays) {
-  const members = new Set()
-  const pool = new SimplePool()
-  try {
-    const evs = await pool
-      .querySync(relays, { kinds: [KIND_FOLLOW_PACK], authors: [SHOW_PUBKEY_HEX] })
-      .catch(() => [])
-    for (const ev of evs) {
-      if (!ev || ev.pubkey !== SHOW_PUBKEY_HEX || !verifyEvent(ev)) continue
-      for (const t of ev.tags || []) {
-        if (Array.isArray(t) && t[0] === 'p' && /^[0-9a-f]{64}$/i.test(t[1] || '')) {
-          members.add(t[1].toLowerCase())
-        }
-      }
-    }
-  } finally {
-    try { pool.close(relays) } catch {}
-  }
-  return members
 }
 
 const KIND_DELETION = 5
@@ -576,16 +516,10 @@ function buildVirtualToggle(panel, onChange) {
 }
 
 // ── Shared supporter resolution ──────────────────────────────────────
-// Resolve the show's write outbox, then the union of every follow-pack
-// member into one { relays, members } set. Exported so the homepage
-// "Community Feeds" teaser (home-feeds.js) resolves supporters exactly the
-// way this page does, and reused by both tab loaders below.
-export async function resolveSupporters() {
-  const outbox = await fetchShowOutboxRelays(STATIC_RELAYS)
-  const relays = [...new Set([...STATIC_RELAYS, ...outbox])]
-  const members = await fetchPackMembers(relays)
-  return { relays, members: [...members] }
-}
+// resolveSupporters now lives in supporter-set.js (the one source shared
+// with community-status.js). Re-exported here so home-feeds.js — which
+// imports it from feeds.js — keeps working unchanged.
+export { resolveSupporters }
 
 // One-shot fetch of the soonest upcoming events from the supporter set,
 // grouped (duplicates collapsed) and sorted soonest-first, with organizer

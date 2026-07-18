@@ -1197,6 +1197,7 @@
   <!-- Marketplace "Buy Now" reuses merch.js's cart + checkout modal, which is
        styled here — so the reused modal looks right on /feeds too. -->
   <link rel="stylesheet" href="/assets/css/merch.css" />
+  <link rel="stylesheet" href="/assets/css/community-status.css" />
 </head>
 <body data-active-feed="events">
 
@@ -1290,6 +1291,14 @@
 <section class="page-header">
   <h1>Community Feeds</h1>
   <p>Notes from the Local Bitcoiners <a href="/supporters">Community</a></p>
+  <!-- Community-status chip (community-status.js swaps this default for the
+       right state once login + follow-pack membership resolve). The static
+       "Checking…" chip reserves the space so there's no layout shift. -->
+  <div id="lb-community-status">
+    <div class="lb-cstat lb-cstat--checking" role="status">
+      <span class="lb-cstat__spinner"></span>Checking membership…
+    </div>
+  </div>
 </section>
 
 <!-- ══════════════════════════════ FEED TABS ══════════════════════════════ -->
@@ -1701,6 +1710,7 @@
 <!-- Community feeds — lazily hydrates the active feed (Events + Marketplace
      wired up; Podcast Boosts / Articles land in later phases). -->
 <script type="module" src="/assets/js/feeds.js"></script>
+<script type="module" src="/assets/js/community-status.js"></script>
 <script src="/assets/js/nav.js" defer></script>
 </body>
 </html>

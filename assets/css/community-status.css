@@ -1,0 +1,167 @@
+/* Community-status chip — shared by /feeds and /supporters.
+ *
+ * Renders one small, squared-off status panel that tells a visitor where
+ * they stand with the community and doubles as the entry point to the two
+ * actions that change it (log in, or boost to join). Relies on the LB color
+ * variables (--cream, --green, --orange, --text, …) that every page defines
+ * on :root. Behaviour lives in assets/js/community-status.js. */
+
+#lb-community-status {
+  display: flex;
+  justify-content: center;
+  margin: 16px auto 0;
+  padding: 0 4px;
+}
+
+.lb-cstat {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  max-width: 460px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: var(--white);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.3;
+  text-align: center;
+  position: relative;
+}
+
+/* Clickable states are real buttons; the badge/checking states are divs. */
+button.lb-cstat {
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.05s ease;
+}
+button.lb-cstat:hover { filter: brightness(0.96); }
+button.lb-cstat:active { transform: translateY(1px); }
+.lb-cstat:focus-visible { outline: 3px solid var(--navy); outline-offset: 2px; }
+
+/* ── State: checking (neutral, guards against the state flash) ── */
+.lb-cstat--checking {
+  border-color: var(--border);
+  color: var(--muted);
+  font-weight: 600;
+}
+.lb-cstat__spinner {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--muted);
+  animation: lb-cstat-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes lb-cstat-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .lb-cstat__spinner { animation-duration: 2s; }
+}
+
+/* ── State: member (green, inert badge) ── */
+.lb-cstat--member {
+  background: color-mix(in srgb, var(--green) 12%, var(--white));
+  border-color: var(--green);
+  color: var(--green-d);
+}
+
+/* ── State: just boosted, pending pack add (green, transient) ── */
+.lb-cstat--thanks {
+  background: color-mix(in srgb, var(--green) 12%, var(--white));
+  border-color: var(--green);
+  color: var(--green-d);
+  font-weight: 600;
+}
+
+/* ── States: orange actions (log in / boost to join) ── */
+.lb-cstat--login,
+.lb-cstat--join {
+  background: var(--orange);
+  border-color: var(--orange-d);
+  color: var(--white);
+}
+
+.lb-cstat__ic { flex-shrink: 0; display: inline-flex; }
+.lb-cstat__ic svg { display: block; }
+
+.lb-cstat__pfp {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--cream-d);
+  border: 1.5px solid rgba(255, 255, 255, 0.7);
+}
+.lb-cstat--member .lb-cstat__pfp,
+.lb-cstat--thanks .lb-cstat__pfp { border-color: var(--green); }
+
+/* Sat-tier rings around the member avatar (bronze / silver / gold). The
+   metallic border + soft halo read as a status ring; higher tiers only —
+   Pioneer keeps the plain green border. */
+.lb-cstat__pfp--bronze {
+  border-color: #c77b30;
+  box-shadow: 0 0 0 2px rgba(199, 123, 48, 0.35);
+}
+.lb-cstat__pfp--silver {
+  border-color: #9aa0a6;
+  box-shadow: 0 0 0 2px rgba(154, 160, 166, 0.4);
+}
+.lb-cstat__pfp--gold {
+  border-color: #e0a92e;
+  box-shadow: 0 0 0 2px rgba(224, 169, 46, 0.45);
+}
+
+/* ── Tooltip (desktop hover bonus; label stands alone on touch) ── */
+.lb-cstat[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 9px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  max-width: min(90vw, 320px);
+  /* Cream fill + border + shadow so the label reads as a floating card and
+     doesn't vanish into the navy page header it sits on (a navy-on-navy
+     tooltip blended in; a dark shadow alone can't separate it there). */
+  background: var(--cream);
+  color: var(--navy);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: normal;
+  width: max-content;
+  padding: 6px 11px;
+  border-radius: 7px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 5;
+}
+.lb-cstat[data-tip]::before {
+  content: "";
+  position: absolute;
+  bottom: calc(100% + 3px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--cream);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 5;
+}
+.lb-cstat[data-tip]:hover::after,
+.lb-cstat[data-tip]:focus-visible::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.lb-cstat[data-tip]:hover::before,
+.lb-cstat[data-tip]:focus-visible::before { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .lb-cstat[data-tip]::after { transition: opacity 0.15s ease; }
+}
