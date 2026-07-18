@@ -176,6 +176,41 @@ def fetch_profiles(relays, author_hexes, wall):
     return newest
 
 
+def get_profiles(scan_relays, all_authors, state, full_scan, wall):
+    """Newest verified kind-0 per author, CACHED in state (`_profiles`).
+
+    Profiles change rarely, but the naive approach re-crawls every author across
+    every scan relay on every run — a second full crawl stacked on the content
+    scan, and the bulk of an incremental run's wall time. So we do the full crawl
+    only on the daily reconcile (`full_scan`, wholesale refresh) and reuse the
+    cache on incremental runs, fetching only authors we've never resolved. A
+    member added between reconciles still gets a profile the first incremental
+    run they surface in; existing members' profile edits refresh next reconcile."""
+    cache = state.get("_profiles") or {}
+    if full_scan:
+        cache = fetch_profiles(scan_relays, all_authors, wall)   # wholesale refresh
+    else:
+        missing = [a for a in all_authors if a not in cache]
+        if missing:
+            print(f"  fetching kind-0 for {len(missing)} new author(s) "
+                  f"({len(all_authors) - len(missing)} cached)")
+            cache.update(fetch_profiles(scan_relays, missing, wall))
+    state["_profiles"] = cache
+    return {pk: cache[pk] for pk in all_authors if pk in cache}
+
+
+def payload_signature(events, profiles):
+    """A stable fingerprint of a feed's meaningful output — the event id list
+    (order-stable: always sorted newest-first) plus each profile's pubkey and
+    created_at. Excludes `generated_at` so an otherwise-identical run doesn't
+    churn a rewrite/VPS push. A replacement or profile edit changes an id or a
+    created_at, so any real change still trips it."""
+    return (
+        tuple(e.get("id") for e in events),
+        tuple(sorted((pk, ev.get("created_at")) for pk, ev in profiles.items())),
+    )
+
+
 # ── scan-relay resolution (cached) ────────────────────────────────────────────
 def get_scan_relays(members, state, force_resolve=False):
     """The relay set to scan, reused from state unless stale. Resolving the
@@ -284,43 +319,75 @@ def main():
     for cfg in PASSES:
         name = cfg["name"]
         pstate = state.get(name, {})
+        prev_out = load_output(cfg["file"])
         content = [e for k in cfg["kinds"] for e in by_kind.get(k, [])]
-        coordmap = newest_per_coord(load_output(cfg["file"]).get("events", []) + content)
+        coordmap = newest_per_coord(prev_out.get("events", []) + content)
         del_ids, del_coords = collect_deletions(
             deletions, set(pstate.get("deleted_ids", [])),
             dict(pstate.get("deleted_coords", {})))
         surviving = [e for e in coordmap.values() if not is_deleted(e, del_ids, del_coords)]
         surviving.sort(key=lambda e: e.get("created_at", 0), reverse=True)
+
+        # Prune the persisted deletion state to only what can ever suppress
+        # content we actually store — otherwise it grows without bound (it had
+        # ballooned to ~25k entries per feed, ~12.6 MB of state.json total,
+        # mostly kind-5s deleting notes/reactions we never cache, re-parsed and
+        # re-serialized every run). Safe because between reconciles the
+        # incremental since-window never re-fetches an already-removed old
+        # event, and the daily reconcile (since=None) re-derives every deletion
+        # from scratch anyway:
+        #   • coord deletions — keep only for kinds THIS feed tracks; an a-tag
+        #     for any other kind can never match our addressable events.
+        #   • id deletions — keep only ids present in our current store, i.e.
+        #     the ones actively suppressing something we still hold.
+        tracked = set(cfg["kinds"])
+        stored_ids = {e.get("id") for e in coordmap.values()}
+        del_coords = {c: at for c, at in del_coords.items()
+                      if c.split(":", 1)[0].isdigit() and int(c.split(":", 1)[0]) in tracked}
+        del_ids = {i for i in del_ids if i in stored_ids}
         pstate["deleted_ids"] = sorted(del_ids)
         pstate["deleted_coords"] = del_coords
-        results[name] = (surviving, pstate)
+        results[name] = (surviving, pstate, prev_out)
         all_authors |= {e.get("pubkey") for e in surviving if e.get("pubkey")}
         print(f"  {name}: {len(surviving)} live events "
-              f"({len(coordmap) - len(surviving)} hidden by NIP-09)")
+              f"({len(coordmap) - len(surviving)} hidden by NIP-09); "
+              f"retained {len(del_ids)} id + {len(del_coords)} coord deletions")
 
-    # One profile fetch for everyone across all feeds.
-    print(f"Fetching kind-0 profiles for {len(all_authors)} authors...")
-    profiles = fetch_profiles(scan_relays, all_authors, wall)
-    print(f"  {len(profiles)}/{len(all_authors)} profiles resolved")
+    # Profiles for everyone across all feeds — cached in state, so a full crawl
+    # runs only on the daily reconcile and incremental runs fetch just newly
+    # seen authors (usually none). Removes a whole author-chunked relay crawl
+    # from the hot path.
+    print(f"Resolving kind-0 profiles for {len(all_authors)} authors...")
+    profiles = get_profiles(scan_relays, all_authors, state, full_scan, wall)
+    print(f"  {len(profiles)}/{len(all_authors)} profiles available")
 
-    # Write (and optionally push) each feed.
+    # Write (and optionally push) each feed — but skip both when the feed's
+    # meaningful payload is identical to what we already have, so an idle tick
+    # costs nothing (no rewrite, no VPS round-trip). generated_at alone changing
+    # is not a change worth pushing.
     config = load_config(CREDENTIALS_FILE) if PUSH_TO_VPS else None
     for cfg in PASSES:
         name = cfg["name"]
-        surviving, pstate = results[name]
+        surviving, pstate, prev_out = results[name]
         pf = {pk: profiles[pk]
               for pk in {e.get("pubkey") for e in surviving} if pk in profiles}
-        save_output(cfg["file"], {
-            "generated_at": datetime.now(tz=timezone.utc).isoformat(),
-            "kinds": cfg["kinds"],
-            "member_count": len(members),
-            "relay_count": len(scan_relays),
-            "events": surviving,
-            "profiles": pf,
-        })
-        print(f"  wrote {len(surviving)} events + {len(pf)} profiles → data/{cfg['file']}")
-        if PUSH_TO_VPS:
-            push_file_to_vps(config, DATA_DIR / cfg["file"], cfg["file"], VPS_KEY_FILE)
+        unchanged = (payload_signature(surviving, pf) ==
+                     payload_signature(prev_out.get("events", []),
+                                       prev_out.get("profiles", {})))
+        if unchanged:
+            print(f"  {name}: unchanged ({len(surviving)} events) — skip write + push")
+        else:
+            save_output(cfg["file"], {
+                "generated_at": datetime.now(tz=timezone.utc).isoformat(),
+                "kinds": cfg["kinds"],
+                "member_count": len(members),
+                "relay_count": len(scan_relays),
+                "events": surviving,
+                "profiles": pf,
+            })
+            print(f"  wrote {len(surviving)} events + {len(pf)} profiles → data/{cfg['file']}")
+            if PUSH_TO_VPS:
+                push_file_to_vps(config, DATA_DIR / cfg["file"], cfg["file"], VPS_KEY_FILE)
         pstate["last_processed"] = max(pstate.get("last_processed") or 0, newest_ts, since or 0)
         state[name] = pstate
 

@@ -74,6 +74,7 @@ from pynostr.key import PrivateKey  # noqa: F401  (kept consistent with other bo
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "shared"))
 from nostr_utils import load_config, hex_to_npub, NOSTR_RELAYS
 from boost_formatter import strip_fountain_trailer, LB_FEED_GUID
+from collector_common import fetch_events_by_authors
 
 REPO_ROOT         = Path(__file__).resolve().parent.parent.parent
 CREDENTIALS_FILE  = Path.home() / ".config/nostr-bots/credentials.env"
@@ -100,58 +101,18 @@ SINCE_CUTOFF = int(datetime(2026, 2, 2, 10, 0, 0, tzinfo=ZoneInfo("America/New_Y
 OVERLAP_SECONDS = 300
 
 AUTHOR_BATCH_SIZE = 50   # conservative per-filter author count (relay limits vary)
-RELAY_TIMEOUT      = 15
+
+# Per-relay query wall-clock caps. The first run backfills all the way to
+# SINCE_CUTOFF, so a relay may legitimately stream a while — give it the longer
+# budget. On incremental runs the since-window is tiny, so a relay that hasn't
+# EOSE'd in ~20s is effectively dead and there's no reason to wait the full cap.
+BACKFILL_WALL_SECONDS    = 60
+INCREMENTAL_WALL_SECONDS = 20
 
 PODCAST_INDEX_BASE = "https://api.podcastindex.org/api/1.0"
 
 
 # ── relay I/O ────────────────────────────────────────────────────────────────
-def query_relay(relay, filt, timeout=RELAY_TIMEOUT, max_wall_seconds=60, max_events=20000):
-    """REQ a single filter against one relay, return whatever EVENTs arrive
-    before EOSE, the socket times out, or a hard wall-clock/event-count cap is
-    hit (partial results are kept, not discarded).
-
-    The per-recv() timeout alone isn't enough: a relay that dribbles messages
-    slower than `timeout` apart but never sends EOSE can otherwise hang a
-    single query indefinitely (observed live against nos.lol — a run sat on
-    one relay connection for over an hour). `max_wall_seconds` bounds total
-    time regardless of how the traffic is paced; `max_events` is a second
-    safety net against a relay streaming an unbounded backlog."""
-    got = []
-    deadline = time.monotonic() + max_wall_seconds
-    try:
-        ws = websocket.create_connection(relay, timeout=timeout)
-        sub = "cb"
-        ws.send(json.dumps(["REQ", sub, filt]))
-        while time.monotonic() < deadline and len(got) < max_events:
-            remaining = deadline - time.monotonic()
-            ws.settimeout(max(0.1, min(timeout, remaining)))
-            try:
-                msg = json.loads(ws.recv())
-            except websocket.WebSocketTimeoutException:
-                break
-            except Exception:
-                break
-            if not isinstance(msg, list) or not msg:
-                continue
-            if msg[0] == "EVENT" and len(msg) >= 3:
-                got.append(msg[2])
-            elif msg[0] == "EOSE":
-                break
-        if len(got) >= max_events:
-            print(f"    [warn] {relay}: hit max_events cap ({max_events}) — filter may be too broad")
-        elif time.monotonic() >= deadline:
-            print(f"    [warn] {relay}: hit {max_wall_seconds}s wall-clock cap without EOSE — taking partial results")
-        try:
-            ws.send(json.dumps(["CLOSE", sub]))
-        except Exception:
-            pass
-        ws.close()
-    except Exception as e:
-        print(f"    [warn] {relay}: {e}")
-    return got
-
-
 def fetch_event_by_id(event_id, relays, timeout=8, max_wall_seconds=15):
     for relay in relays:
         try:
@@ -183,25 +144,19 @@ def fetch_event_by_id(event_id, relays, timeout=8, max_wall_seconds=15):
     return None
 
 
-def fetch_boost_candidate_events(author_hexes, since):
-    """Network-wide #k-tag scan across NOSTR_RELAYS, batched by author count.
-    Dedupes by event id across relays/batches."""
-    batches = [author_hexes[i:i + AUTHOR_BATCH_SIZE]
-               for i in range(0, len(author_hexes), AUTHOR_BATCH_SIZE)]
-    seen = {}
-    for relay in NOSTR_RELAYS:
-        for batch in batches:
-            filt = {
-                "kinds": [1],
-                "authors": batch,
-                "#k": ["podcast:guid", "podcast:item:guid"],
-                "since": since,
-            }
-            for ev in query_relay(relay, filt):
-                if ev.get("id"):
-                    seen[ev["id"]] = ev
-        print(f"    {relay.split('/')[2]}: {len(seen)} unique events so far")
-    return list(seen.values())
+def fetch_boost_candidate_events(author_hexes, since, max_wall_seconds):
+    """Network-wide #k-tag scan across NOSTR_RELAYS, batched by author count and
+    deduped by event id. Relays are queried CONCURRENTLY via the shared
+    collector fetcher — the scan is I/O-bound (dominated by slow/dead relays
+    waiting out their timeout), so fanning out turns what was a sequential
+    per-relay crawl into a few concurrent waves. The `#k` narrowing is passed as
+    an extra filter so relays only return podcast-tagged notes."""
+    return fetch_events_by_authors(
+        NOSTR_RELAYS, [1], author_hexes, since=since,
+        batch_size=AUTHOR_BATCH_SIZE, max_wall_seconds=max_wall_seconds,
+        label="boosts ",
+        extra_filter={"#k": ["podcast:guid", "podcast:item:guid"]},
+    )
 
 
 # ── bech32 quote-ref decoding (note1.../nevent1... embedded in content) ──────
@@ -516,10 +471,12 @@ def main():
     state = load_state()
     last_processed = state.get("last_processed")
     since = SINCE_CUTOFF if not last_processed else max(SINCE_CUTOFF, last_processed - OVERLAP_SECONDS)
-    print(f"Querying since {since} ({datetime.fromtimestamp(since, tz=timezone.utc).isoformat()})")
+    wall = BACKFILL_WALL_SECONDS if not last_processed else INCREMENTAL_WALL_SECONDS
+    print(f"Querying since {since} ({datetime.fromtimestamp(since, tz=timezone.utc).isoformat()}) "
+          f"[{wall}s/relay cap]")
 
     print("Fetching candidate podcast-tagged notes...")
-    events = fetch_boost_candidate_events(author_hexes, since)
+    events = fetch_boost_candidate_events(author_hexes, since, wall)
     print(f"{len(events)} candidate kind:1 notes fetched")
 
     receipt_cache = {}

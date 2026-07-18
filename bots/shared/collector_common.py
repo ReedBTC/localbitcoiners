@@ -44,20 +44,26 @@ AUTHOR_BATCH_SIZE = 50   # conservative per-filter author count (relay caps vary
 # ── relay I/O ────────────────────────────────────────────────────────────────
 def query_relay(relay, filt, timeout=DEFAULT_RELAY_TIMEOUT,
                 max_wall_seconds=60, max_events=50000):
-    """REQ a single filter against one relay, returning whatever EVENTs arrive
-    before EOSE, the socket times out, or a hard wall-clock / event-count cap is
-    hit (partial results are kept, not discarded).
+    """REQ one or more filters against one relay in a single subscription,
+    returning whatever EVENTs arrive before EOSE, the socket times out, or a hard
+    wall-clock / event-count cap is hit (partial results are kept, not discarded).
 
-    Identical in spirit to community-boosts' query_relay: the per-recv timeout
-    alone can't bound a relay that dribbles messages slower than `timeout`
-    apart but never sends EOSE, so `max_wall_seconds` bounds total time and
-    `max_events` guards against an unbounded backlog stream."""
+    `filt` may be a single filter dict or a LIST of filter dicts. A list is sent
+    as one REQ carrying every filter, so a relay is queried for several
+    kind/tag shapes over ONE connection and ONE EOSE wait — a dead relay then
+    costs a single `max_wall_seconds`, not one per filter. The relay returns the
+    union (each filter applied independently, e.g. a `#k` narrowing on only one).
+
+    The per-recv timeout alone can't bound a relay that dribbles messages slower
+    than `timeout` apart but never sends EOSE, so `max_wall_seconds` bounds total
+    time and `max_events` guards against an unbounded backlog stream."""
+    filters = filt if isinstance(filt, list) else [filt]
     got = []
     deadline = time.monotonic() + max_wall_seconds
     try:
         ws = websocket.create_connection(relay, timeout=timeout)
         sub = "cf"
-        ws.send(json.dumps(["REQ", sub, filt]))
+        ws.send(json.dumps(["REQ", sub, *filters]))
         while time.monotonic() < deadline and len(got) < max_events:
             remaining = deadline - time.monotonic()
             ws.settimeout(max(0.1, min(timeout, remaining)))
@@ -89,39 +95,52 @@ def query_relay(relay, filt, timeout=DEFAULT_RELAY_TIMEOUT,
 
 def fetch_events_by_authors(relays, kinds, author_hexes, since=None,
                             batch_size=AUTHOR_BATCH_SIZE, max_wall_seconds=60,
-                            max_workers=24, label=""):
+                            max_workers=24, label="", extra_filter=None):
     """Author-chunked scan of `kinds` across `relays`, deduped by event id.
 
-    Relays are queried CONCURRENTLY (a thread per relay, capped at
-    `max_workers`) — the scan is I/O-bound and dominated by slow/dead relays
-    waiting out their timeout, so fanning out turns a long sequential crawl
-    into a few concurrent waves. `since=None` means full history (backfill);
-    pass a timestamp for incremental. `max_wall_seconds` bounds each relay
-    query — keep it tight on incremental runs, where a relay that hasn't EOSE'd
-    quickly on a small since-window is effectively dead. Authors are chunked
-    because many relays cap the `authors` array."""
+    Every (relay, author-batch) pair is queried CONCURRENTLY (one task each,
+    capped at `max_workers`) — the scan is I/O-bound and dominated by slow/dead
+    relays waiting out their timeout, so fanning out at the query level turns a
+    long sequential crawl into a few concurrent waves. Fanning out per (relay,
+    batch) rather than per relay matters when authors chunk into several
+    batches: a relay that never EOSEs would otherwise burn one full
+    `max_wall_seconds` per batch back-to-back inside its thread (three batches ⇒
+    ~3× the cap on one connection); as independent tasks those waits overlap
+    instead. `since=None` means full history (backfill); pass a timestamp for
+    incremental. `max_wall_seconds` bounds each query — keep it tight on
+    incremental runs, where a relay that hasn't EOSE'd quickly on a small
+    since-window is effectively dead. Authors are chunked because many relays cap
+    the `authors` array.
+
+    `extra_filter` is merged into every REQ filter (e.g. a `#k` tag narrowing) —
+    relay-side tag filters are exact-match, so callers that can pre-narrow
+    (community-boosts' `#k: [podcast:guid, podcast:item:guid]`) pass it here."""
     batches = [author_hexes[i:i + batch_size]
                for i in range(0, len(author_hexes), batch_size)]
     base_filt = {"kinds": kinds}
     if since is not None:
         base_filt["since"] = since
+    if extra_filter:
+        base_filt.update(extra_filter)
 
-    def scan_one(relay):
+    tasks = [(relay, batch) for relay in relays for batch in batches]
+
+    def scan_one(task):
+        relay, batch = task
         local = {}
-        for batch in batches:
-            filt = dict(base_filt, authors=batch)
-            for ev in query_relay(relay, filt, max_wall_seconds=max_wall_seconds):
-                eid = ev.get("id")
-                if eid:
-                    local[eid] = ev
+        filt = dict(base_filt, authors=batch)
+        for ev in query_relay(relay, filt, max_wall_seconds=max_wall_seconds):
+            eid = ev.get("id")
+            if eid:
+                local[eid] = ev
         return local
 
     seen = {}
     lock = threading.Lock()
     done = 0
-    total = len(relays)
+    total = len(tasks)
     with ThreadPoolExecutor(max_workers=max(1, min(max_workers, total or 1))) as ex:
-        futures = {ex.submit(scan_one, r): r for r in relays}
+        futures = {ex.submit(scan_one, t): t for t in tasks}
         for fut in as_completed(futures):
             try:
                 local = fut.result()
@@ -131,7 +150,50 @@ def fetch_events_by_authors(relays, kinds, author_hexes, since=None,
                 seen.update(local)
                 done += 1
                 if done % 40 == 0 or done == total:
-                    print(f"    {label}{done}/{total} relays scanned, {len(seen)} unique events")
+                    print(f"    {label}{done}/{total} queries done, {len(seen)} unique events")
+    return list(seen.values())
+
+
+def fetch_events_multi(relays, filter_templates, author_hexes,
+                       batch_size=AUTHOR_BATCH_SIZE, max_wall_seconds=60,
+                       max_workers=24, label=""):
+    """Like fetch_events_by_authors, but each (relay, author-batch) is queried
+    with SEVERAL filter templates in one REQ instead of one — so a caller that
+    wants, say, `#k`-narrowed kind-1 boosts + addressable feed kinds + kind-5
+    deletions pays a single connection + EOSE wait per relay-batch rather than
+    three. `filter_templates` is a list of partial filter dicts (kinds, optional
+    `#k`, optional `since`); `authors` is merged into each. Returns the deduped
+    union across all templates (mixed kinds — the caller buckets by kind)."""
+    batches = [author_hexes[i:i + batch_size]
+               for i in range(0, len(author_hexes), batch_size)]
+    tasks = [(relay, batch) for relay in relays for batch in batches]
+
+    def scan_one(task):
+        relay, batch = task
+        filters = [dict(tmpl, authors=batch) for tmpl in filter_templates]
+        local = {}
+        for ev in query_relay(relay, filters, max_wall_seconds=max_wall_seconds):
+            eid = ev.get("id")
+            if eid:
+                local[eid] = ev
+        return local
+
+    seen = {}
+    lock = threading.Lock()
+    done = 0
+    total = len(tasks)
+    with ThreadPoolExecutor(max_workers=max(1, min(max_workers, total or 1))) as ex:
+        futures = {ex.submit(scan_one, t): t for t in tasks}
+        for fut in as_completed(futures):
+            try:
+                local = fut.result()
+            except Exception:
+                local = {}
+            with lock:
+                seen.update(local)
+                done += 1
+                if done % 40 == 0 or done == total:
+                    print(f"    {label}{done}/{total} queries done, {len(seen)} unique events")
     return list(seen.values())
 
 

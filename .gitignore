@@ -8,6 +8,7 @@ CLAUDE_CODE_HANDOFF.md
 bots/**/state.json
 bots/**/state.json.bak
 bots/**/state.json.before-*
+bots/**/*.lock
 bots/**/state_*.json
 bots/**/last_seen.txt
 bots/**/last_seen.txt.bak
