@@ -61,6 +61,10 @@ data/zaps.csv
 data/meetups.csv
 data/zapped-notes-cache.json
 
+# Atomic-write temp files (sats-log writes via mkstemp + os.replace; a crash
+# mid-write could leave one behind — never commit it).
+data/*.tmp
+
 # --- Python ---
 bots/**/__pycache__/
 bots/**/*.pyc

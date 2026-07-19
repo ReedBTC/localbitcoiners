@@ -64,12 +64,15 @@ State:
 This bot does **not** publish anything to Nostr.
 """
 
+import io
+import os
 import re
 import sys
 import csv
 import json
 import time
 import hashlib
+import tempfile
 import bech32
 import requests
 import subprocess
@@ -471,8 +474,46 @@ def load_state():
     return {"last_processed": None}
 
 
+def _atomic_write_text(path, text, encoding="utf-8"):
+    """Write `text` to `path` atomically: a temp file in the same directory
+    followed by os.replace() (an atomic rename on POSIX). A concurrent reader —
+    the weekly leaderboard publish and follow-packs both read these files while
+    sats-log may be rewriting them — always sees a complete file (the old one or
+    the new one), never a truncated half-write. This matters now that sats-log
+    runs every ~5 minutes instead of once a day. newline="" so csv content (and
+    JSON, which only emits "\\n") is written through verbatim."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding=encoding, newline="") as f:
+            f.write(text)
+        os.chmod(tmp, 0o644)  # mkstemp is 0600; keep the conventional data-file mode
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def _csv_to_text(fieldnames, rows, dict_rows=True):
+    """Render CSV rows to a string via csv so _atomic_write_text can place it."""
+    buf = io.StringIO()
+    if dict_rows:
+        w = csv.DictWriter(buf, fieldnames=fieldnames)
+        w.writeheader()
+        w.writerows(rows)
+    else:
+        w = csv.writer(buf)
+        w.writerow(fieldnames)
+        w.writerows(rows)
+    return buf.getvalue()
+
+
 def save_state(state):
-    STATE_FILE.write_text(json.dumps(state, indent=2))
+    _atomic_write_text(STATE_FILE, json.dumps(state, indent=2))
 
 
 def load_existing_rows():
@@ -486,16 +527,12 @@ def load_existing_rows():
 def write_csv_full(rows):
     """Full rewrite of data/sats.csv. Sorted by settled_at desc (then by
     payment_hash for stability on ties / empty timestamps)."""
-    CSV_FILE.parent.mkdir(parents=True, exist_ok=True)
     sorted_rows = sorted(
         rows,
         key=lambda r: (r.get("settled_at") or "", r.get("payment_hash") or ""),
         reverse=True,
     )
-    with CSV_FILE.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=CSV_COLUMNS)
-        writer.writeheader()
-        writer.writerows(sorted_rows)
+    _atomic_write_text(CSV_FILE, _csv_to_text(CSV_COLUMNS, sorted_rows))
 
 
 def _coerce_json_value(col, raw):
@@ -543,7 +580,7 @@ def write_sats_json():
         + ",\n".join("    " + json.dumps(r, ensure_ascii=False) for r in rows)
         + "\n  ]\n}\n"
     )
-    SATS_JSON.write_text(body, encoding="utf-8")
+    _atomic_write_text(SATS_JSON, body)
 
 
 # ---------------------------------------------------------------------------
@@ -1354,15 +1391,11 @@ def supporter_to_fountain_row(supporter, ep_num, ep_title):
 def write_fountain_csv(rows):
     """Full rewrite of data/fountain-api.csv. Sorted by entity_id then
     btc all-time total desc — keeps an entity's supporters grouped and ranked."""
-    FOUNTAIN_CSV.parent.mkdir(parents=True, exist_ok=True)
     sorted_rows = sorted(
         rows,
         key=lambda r: (r.get("entity_id") or "", -int(r.get("btc_alltime_total") or 0)),
     )
-    with FOUNTAIN_CSV.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=FOUNTAIN_COLUMNS)
-        writer.writeheader()
-        writer.writerows(sorted_rows)
+    _atomic_write_text(FOUNTAIN_CSV, _csv_to_text(FOUNTAIN_COLUMNS, sorted_rows))
 
 
 def run_supporters(all_boost_rows):
@@ -1663,16 +1696,12 @@ def run_zaps(state):
 def write_zaps_csv(rows):
     """Full rewrite of data/zaps.csv. Sorted by settled_at desc (then by
     zap_receipt_id for stability)."""
-    ZAPS_CSV.parent.mkdir(parents=True, exist_ok=True)
     sorted_rows = sorted(
         rows,
         key=lambda r: (r.get("settled_at") or "", r.get("zap_receipt_id") or ""),
         reverse=True,
     )
-    with ZAPS_CSV.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=ZAP_COLUMNS)
-        writer.writeheader()
-        writer.writerows(sorted_rows)
+    _atomic_write_text(ZAPS_CSV, _csv_to_text(ZAP_COLUMNS, sorted_rows))
 
 
 def write_zaps_json():
@@ -1702,7 +1731,7 @@ def write_zaps_json():
         + ",\n".join("    " + json.dumps(r, ensure_ascii=False) for r in rows)
         + "\n  ]\n}\n"
     )
-    ZAPS_JSON.write_text(body, encoding="utf-8")
+    _atomic_write_text(ZAPS_JSON, body)
 
 
 # ---------------------------------------------------------------------------
@@ -1728,10 +1757,7 @@ def _load_zap_note_cache():
 
 
 def _save_zap_note_cache(cache):
-    ZAPPED_NOTES_CACHE.parent.mkdir(parents=True, exist_ok=True)
-    ZAPPED_NOTES_CACHE.write_text(
-        json.dumps(cache, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    _atomic_write_text(ZAPPED_NOTES_CACHE, json.dumps(cache, indent=2, ensure_ascii=False))
 
 
 def _fetch_note_zap_tag_count(event_id, relays):
@@ -1892,16 +1918,12 @@ def extract_meetup_rows(boost_rows):
 def write_meetups_csv(rows):
     """Full rewrite of data/meetups.csv. Sorted by settled_at desc (then by
     coordinate for stability)."""
-    MEETUPS_CSV.parent.mkdir(parents=True, exist_ok=True)
     sorted_rows = sorted(
         rows,
         key=lambda r: (r.get("settled_at") or "", r.get("coordinate") or ""),
         reverse=True,
     )
-    with MEETUPS_CSV.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=MEETUP_COLUMNS)
-        writer.writeheader()
-        writer.writerows(sorted_rows)
+    _atomic_write_text(MEETUPS_CSV, _csv_to_text(MEETUP_COLUMNS, sorted_rows))
 
 
 def write_meetups_json():
@@ -1931,7 +1953,7 @@ def write_meetups_json():
         + ",\n".join("    " + json.dumps(r, ensure_ascii=False) for r in rows)
         + "\n  ]\n}\n"
     )
-    MEETUPS_JSON.write_text(body, encoding="utf-8")
+    _atomic_write_text(MEETUPS_JSON, body)
 
 
 # ---------------------------------------------------------------------------
