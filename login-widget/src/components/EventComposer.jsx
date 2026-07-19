@@ -67,22 +67,19 @@ export default function EventComposer({
   const [form, setForm] = useState(emptyEventForm)
   const [shareToNostr, setShareToNostr] = useState(false)
   const [shareText, setShareText] = useState(DEFAULT_KIND1_TEMPLATE)
-  const [boostShow, setBoostShow] = useState(false)
-  const [boostText, setBoostText] = useState(DEFAULT_BOOST_TEMPLATE)
 
   const [imageUploading, setImageUploading] = useState(false)
   const [imageError, setImageError] = useState('')
   const [error, setError] = useState('')
-  const [publishing, setPublishing] = useState(false)
+  // null | 'publish' | 'featured' — also names which button shows its spinner.
+  const [publishing, setPublishing] = useState(null)
   const [published, setPublished] = useState(null) // {naddr, eventId, dTag, kind, pubkey}
 
-  // Import / Export Options disclosure state.
+  // "Import from Template" disclosure state.
   const [naddrInput, setNaddrInput] = useState('')
   const [naddrError, setNaddrError] = useState('')
   const [naddrLoading, setNaddrLoading] = useState(false)
-  const [importError, setImportError] = useState('')
-  const [importLoading, setImportLoading] = useState(false)
-  // Lazy-load the "Copy from your meetups" list only once the disclosure
+  // Lazy-load the "Import from your meetups" list only once the disclosure
   // is opened — gates the relay round-trip.
   const [ieOpen, setIeOpen] = useState(false)
 
@@ -93,43 +90,7 @@ export default function EventComposer({
     setForm(prev => ({ ...prev, ...patch }))
   }, [])
 
-  // ── Import / Export Options handlers ────────────────────────────────
-
-  const handleImportFile = useCallback(async (file) => {
-    setImportError('')
-    if (!file) return
-    if (!file.name.endsWith('.json') && file.type !== 'application/json') {
-      setImportError('Please pick a .json file.')
-      return
-    }
-    if (file.size > 1_000_000) {
-      setImportError('File too large — 1 MB max.')
-      return
-    }
-    setImportLoading(true)
-    try {
-      const text = await file.text()
-      const ev = JSON.parse(text)
-      const snapshot = eventToForm(ev)
-      if (!snapshot) {
-        setImportError('Not a kind 31922/31923 event.')
-        return
-      }
-      // Cross-author import → strip the imported dTag so publishing
-      // creates a new event under the user's pubkey instead of trying
-      // to inherit the original author's identifier.
-      const myPubkey = sessionUser?.pubkey
-      if (ev.pubkey && myPubkey && ev.pubkey !== myPubkey) {
-        snapshot.dTag = ''
-      }
-      setForm(snapshot)
-      setError('')
-    } catch (e) {
-      setImportError(`Invalid JSON: ${e?.message || 'parse failed'}`)
-    } finally {
-      setImportLoading(false)
-    }
-  }, [sessionUser])
+  // ── "Import from Template" handlers ─────────────────────────────────
 
   const handleNaddrLoad = useCallback(async () => {
     const trimmed = naddrInput.trim()
@@ -196,7 +157,12 @@ export default function EventComposer({
     }
   }, [imageUploading, updateForm])
 
-  const handlePublish = useCallback(async () => {
+  // Publishes the NIP-52 event from the user's npub. `makeFeatured` is the
+  // "Make Featured" button: after the event is live it opens the show-boost
+  // modal prefilled with the event reference, so paying it promotes the meetup
+  // into the Featured section. The plain "Publish Meetup" button passes false —
+  // it just pushes the event note (plus the optional announcement).
+  const handlePublish = useCallback(async (makeFeatured = false) => {
     setError('')
     if (!sessionUser?.pubkey) {
       onRequestSignIn?.()
@@ -215,12 +181,12 @@ export default function EventComposer({
       setError(e?.message || 'Form is incomplete.')
       return
     }
-    setPublishing(true)
+    setPublishing(makeFeatured ? 'featured' : 'publish')
     try {
       const result = await publishCalendarEvent(lowered)
       setPublished(result)
 
-      // Side-effect 1: kind 1 announcement. Best-effort.
+      // Side-effect: optional kind 1 announcement note. Best-effort.
       if (shareToNostr && result?.naddr) {
         try {
           const tmpl = buildEventAnnouncementTemplate({
@@ -234,26 +200,24 @@ export default function EventComposer({
         } catch {}
       }
 
-      // Side-effect 2: open the show-boost modal with the announcement
-      // prefilled. The boost modal handles the wallet/login gates and
-      // its own silent failure UX.
-      if (boostShow && result?.naddr && onOpenShowBoostWithMessage) {
-        const prefilled = interpolateNaddr(boostText, result.naddr)
+      // "Make Featured": open the show-boost modal with the event reference
+      // prefilled. The boost modal handles the wallet/login gates and its own
+      // silent failure UX; boosting is what lands the event in Featured.
+      if (makeFeatured && result?.naddr && onOpenShowBoostWithMessage) {
+        const prefilled = interpolateNaddr(DEFAULT_BOOST_TEMPLATE, result.naddr)
         onOpenShowBoostWithMessage(prefilled)
       }
     } catch (e) {
       setError(e?.message || 'Publish failed.')
     } finally {
-      setPublishing(false)
+      setPublishing(null)
     }
-  }, [form, sessionUser, shareToNostr, shareText, boostShow, boostText, onRequestSignIn, onOpenShowBoostWithMessage, ensureSignerOk])
+  }, [form, sessionUser, shareToNostr, shareText, onRequestSignIn, onOpenShowBoostWithMessage, ensureSignerOk])
 
   const resetForNewEvent = useCallback(() => {
     setForm(emptyEventForm())
     setShareToNostr(false)
     setShareText(DEFAULT_KIND1_TEMPLATE)
-    setBoostShow(false)
-    setBoostText(DEFAULT_BOOST_TEMPLATE)
     setError('')
     setImageError('')
     setPublished(null)
@@ -304,33 +268,16 @@ export default function EventComposer({
   return (
     <div className="lb-card relative space-y-5">
       <PasswordManagerHoneypot />
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h2 className="lb-card-heading">List your meetup on Nostr</h2>
-        {manageUrl && (
-          <a
-            href={manageUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: 'var(--orange)', fontSize: '0.85rem', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}
-            onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
-            onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
-          >
-            Manage your events ↗
-          </a>
-        )}
-      </div>
+      <h2 className="lb-card-heading">List your meetup on Nostr</h2>
 
       <ImportExportDisclosure
-        acceptedFileTypes=".json,application/json"
-        onImportFile={handleImportFile}
-        importLabel="Upload JSON"
-        importTitle="Import a kind 31922/31923 JSON file"
-        importLoading={importLoading}
-        importError={importError}
+        summaryLabel="Import from Template"
+        description="Optional — Start with an existing event or event ID as a template"
         pasteIdValue={naddrInput}
         onPasteIdChange={(v) => { setNaddrInput(v); if (naddrError) setNaddrError('') }}
         onLoadId={handleNaddrLoad}
         pasteIdPlaceholder="naddr1… / nevent1…"
+        loadButtonLabel="Import"
         loadLoading={naddrLoading}
         loadError={naddrError}
         onToggle={setIeOpen}
@@ -339,6 +286,7 @@ export default function EventComposer({
           pubkey={sessionUser?.pubkey}
           enabled={ieOpen}
           onCopy={handleCopyExisting}
+          manageUrl={manageUrl}
         />
       </ImportExportDisclosure>
 
@@ -533,7 +481,7 @@ export default function EventComposer({
           <span>
             Also share an announcement note on Nostr
             <span className="lb-check-sub">
-              Posts a kind 1 note from your npub - event {'{naddr}'} will be included with your boost message
+              Posts a kind 1 note from your npub — event {'{naddr}'} will be included with your note
             </span>
           </span>
         </label>
@@ -548,56 +496,49 @@ export default function EventComposer({
         )}
       </div>
 
-      {/* Boost-the-show checkbox + editable textarea */}
-      <div className="space-y-3">
-        <label className="lb-check-row">
-          <input
-            type="checkbox"
-            checked={boostShow}
-            onChange={e => setBoostShow(e.target.checked)}
-          />
-          <span>
-            Announce your meetup with a boost to the show
-            <span className="lb-check-sub">
-              Event {'{naddr}'} will be included with your boost message
-            </span>
-          </span>
-        </label>
-        {boostShow && (
-          <textarea
-            value={boostText}
-            onChange={e => setBoostText(e.target.value)}
-            className="lb-input"
-            style={{ minHeight: '80px', resize: 'vertical', lineHeight: 1.55 }}
-            {...NO_AUTOFILL}
-          />
-        )}
-      </div>
-
-      {/* Error + publish */}
+      {/* Error + publish actions. Two buttons: "Publish Meetup" just pushes the
+          event note (plain/secondary); "Make Featured" publishes then opens the
+          boost flow, which is what lands the meetup in the Featured section. */}
       {error && <div className="lb-error">{error}</div>}
-      <button
-        onClick={handlePublish}
-        disabled={publishing}
-        className="lb-btn lb-btn-primary"
-        style={{ width: '100%', padding: '0.85rem 1.15rem', fontSize: '1rem' }}
-      >
-        {publishing ? (
-          <>
-            <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: '#fff', opacity: 0.85 }} className="animate-pulse" aria-hidden="true" />
-            Publishing…
-          </>
-        ) : loggedOut ? (
-          'Sign in to publish'
-        ) : (
-          <>
-            <svg viewBox="0 0 24 24" fill="currentColor" className="lb-btn-publish-bolt" aria-hidden="true">
-              <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z" />
-            </svg>
-            Publish Meetup
-          </>
-        )}
-      </button>
+      <div className="flex flex-col sm:flex-row gap-2">
+        <button
+          onClick={() => handlePublish(false)}
+          disabled={!!publishing}
+          className="lb-btn lb-btn-secondary"
+          style={{ flex: 1, padding: '0.85rem 1.15rem', fontSize: '1rem' }}
+        >
+          {publishing === 'publish' ? (
+            <>
+              <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', opacity: 0.85 }} className="animate-pulse" aria-hidden="true" />
+              Publishing…
+            </>
+          ) : loggedOut ? (
+            'Sign in to publish'
+          ) : (
+            'Publish Meetup'
+          )}
+        </button>
+        <button
+          onClick={() => handlePublish(true)}
+          disabled={!!publishing}
+          className="lb-btn lb-btn-primary"
+          style={{ flex: 1, padding: '0.85rem 1.15rem', fontSize: '1rem' }}
+        >
+          {publishing === 'featured' ? (
+            <>
+              <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: '#fff', opacity: 0.85 }} className="animate-pulse" aria-hidden="true" />
+              Publishing…
+            </>
+          ) : (
+            <>
+              <svg viewBox="0 0 24 24" fill="currentColor" className="lb-btn-publish-bolt" aria-hidden="true">
+                <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z" />
+              </svg>
+              Make Featured
+            </>
+          )}
+        </button>
+      </div>
     </div>
   )
 }

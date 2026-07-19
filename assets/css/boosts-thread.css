@@ -232,6 +232,24 @@ a.event-title:hover { color: var(--orange); }
    present. (Scoped to event cards; the boosts action bar is unaffected.) */
 .embed-note.is-event .note-actions { justify-content: flex-end; }
 
+/* ── Featured (boosted) event cards ──
+   A boosted event wears a gold border + soft pulsing halo — the same gold
+   accent as the top-tier supporter avatars (community-status.css --gold
+   #e0a92e), scaled up to a card-wide glow. Set on .is-featured by the
+   calendar renderer when Feeds marks the card as boosted. */
+.embed-note.is-event.is-featured {
+  border-color: #e0a92e;
+  box-shadow: 0 0 0 1px rgba(224,169,46,0.55), 0 0 14px 2px rgba(224,169,46,0.28);
+  animation: lb-featured-glow 2.6s ease-in-out infinite;
+}
+@keyframes lb-featured-glow {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(224,169,46,0.55), 0 0 12px 2px rgba(224,169,46,0.22); }
+  50%      { box-shadow: 0 0 0 1px rgba(224,169,46,0.75), 0 0 20px 4px rgba(224,169,46,0.40); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .embed-note.is-event.is-featured { animation: none; }
+}
+
 /* ── Per-card overflow (⋮) menu ──
    Duplicated from boost-actions.css so the shared calendar renderer gets
    its menu on pages that don't load the boost action bar (Meetups,
@@ -329,4 +347,14 @@ a.event-title:hover { color: var(--orange); }
   .note-card { padding: 0.95rem 1rem; }
   .note-card.is-root { padding: 1.15rem 1.15rem; }
   .reply-children { padding-left: 0.6rem; }
+
+  /* Featured event cards: stack the action bar on phones. Give the "Featured
+     by …" cluster the full row so it left-aligns (like desktop) and forces
+     Repost + Zap onto the line below, together and left-aligned. Scoped to
+     .is-featured so non-featured cards keep their right-aligned single row. */
+  .embed-note.is-event.is-featured .note-actions { justify-content: flex-start; }
+  .embed-note.is-event.is-featured .note-actions-left {
+    flex-basis: 100%;
+    margin-right: 0;
+  }
 }

@@ -79,7 +79,17 @@
 // providers (getalby, 2026-07-17) intermittently hard-fail browser fetches
 // while staying healthy for server-side callers. Evicts login-widget.js,
 // boost-actions.js, merch.js and feeds-market.js.
-const VERSION = 'lb-v33';
+// v34: /feeds Events tab overhaul — Featured Events section (gold glow +
+// "Featured by …" booster credit), forward 1W/1M/All range + In-Person/
+// Virtual/All-Types filters (replacing month/year + virtual toggle), "Feature"
+// button + "Find Event to Feature" in the Featured header, naddr copy, single
+// Past Events drawer. New CSS rules (.promote-btn, .featured-by*, .feed-*) live
+// in boost-actions.css / boosts-thread.css / feeds.html, so returning visitors
+// on the old stale-while-revalidate copy saw the Feature button and booster
+// avatars UNSTYLED (no orange fill, natural-size pfps) until a 2nd revalidate.
+// Bump evicts the stale boost-actions.css, boosts-thread.css, calendar-events.js
+// and feeds.js so mobile/PWA get the new styling on first navigation.
+const VERSION = 'lb-v34';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

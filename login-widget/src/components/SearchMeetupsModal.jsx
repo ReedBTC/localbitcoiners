@@ -134,7 +134,7 @@ function formatFollowers(n) {
   return `${n} followers`
 }
 
-export default function SearchMeetupsModal({ onClose, onBoostMeetup }) {
+export default function SearchMeetupsModal({ onClose, onBoostMeetup, embedded = false }) {
   const [query, setQuery] = useState('')
   const [phase, setPhase] = useState('idle')  // idle | searching | authors | events | error
   const [authors, setAuthors] = useState([])
@@ -270,18 +270,12 @@ export default function SearchMeetupsModal({ onClose, onBoostMeetup }) {
     onBoostMeetup?.(msg)
   }
 
-  return (
-    <MeetupModalChrome
-      ariaLabel="Search Nostr for a meetup to boost"
-      onClose={onClose}
-      maxWidth="34rem"
-    >
-      <div className="lb-card">
-        <h2 className="lb-card-heading">Search Nostr for a meetup</h2>
-        <p className="lb-muted" style={{ marginTop: '0.25rem', marginBottom: '1rem' }}>
-          Search by account name, npub, or paste an naddr.
-        </p>
+  const boostLabel = embedded ? 'Feature' : 'Boost'
 
+  // Shared body — the search field + its result phases. Wrapped in modal chrome
+  // for the /meetups path, or rendered bare inside the /feeds "Find" drawer.
+  const body = (
+    <>
         <input
           type="search"
           value={query}
@@ -298,7 +292,7 @@ export default function SearchMeetupsModal({ onClose, onBoostMeetup }) {
 
         {phase === 'idle' && (
           <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginTop: '0.85rem' }}>
-            Start typing to find an organizer, or paste the event address (naddr1…) directly.
+            Start typing to find an organizer, or paste the event address (naddr1…).
           </p>
         )}
 
@@ -380,12 +374,29 @@ export default function SearchMeetupsModal({ onClose, onBoostMeetup }) {
                   <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z" />
                   </svg>
-                  Boost
+                  {boostLabel}
                 </button>
               </div>
             ))}
           </div>
         )}
+    </>
+  )
+
+  if (embedded) return <div className="lb-embed-flow">{body}</div>
+
+  return (
+    <MeetupModalChrome
+      ariaLabel="Search Nostr for a meetup to boost"
+      onClose={onClose}
+      maxWidth="34rem"
+    >
+      <div className="lb-card">
+        <h2 className="lb-card-heading">Search Nostr for a meetup</h2>
+        <p className="lb-muted" style={{ marginTop: '0.25rem', marginBottom: '1rem' }}>
+          Search by account name, npub, or paste an naddr.
+        </p>
+        {body}
       </div>
     </MeetupModalChrome>
   )

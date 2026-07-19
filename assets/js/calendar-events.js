@@ -204,14 +204,18 @@ export async function fetchCalendarEventsFromRelays(coords, relays) {
 // Builds the `.embed-note.is-event` card: an optional square cover
 // thumbnail on the left, then organizer avatar + name (clickable — copies
 // the npub — with a ⋮ overflow menu), a title that links to the event on
-// mynostr.app, 📅 when, 📍 where, and — when `actions` is set — a Renote +
+// mynostr.app, 📅 when, 📍 where, and — when `actions` is set — a Repost +
 // Zap bar for logged-in users. `profile` is the organizer's parsed kind-0
 // ({ name, picture }) or null; `bech32` is the event's naddr; `actions`
-// opts the card into the interactive Renote/Zap bar (Feeds + Meetups pass
+// opts the card into the interactive Repost/Zap bar (Feeds + Meetups pass
 // it; the boosts-page embeds don't).
-export function renderCalendarCard(parsed, { bech32 = '', profile = null, actions = false, actionsLeft = null } = {}) {
+export function renderCalendarCard(parsed, { bech32 = '', profile = null, actions = false, actionsLeft = null, featured = false, featuredBy = null } = {}) {
   const card = document.createElement('div')
   card.className = 'embed-note is-event'
+  // Boosted (= "promoted") events wear a gold glow, mirroring the top-tier
+  // supporter avatars. Feeds passes this for cards whose coordinate is in the
+  // boosted set; everywhere else it stays off.
+  if (featured) card.classList.add('is-featured')
 
   // Cover thumbnail (NIP-52 `image` tag) on the left. When present, the
   // top of the card is a [thumb | content-column] row; the action bar
@@ -272,7 +276,7 @@ export function renderCalendarCard(parsed, { bech32 = '', profile = null, action
   authorRow.appendChild(idEl)
 
   // ⋮ overflow menu (top-right of the author row) — copies the event's
-  // nevent, mirroring the note cards on the boosts page.
+  // naddr, mirroring the note cards on the boosts page.
   const menu = buildEventMenu(parsed)
   if (menu) authorRow.appendChild(menu)
 
@@ -316,7 +320,13 @@ export function renderCalendarCard(parsed, { bech32 = '', profile = null, action
   }
 
   if (actions) {
-    const bar = buildEventActions(parsed, actionsLeft)
+    // Already-featured (boosted) cards drop the Promote button — it only makes
+    // sense as "get this into Featured". In its place they credit whoever paid
+    // to feature it ("Featured by …").
+    const bar = buildEventActions(parsed, actionsLeft, bech32, {
+      promote: !featured,
+      featuredBy: featured ? featuredBy : null,
+    })
     if (bar) actionsParent.appendChild(bar)
   }
 
@@ -329,31 +339,54 @@ function eventAppUrl(bech32) {
   return `https://plektos.app/event/${bech32}`
 }
 
-// ── Renote + Zap bar ─────────────────────────────────────────────────
+// ── Repost + Zap bar ─────────────────────────────────────────────────
 // Reuses the boosts page's signing/payment code (boost-actions.js),
 // loaded on demand: the login widget provides window.LBLogin, and
 // boost-actions exposes openZapModal() + repostAnyEvent(). Kept out of
 // the static import graph so the shared renderer stays lightweight for
 // pages that only display events.
-function buildEventActions(parsed, actionsLeft = null) {
+function buildEventActions(parsed, actionsLeft = null, bech32 = '', { promote = true, featuredBy = null } = {}) {
   if (!parsed || !parsed.id || !parsed.pubkey) return null
 
   const bar = document.createElement('div')
   bar.className = 'note-actions'
 
-  // Optional left-slot control (e.g. the "See other versions" toggle);
-  // margin-right:auto pushes Renote + Zap to the right edge.
-  if (actionsLeft) {
-    actionsLeft.style.marginRight = 'auto'
-    bar.appendChild(actionsLeft)
+  // Left cluster — the "Featured by …" credit (on featured cards, where the
+  // Promote button would be) and/or the "See other versions" toggle. The
+  // cluster's margin-right:auto pushes the action buttons to the right edge.
+  const leftItems = []
+  if (featuredBy) leftItems.push(buildFeaturedBy(featuredBy))
+  if (actionsLeft) leftItems.push(actionsLeft)
+  if (leftItems.length) {
+    const cluster = document.createElement('div')
+    cluster.className = 'note-actions-left'
+    for (const el of leftItems) cluster.appendChild(el)
+    bar.appendChild(cluster)
+  }
+
+  // ⚡ Promote — really a boost. Opens the show-boost modal prefilled with a
+  // reference to this event (same handoff the /meetups "boost an existing
+  // meetup" flows use), so paying it promotes the event into the Featured
+  // section. Only offered when we have an naddr to reference. Orange fill +
+  // white bolt so it reads as the boost CTA even though it says "Promote".
+  if (bech32 && promote) {
+    const promoteBtn = document.createElement('button')
+    promoteBtn.type = 'button'
+    promoteBtn.className = 'promote-btn'
+    promoteBtn.title = 'Feature — boost this event into the Featured section'
+    promoteBtn.innerHTML =
+      '<svg class="promote-bolt" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
+      '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg><span>Feature</span>'
+    promoteBtn.addEventListener('click', () => promoteEvent(parsed, bech32, promoteBtn))
+    bar.appendChild(promoteBtn)
   }
 
   const renoteBtn = document.createElement('button')
   renoteBtn.type = 'button'
   renoteBtn.className = 'repost-btn'
   renoteBtn.dataset.noteId = parsed.id.toLowerCase()
-  renoteBtn.title = 'Renote'
-  renoteBtn.innerHTML = '<span class="lb-icon" aria-hidden="true">🔁</span><span>Renote</span>'
+  renoteBtn.title = 'Repost'
+  renoteBtn.innerHTML = '<span class="lb-icon" aria-hidden="true">🔁</span><span>Repost</span>'
   renoteBtn.addEventListener('click', () => runEventAction('repost', parsed, renoteBtn))
   bar.appendChild(renoteBtn)
 
@@ -365,6 +398,98 @@ function buildEventActions(parsed, actionsLeft = null) {
   bar.appendChild(zapBtn)
 
   return bar
+}
+
+// "Featured by (pfp) Name" credit for a featured card, shown where the Promote
+// button sits on non-featured cards. `info` is { pubkey (hex), name, picture }
+// for whoever boosted the event into the Featured section. Click-to-copy-npub,
+// mirroring the author-id control.
+function buildFeaturedBy(info) {
+  if (!info || !info.pubkey) return document.createElement('span')
+  const hasPubkey = /^[0-9a-f]{64}$/i.test(info.pubkey)
+  const el = document.createElement(hasPubkey ? 'button' : 'span')
+  el.className = 'featured-by'
+  if (hasPubkey) {
+    el.type = 'button'
+    el.title = 'Copy npub'
+    el.addEventListener('click', () => copyNpub(info.pubkey))
+  }
+
+  const label = document.createElement('span')
+  label.className = 'featured-by-label'
+  label.textContent = 'Featured by'
+  el.appendChild(label)
+
+  const img = document.createElement('img')
+  img.className = 'featured-by-pfp'
+  // Intrinsic width/height attributes so the avatar renders at 18px even if the
+  // stylesheet is momentarily uncached — without them an unstyled profile image
+  // paints at its natural (huge) size.
+  img.width = 18
+  img.height = 18
+  img.src = info.picture || '/assets/LocalBitcoiners.png'
+  img.alt = ''
+  img.referrerPolicy = 'no-referrer'
+  img.onerror = () => { img.src = '/assets/LocalBitcoiners.png' }
+  el.appendChild(img)
+
+  const name = document.createElement('span')
+  name.className = 'featured-by-name'
+  name.textContent = info.name || (info.pubkey.slice(0, 8) + '…')
+  el.appendChild(name)
+
+  return el
+}
+
+// The same prose the /meetups "boost an existing meetup" flows send, so a
+// promote from a card is indistinguishable to the boost bot (which logs the
+// referenced event into meetups.json → the boosted set).
+const PROMOTE_TEMPLATE = 'Boosting my meetup from https://localbitcoiners.com/meetups'
+
+// The most-recent promote click is stashed here so feeds.js can optimistically
+// light up the card the moment the boost settles — before the daily meetups.json
+// refresh catches up. One slot (boosts are sequential) with a short TTL.
+export const PENDING_PROMOTE_KEY = 'lb_pending_promote'
+const PENDING_PROMOTE_TTL = 10 * 60 * 1000
+
+export function readPendingPromote() {
+  try {
+    const raw = localStorage.getItem(PENDING_PROMOTE_KEY)
+    if (!raw) return null
+    const d = JSON.parse(raw)
+    if (!d || !d.coord || Date.now() - (d.ts || 0) > PENDING_PROMOTE_TTL) return null
+    return d
+  } catch { return null }
+}
+
+export function clearPendingPromote() {
+  try { localStorage.removeItem(PENDING_PROMOTE_KEY) } catch {}
+}
+
+async function promoteEvent(parsed, bech32, btn) {
+  const coord = `${parsed.kind}:${parsed.pubkey}:${parsed.dTag}`
+  try {
+    if (btn) btn.disabled = true
+    // Record intent before we hand off, so the settle listener knows which
+    // coordinate to light up. Stored even if the user later cancels — the TTL
+    // and the "any leg succeeded" gate in feeds.js keep a cancelled boost from
+    // wrongly promoting anything.
+    try {
+      localStorage.setItem(PENDING_PROMOTE_KEY, JSON.stringify({ coord, naddr: bech32, ts: Date.now() }))
+    } catch {}
+    await ensureLoginWidget()
+    const prefillMessage = `${PROMOTE_TEMPLATE}\n\nnostr:${bech32}`
+    if (window.LBLogin?.openShowBoost) {
+      window.LBLogin.openShowBoost({ prefillMessage })
+    } else {
+      showCopyToast('Boost unavailable right now — please try again')
+    }
+  } catch (e) {
+    console.error('[calendar] promote failed', e)
+    showCopyToast('Something went wrong — please try again')
+  } finally {
+    if (btn) btn.disabled = false
+  }
 }
 
 async function runEventAction(action, parsed, btn) {
@@ -392,7 +517,8 @@ function copyNpub(pubkeyHex) {
 // ── Per-card overflow (⋮) menu ───────────────────────────────────────
 // Self-contained so the shared renderer carries no dependency on the
 // boosts-page action bar. Mirrors buildMoreMenu() in boost-actions.js
-// (same .note-more markup + "Copy nevent" behavior).
+// (same .note-more markup) but copies the event's naddr — calendar events
+// are addressable (kind:pubkey:d), so naddr is the canonical reference.
 function buildEventMenu(parsed) {
   if (!parsed || !parsed.id || !parsed.pubkey) return null
 
@@ -416,10 +542,10 @@ function buildEventMenu(parsed) {
   const copyItem = document.createElement('button')
   copyItem.type = 'button'
   copyItem.className = 'note-more-item'
-  copyItem.textContent = 'Copy nevent'
+  copyItem.textContent = 'Copy naddr'
   copyItem.addEventListener('click', () => {
     closeMenu()
-    copyEventNevent(parsed)
+    copyEventNaddr(parsed)
   })
   menu.appendChild(copyItem)
   wrap.appendChild(menu)
@@ -447,11 +573,13 @@ function buildEventMenu(parsed) {
   return wrap
 }
 
-async function copyEventNevent(parsed) {
-  let nevent = ''
-  try { nevent = nip19.neventEncode({ id: parsed.id, author: parsed.pubkey }) } catch {}
-  if (!nevent) { showCopyToast('Could not build nevent'); return }
-  showCopyToast(await copyText(nevent) ? 'nevent copied' : 'Copy failed — clipboard blocked')
+async function copyEventNaddr(parsed) {
+  let naddr = ''
+  try {
+    naddr = nip19.naddrEncode({ identifier: parsed.dTag, pubkey: parsed.pubkey, kind: parsed.kind })
+  } catch {}
+  if (!naddr) { showCopyToast('Could not build naddr'); return }
+  showCopyToast(await copyText(naddr) ? 'naddr copied' : 'Copy failed — clipboard blocked')
 }
 
 // navigator.clipboard only exists in secure contexts (HTTPS / localhost),

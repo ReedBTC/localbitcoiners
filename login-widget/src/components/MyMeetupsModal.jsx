@@ -28,7 +28,7 @@ function splitFuturePast(events) {
   return { upcoming, past }
 }
 
-export default function MyMeetupsModal({ user, onClose, onBoostMeetup, onRequestSignIn }) {
+export default function MyMeetupsModal({ user, onClose, onBoostMeetup, onRequestSignIn, embedded = false }) {
   const { events, error } = useMyMeetups(user?.pubkey)
 
   const handleBoost = (p) => {
@@ -36,6 +36,37 @@ export default function MyMeetupsModal({ user, onClose, onBoostMeetup, onRequest
     const msg = interpolateNaddr(BOOST_EXISTING_TEMPLATE, p.naddr)
     onClose?.()
     onBoostMeetup?.(msg)
+  }
+
+  // Embedded (the /feeds "Find" modal drawer): body only — no modal chrome,
+  // card, or heading (the accordion row already supplies the title/subtitle).
+  if (embedded) {
+    if (!user?.pubkey) {
+      return (
+        <div className="lb-embed-flow">
+          <p className="lb-muted" style={{ margin: 0 }}>
+            Sign in with Nostr to see and feature the meetups you’ve published.
+          </p>
+          <button onClick={() => onRequestSignIn?.()} className="lb-btn lb-btn-primary" style={{ marginTop: '0.7rem' }}>
+            Sign in
+          </button>
+        </div>
+      )
+    }
+    return (
+      <div className="lb-embed-flow">
+        {events === null && <LoadingRows />}
+        {error && <div className="lb-error">{error}</div>}
+        {events && events.length === 0 && !error && (
+          <p style={{ color: 'var(--muted)', fontSize: '0.9rem', fontStyle: 'italic', margin: 0 }}>
+            You haven’t published a meetup yet. Use “Create” to publish one.
+          </p>
+        )}
+        {events && events.length > 0 && (
+          <Sections events={events} onBoost={handleBoost} boostLabel="Feature" />
+        )}
+      </div>
+    )
   }
 
   // Logged out → the modal still opens (no login bounce), but there's
@@ -92,18 +123,18 @@ export default function MyMeetupsModal({ user, onClose, onBoostMeetup, onRequest
   )
 }
 
-function Sections({ events, onBoost }) {
+function Sections({ events, onBoost, boostLabel = 'Boost' }) {
   const { upcoming, past } = splitFuturePast(events)
   return (
     <>
       {upcoming.length > 0 && (
         <Group label={`Upcoming (${upcoming.length})`}>
-          {upcoming.map(p => <Row key={p.naddr || p.id} p={p} onBoost={onBoost} />)}
+          {upcoming.map(p => <Row key={p.naddr || p.id} p={p} onBoost={onBoost} boostLabel={boostLabel} />)}
         </Group>
       )}
       {past.length > 0 && (
         <Group label={`Past (${past.length})`} faded>
-          {past.map(p => <Row key={p.naddr || p.id} p={p} onBoost={onBoost} />)}
+          {past.map(p => <Row key={p.naddr || p.id} p={p} onBoost={onBoost} boostLabel={boostLabel} />)}
         </Group>
       )}
     </>
@@ -125,7 +156,7 @@ function Group({ label, faded, children }) {
   )
 }
 
-function Row({ p, onBoost }) {
+function Row({ p, onBoost, boostLabel = 'Boost' }) {
   return (
     <div className="lb-meetup-row">
       <div className="lb-meetup-row-body">
@@ -138,7 +169,7 @@ function Row({ p, onBoost }) {
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z" />
         </svg>
-        Boost
+        {boostLabel}
       </button>
     </div>
   )

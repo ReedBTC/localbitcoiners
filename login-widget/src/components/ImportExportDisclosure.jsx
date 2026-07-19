@@ -14,7 +14,10 @@
 import { useRef, useState } from 'react'
 
 export default function ImportExportDisclosure({
-  // Upload
+  summaryLabel = 'Import / Export Options',   // the disclosure's clickable header
+  description = 'Optional — Import/Export a draft file or load an existing event ID as a draft.',
+
+  // Upload (optional — omit onImportFile to hide the upload button entirely)
   acceptedFileTypes,        // e.g. ".json,application/json"
   onImportFile,             // (file) => Promise<{ok, error}> | void
   importLabel = 'Upload',
@@ -62,37 +65,41 @@ export default function ImportExportDisclosure({
         >
           <path d="M4 2l4 4-4 4z" />
         </svg>
-        <span>Import / Export Options</span>
+        <span>{summaryLabel}</span>
       </summary>
 
       <div style={{ padding: '0.4rem 0.85rem 0.85rem' }} className="space-y-2">
         <p style={{ fontSize: '0.78rem', lineHeight: 1.45, color: 'var(--muted)', margin: 0 }}>
-          Optional — Import/Export a draft file or load an existing event ID as a draft.
+          {description}
         </p>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Upload */}
-          <input
-            ref={fileRef}
-            type="file"
-            accept={acceptedFileTypes}
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0]
-              e.target.value = ''
-              if (f && onImportFile) onImportFile(f)
-            }}
-          />
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            disabled={importLoading}
-            title={importTitle}
-            className="lb-btn lb-btn-secondary"
-            style={{ padding: '0.35rem 0.8rem', fontSize: '0.8rem' }}
-          >
-            {importLoading ? '…' : importLabel}
-          </button>
+          {/* Upload (only when the parent wires onImportFile) */}
+          {onImportFile && (
+            <>
+              <input
+                ref={fileRef}
+                type="file"
+                accept={acceptedFileTypes}
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  e.target.value = ''
+                  if (f) onImportFile(f)
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={importLoading}
+                title={importTitle}
+                className="lb-btn lb-btn-secondary"
+                style={{ padding: '0.35rem 0.8rem', fontSize: '0.8rem' }}
+              >
+                {importLoading ? '…' : importLabel}
+              </button>
+            </>
+          )}
 
           {/* Export — simple button or dropdown (omitted when no handler) */}
           {showExport && (exportMenuItems && exportMenuItems.length > 0 ? (

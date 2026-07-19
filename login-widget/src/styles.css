@@ -191,6 +191,9 @@ input[type="search"]::-webkit-search-results-decoration {
   gap: 0.55rem;
   cursor: pointer;
   color: var(--text);
+  /* Pin the modal's serif so this row always matches the surrounding copy,
+     regardless of where the composer is mounted (slot vs. modal shell). */
+  font-family: 'Source Serif 4', Georgia, serif;
 }
 .lb-check-row input[type="checkbox"] {
   accent-color: var(--orange);
@@ -209,30 +212,34 @@ input[type="search"]::-webkit-search-results-decoration {
   margin: 0.25rem 0 0;
 }
 
-/* Import / Export disclosure — sits at the top of the composer card.
-   Subtle cream-tinted rounded box that doesn't fight the main card. */
+/* "Import from Template" disclosure — sits at the top of the composer card.
+   Orange-accented so it's obviously there (users reported missing it): tinted
+   fill + orange left bar + bolder orange header. Opening it drops the fill back
+   to white so the controls read cleanly. */
 .lb-disclosure {
-  border: 1px solid var(--border);
-  background: var(--white);
+  border: 1px solid var(--orange);
+  border-left: 3px solid var(--orange);
+  background: #fff5e8;
   border-radius: 8px;
 }
 .lb-disclosure[open] { background: var(--white); }
 .lb-disclosure summary {
   cursor: pointer;
   list-style: none;
-  padding: 0.55rem 0.85rem;
+  padding: 0.6rem 0.85rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--navy);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--orange-d);
   user-select: none;
 }
 .lb-disclosure summary::-webkit-details-marker { display: none; }
 .lb-disclosure summary .lb-caret {
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
+  color: var(--orange);
   transition: transform 0.15s;
   flex-shrink: 0;
 }
@@ -296,6 +303,14 @@ input[type="search"]::-webkit-search-results-decoration {
   background: #fff;
   color: var(--navy);
   border-color: var(--orange);
+}
+
+/* Embedded find-flow wrapper — My Meetups / Search rendered into the /feeds
+   "Find" modal drawer (outside the modal shell / composer slot), so pin the
+   serif + text color the cream-card rows expect. */
+.lb-embed-flow {
+  font-family: 'Source Serif 4', Georgia, serif;
+  color: var(--text);
 }
 
 /* Meetup list rows inside My Meetups + Search results. */

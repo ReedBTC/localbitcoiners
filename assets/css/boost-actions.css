@@ -117,10 +117,74 @@
   background: transparent;
   color: var(--muted);
 }
+/* ⚡ Promote — a boost dressed as a promote. Solid orange like the Boost CTA
+   so it reads as the primary action amid the muted Renote/Zap buttons; white
+   label + white SVG bolt (house convention: orange-bg buttons use the bolt
+   SVG, not the ⚡ emoji). */
+.note-actions .promote-btn,
+.note-actions .promote-btn:hover,
+.note-actions .promote-btn:disabled:hover {
+  color: #fff;
+  background: var(--orange);
+}
+.note-actions .promote-btn { font-weight: 600; }
+.note-actions .promote-btn:hover { background: var(--orange-d); }
+.note-actions .promote-btn .promote-bolt {
+  width: 0.9em;
+  height: 0.9em;
+  flex-shrink: 0;
+}
 .note-actions .lb-icon {
   font-size: 1rem;
   line-height: 1;
 }
+/* Left cluster in the action bar: the "Featured by …" credit and/or the
+   "See other versions" toggle, pushed to the left edge. */
+.note-actions-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-right: auto;
+}
+/* "Featured by (pfp) Name" — who paid to feature this event. Sits where the
+   Promote button would be on a non-featured card; muted so it reads as a
+   credit, not another action button. */
+.note-actions .featured-by {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: transparent;
+  border: none;
+  padding: 0.2rem 0.3rem;
+  border-radius: 5px;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--muted);
+  cursor: pointer;
+  max-width: 100%;
+  transition: background 0.15s, color 0.15s;
+}
+.note-actions button.featured-by:hover {
+  background: rgba(247,147,26,0.1);
+  color: var(--orange);
+}
+.featured-by-label { flex-shrink: 0; }
+.featured-by-pfp {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--cream-d);
+  flex-shrink: 0;
+}
+.featured-by-name {
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.note-actions button.featured-by:hover .featured-by-name { color: var(--orange); }
 .note-actions .like-btn[aria-pressed="true"],
 .note-actions .repost-btn[aria-pressed="true"] {
   color: var(--orange);

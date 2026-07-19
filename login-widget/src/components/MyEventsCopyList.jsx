@@ -10,7 +10,7 @@
  */
 import { useMyMeetups, formatMeetupWhen } from '../hooks/useMyMeetups.js'
 
-export default function MyEventsCopyList({ pubkey, enabled, onCopy }) {
+export default function MyEventsCopyList({ pubkey, enabled, onCopy, manageUrl }) {
   const { events, error } = useMyMeetups(pubkey, enabled)
 
   // Nothing to show until the disclosure is opened.
@@ -23,7 +23,7 @@ export default function MyEventsCopyList({ pubkey, enabled, onCopy }) {
     return (
       <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.7rem', marginTop: '0.2rem' }}>
         <p style={{ color: 'var(--muted)', fontSize: '0.82rem', fontStyle: 'italic', margin: 0 }}>
-          Sign in to copy from meetups you’ve already published.
+          Sign in to import from meetups you’ve already published.
         </p>
       </div>
     )
@@ -36,10 +36,27 @@ export default function MyEventsCopyList({ pubkey, enabled, onCopy }) {
   return (
     <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.7rem', marginTop: '0.2rem' }}>
       <div style={{
-        fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em',
-        color: 'var(--muted)', fontWeight: 600, marginBottom: '0.5rem',
+        display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+        gap: '0.5rem', marginBottom: '0.5rem',
       }}>
-        Copy from your meetups
+        <span style={{
+          fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em',
+          color: 'var(--muted)', fontWeight: 600,
+        }}>
+          Import from your meetups
+        </span>
+        {manageUrl && (
+          <a
+            href={manageUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'var(--orange)', fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}
+            onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
+            onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
+          >
+            Manage your events ↗
+          </a>
+        )}
       </div>
 
       {sorted === null && !error && (
@@ -70,9 +87,9 @@ export default function MyEventsCopyList({ pubkey, enabled, onCopy }) {
                 type="button"
                 className="lb-meetup-row-copy"
                 onClick={() => onCopy?.(p.raw)}
-                title="Copy this meetup into the form"
+                title="Import this meetup into the form"
               >
-                Copy
+                Import
               </button>
             </div>
           ))}

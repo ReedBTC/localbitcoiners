@@ -627,6 +627,27 @@ function IdentityHost() {
   )
 }
 
+// ── Embedded "find a meetup to feature" flow ─────────────────────────────
+// Renders a flow's body (My Meetups / Search) with no modal chrome so it can
+// live inside the /feeds "Find" modal's accordion drawers instead of opening a
+// second modal. Boosting closes the host modal (onBoosted) then opens the
+// show-boost modal — the flows build the {naddr}-prefilled message themselves.
+function EmbeddedFindFlow({ kind, onBoosted }) {
+  const user = useSharedUser()
+  const boost = (msg) => { onBoosted?.(); api.openShowBoost({ prefillMessage: msg }) }
+  if (kind === 'search') {
+    return <SearchMeetupsModal embedded onBoostMeetup={boost} />
+  }
+  return (
+    <MyMeetupsModal
+      embedded
+      user={user}
+      onBoostMeetup={boost}
+      onRequestSignIn={() => api.requestLogin()}
+    />
+  )
+}
+
 let mounted = false
 
 const api = {
@@ -991,6 +1012,20 @@ const api = {
     // them wait for it just to see the modal.
     if (currentUser && isStubUser(currentUser)) ensureRealRestore()
     setMeetupModalState({ kind })
+  },
+
+  /**
+   * Mount a "find a meetup to feature" flow (kind 'my' | 'search') into a
+   * container element, without modal chrome — for the /feeds "Find" modal's
+   * accordion drawers, which host these inline instead of opening a second
+   * modal. `onBoosted` fires when the user picks a meetup (so the host can
+   * close its modal); the show-boost modal then opens. Returns an unmount fn.
+   */
+  mountFindFlow(kind, container, { onBoosted } = {}) {
+    if (!container || (kind !== 'my' && kind !== 'search')) return () => {}
+    const root = createRoot(container)
+    root.render(<EmbeddedFindFlow kind={kind} onBoosted={onBoosted} />)
+    return () => { try { root.unmount() } catch {} }
   },
 
   /**

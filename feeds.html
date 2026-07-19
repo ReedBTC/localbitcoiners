@@ -272,28 +272,6 @@
       white-space: nowrap;
     }
 
-    /* Month + year dropdowns for the Events feed (replaces the count pill). */
-    .feed-monthnav {
-      display: flex;
-      gap: 0.4rem;
-      flex-shrink: 0;
-    }
-    .feed-select {
-      font: inherit;
-      font-size: 0.82rem;
-      font-weight: 600;
-      color: var(--accent-d);
-      background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 0.2rem 0.5rem;
-      cursor: pointer;
-    }
-    .feed-select:focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: 1px;
-    }
-
     /* Loading skeletons + states (feed content wired up in a later phase). */
     .feed-list { display: grid; gap: 0.6rem; }
     /* The shared .embed-note card carries its own vertical margin; drop it
@@ -354,6 +332,180 @@
     }
     .feed-past[open] > summary::before { transform: rotate(90deg); }
     .feed-past .feed-list { margin-top: 1rem; }
+
+    /* ── Featured / Events section headers (Events tab) ──
+       Non-collapsible labels that sit above the Featured and normal grids
+       once an event has been boosted into the Featured section. */
+    .feed-section-head {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: var(--accent-d);
+      padding: 0.3rem 0;
+    }
+    /* "Find Event to Feature" — pushed to the right edge of the Featured Events
+       header row; wraps to its own line on narrow screens. Inherits the
+       .event-composer-btn look (secondary, not orange). */
+    .feed-find-btn { margin-left: auto; font-size: 0.86rem; padding: 0.28rem 0.6rem; }
+    /* Muted line under the Featured header when the month has events but none
+       are featured yet. */
+    .feed-featured-hint {
+      margin: 0.2rem 0 0.4rem;
+      font-size: 0.88rem;
+      color: var(--muted);
+      font-style: italic;
+    }
+    /* The normal "Events" header, when present, follows the featured grid —
+       give it breathing room from the cards above. */
+    .feed-list + .feed-section-head { margin-top: 1.6rem; }
+    .feed-section-head + .feed-list { margin-top: 0.8rem; }
+    .feed-section-count {
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 0.8rem;
+      color: var(--muted);
+      background: rgba(0,0,0,0.05);
+      border-radius: 999px;
+      padding: 0.05rem 0.5rem;
+    }
+    .feed-section-head--featured { color: #a9761a; }
+    .feed-section-head--featured .feed-section-count {
+      color: #a9761a;
+      background: rgba(224,169,46,0.16);
+    }
+    .feed-section-star { font-size: 0.95em; line-height: 1; }
+
+    /* Featured Past Events collapsible — gold summary to match. */
+    .feed-past--featured > summary { color: #a9761a; }
+
+    /* ── Create / Find buttons (replace the Events panel title) ──
+       Tight rectangles (not pills) so the pair packs small on mobile. Secondary
+       style — orange is reserved for Boost/Promote, so these read as utility
+       actions, not another boost CTA. */
+    .event-composer-btns { display: flex; gap: 0.4rem; }
+    .event-composer-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font: inherit;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 700;
+      font-size: 0.92rem;
+      color: var(--accent-d);
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 0.34rem 0.7rem;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .event-composer-btn:hover {
+      background: var(--cream);
+      border-color: var(--accent);
+    }
+    .event-composer-btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+    .event-composer-btn .ecb-icon { font-size: 1em; line-height: 1; }
+
+    /* ── Find modal ──
+       z-index sits above the sticky nav (100) but below the widget's meetup
+       flow modals (200) — the modal closes as those open, so any overlap is
+       brief and the flow modal always wins. */
+    .event-composer-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 150;
+      background: rgba(0,0,0,0.6);
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .event-composer-backdrop[hidden] { display: none; }
+    .event-composer-backdrop:not([hidden]) { display: flex; }
+    .event-composer-card {
+      position: relative;
+      width: 100%;
+      max-width: 560px;
+      background: var(--cream-d, #f6edd8);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem 1.5rem 1.6rem;
+      box-shadow: 0 25px 60px -12px rgba(0,0,0,0.45);
+      max-height: calc(100vh - 2rem);
+      overflow-y: auto;
+    }
+    .event-composer-close {
+      position: absolute;
+      top: 0.7rem;
+      right: 0.8rem;
+      background: transparent;
+      border: none;
+      font-size: 1.6rem;
+      line-height: 1;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0.15rem 0.4rem;
+      border-radius: 6px;
+    }
+    .event-composer-close:hover { color: var(--accent-d); background: rgba(0,0,0,0.05); }
+    .event-composer-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--accent-d);
+      margin-right: 1.5rem;
+    }
+    .event-composer-sub {
+      margin-top: 0.3rem;
+      margin-bottom: 1.1rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+    /* ── Accordion of "find" flows (each expands a drawer inside the modal) ── */
+    .ec-accordion { display: flex; flex-direction: column; gap: 0.5rem; }
+    .ec-acc-item {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--cream);
+      overflow: hidden;
+    }
+    .ec-acc-head {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: transparent;
+      border: none;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      padding: 0.7rem 0.85rem;
+      transition: background 0.15s;
+    }
+    .ec-acc-head:hover { background: #ffffff; }
+    .ec-acc-text { display: flex; flex-direction: column; gap: 0.1rem; flex: 1; min-width: 0; }
+    .ec-acc-title { font-weight: 700; color: var(--navy); font-size: 0.95rem; }
+    .ec-acc-sub { font-size: 0.78rem; color: var(--muted); line-height: 1.3; }
+    .ec-acc-caret {
+      flex-shrink: 0;
+      color: var(--muted);
+      font-size: 0.85rem;
+      transition: transform 0.15s;
+    }
+    .ec-acc-head[aria-expanded="true"] .ec-acc-caret { transform: rotate(90deg); }
+    .ec-acc-head[aria-expanded="true"] { background: #ffffff; }
+    .ec-acc-drawer {
+      padding: 0.85rem;
+      border-top: 1px solid var(--border);
+      background: var(--white);
+    }
+    .ec-acc-placeholder { font-size: 0.85rem; color: var(--muted); font-style: italic; }
 
     /* "See other versions of this event" — collapses re-posted duplicates.
        The toggle lives at the left of the card's action row (styled by
@@ -595,6 +747,9 @@
     .pcast-sort-item:hover { background: var(--tint); color: var(--accent-d); }
     .pcast-sort-item.is-active { color: var(--accent-d); background: var(--tint); }
     .pcast-sort-item.is-active::after { content: ' ✓'; float: right; }
+    /* Events type dropdown — squarer corners than the podcast sort pill. */
+    .feed-type-sort .pcast-sort-btn { border-radius: 7px; }
+    .feed-type-sort .pcast-sort-menu { border-radius: 8px; }
 
     /* minmax(0,1fr) — without the 0 min, a grid item's min-width is its
        content, so long shownotes/URLs would blow the column (and card) far
@@ -1172,12 +1327,10 @@
       .art-card-media { width: 72px; height: 72px; }
       .art-reader-title { font-size: 1.5rem; }
       .art-prose { font-size: 1rem; }
-      /* Events head: keep the controls at the top-right beside the "Events"
-         title (align-items:flex-start top-aligns them), stacking the month/year
-         dropdowns UNDER the "Include virtual events" toggle rather than off to
-         its right (which ran off-screen). flex-wrap is only a safety net for
-         very narrow screens where the column can't fit beside the title. The
-         two dropdowns stay side-by-side (.feed-monthnav is its own row). */
+      /* Events head: keep the range buttons + type dropdown at the top-right
+         beside the Create button (align-items:flex-start top-aligns them).
+         flex-wrap is a safety net for very narrow screens where the controls
+         can't fit beside the title. */
       .feed-panel-head { flex-wrap: wrap; align-items: flex-start; }
       .feed-head-controls {
         flex-direction: column;
@@ -1388,16 +1541,22 @@
     <section class="feed-panel is-active" id="panel-events" role="tabpanel" aria-labelledby="tab-events" data-feed="events" data-kinds="31922,31923" tabindex="0">
       <div class="feed-panel-head">
         <div>
-          <h2>Events</h2>
+          <!-- Replaces the old "Events" panel title (redundant now the list
+               carries its own Featured / Events / Past section headers). Create
+               publishes a new meetup (widget modal as-is); the "Find Event to
+               Feature" action lives in the Featured Events header row (rendered
+               by feeds.js), so it isn't here. -->
+          <div class="event-composer-btns">
+            <button type="button" class="event-composer-btn" id="event-create-trigger">
+              <span class="ecb-icon" aria-hidden="true">＋</span>
+              <span>Create Event</span>
+            </button>
+          </div>
         </div>
-        <div class="feed-head-controls">
-          <!-- "Include virtual events" toggle (mounted by feeds.js). Off by
-               default → events with no location are hidden. -->
-          <div data-virtual-toggle></div>
-          <!-- Month + year dropdowns (populated by feeds.js) — browse events a
-               month at a time. -->
-          <div class="feed-monthnav" data-month-nav hidden></div>
-        </div>
+        <!-- Forward 1W/1M/All range buttons + In-Person/Virtual/All-Types
+             dropdown (mounted by feeds.js, reusing the podcast feed's
+             .pcast-controls chrome). -->
+        <div class="feed-head-controls" data-events-controls></div>
       </div>
       <div class="feed-list" data-feed-list>
         <div class="feed-placeholder">
@@ -1459,6 +1618,47 @@
 
   </div>
 </main>
+
+<!-- ══════════════════════════════ "FIND AN EVENT" MODAL ══════════════════════════════
+     Opened by the Events tab's "Find" button. Three "boost an existing meetup"
+     flows stacked as an accordion — each expands a drawer INSIDE this modal
+     (no secondary modal). "Paste naddr / URL" is wired inline here; My meetups
+     and Search render their bodies in the next pass. (Create is its own button
+     and opens the widget's create modal directly.) -->
+<div class="event-composer-backdrop" id="event-find-modal" hidden role="dialog" aria-modal="true" aria-labelledby="efm-title">
+  <div class="event-composer-card" role="document">
+    <button type="button" class="event-composer-close" id="event-find-close" aria-label="Close">×</button>
+    <h2 class="event-composer-title" id="efm-title">Find an Event to Feature</h2>
+
+    <div class="ec-accordion">
+      <div class="ec-acc-item">
+        <button type="button" class="ec-acc-head" aria-expanded="false" data-acc="my">
+          <span class="ec-acc-text">
+            <span class="ec-acc-title">My Meetups</span>
+            <span class="ec-acc-sub">Feature a meetup published from your npub</span>
+          </span>
+          <span class="ec-acc-caret" aria-hidden="true">▸</span>
+        </button>
+        <div class="ec-acc-drawer" hidden data-acc-body="my">
+          <p class="ec-acc-placeholder">Your published meetups will load here.</p>
+        </div>
+      </div>
+
+      <div class="ec-acc-item">
+        <button type="button" class="ec-acc-head" aria-expanded="false" data-acc="search">
+          <span class="ec-acc-text">
+            <span class="ec-acc-title">Search by Profile or Event Address</span>
+            <span class="ec-acc-sub">Find a meetup by profile, npub, or event address (naddr1…)</span>
+          </span>
+          <span class="ec-acc-caret" aria-hidden="true">▸</span>
+        </button>
+        <div class="ec-acc-drawer" hidden data-acc-body="search">
+          <p class="ec-acc-placeholder">Search will load here.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ══════════════════════════════ FOOTER ══════════════════════════════ -->
 <!-- FOOTER:START (generated by scripts/sync-partials.js — edit the partial) -->
@@ -1664,6 +1864,112 @@
       }
     });
   }
+
+  // ── Create button → widget "create meetup" modal (as-is) ──
+  (function () {
+    const createBtn = document.getElementById('event-create-trigger');
+    if (!createBtn) return;
+    createBtn.addEventListener('click', async () => {
+      const label = createBtn.querySelector('span:last-child');
+      const prev = label ? label.textContent : '';
+      createBtn.disabled = true;
+      if (label) label.textContent = 'Loading…';
+      try {
+        await ensureWidgetLoaded();
+        if (window.LBLogin?.openMeetupModal) await window.LBLogin.openMeetupModal('create');
+      } catch (e) {
+        console.error('[lb] create meetup load failed', e);
+      } finally {
+        createBtn.disabled = false;
+        if (label) label.textContent = prev;
+      }
+    });
+  })();
+
+  // ── Find modal — accordion of "boost an existing meetup" flows ──
+  // Each row expands a drawer INSIDE the modal (no secondary modal). Paste is
+  // wired inline here; My meetups + Search render their bodies in the next pass.
+  (function () {
+    const modal = document.getElementById('event-find-modal');
+    if (!modal) return;
+    const closeBtn = document.getElementById('event-find-close');
+    let prewarmed = false;
+    // The "Find Event to Feature" button is rendered inside the Featured Events
+    // header by feeds.js and re-created on every repaint, so we open the modal
+    // via a delegated click rather than binding a single element. Remember which
+    // button opened it so focus can return there on close.
+    let lastTrigger = null;
+
+    function onKey(e) { if (e.key === 'Escape') closeModal(); }
+    function openModal() {
+      modal.hidden = false;
+      document.addEventListener('keydown', onKey);
+      // Prewarm the bundle — the my/search bodies need window.LBLogin ready.
+      if (!prewarmed) {
+        prewarmed = true;
+        ensureWidgetLoaded().catch((e) => console.warn('[lb] find prewarm failed', e));
+      }
+      if (closeBtn) closeBtn.focus();
+    }
+    function closeModal() {
+      modal.hidden = true;
+      document.removeEventListener('keydown', onKey);
+      if (lastTrigger && document.contains(lastTrigger)) lastTrigger.focus();
+    }
+
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('.feed-find-btn');
+      if (!btn) return;
+      lastTrigger = btn;
+      openModal();
+    });
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+    // My Meetups + Search render the widget's real flow bodies inline (no
+    // secondary modal) via window.LBLogin.mountFindFlow, lazily on first open.
+    // Boosting from either closes this modal and opens the show-boost modal.
+    const findRoots = {};  // kind -> unmount fn (truthy once mounted)
+    async function ensureFlowMounted(kind, body) {
+      if ((kind !== 'my' && kind !== 'search') || findRoots[kind] || !body) return;
+      findRoots[kind] = true;  // reserve so a rapid re-open doesn't double-mount
+      try {
+        await ensureWidgetLoaded();
+        if (window.LBLogin?.mountFindFlow) {
+          body.innerHTML = '';  // drop the placeholder
+          findRoots[kind] = window.LBLogin.mountFindFlow(kind, body, { onBoosted: closeModal });
+        } else {
+          findRoots[kind] = null;
+        }
+      } catch (e) {
+        findRoots[kind] = null;
+        console.error('[lb] mount find flow failed', e);
+        if (body && !body.childNodes.length) {
+          body.innerHTML = '<p class="ec-acc-placeholder">Couldn’t load — please try again.</p>';
+        }
+      }
+    }
+
+    // Single-open accordion: opening one row collapses the others.
+    const heads = Array.from(modal.querySelectorAll('.ec-acc-head'));
+    heads.forEach((head) => {
+      head.addEventListener('click', () => {
+        const body = modal.querySelector('[data-acc-body="' + head.dataset.acc + '"]');
+        const willOpen = head.getAttribute('aria-expanded') !== 'true';
+        heads.forEach((h) => {
+          const b = modal.querySelector('[data-acc-body="' + h.dataset.acc + '"]');
+          const open = h === head && willOpen;
+          h.setAttribute('aria-expanded', open ? 'true' : 'false');
+          if (b) b.hidden = !open;
+        });
+        if (willOpen && body) {
+          ensureFlowMounted(head.dataset.acc, body);
+          const input = body.querySelector('input');
+          if (input) input.focus();
+        }
+      });
+    });
+  })();
 
   const identitySlot = document.getElementById('lb-identity-slot');
   function renderIdentitySignIn() {

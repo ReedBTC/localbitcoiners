@@ -21,8 +21,11 @@ import { STATIC_RELAYS, fetchProfilesFromPrimal } from '/assets/js/boosts-thread
 import {
   parseCalendarEvent,
   renderCalendarCard,
+  fetchCalendarEventsFromRelays,
   eventStartMs,
   eventEndMs,
+  readPendingPromote,
+  clearPendingPromote,
   KIND_DATE_EVENT,
   KIND_TIME_EVENT,
 } from '/assets/js/calendar-events.js'
@@ -58,6 +61,12 @@ function showSkeletons(list, n = 3) {
 function renderPlaceholder(list, title, body) {
   list.className = ''
   list.innerHTML = ''
+  appendPlaceholder(list, title, body)
+}
+
+// Append a placeholder without clearing the list — used when a header (e.g.
+// the always-present Featured Events header) has already been rendered.
+function appendPlaceholder(list, title, body) {
   const ph = document.createElement('div')
   ph.className = 'feed-placeholder'
   const strong = document.createElement('strong')
@@ -240,6 +249,14 @@ function hydrateStateFromCache(state, cached) {
   for (const pair of cached.profiles || []) {
     if (Array.isArray(pair)) state.profiles.set(pair[0], pair[1])
   }
+  // Restore last session's boosted set so cached events render straight into
+  // the Featured section instead of appearing as normal cards that jump up once
+  // meetups.json reloads. Unioned (never removes) — the refresh reconciles.
+  for (const c of cached.featured || []) state.featuredCoords.add(c)
+  // Restore the "Featured by …" credits so they paint from cache too.
+  for (const pair of cached.featuredBy || []) {
+    if (Array.isArray(pair) && pair[1]) state.featuredBy.set(pair[0], pair[1])
+  }
 }
 
 function writeCache(state) {
@@ -253,8 +270,130 @@ function writeCache(state) {
       deletedIds: [...state.deletedIds],
       deletedCoords: [...state.deletedCoords.entries()],
       profiles: [...state.profiles.entries()].map(([pk, p]) => [pk, { name: p?.name || '', picture: p?.picture || '' }]),
+      featured: [...state.featuredCoords],
+      featuredBy: [...state.featuredBy.entries()],
     }
     localStorage.setItem(CACHE_KEY, JSON.stringify(data))
+  } catch {}
+}
+
+// ── Featured (boosted) events ────────────────────────────────────────
+// An event is "featured" once someone boosts it. The boost bot logs every
+// boosted NIP-52 event's coordinate into /data/meetups.json (the same file
+// /meetups reads), so that file IS the boosted set — no bot change needed.
+// Featured events float into their own section above the normal feed and
+// wear a gold glow. Scope is "any boosted meetup" (not just supporters), so
+// boosted coordinates missing from the supporter snapshot get backfilled
+// straight from relays, exactly like meetups.js does.
+const MEETUPS_JSON = '/data/meetups.json'
+
+function coordOf(parsed) {
+  return `${parsed.kind}:${parsed.pubkey}:${parsed.dTag}`
+}
+
+function isWsUrl(u) {
+  return typeof u === 'string' && (u.startsWith('wss://') || u.startsWith('ws://'))
+}
+
+// naddr strings carry relay hints — include them so a boosted event published
+// only to relays outside the static set is still reachable in the backfill.
+function relayHintsFromNaddr(naddr) {
+  try {
+    const d = nip19.decode(naddr)
+    if (d.type === 'naddr' && Array.isArray(d.data.relays)) {
+      return d.data.relays.filter(isWsUrl)
+    }
+  } catch {}
+  return []
+}
+
+function npubToHex(npub) {
+  try {
+    const d = nip19.decode(npub)
+    return d.type === 'npub' ? d.data : ''
+  } catch { return '' }
+}
+
+// Read the boosted-event log. Returns the set of boosted coordinates, any relay
+// hints from their naddrs, and a coord→booster map (who paid to feature it, for
+// the "Featured by …" credit). Rows are newest-first, so the first booster seen
+// per coordinate is the most recent one. Best-effort: a missing/unreachable file
+// just means "nothing featured", never a hard error on the Events tab.
+async function fetchBoostedSet() {
+  const coords = new Set()
+  const hints = new Set()
+  const by = new Map()  // coord -> { pubkey, name, picture }
+  try {
+    const res = await fetch(MEETUPS_JSON, { cache: 'no-cache' })
+    if (!res.ok) throw new Error('meetups.json ' + res.status)
+    const data = await res.json()
+    const rows = Array.isArray(data?.rows) ? data.rows : []
+    for (const r of rows) {
+      if (!r || typeof r.coordinate !== 'string') continue
+      coords.add(r.coordinate)
+      if (typeof r.naddr === 'string') {
+        for (const h of relayHintsFromNaddr(r.naddr)) hints.add(h)
+      }
+      if (!by.has(r.coordinate)) {
+        const pubkey = npubToHex(r.sender_npub)
+        if (pubkey) by.set(r.coordinate, { pubkey, name: r.sender_name || '', picture: '' })
+      }
+    }
+  } catch (e) {
+    console.warn('[feeds] boosted-set load failed', e)
+  }
+  return { coords, hints, by }
+}
+
+// Pull any boosted coordinates not already in state (i.e. boosted events whose
+// organizer isn't in the supporter snapshot) straight from relays and merge
+// them in, so "any boosted meetup" can surface as featured. Organizer profiles
+// for the newly added authors are picked up by the caller's profile fetch,
+// which runs over the full author set right after this.
+async function backfillFeatured(state, boosted) {
+  const missing = [...boosted.coords].filter((c) => !state.eventsByCoord.has(c))
+  if (!missing.length) return
+  try {
+    const relays = [...new Set([...state.relays, ...boosted.hints])]
+    const found = await fetchCalendarEventsFromRelays(missing, relays)
+    for (const parsed of found.values()) {
+      const coord = coordOf(parsed)
+      const prev = state.eventsByCoord.get(coord)
+      if (prev && (parsed.createdAt || 0) <= (prev.createdAt || -1)) continue
+      state.eventsByCoord.set(coord, parsed)
+    }
+  } catch (e) {
+    console.warn('[feeds] featured backfill failed', e)
+  }
+}
+
+// Optimistic featured set: a just-boosted coordinate lights up immediately,
+// before the daily meetups.json refresh records it. Persisted (with a TTL so
+// it self-heals once the log catches up) and merged into state.featuredCoords.
+const CONFIRMED_FEATURED_KEY = 'lb_featured_confirmed'
+const CONFIRMED_FEATURED_TTL = 48 * 60 * 60 * 1000
+
+function readConfirmedFeatured() {
+  const out = new Set()
+  try {
+    const map = JSON.parse(localStorage.getItem(CONFIRMED_FEATURED_KEY) || '{}')
+    const now = Date.now()
+    for (const [coord, ts] of Object.entries(map)) {
+      if (now - (ts || 0) <= CONFIRMED_FEATURED_TTL) out.add(coord)
+    }
+  } catch {}
+  return out
+}
+
+function addConfirmedFeatured(coord) {
+  try {
+    const map = JSON.parse(localStorage.getItem(CONFIRMED_FEATURED_KEY) || '{}')
+    const now = Date.now()
+    for (const [c, ts] of Object.entries(map)) {
+      if (now - (ts || 0) > CONFIRMED_FEATURED_TTL) delete map[c]
+    }
+    map[coord] = now
+    localStorage.setItem(CONFIRMED_FEATURED_KEY, JSON.stringify(map))
   } catch {}
 }
 
@@ -271,20 +410,22 @@ function naddrFor(parsed, relays) {
   }
 }
 
-function renderCard(item) {
+function renderCard(item, featured = false, featuredBy = null) {
   return renderCalendarCard(item.parsed, {
     bech32: item.naddr,
     profile: item.profile,
     actions: true,
+    featured,
+    featuredBy: featured ? (featuredBy && featuredBy.get(coordOf(item.parsed))) || null : null,
   })
 }
 
 // A group renders as its primary card. When it has duplicates, a "See
 // other versions" toggle sits at the left of the card's action row
-// (Renote + Zap pushed right), and an in-card panel below the action bar
+// (Repost + Zap pushed right), and an in-card panel below the action bar
 // holds the other versions as full cards.
-function renderGroup(group) {
-  if (!group.versions || !group.versions.length) return renderCard(group)
+function renderGroup(group, featured = false, featuredBy = null) {
+  if (!group.versions || !group.versions.length) return renderCard(group, featured, featuredBy)
 
   const n = group.versions.length
   const toggle = document.createElement('button')
@@ -300,12 +441,14 @@ function renderGroup(group) {
     profile: group.profile,
     actions: true,
     actionsLeft: toggle,
+    featured,
+    featuredBy: featured ? featuredByFor(group, featuredBy) : null,
   })
 
   const panel = document.createElement('div')
   panel.className = 'event-versions-panel'
   panel.hidden = true
-  for (const v of group.versions) panel.appendChild(renderCard(v))
+  for (const v of group.versions) panel.appendChild(renderCard(v, featured, featuredBy))
 
   // Drop the panel in right after the action bar (both live in the card's
   // content column, thumbnail or not).
@@ -323,32 +466,69 @@ function renderGroup(group) {
   return card
 }
 
-function buildGrid(groups) {
+function buildGrid(groups, featured = false, featuredBy = null) {
   const grid = document.createElement('div')
   grid.className = 'feed-list'
-  for (const g of groups) grid.appendChild(renderGroup(g))
+  for (const g of groups) grid.appendChild(renderGroup(g, featured, featuredBy))
   return grid
 }
 
-// ── Month/year browser ───────────────────────────────────────────────
-// The events feed is browsed a month at a time: two dropdowns (month +
-// year, default = the current month/year) filter the list to events whose
-// start falls in that month. Going back through the picker surfaces past
-// events, so there's no separate "past" section.
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-]
-const MIN_YEAR = 2022      // oldest selectable year
-const FUTURE_YEARS = 6     // how far ahead the picker goes
+// A group is featured if the primary or any collapsed version's coordinate is
+// in the boosted set (they're the same logical event, so the whole group glows).
+function groupIsFeatured(group, featuredCoords) {
+  if (!featuredCoords || !featuredCoords.size) return false
+  if (featuredCoords.has(coordOf(group.parsed))) return true
+  for (const v of group.versions || []) {
+    if (featuredCoords.has(coordOf(v.parsed))) return true
+  }
+  return false
+}
 
-// The year+month an event's start falls in. Date-based events are
-// UTC-anchored (their start is a bare Y-M-D); time-based use local time.
-function eventYearMonth(item) {
-  const d = new Date(item.startMs)
-  return item.parsed.isDateBased
-    ? { year: d.getUTCFullYear(), month: d.getUTCMonth() }
-    : { year: d.getFullYear(), month: d.getMonth() }
+// The booster credit for a group — the boosted coordinate may be the primary or
+// any collapsed version, so check them in order (primary first).
+function featuredByFor(group, map) {
+  if (!map || !map.size) return null
+  const hit = map.get(coordOf(group.parsed))
+  if (hit) return hit
+  for (const v of group.versions || []) {
+    const h = map.get(coordOf(v.parsed))
+    if (h) return h
+  }
+  return null
+}
+
+// ── Forward date-range + event-type filters ──────────────────────────
+// The events feed is scoped by a forward-looking range (mirroring the
+// podcast feed's 1W/1M/All, but future rather than past — there are future
+// events to browse) and an event-type dropdown. 1W/1M are pure forward
+// windows (no past section); All widens to every upcoming event and surfaces
+// a collapsed Past Events drawer.
+const EVENT_RANGE_OPTIONS = [
+  ['1w', '1W', 7],
+  ['1m', '1M', 30],
+  ['all', 'All', null],
+]
+function rangeDays(key) {
+  const o = EVENT_RANGE_OPTIONS.find((x) => x[0] === key)
+  return o ? o[2] : null
+}
+function rangeEmptyTitle(range) {
+  if (range === '1w') return 'No events in the next week'
+  if (range === '1m') return 'No events in the next month'
+  return 'No upcoming events'
+}
+
+// In-Person (has a location) is the default; Virtual is the location-less
+// online meetups; All Types shows both.
+const EVENT_TYPE_OPTIONS = [
+  ['inperson', 'In-Person'],
+  ['virtual', 'Virtual'],
+  ['all', 'All Types'],
+]
+function matchesType(item, type) {
+  if (type === 'all') return true
+  const loc = hasLocation(item)
+  return type === 'virtual' ? !loc : loc
 }
 
 // Content key for collapsing re-posted duplicates: same author + same
@@ -382,137 +562,270 @@ function groupItems(items) {
 }
 
 // A calendar event counts as "in-person" when its `location` tag is populated.
-// Events with no location (virtual) are hidden from the Events tab by default;
-// the "Include virtual events" toggle shows them.
+// Events with no location are "virtual". The event-type dropdown filters on
+// this (In-Person is the default).
 function hasLocation(item) {
   const loc = item?.parsed?.location
   return typeof loc === 'string' && loc.trim() !== ''
 }
 
-function renderMonth(panel, allItems, year, month, includeVirtual = true) {
+// A non-collapsible section header (mirrors the panel's own "Events" title);
+// used to label the Featured + Events grids. Title only — no count.
+function sectionHead(label, { featured = false } = {}) {
+  const head = document.createElement('div')
+  head.className = 'feed-section-head' + (featured ? ' feed-section-head--featured' : '')
+  if (featured) {
+    const star = document.createElement('span')
+    star.className = 'feed-section-star'
+    star.setAttribute('aria-hidden', 'true')
+    star.textContent = '⭐'
+    head.appendChild(star)
+  }
+  const text = document.createElement('span')
+  text.className = 'feed-section-label'
+  text.textContent = label
+  head.appendChild(text)
+  return head
+}
+
+// The "Find Event to Feature" action lives at the right of the Featured Events
+// header row (moved out of the panel head). It carries no listener of its own —
+// the inline Find-modal controller in feeds.html opens the modal via a
+// delegated click on `.feed-find-btn`, so it survives every repaint.
+function findEventsButton() {
+  const btn = document.createElement('button')
+  btn.type = 'button'
+  btn.className = 'event-composer-btn feed-find-btn'
+  btn.setAttribute('aria-haspopup', 'dialog')
+  btn.setAttribute('aria-controls', 'event-find-modal')
+  btn.innerHTML =
+    '<span class="ecb-icon" aria-hidden="true">🔍</span>' +
+    '<span>Find Event to Feature</span>'
+  return btn
+}
+
+// The Featured Events header is always on screen — it hosts the Find action, so
+// it renders even for empty/no-featured months.
+function featuredHead() {
+  const head = sectionHead('Featured Events', { featured: true })
+  head.appendChild(findEventsButton())
+  return head
+}
+
+function skeletonCard() {
+  const sk = document.createElement('div')
+  sk.className = 'feed-skeleton'
+  return sk
+}
+
+// A muted line under the Featured header for a month that has events but none
+// featured yet — teaches the feature and keeps the header from butting straight
+// into the "Events" header with nothing between them.
+function featuredEmptyHint() {
+  const hint = document.createElement('p')
+  hint.className = 'feed-featured-hint'
+  hint.textContent = 'No featured events yet — boost a meetup to feature it here.'
+  return hint
+}
+
+// Single collapsible "Past Events" drawer holding featured past events (gold
+// glow) first, then normal past events. Replaces the old two-drawer layout.
+function pastDrawer(featPast, normPast, featuredBy = null) {
+  const details = document.createElement('details')
+  details.className = 'feed-past'
+  const summary = document.createElement('summary')
+  summary.textContent = 'Past Events'
+  details.appendChild(summary)
+  const body = document.createElement('div')
+  body.className = 'feed-list'
+  for (const g of featPast) body.appendChild(renderGroup(g, true, featuredBy))
+  for (const g of normPast) body.appendChild(renderGroup(g, false))
+  details.appendChild(body)
+  return details
+}
+
+function renderEvents(panel, allItems, range = '1m', type = 'inperson', featuredCoords = null, featuredLoading = false, featuredBy = null) {
   const list = panel.querySelector('[data-feed-list]')
   list.className = ''
   list.innerHTML = ''
 
-  const visible = includeVirtual ? allItems : allItems.filter(hasLocation)
-  const matches = groupItems(visible).filter((g) => {
-    const ym = eventYearMonth(g)
-    return ym.year === year && ym.month === month
-  })
+  // Featured Events header is always first — it hosts the "Find Event to
+  // Feature" action, so it renders even for empty or no-featured views.
+  list.appendChild(featuredHead())
 
-  if (!matches.length) {
-    renderPlaceholder(
+  const groups = groupItems(allItems.filter((it) => matchesType(it, type)))
+
+  // Forward window: upcoming = not-yet-over events starting within the range.
+  // Past events only surface in the All view (the windowed views are purely
+  // forward-looking, so they carry no Past drawer).
+  const now = Date.now()
+  const days = rangeDays(range)
+  const upperBound = days ? now + days * 86400000 : Infinity
+  const upcoming = groups
+    .filter((g) => g.endMs >= now && g.startMs <= upperBound)
+    .sort((a, b) => a.startMs - b.startMs)
+  const past = days ? [] : groups.filter((g) => g.endMs < now).sort((a, b) => b.startMs - a.startMs)
+
+  if (!upcoming.length && !past.length) {
+    // Boosted set still resolving — a backfilled featured event may land in
+    // range, so show a trailing skeleton rather than a premature "no events".
+    if (featuredLoading) {
+      const grid = document.createElement('div')
+      grid.className = 'feed-list'
+      grid.appendChild(skeletonCard())
+      list.appendChild(grid)
+      return
+    }
+    appendPlaceholder(
       list,
-      `No events in ${MONTH_NAMES[month]} ${year}`,
-      'Try another month — or check back as supporters post new events.'
+      rangeEmptyTitle(range),
+      'Try a wider range or event type — or check back as supporters post new events.'
     )
     return
   }
 
-  // Within the selected month: upcoming at the top (soonest first), the
-  // rest tucked into a collapsed "Past Events" chip below (most recent
-  // first).
-  const now = Date.now()
-  const upcoming = matches.filter((i) => i.endMs >= now).sort((a, b) => a.startMs - b.startMs)
-  const past = matches.filter((i) => i.endMs < now).sort((a, b) => b.startMs - a.startMs)
+  // Each bucket is split into featured (boosted) vs normal — featured events
+  // float up into their own section and are removed from the normal list (they
+  // "moved up", shown once).
+  const isFeat = (g) => groupIsFeatured(g, featuredCoords)
+  const featUpcoming = upcoming.filter(isFeat)
+  const normUpcoming = upcoming.filter((g) => !isFeat(g))
+  const featPast = past.filter(isFeat)
+  const normPast = past.filter((g) => !isFeat(g))
 
-  if (upcoming.length) {
-    list.appendChild(buildGrid(upcoming))
+  // 1. Featured Events — gold glow, under the always-present header. While the
+  // boosted set is still resolving, a pulsing skeleton trails the real featured
+  // cards (same grid, same gap) so it reads as "another one loading in". When
+  // nothing is featured yet, a muted hint fills the gap.
+  if (featUpcoming.length) {
+    const grid = buildGrid(featUpcoming, true, featuredBy)
+    if (featuredLoading) grid.appendChild(skeletonCard())
+    list.appendChild(grid)
+  } else if (featuredLoading) {
+    const grid = document.createElement('div')
+    grid.className = 'feed-list'
+    grid.appendChild(skeletonCard())
+    list.appendChild(grid)
   } else {
+    list.appendChild(featuredEmptyHint())
+  }
+
+  // 2. Events — non-collapsible, always labelled with its own header (the panel
+  // title is gone, so this header is the only "Events" label).
+  if (normUpcoming.length) {
+    list.appendChild(sectionHead('Events'))
+    list.appendChild(buildGrid(normUpcoming))
+  } else if (!featUpcoming.length && !featuredLoading && past.length) {
     const ph = document.createElement('div')
     ph.className = 'feed-placeholder'
     const strong = document.createElement('strong')
-    strong.textContent = `No upcoming events in ${MONTH_NAMES[month]} ${year}`
+    strong.textContent = 'No upcoming events'
     ph.appendChild(strong)
     ph.appendChild(document.createTextNode('These have already happened — see Past Events below.'))
     list.appendChild(ph)
   }
 
-  if (past.length) {
-    const details = document.createElement('details')
-    details.className = 'feed-past'
-    const summary = document.createElement('summary')
-    summary.textContent = `Past Events (${past.length})`
-    details.appendChild(summary)
-    details.appendChild(buildGrid(past))
-    list.appendChild(details)
+  // 3. Past Events — one collapsible drawer, featured (gold) past events first.
+  if (featPast.length || normPast.length) {
+    list.appendChild(pastDrawer(featPast, normPast, featuredBy))
   }
 }
 
-// Build the month + year dropdowns and wire changes to `onChange`. Does
-// NOT paint on its own — returns the default { year, month } so the caller
-// controls the first render (cache vs skeletons).
-function buildMonthNav(panel, onChange) {
-  const nav = panel.querySelector('[data-month-nav]')
-  if (!nav) return { year: new Date().getFullYear(), month: new Date().getMonth() }
-  nav.innerHTML = ''
-
-  const now = new Date()
-  const curYear = now.getFullYear()
-  const maxYear = curYear + FUTURE_YEARS
-
-  const monthSel = document.createElement('select')
-  monthSel.className = 'feed-select'
-  monthSel.setAttribute('aria-label', 'Month')
-  MONTH_NAMES.forEach((name, idx) => {
-    const opt = document.createElement('option')
-    opt.value = String(idx)
-    opt.textContent = name
-    monthSel.appendChild(opt)
+// Forward 1W/1M/All segmented control — mirrors the podcast feed's range
+// buttons (same `.pcast-range` chrome, themed by the active feed's accent).
+function rangeControl(initialKey, onPick) {
+  const wrap = document.createElement('div')
+  wrap.className = 'pcast-range'
+  wrap.setAttribute('role', 'group')
+  wrap.setAttribute('aria-label', 'Filter events by date range')
+  const btns = EVENT_RANGE_OPTIONS.map(([key, label]) => {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.className = 'pcast-range-btn'
+    b.textContent = label
+    b.title = label === 'All'
+      ? 'All upcoming events'
+      : `Events in the next ${label === '1W' ? '7 days' : '30 days'}`
+    b.addEventListener('click', () => { setActive(key); onPick(key) })
+    return b
   })
-  monthSel.value = String(now.getMonth())
-
-  const yearSel = document.createElement('select')
-  yearSel.className = 'feed-select'
-  yearSel.setAttribute('aria-label', 'Year')
-  for (let y = maxYear; y >= MIN_YEAR; y--) {
-    const opt = document.createElement('option')
-    opt.value = String(y)
-    opt.textContent = String(y)
-    yearSel.appendChild(opt)
+  function setActive(key) {
+    btns.forEach((el, i) => {
+      const on = EVENT_RANGE_OPTIONS[i][0] === key
+      el.classList.toggle('is-active', on)
+      el.setAttribute('aria-pressed', on ? 'true' : 'false')
+    })
   }
-  yearSel.value = String(Math.min(Math.max(curYear, MIN_YEAR), maxYear))
-
-  const fire = () => onChange(parseInt(yearSel.value, 10), parseInt(monthSel.value, 10))
-  monthSel.addEventListener('change', fire)
-  yearSel.addEventListener('change', fire)
-
-  nav.appendChild(monthSel)
-  nav.appendChild(yearSel)
-  nav.hidden = false
-
-  return { year: parseInt(yearSel.value, 10), month: parseInt(monthSel.value, 10) }
+  setActive(initialKey)
+  wrap.append(...btns)
+  return wrap
 }
 
-// "Include virtual events" toggle for the Events panel head (shared pill markup
-// with the Articles tab's toggle). Off by default → events with no `location`
-// tag are hidden. Calls onChange(checked) on flip.
-function buildVirtualToggle(panel, onChange) {
-  const mount = panel.querySelector('[data-virtual-toggle]')
+// "In-Person ▾" event-type dropdown for the panel head — same `.pcast-sort`
+// chrome as the podcast feed's sort menu (outside-click / Escape to close).
+function typeControl(initialKey, onPick) {
+  const labelFor = (k) => (EVENT_TYPE_OPTIONS.find((o) => o[0] === k) || EVENT_TYPE_OPTIONS[0])[1]
+  const wrap = document.createElement('div')
+  // feed-type-sort squares the corners (vs the podcast sort menu's pill).
+  wrap.className = 'pcast-sort feed-type-sort'
+  const curEl = document.createElement('span')
+  curEl.className = 'pcast-sort-cur'
+  curEl.textContent = labelFor(initialKey)
+  const caret = document.createElement('span')
+  caret.className = 'pcast-sort-caret'
+  caret.setAttribute('aria-hidden', 'true')
+  caret.textContent = '▾'
+  const btn = document.createElement('button')
+  btn.type = 'button'
+  btn.className = 'pcast-sort-btn'
+  btn.setAttribute('aria-haspopup', 'true')
+  btn.setAttribute('aria-expanded', 'false')
+  btn.setAttribute('aria-label', 'Filter events by type')
+  btn.append(curEl, caret)
+
+  let activeKey = initialKey
+  const items = EVENT_TYPE_OPTIONS.map(([k, label]) => {
+    const it = document.createElement('button')
+    it.type = 'button'
+    it.className = 'pcast-sort-item'
+    it.textContent = label
+    it.addEventListener('click', () => { activeKey = k; curEl.textContent = label; close(); onPick(k) })
+    return it
+  })
+  const menu = document.createElement('div')
+  menu.className = 'pcast-sort-menu'
+  menu.hidden = true
+  menu.append(...items)
+  wrap.append(btn, menu)
+
+  function refreshActive() {
+    items.forEach((el, i) => el.classList.toggle('is-active', EVENT_TYPE_OPTIONS[i][0] === activeKey))
+  }
+  function onDoc(e) { if (!wrap.contains(e.target)) close() }
+  function onKey(e) { if (e.key === 'Escape') close() }
+  function open() {
+    refreshActive()
+    menu.hidden = false; btn.setAttribute('aria-expanded', 'true')
+    document.addEventListener('click', onDoc, true); document.addEventListener('keydown', onKey)
+  }
+  function close() {
+    menu.hidden = true; btn.setAttribute('aria-expanded', 'false')
+    document.removeEventListener('click', onDoc, true); document.removeEventListener('keydown', onKey)
+  }
+  btn.addEventListener('click', () => { menu.hidden ? open() : close() })
+  return wrap
+}
+
+// Mount the range buttons + type dropdown into the Events panel head, as one
+// right-aligned group (matching the podcast feed's controls layout).
+function buildEventControls(panel, { range, type, onRange, onType }) {
+  const mount = panel.querySelector('[data-events-controls]')
   if (!mount) return
   mount.innerHTML = ''
-
-  const input = document.createElement('input')
-  input.type = 'checkbox'
-  input.className = 'feed-toggle-input'
-  input.setAttribute('role', 'switch')
-  input.addEventListener('change', () => onChange(input.checked))
-
-  const thumb = document.createElement('span')
-  thumb.className = 'feed-toggle-thumb'
-  const track = document.createElement('span')
-  track.className = 'feed-toggle-track'
-  track.setAttribute('aria-hidden', 'true')
-  track.appendChild(thumb)
-
-  const label = document.createElement('span')
-  label.className = 'feed-toggle-label'
-  label.textContent = 'Include virtual events'
-
-  const wrap = document.createElement('label')
-  wrap.className = 'feed-toggle'
-  wrap.append(input, track, label)
-  mount.appendChild(wrap)
+  const group = document.createElement('div')
+  group.className = 'pcast-controls'
+  group.append(rangeControl(range, onRange), typeControl(type, onType))
+  mount.appendChild(group)
 }
 
 // ── Shared supporter resolution ──────────────────────────────────────
@@ -560,7 +873,7 @@ export async function fetchUpcomingEvents(supporters, { limit = 12 } = {}) {
 // snapshot, then refresh from the hourly /api/community-events snapshot (one
 // cached GET). If that endpoint is unreachable, fall back to the live path —
 // resolve supporters and stream events in from relays, repainting (debounced)
-// as they arrive. Switching months never re-fetches — it re-filters the
+// as they arrive. Switching range/type never re-fetches — it re-filters the
 // in-memory state.
 async function loadEvents() {
   const panel = document.getElementById('panel-events')
@@ -574,12 +887,21 @@ async function loadEvents() {
     deletedCoords: new Map(),
     profiles: new Map(),
     relays: STATIC_RELAYS,
-    year: new Date().getFullYear(),
-    month: new Date().getMonth(),
-    includeVirtual: false,  // hide no-location (virtual) events until toggled on
+    range: '1m',            // forward window: 1W / 1M / All (default 1M)
+    typeFilter: 'inperson', // In-Person / Virtual / All Types (default In-Person)
+    // Boosted events that render in the Featured section. Seeded with the
+    // optimistic "just promoted" coords so a fresh boost glows immediately;
+    // the authoritative boosted set (meetups.json) unions in during refresh.
+    featuredCoords: readConfirmedFeatured(),
+    // coord -> { pubkey, name, picture } for whoever boosted each featured
+    // event (the "Featured by …" credit).
+    featuredBy: new Map(),
+    // True until the boosted set (+ backfill) resolves — drives the pulsing
+    // "Featured" loading ghost so the section doesn't read as empty first.
+    featuredLoading: true,
   }
 
-  const paint = () => renderMonth(panel, computeItems(state), state.year, state.month, state.includeVirtual)
+  const paint = () => renderEvents(panel, computeItems(state), state.range, state.typeFilter, state.featuredCoords, state.featuredLoading, state.featuredBy)
 
   // Debounced repaint so a burst of streamed events doesn't thrash the DOM.
   let paintTimer = null
@@ -588,17 +910,28 @@ async function loadEvents() {
     paintTimer = setTimeout(paint, 200)
   }
 
-  // "Include virtual events" toggle (off by default) — repaints from state.
-  buildVirtualToggle(panel, (on) => { state.includeVirtual = on; paint() })
-
-  // Dropdowns render immediately; changing them repaints from state.
-  const sel = buildMonthNav(panel, (year, month) => {
-    state.year = year
-    state.month = month
+  // Optimistic featured glow: when a show-boost settles successfully and a
+  // Promote click is pending, light that coordinate up immediately (before the
+  // daily meetups.json refresh records it) and remember it across reloads.
+  window.addEventListener('lb:show-boost-settled', (ev) => {
+    const d = ev && ev.detail
+    if (!d || !(d.anySucceeded || d.anyUncertain)) return
+    const pending = readPendingPromote()
+    if (!pending || !pending.coord) return
+    clearPendingPromote()
+    addConfirmedFeatured(pending.coord)
+    state.featuredCoords.add(pending.coord)
     paint()
   })
-  state.year = sel.year
-  state.month = sel.month
+
+  // Range buttons + type dropdown render immediately; changing either repaints
+  // from the in-memory state (no re-fetch).
+  buildEventControls(panel, {
+    range: state.range,
+    type: state.typeFilter,
+    onRange: (key) => { state.range = key; paint() },
+    onType: (key) => { state.typeFilter = key; paint() },
+  })
 
   // 1. Instant paint from cache (stale-while-revalidate).
   const cached = readCache()
@@ -635,12 +968,34 @@ async function loadEvents() {
       await streamEvents(memberList, state.relays, state, schedulePaint)
     }
 
-    // Organizer profiles (avatar + name) once the author set is known.
+    // Featured (boosted) events: pull the boosted set from meetups.json, mark
+    // those coordinates, and backfill any boosted event missing from the
+    // supporter snapshot straight from relays (scope = "any boosted meetup").
+    const boosted = await fetchBoostedSet()
+    await backfillFeatured(state, boosted)
+    for (const c of boosted.coords) state.featuredCoords.add(c)
+    for (const [c, info] of boosted.by) state.featuredBy.set(c, info)
+    state.featuredLoading = false
+
+    // Organizer + booster profiles (avatar + name) once the author set is
+    // known — boosters need resolving for the "Featured by …" credit too.
     try {
-      const pubkeys = [...new Set([...state.eventsByCoord.values()].map((p) => p.pubkey).filter(Boolean))]
+      const pubkeys = [...new Set([
+        ...[...state.eventsByCoord.values()].map((p) => p.pubkey),
+        ...[...state.featuredBy.values()].map((b) => b.pubkey),
+      ].filter(Boolean))]
       if (pubkeys.length) {
         const profiles = await fetchProfilesFromPrimal(pubkeys)
         profiles.forEach((prof, pk) => state.profiles.set(pk, prof))
+        // Fill the booster credits from the resolved profiles (prefer the
+        // profile's display name over meetups.json's often-null sender_name).
+        for (const info of state.featuredBy.values()) {
+          const prof = state.profiles.get(info.pubkey)
+          if (prof) {
+            info.name = prof.name || info.name || ''
+            info.picture = prof.picture || info.picture || ''
+          }
+        }
       }
     } catch (e) {
       console.warn('[feeds] event profile fetch failed', e)
@@ -653,6 +1008,14 @@ async function loadEvents() {
     console.error('[feeds] events load failed', e)
     if (!state.eventsByCoord.size) {
       renderPlaceholder(list, 'Couldn’t load events', 'Something went wrong reaching the relays — please try again later.')
+    }
+  } finally {
+    // Any path that didn't reach the normal clear (early return, error) still
+    // needs the loading ghost gone — clear the flag and repaint over it when
+    // there's content to show.
+    if (state.featuredLoading) {
+      state.featuredLoading = false
+      if (state.eventsByCoord.size) paint()
     }
   }
 }
