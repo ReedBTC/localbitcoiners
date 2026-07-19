@@ -89,7 +89,7 @@
 // avatars UNSTYLED (no orange fill, natural-size pfps) until a 2nd revalidate.
 // Bump evicts the stale boost-actions.css, boosts-thread.css, calendar-events.js
 // and feeds.js so mobile/PWA get the new styling on first navigation.
-const VERSION = 'lb-v36';
+const VERSION = 'lb-v37';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

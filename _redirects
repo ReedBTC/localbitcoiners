@@ -1,3 +1,6 @@
-# The "Submit a Meetup" page became the "Meetups" page (/meetups).
-/newevent       /meetups   301
-/newevent.html  /meetups   301
+# The "Submit a Meetup" / "Meetups" page was folded into the Events tab on
+# /feeds (lb-v37). Old URLs land there directly.
+/newevent       /feeds#events   301
+/newevent.html  /feeds#events   301
+/meetups        /feeds#events   301
+/meetups.html   /feeds#events   301

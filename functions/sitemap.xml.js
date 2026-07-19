@@ -11,7 +11,7 @@ const RESPONSE_MAX_BYTES = 5 * 1024 * 1024;
 const STATIC_URLS = [
   { loc: "/", changefreq: "weekly", priority: "1.0" },
   { loc: "/boosts.html", changefreq: "daily", priority: "0.8" },
-  { loc: "/meetups", changefreq: "monthly", priority: "0.6" },
+  { loc: "/feeds", changefreq: "daily", priority: "0.7" },
 ];
 
 export async function onRequest() {
