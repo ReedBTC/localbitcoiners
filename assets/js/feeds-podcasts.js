@@ -237,6 +237,19 @@ function buildEpisodes(data) {
   return out
 }
 
+// Data-only loader for the homepage teaser (home-feeds.js). Fetches the same
+// snapshot renderPodcasts() uses and returns the built, most-recent-first
+// episode list — no rendering, no profile lookup. Mirrors the
+// loadMarketItems / renderMarket split in feeds-market.js so the teaser and
+// the full tab share one source of truth. Each item:
+//   { guid, ep, show, boosts, distinctBoosters, latest, totalSats }
+export async function loadPodcastItems() {
+  const resp = await fetch(API_URL, { headers: { Accept: 'application/json' } })
+  if (!resp.ok) throw new Error('community-boosts ' + resp.status)
+  const data = await resp.json()
+  return buildEpisodes(data)
+}
+
 // ── Subscribe links ──────────────────────────────────────────────────
 // Show-level (not episode) deep links into podcast apps, built purely from
 // snapshot fields — no runtime lookups:

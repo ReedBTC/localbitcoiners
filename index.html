@@ -1114,6 +1114,19 @@
     }
     .cf-item--market { width: min(220px, 66vw); }
     .cf-item--market .merch-card { height: 100%; }
+    .cf-item--podcast { width: min(220px, 66vw); }
+    .cf-item--podcast .merch-card { height: 100%; }
+    .cf-item--article { width: min(240px, 70vw); }
+    .cf-item--article .merch-card { height: 100%; }
+    /* Boost tally under a podcast card (⚡ sats · N boosters). */
+    .cf-item-meta {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     /* Seller identity chip on a market card: pfp (or initial) + display name. */
     .cf-item-seller {
       display: flex;
@@ -1792,6 +1805,22 @@
         </svg>
         <span>Marketplace</span>
       </button>
+      <button type="button" class="cf-tab" role="tab" data-cf-tab="podcasts" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="9" y="2" width="6" height="12" rx="3"/>
+          <path d="M5 10a7 7 0 0 0 14 0"/>
+          <line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/>
+        </svg>
+        <span>Podcast Boosts</span>
+      </button>
+      <button type="button" class="cf-tab" role="tab" data-cf-tab="articles" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+          <line x1="9" y1="7" x2="16" y2="7"/><line x1="9" y1="11" x2="14" y2="11"/>
+        </svg>
+        <span>Articles</span>
+      </button>
     </div>
 
     <div class="cf-panel is-active" data-cf-panel="events">
@@ -1802,6 +1831,16 @@
     <div class="cf-panel" data-cf-panel="market" hidden>
       <div class="cf-strip" id="cf-strip-market" data-cf-strip="market">
         <p class="cf-empty">Loading community listings…</p>
+      </div>
+    </div>
+    <div class="cf-panel" data-cf-panel="podcasts" hidden>
+      <div class="cf-strip" id="cf-strip-podcasts" data-cf-strip="podcasts">
+        <p class="cf-empty">Loading podcast boosts…</p>
+      </div>
+    </div>
+    <div class="cf-panel" data-cf-panel="articles" hidden>
+      <div class="cf-strip" id="cf-strip-articles" data-cf-strip="articles">
+        <p class="cf-empty">Loading community articles…</p>
       </div>
     </div>
   </div>

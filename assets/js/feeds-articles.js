@@ -195,6 +195,23 @@ function buildArticles(data) {
   return out
 }
 
+// Data-only loader for the homepage teaser (home-feeds.js). Fetches the same
+// snapshot renderArticles() uses, drops short (<SHORT_MAX) bodies to match the
+// tab's default view, takes the newest `limit`, and resolves author profiles
+// so the teaser card can show a name/avatar (attached as `.author`). Mirrors
+// the loadMarketItems / renderMarket split in feeds-market.js.
+export async function loadArticleItems({ limit = 12 } = {}) {
+  const resp = await fetch(API_URL, { headers: { Accept: 'application/json' } })
+  if (!resp.ok) throw new Error('community-articles ' + resp.status)
+  const data = await resp.json()
+  const articles = buildArticles(data)
+    .filter((a) => a.content.length >= SHORT_MAX)
+    .slice(0, limit)
+  await loadAuthorProfiles(articles)
+  for (const a of articles) a.author = profileFor(a.pubkey)
+  return articles
+}
+
 // Below this length (characters) an article is treated as "short" and hidden
 // from the default view — most sub-420-char kind-30023s are threads/notes, not
 // long-form. The "Include short articles" toggle disables this cut.

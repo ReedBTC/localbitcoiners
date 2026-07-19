@@ -1,23 +1,26 @@
-/* Homepage "Community Feeds" module — a compact two-tab teaser (Events +
- * Marketplace) that mirrors /feeds, sitting between Leaderboards and Recent
- * Boosts. Each tab is a horizontal auto-scrolling strip of real content
- * scoped to the show's supporter follow packs; a card (or the "See all"
- * link) clicks through to the full /feeds page for the real thing.
+/* Homepage "Community Feeds" module — a compact four-tab teaser (Events +
+ * Marketplace + Podcast Boosts + Articles) that mirrors /feeds, sitting
+ * between Leaderboards and Recent Boosts. Each tab is a horizontal
+ * auto-scrolling strip of real content scoped to the show's supporter follow
+ * packs; a card (or the "See all" link) clicks through to the full /feeds
+ * page for the real thing.
  *
  * All data + supporter resolution is reused from the /feeds modules so there
  * is ONE source of truth:
- *   • feeds.js         → resolveSupporters(), fetchUpcomingEvents()
- *   • feeds-market.js  → loadMarketItems()
- *   • calendar-events  → renderCalendarCard() (the same event card /meetups
- *                        and the Events tab render)
- *   • merch.js         → price helpers (toSats / getBtcUsd / …)
+ *   • feeds.js          → resolveSupporters(), fetchUpcomingEvents()
+ *   • feeds-market.js   → loadMarketItems()
+ *   • feeds-podcasts.js → loadPodcastItems()  (community-boosts snapshot)
+ *   • feeds-articles.js → loadArticleItems()  (community-articles snapshot)
+ *   • calendar-events   → renderCalendarCard() (the same event card /meetups
+ *                         and the Events tab render)
+ *   • merch.js          → price helpers (toSats / getBtcUsd / …)
  *
- * Speed: both strips are stale-while-revalidate cached in localStorage —
+ * Speed: every strip is stale-while-revalidate cached in localStorage —
  * paint instantly from a recent snapshot, then refetch and repaint. Because
  * every card just clicks through to /feeds (which re-fetches fresh), the
  * staleness window is harmless; Events additionally re-filters to upcoming
- * at paint time. The Marketplace data is also prefetched on idle so its
- * first tab-open is instant even with a cold cache.
+ * at paint time. Marketplace / Podcasts / Articles data is prefetched on idle
+ * so the first tab-open is instant even with a cold cache.
  *
  * Importing feeds.js runs its self-boot, but that bails immediately off the
  * homepage (no #panel-events), so it's inert here beyond the exports we use
@@ -26,18 +29,26 @@
 import { resolveSupporters, fetchUpcomingEvents } from '/assets/js/feeds.js'
 import { renderCalendarCard } from '/assets/js/calendar-events.js'
 import { loadMarketItems } from '/assets/js/feeds-market.js'
+import { loadPodcastItems } from '/assets/js/feeds-podcasts.js'
+import { loadArticleItems } from '/assets/js/feeds-articles.js'
 import { toSats, fmtSats, priceLabel } from '/assets/js/merch.js'
 
 const EVENTS_MAX = 12
 const MARKET_MAX = 12
+const PODCASTS_MAX = 12
+const ARTICLES_MAX = 12
 const SPEED_PX_S = 42;          // a touch calmer than the boosts/merch marquees
 
 // Stale-while-revalidate caches (teasers → fresh data is always one click
 // away on /feeds, so short TTLs are plenty).
 const EVENTS_CACHE = 'lb_home_events_v1'
 const MARKET_CACHE = 'lb_home_market_v1'
+const PODCASTS_CACHE = 'lb_home_podcasts_v1'
+const ARTICLES_CACHE = 'lb_home_articles_v1'
 const EVENTS_TTL = 12 * 60 * 60 * 1000   // 12h
 const MARKET_TTL = 2 * 60 * 60 * 1000    // 2h
+const PODCASTS_TTL = 2 * 60 * 60 * 1000  // 2h
+const ARTICLES_TTL = 2 * 60 * 60 * 1000  // 2h
 
 // ── Supporter set (shared by both tabs, resolved once) ───────────────
 let supportersPromise = null
@@ -191,6 +202,134 @@ function makeMarketItem(entry, isDupe) {
   return wrap
 }
 
+// Identity chip (pfp-or-initial + name), same markup/classes as the
+// Marketplace seller chip — reused for the Articles author line.
+function identityRow(profile, fallback) {
+  const label = (profile && profile.name) || fallback || 'Nostr author'
+  const row = document.createElement('div')
+  row.className = 'cf-item-seller'
+  const pic = profile && profile.picture
+  if (pic) {
+    const img = document.createElement('img')
+    img.className = 'cf-seller-pfp'
+    img.src = pic; img.alt = ''; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer'
+    img.addEventListener('error', () => {
+      const ph = document.createElement('span')
+      ph.className = 'cf-seller-pfp cf-seller-pfp--none'
+      ph.textContent = (label[0] || '?').toUpperCase()
+      img.replaceWith(ph)
+    }, { once: true })
+    row.appendChild(img)
+  } else {
+    const ph = document.createElement('span')
+    ph.className = 'cf-seller-pfp cf-seller-pfp--none'
+    ph.textContent = (label[0] || '?').toUpperCase()
+    row.appendChild(ph)
+  }
+  const name = document.createElement('span')
+  name.className = 'cf-seller-name'
+  name.textContent = label
+  row.appendChild(name)
+  return row
+}
+
+function fmtDate(unixSec) {
+  if (!unixSec) return ''
+  return new Date(unixSec * 1000).toLocaleDateString(undefined, {
+    month: 'short', day: 'numeric', year: 'numeric',
+  })
+}
+
+// Podcast Boosts: a simplified card (episode art + title + show + a boost
+// tally), reusing the shared .merch-card look, clicking through to the
+// Podcast Boosts tab. Every field comes straight from the community-boosts
+// snapshot — no profile lookup needed for the teaser.
+function makePodcastItem(item, isDupe) {
+  const wrap = document.createElement('div')
+  wrap.className = 'cf-item cf-item--podcast' + (isDupe ? ' is-dupe' : '')
+  if (isDupe) wrap.setAttribute('aria-hidden', 'true')
+
+  const media = document.createElement('div')
+  media.className = 'merch-card-media'
+  if (item.image) {
+    const img = document.createElement('img')
+    img.src = item.image; img.alt = ''; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer'
+    media.appendChild(img)
+  } else {
+    const noimg = document.createElement('div')
+    noimg.className = 'merch-card-noimg'
+    noimg.textContent = '🎙️'
+    media.appendChild(noimg)
+  }
+
+  const title = document.createElement('h3')
+  title.className = 'merch-card-title'
+  title.textContent = item.title
+
+  const show = document.createElement('div')
+  show.className = 'merch-card-sub'
+  show.textContent = item.show || ''
+
+  const meta = document.createElement('div')
+  meta.className = 'cf-item-meta'
+  const n = item.boosters
+  meta.textContent = `⚡ ${fmtSats(item.sats)} · ${n} booster${n === 1 ? '' : 's'}`
+
+  const body = document.createElement('div')
+  body.className = 'merch-card-body'
+  body.append(title, show, meta)
+
+  const card = document.createElement('div')
+  card.className = 'merch-card'
+  card.append(media, body)
+
+  wrap.appendChild(card)
+  wrap.__href = '/feeds#podcasts'
+  return wrap
+}
+
+// Articles: a simplified card (cover + title + date + author identity),
+// reusing the shared .merch-card look + the seller-chip styles, clicking
+// through to the Articles tab.
+function makeArticleItem(item, isDupe) {
+  const wrap = document.createElement('div')
+  wrap.className = 'cf-item cf-item--article' + (isDupe ? ' is-dupe' : '')
+  if (isDupe) wrap.setAttribute('aria-hidden', 'true')
+
+  const media = document.createElement('div')
+  media.className = 'merch-card-media'
+  if (item.image) {
+    const img = document.createElement('img')
+    img.src = item.image; img.alt = ''; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer'
+    media.appendChild(img)
+  } else {
+    const noimg = document.createElement('div')
+    noimg.className = 'merch-card-noimg'
+    noimg.textContent = '📄'
+    media.appendChild(noimg)
+  }
+
+  const title = document.createElement('h3')
+  title.className = 'merch-card-title'
+  title.textContent = item.title
+
+  const date = document.createElement('div')
+  date.className = 'merch-card-sub'
+  date.textContent = item.date || ''
+
+  const body = document.createElement('div')
+  body.className = 'merch-card-body'
+  body.append(title, date, identityRow(item.author))
+
+  const card = document.createElement('div')
+  card.className = 'merch-card'
+  card.append(media, body)
+
+  wrap.appendChild(card)
+  wrap.__href = '/feeds#articles'
+  return wrap
+}
+
 // ── Strip fill (probe → two sets so ONE set overflows the strip) ─────
 // Mirrors home-merch's measure: with only a few cards a single copy can be
 // narrower than the strip, leaving nothing to scroll. Repeat the set until
@@ -328,7 +467,7 @@ function fetchMarketData() {
     marketDataPromise = (async () => {
       const supporters = await getSupporters()
       return loadMarketItems(supporters)   // { items, rate }
-    })()
+    })().catch((e) => { marketDataPromise = null; throw e })  // don't cache a transient failure
   }
   return marketDataPromise
 }
@@ -344,6 +483,60 @@ async function prefetchMarket() {
     writeCache(MARKET_CACHE, slim, { rate: rate ?? null })
   } catch (e) {
     console.warn('[home-feeds] market prefetch failed', e)
+  }
+}
+
+// Slim shapes kept in the SWR cache (JSON-safe, only the fields the teaser
+// card renders) — the snapshot's full item is heavier than the card needs.
+function slimPodcast(it) {
+  return {
+    image: (it.ep && it.ep.image) || '',
+    title: (it.ep && it.ep.title) || 'Untitled episode',
+    show: (it.show && it.show.title) || '',
+    sats: it.totalSats || 0,
+    boosters: (it.distinctBoosters && it.distinctBoosters.length) || 0,
+  }
+}
+function slimArticle(a) {
+  return {
+    image: a.image || '',
+    title: a.title || 'Untitled',
+    date: fmtDate(a.date),
+    author: slimProfile(a.author),
+  }
+}
+
+let podcastDataPromise = null
+function fetchPodcastData() {
+  if (!podcastDataPromise) {
+    podcastDataPromise = loadPodcastItems()
+      .catch((e) => { podcastDataPromise = null; throw e })  // don't cache a transient failure
+  }
+  return podcastDataPromise
+}
+async function prefetchPodcasts() {
+  try {
+    const items = await fetchPodcastData()
+    writeCache(PODCASTS_CACHE, items.slice(0, PODCASTS_MAX).map(slimPodcast))
+  } catch (e) {
+    console.warn('[home-feeds] podcasts prefetch failed', e)
+  }
+}
+
+let articleDataPromise = null
+function fetchArticleData() {
+  if (!articleDataPromise) {
+    articleDataPromise = loadArticleItems({ limit: ARTICLES_MAX })
+      .catch((e) => { articleDataPromise = null; throw e })  // don't cache a transient failure
+  }
+  return articleDataPromise
+}
+async function prefetchArticles() {
+  try {
+    const items = await fetchArticleData()
+    writeCache(ARTICLES_CACHE, items.slice(0, ARTICLES_MAX).map(slimArticle))
+  } catch (e) {
+    console.warn('[home-feeds] articles prefetch failed', e)
   }
 }
 
@@ -420,6 +613,61 @@ async function renderMarketStrip(container) {
   paintStrip(container, entries, makeMarketItem, -1)
 }
 
+async function renderPodcastsStrip(container) {
+  // 1. Instant paint from cache (possibly warmed by the idle prefetch).
+  const cached = readCache(PODCASTS_CACHE, PODCASTS_TTL)
+  let paintedFromCache = false
+  if (cached) {
+    paintStrip(container, cached.items, makePodcastItem, +1)
+    paintedFromCache = true
+  }
+
+  // 2. Revalidate.
+  let items
+  try {
+    items = await fetchPodcastData()
+  } catch (e) {
+    console.warn('[home-feeds] podcasts fetch failed', e)
+    if (!paintedFromCache) emptyState(container, 'Couldn’t load podcast boosts — see them all on /feeds.')
+    return
+  }
+  const slim = items.slice(0, PODCASTS_MAX).map(slimPodcast)
+  if (!slim.length) {
+    if (!paintedFromCache) emptyState(container, 'No boosted episodes yet — check back soon.')
+    return
+  }
+  writeCache(PODCASTS_CACHE, slim)
+  paintStrip(container, slim, makePodcastItem, +1)
+}
+
+async function renderArticlesStrip(container) {
+  // 1. Instant paint from cache (possibly warmed by the idle prefetch).
+  const cached = readCache(ARTICLES_CACHE, ARTICLES_TTL)
+  let paintedFromCache = false
+  if (cached) {
+    paintStrip(container, cached.items, makeArticleItem, -1)
+    paintedFromCache = true
+  }
+
+  // 2. Revalidate.
+  let items
+  try {
+    items = await fetchArticleData()
+  } catch (e) {
+    console.warn('[home-feeds] articles fetch failed', e)
+    if (!paintedFromCache) emptyState(container, 'Couldn’t load community articles — see them all on /feeds.')
+    return
+  }
+  const slim = items.slice(0, ARTICLES_MAX).map(slimArticle)
+  if (!slim.length) {
+    if (!paintedFromCache) emptyState(container, 'No community articles right now — check back soon.')
+    return
+  }
+  writeCache(ARTICLES_CACHE, slim)
+  // Scroll the OPPOSITE direction to Podcasts, echoing the events↔market pair.
+  paintStrip(container, slim, makeArticleItem, -1)
+}
+
 // ── Tab controller ───────────────────────────────────────────────────
 function init() {
   const section = document.getElementById('community-feeds')
@@ -430,11 +678,15 @@ function init() {
   const LOADERS = {
     events: () => renderEventsStrip(section.querySelector('[data-cf-strip="events"]')),
     market: () => renderMarketStrip(section.querySelector('[data-cf-strip="market"]')),
+    podcasts: () => renderPodcastsStrip(section.querySelector('[data-cf-strip="podcasts"]')),
+    articles: () => renderArticlesStrip(section.querySelector('[data-cf-strip="articles"]')),
   }
   // Per-tab "See all" label + deep link into the matching /feeds tab.
   const SEE_ALL = {
     events: 'See all Community Events →',
     market: 'See all Community Listings →',
+    podcasts: 'See all Podcast Boosts →',
+    articles: 'See all Community Articles →',
   }
   const loaded = new Set()
   function load(feed) {
@@ -469,10 +721,13 @@ function init() {
   // the strip is usually populated by the time the section scrolls into view.
   activate('events')
 
-  // Warm the Marketplace data in the background so its first tab-open is
-  // instant, without competing with the Events paint.
+  // Warm the other tabs' data in the background so their first tab-open is
+  // instant, without competing with the Events paint. Staggered so three
+  // snapshot fetches don't fire in one idle slice.
   const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 1200))
   idle(() => prefetchMarket())
+  idle(() => prefetchPodcasts())
+  idle(() => prefetchArticles())
 }
 
 if (document.readyState === 'loading') {
