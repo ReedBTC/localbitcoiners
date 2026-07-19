@@ -15,6 +15,7 @@ from boost_formatter import (
     record_published_event, make_cache, is_dry_run, persist_cache,
     build_podcast_guid_tags,
 )
+import lnbits_source
 
 # --- Config ---
 CREDENTIALS_FILE = Path.home() / ".config/nostr-bots/credentials.env"
@@ -97,6 +98,14 @@ def main():
     except Exception as e:
         print(f"[error] Could not reach Alby Hub: {e}")
         return
+
+    # Address boosts (website legs + Fountain) received at reed@localbitcoiners.com
+    # carry their identifying comment only in lnbits, not on the node-level tx.
+    # Patch the description back from lnbits before classifying, so build_note_from_tx
+    # sees "LocalBitcoinersEpNNN" / "rss::payment::boost …" instead of the pay-link
+    # memo. Fails safe: unreachable lnbits → {} → no enrichment, never a crash.
+    lnbits_comments = lnbits_source.build_comment_map(config)
+    lnbits_source.enrich_txs(transactions, lnbits_comments)
 
     # Pre-filter by settledAt before classifying — keeps stale txs out of the
     # classifier's network lookups (kind 30078 / Fountain comments). Source

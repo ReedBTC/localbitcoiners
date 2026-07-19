@@ -92,6 +92,7 @@ from nostr_utils import (
     get_outbox_relays, NOSTR_RELAYS,
 )
 from collector_common import push_file_to_vps
+import lnbits_source
 
 # --- Config ---
 CREDENTIALS_FILE = Path.home() / ".config/nostr-bots/credentials.env"
@@ -965,6 +966,12 @@ def run_sats(config, state, existing_boost_hashes):
     print(f"  Cursor (boosts only): settledAt > {cutoff}")
 
     cache                 = make_cache()
+    # Address boosts (website legs + Fountain) received at reed@localbitcoiners.com
+    # carry their identifying comment only in lnbits, not on the node-level tx.
+    # Build the {payment_hash: comment} map once and patch each page below before
+    # classifying. Fails safe: an unreachable lnbits yields {} → no enrichment
+    # (those boosts go undetected this run) rather than a broken/zeroed run.
+    lnbits_comments       = lnbits_source.build_comment_map(config)
     new_rows              = []
     keysend_stream_txs    = []
     castamatic_stream_txs = []
@@ -984,6 +991,8 @@ def run_sats(config, state, existing_boost_hashes):
 
         if not txs:
             break
+
+        lnbits_source.enrich_txs(txs, lnbits_comments)
 
         print(f"    Fetched offset {offset} ({len(txs)} txs, total={total})")
 
