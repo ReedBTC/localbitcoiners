@@ -58,7 +58,12 @@ export const LNADDRESS_OVERRIDES = {
  */
 export const META_PUBLISH_ALLOWLIST = new Set([
   'localbitcoiners@getalby.com',
+  // Reed's host leg. Both addresses are allowlisted so the show's boost
+  // splits can point at either one — they're never both live in a single
+  // episode's splits; the second is a hot standby if the primary's LNURL
+  // host is down, so the kind 30078 publish keeps working after a swap.
   'reed@getalby.com',
+  'reed@localbitcoiners.com',
 ])
 
 export function shouldPublishMetadata(address) {
