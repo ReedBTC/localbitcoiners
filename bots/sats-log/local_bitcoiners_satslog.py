@@ -69,11 +69,13 @@ import sys
 import csv
 import json
 import time
+import hashlib
 import bech32
 import requests
 import subprocess
 import websocket
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "shared"))
@@ -86,6 +88,7 @@ from nostr_utils import (
     load_config, hex_to_npub, npub_to_hex,
     get_outbox_relays, NOSTR_RELAYS,
 )
+from collector_common import push_file_to_vps
 
 # --- Config ---
 CREDENTIALS_FILE = Path.home() / ".config/nostr-bots/credentials.env"
@@ -144,6 +147,13 @@ FETCH_START = "2026-02-02T05:00:00Z"
 
 DRY_RUN  = False  # classify everything but don't write CSV / state / push
 AUTOPUSH = True   # git pull/add/commit/push at end of a real run
+
+# Dual-write the website-facing JSON to the VPS (Caddy-served at
+# relay.mynostr.app) alongside the git autopush, so the site can migrate to
+# fetching it from there with no Cloudflare rebuild per run. Same restricted
+# rrsync key + landing dir (/home/deploy-lbboosts/) the community bots use.
+PUSH_TO_VPS  = True
+VPS_KEY_FILE = Path.home() / ".ssh" / "relay_mynostr_ed25519"
 
 # Fountain Firestore (anonymous read access — the web client's public api key)
 FIRESTORE_PROJECT = "fountain-fm"
@@ -923,7 +933,7 @@ def run_sats(config, state, existing_boost_hashes):
     skipped_unclassified  = 0
     skipped_fountain_strm = 0
     offset                = 0
-    limit                 = 50
+    limit                 = 500
     newest_ts             = state.get("last_processed")
 
     while True:
@@ -986,7 +996,9 @@ def run_sats(config, state, existing_boost_hashes):
         offset += limit
         if offset >= total:
             break
-        time.sleep(0.5)
+        # No inter-page sleep: Alby Hub is the local LAN node, and at limit=500
+        # the whole history is only ~a dozen pages — re-walked each run to
+        # re-collect stream txs for full aggregation.
 
     persist_cache(cache)
 
@@ -1382,9 +1394,17 @@ def run_supporters(all_boost_rows):
     stream_rows   = []  # streamers only → merged into sats.csv
     fountain_rows = []  # every supporter → dumped to fountain-api.csv
 
-    for ep_id in sorted(episode_ids):
+    # Firestore reads are independent per episode and I/O-bound, so fan them out
+    # concurrently instead of one-at-a-time-with-a-sleep. Results are consumed in
+    # sorted(episode_ids) order so the emitted rows are identical to the old
+    # sequential path (order-stable output, just fetched in parallel).
+    ordered_ids = sorted(episode_ids)
+    with ThreadPoolExecutor(max_workers=min(12, len(ordered_ids) or 1)) as ex:
+        fetched = dict(zip(ordered_ids, ex.map(fetch_supporters_for, ordered_ids)))
+
+    for ep_id in ordered_ids:
         ep_num, ep_title = episode_meta[ep_id]
-        supporters = fetch_supporters_for(ep_id)
+        supporters = fetched[ep_id]
         rows_for_ep = 0
         for s in supporters:
             fountain_rows.append(supporter_to_fountain_row(s, ep_num, ep_title))
@@ -1395,7 +1415,6 @@ def run_supporters(all_boost_rows):
         if rows_for_ep:
             print(f"    Ep {ep_num or '???'} ({ep_id}): {rows_for_ep} streamer(s) "
                   f"of {len(supporters)} supporter(s)")
-        time.sleep(0.2)  # polite gap between Firestore queries
 
     # Show-level supporters: still pulled so fountain-api.csv carries the
     # complete Fountain ledger, but deliberately NOT emitted as sats.csv stream
@@ -1737,39 +1756,59 @@ def _fetch_note_zap_tag_count(event_id, relays):
     return None
 
 
-def get_zap_split_fraction(event_id, relays, cache):
-    """Return our fractional share of a zap addressed to event_id.
-
-    Looks up the event's `zap` tags and assumes an equal-weight split among
-    all N recipients; our share = 1/N.  Falls back to 1.0 when:
-      - event_id is blank (profile zap — no split possible)
-      - the note has 0 or 1 zap tags (all sats to us)
-      - the relay fetch fails (optimistic: assume no split)
-    Mutates `cache` in place; caller must persist it with _save_zap_note_cache."""
-    if not event_id:
-        return 1.0
-    if event_id in cache:
-        n = cache[event_id]
-        return 1.0 / n if n > 1 else 1.0
-    n = _fetch_note_zap_tag_count(event_id, relays)
-    if n is None:
-        return 1.0  # fetch failed — don't cache, retry next run
-    cache[event_id] = max(1, n)
-    return 1.0 / max(1, n)
+def _resolve_zap_split_fraction(n):
+    """Our equal-weight share of a zap given the zapped note's `zap` tag count
+    `n` (or None). 1/N recipients; 1.0 when the note is unknown, has 0/1 zap
+    tags, or couldn't be fetched — same optimistic fallback as before."""
+    return 1.0 / n if (n and n > 1) else 1.0
 
 
-def build_sats_zap_rows(zap_rows, relays, cache):
+def build_sats_zap_rows(zap_rows, relays, cache, neg_cache, now, retry_after=86400):
     """Convert parsed zap receipt rows (ZAP_COLUMNS shape) into sats.csv-shaped
     dicts ready to merge into all_rows.  Applies zap split fractions so
     our_sats / aquafox_sats reflect only our share while total_sats preserves
-    the full sender intent for supporter-tier credit."""
+    the full sender intent for supporter-tier credit.
+
+    Each zap's split needs the zapped note's `zap` tag count. Uncached notes are
+    fetched in PARALLEL (one wave, not one relay-round-trip at a time), and a
+    note that can't be found on any relay is negative-cached in `neg_cache`
+    (event_id → last-tried unix) so it isn't re-fetched every run — only retried
+    after `retry_after` seconds in case it propagates later. This matters at a
+    tight cadence: without it, every un-fetchable note (aged off relays) costs a
+    full multi-relay timeout on *every* run. Output is unchanged — a blank,
+    uncached, or negative-cached note still yields fraction 1.0 (all to us)."""
+    # Distinct notes that still need a live fetch this run.
+    need = set()
+    for zap in zap_rows:
+        eid = zap.get("zapped_event_id") or ""
+        if not eid or eid in cache:
+            continue
+        last = neg_cache.get(eid)
+        if last is not None and (now - last) < retry_after:
+            continue
+        need.add(eid)
+
+    if need:
+        print(f"  Resolving {len(need)} uncached zapped note(s) in parallel...")
+
+        def _count(eid):
+            return eid, _fetch_note_zap_tag_count(eid, relays)
+
+        with ThreadPoolExecutor(max_workers=min(12, len(need))) as ex:
+            for eid, n in ex.map(_count, need):
+                if n is None:
+                    neg_cache[eid] = now            # couldn't fetch — back off
+                else:
+                    cache[eid] = max(1, n)          # positive cache (committed)
+                    neg_cache.pop(eid, None)
+
     sats_rows = []
     for zap in zap_rows:
         total_sats = int(zap.get("sats") or 0)
         if total_sats <= 0:
             continue
         event_id = zap.get("zapped_event_id") or ""
-        fraction = get_zap_split_fraction(event_id, relays, cache)
+        fraction = _resolve_zap_split_fraction(cache.get(event_id))
         our_sats = round(total_sats * fraction)
         sats_rows.append({
             "settled_at":        zap.get("settled_at") or "",
@@ -1938,6 +1977,35 @@ def git_autopush():
         print(f"  [autopush] failed: {e}\n  {err}")
 
 
+def push_website_json_to_vps(state, config):
+    """Dual-write the website-facing JSON to the VPS (Caddy-served) — sats.json,
+    zaps.json, meetups.json land in /home/deploy-lbboosts/ via the restricted
+    rrsync key, same as the community bots.
+
+    Each JSON carries a per-run generated_at, so gate the push on the
+    timestamp-free CSV it mirrors: skip when the underlying data is unchanged
+    since the last successful push (keeps frequent runs cheap once decoupled).
+    Best-effort — a push failure is logged inside push_file_to_vps, never fatal;
+    the git autopush still runs, so this is purely additive during the migration."""
+    if not PUSH_TO_VPS:
+        return
+    print("\n─── VPS dual-write (sats.json / zaps.json / meetups.json) ───")
+    sigs = state.setdefault("vps_push_sigs", {})
+    for json_file, csv_file, remote_name in (
+        (SATS_JSON,    CSV_FILE,    "sats.json"),
+        (ZAPS_JSON,    ZAPS_CSV,    "zaps.json"),
+        (MEETUPS_JSON, MEETUPS_CSV, "meetups.json"),
+    ):
+        if not json_file.exists():
+            continue
+        sig = hashlib.sha1(csv_file.read_bytes()).hexdigest() if csv_file.exists() else ""
+        if sig and sigs.get(remote_name) == sig:
+            print(f"  {remote_name}: data unchanged — skip push")
+            continue
+        if push_file_to_vps(config, json_file, remote_name, VPS_KEY_FILE):
+            sigs[remote_name] = sig
+
+
 # ---------------------------------------------------------------------------
 # Orchestrator
 # ---------------------------------------------------------------------------
@@ -1954,7 +2022,8 @@ def main():
     # every run). On the very first new-shape run this implicitly purges the
     # old per-minute stream rows from sats.csv.
     existing_rows       = load_existing_rows()
-    existing_boost_rows = [r for r in existing_rows if r.get("kind") != "stream"]
+    existing_boost_rows = [r for r in existing_rows
+                           if r.get("kind") not in ("stream", "zap")]
     # Re-run overrides on every reload so edits to LIVE_BOOST_HASHES /
     # BAB_TITLE_PATTERNS / SENDER_OVERRIDES take effect on the next run
     # without a full CSV regen.
@@ -1963,7 +2032,7 @@ def main():
     existing_hashes     = {r["payment_hash"] for r in existing_boost_rows if r.get("payment_hash")}
     print(f"Existing CSV: {len(existing_rows)} rows total → "
           f"{len(existing_boost_rows)} boost rows kept, "
-          f"{len(existing_rows) - len(existing_boost_rows)} stream rows dropped (will regen)\n")
+          f"{len(existing_rows) - len(existing_boost_rows)} stream/zap rows dropped (will regen)\n")
 
     # ── Pass 1: Alby Hub — boost rows + raw non-Fountain stream txs ──
     print("─── Pass 1/4: Alby Hub (boosts + non-Fountain stream txs) ───")
@@ -2019,7 +2088,9 @@ def main():
     # persists to disk so each zapped note is fetched from a relay only once.
     zap_relays = get_outbox_relays(LB_HEX) or list(NOSTR_RELAYS)
     zap_note_cache = _load_zap_note_cache()
-    zap_sats_rows = build_sats_zap_rows(zap_rows, zap_relays, zap_note_cache)
+    zap_note_misses = state.setdefault("zap_note_misses", {})
+    zap_sats_rows = build_sats_zap_rows(zap_rows, zap_relays, zap_note_cache,
+                                        zap_note_misses, time.time())
     _save_zap_note_cache(zap_note_cache)
     print(f"  Zap sats rows (→sats.csv): {len(zap_sats_rows)}")
 
@@ -2115,6 +2186,9 @@ def main():
 
     write_meetups_json()
     print(f"Wrote {len(meetup_rows)} rows → {MEETUPS_JSON}")
+
+    # Dual-write the website-facing JSON to the VPS (in addition to git autopush).
+    push_website_json_to_vps(state, config)
 
     # Persist state: the Alby cursor (if it advanced) and the Castamatic
     # stream cache (which may have grown even when the cursor didn't).
