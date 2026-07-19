@@ -18,7 +18,7 @@
 (function () {
   'use strict';
 
-  var SATS_URL = '/data/sats.json';
+  var SATS_URL = '/api/sats';
   var RSS_URL = '/api/rss';
   var DAY_MS = 86400000;
   var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',

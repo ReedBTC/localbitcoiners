@@ -19,7 +19,7 @@
 (function () {
   'use strict';
 
-  var SATS_URL = '/data/sats.json';
+  var SATS_URL = '/api/sats';
   var GUESTS_URL = '/api/guests';
 
   // Co-hosts — Reed + Rev. Injected into the Show Guests section right before

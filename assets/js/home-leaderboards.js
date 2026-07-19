@@ -16,7 +16,7 @@
 (function () {
   'use strict';
 
-  var SATS_URL = '/data/sats.json';
+  var SATS_URL = '/api/sats';
   var RSS_CACHE_KEY = 'lb_rss_xml_v1';   // populated by the featured-episode script
   var RSS_WORKER = '/api/rss';
   var TOP_N = 5;

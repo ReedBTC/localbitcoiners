@@ -16,9 +16,9 @@
 (function () {
   'use strict';
 
-  var SATS_URL = '/data/sats.json';
-  var ZAPS_URL = '/data/zaps.json';
-  var MEETUPS_URL = '/data/meetups.json';
+  var SATS_URL = '/api/sats';
+  var ZAPS_URL = '/api/zaps';
+  var MEETUPS_URL = '/api/meetups';
 
   // ── helpers ──────────────────────────────────────────────────────
   function $(id) { return document.getElementById(id); }

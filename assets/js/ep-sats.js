@@ -23,7 +23,7 @@
 (function () {
   'use strict';
 
-  var SATS_URL = '/data/sats.json';
+  var SATS_URL = '/api/sats';
   var MAX_DAYS = 100;
   var DAY_MS = 86400000;
 

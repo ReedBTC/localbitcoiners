@@ -285,7 +285,7 @@ function writeCache(state) {
 // wear a gold glow. Scope is "any boosted meetup" (not just supporters), so
 // boosted coordinates missing from the supporter snapshot get backfilled
 // straight from relays, exactly like meetups.js does.
-const MEETUPS_JSON = '/data/meetups.json'
+const MEETUPS_JSON = '/api/meetups'
 
 function coordOf(parsed) {
   return `${parsed.kind}:${parsed.pubkey}:${parsed.dTag}`

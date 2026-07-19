@@ -18,7 +18,7 @@ import {
 } from '/assets/js/calendar-events.js'
 import { nip19 } from '/assets/widgets/nostr-tools.js'
 
-const MEETUPS_JSON = '/data/meetups.json'
+const MEETUPS_JSON = '/api/meetups'
 
 function isWsUrl(u) {
   return typeof u === 'string' && (u.startsWith('wss://') || u.startsWith('ws://'))

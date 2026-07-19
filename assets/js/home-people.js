@@ -16,7 +16,7 @@ import { SimplePool, nip19 } from '/assets/widgets/nostr-tools.js';
 
 // ── config ──────────────────────────────────────────────────────────
 const GUESTS_URL = '/api/guests';
-const SATS_URL = '/data/sats.json';
+const SATS_URL = '/api/sats';
 
 // Show guest follow pack (following.space): kind 39089, addressable by
 // author + d-tag. https://following.space/d/lb-supporters-guests?p=<hex>
