@@ -148,10 +148,12 @@ FETCH_START = "2026-02-02T05:00:00Z"
 DRY_RUN  = False  # classify everything but don't write CSV / state / push
 AUTOPUSH = True   # git pull/add/commit/push at end of a real run
 
-# Dual-write the website-facing JSON to the VPS (Caddy-served at
-# relay.mynostr.app) alongside the git autopush, so the site can migrate to
-# fetching it from there with no Cloudflare rebuild per run. Same restricted
-# rrsync key + landing dir (/home/deploy-lbboosts/) the community bots use.
+# Deliver the website-facing JSON to the VPS (Caddy-served at relay.mynostr.app,
+# read by the site via /api/*) and back up the derived CSVs + zap-note cache
+# there too. This is now the primary path — git no longer carries this data, so
+# there's no Cloudflare rebuild per run and the pipeline can run every few min.
+# Same restricted rrsync key + landing dir (/home/deploy-lbboosts/) the
+# community bots use.
 PUSH_TO_VPS  = True
 VPS_KEY_FILE = Path.home() / ".ssh" / "relay_mynostr_ed25519"
 
@@ -1936,19 +1938,29 @@ def write_meetups_json():
 # git autopush
 # ---------------------------------------------------------------------------
 
-def git_autopush():
-    """Best-effort commit + push of the data CSVs. Failures log and return —
-    the local CSVs are the source of truth; a missed push just means the next
-    run picks up where this one left off."""
-    files = [
-        "data/sats.csv", "data/sats.json", "data/fountain-api.csv",
-        "data/zaps.csv", "data/zaps.json", "data/leaderboards.csv",
-        "data/meetups.csv", "data/meetups.json",
-        # Not derived data: once a zapped note ages off the relays its zap-tag
-        # count is unrecoverable, and a later regen would silently mis-book
-        # our_sats. Ship the cache so the split fractions stay reproducible.
-        "data/zapped-notes-cache.json",
-    ]
+def git_autopush(state=None):
+    """Best-effort commit + push of data files that still live in git.
+
+    As of the VPS migration (Phase 4) the supporter data — sats/zaps/meetups
+    JSON + the derived CSVs + the zapped-notes cache — no longer rides git.
+    It's served to the site from the VPS (Caddy → /api/*) and backed up there
+    by push_data_to_vps(); those paths are gitignored. The only thing still
+    committed here is data/leaderboards.csv: the append-only published-notes
+    ledger the leaderboard bots write (no website reader, but it's the record
+    of every leaderboard nevent, so it belongs in version control).
+
+    The ledger only changes on a weekly leaderboard publish, but sats-log now
+    runs every few minutes. Gate the whole thing (including the network `git
+    pull`) on a sha1 of the ledger, stored in state — so the ~288 idle runs/day
+    do zero git I/O and only a real ledger change triggers a pull/commit/push.
+
+    Failures log and return — a missed push just means the next run retries."""
+    files = ["data/leaderboards.csv"]
+    ledger = REPO_ROOT / "data" / "leaderboards.csv"
+    sig = hashlib.sha1(ledger.read_bytes()).hexdigest() if ledger.exists() else ""
+    if state is not None and sig and state.get("git_autopush_sig") == sig:
+        print("  [autopush] leaderboards.csv unchanged — skip git")
+        return
     try:
         subprocess.run(
             ["git", "pull", "--rebase", "--autostash"],
@@ -1960,6 +1972,8 @@ def git_autopush():
         )
         if not status.stdout.strip():
             print("  [autopush] no changes to commit")
+            if state is not None and sig:
+                state["git_autopush_sig"] = sig
             return
         subprocess.run(["git", "add"] + files, cwd=REPO_ROOT, check=True)
         # Commit these paths only. Without the pathspec `git commit` writes the
@@ -1972,37 +1986,58 @@ def git_autopush():
         )
         subprocess.run(["git", "push"], cwd=REPO_ROOT, check=True, capture_output=True)
         print("  [autopush] pushed " + " + ".join(f.removeprefix("data/") for f in files))
+        if state is not None and sig:
+            state["git_autopush_sig"] = sig
     except subprocess.CalledProcessError as e:
         err = e.stderr.decode() if e.stderr else ""
         print(f"  [autopush] failed: {e}\n  {err}")
 
 
-def push_website_json_to_vps(state, config):
-    """Dual-write the website-facing JSON to the VPS (Caddy-served) — sats.json,
-    zaps.json, meetups.json land in /home/deploy-lbboosts/ via the restricted
-    rrsync key, same as the community bots.
+def push_data_to_vps(state, config):
+    """Push the pipeline's data to the VPS (Caddy-served, /home/deploy-lbboosts/,
+    via the restricted rrsync key — same as the community bots). Two kinds:
 
-    Each JSON carries a per-run generated_at, so gate the push on the
-    timestamp-free CSV it mirrors: skip when the underlying data is unchanged
-    since the last successful push (keeps frequent runs cheap once decoupled).
-    Best-effort — a push failure is logged inside push_file_to_vps, never fatal;
-    the git autopush still runs, so this is purely additive during the migration."""
+      * LIVE JSON the site reads through /api/* (sats/zaps/meetups.json). These
+        are the supporter data's only delivery path now that git no longer
+        carries them.
+      * BACKUPS of everything else that used to live in git and is otherwise
+        only on this box: the derived CSVs (sats/fountain-api/zaps/meetups) and
+        — most importantly — zapped-notes-cache.json, which is NOT regenerable
+        once a zapped note ages off the relays. Caddy serves *.json generically,
+        so the cache goes up as a .bak name to keep it off the public endpoints;
+        the .csv backups aren't served at all.
+
+    Every payload carries (or mirrors) a per-run generated_at, so gate each push
+    on a sha1 of the timestamp-free content it represents — the mirrored CSV for
+    the JSON, the file itself for the CSV/cache backups — and skip when unchanged
+    since the last successful push (keeps the 5-min cadence cheap). Best-effort;
+    a push failure is logged inside push_file_to_vps, never fatal."""
     if not PUSH_TO_VPS:
         return
-    print("\n─── VPS dual-write (sats.json / zaps.json / meetups.json) ───")
+    print("\n─── VPS push (live JSON + data backups) ───")
     sigs = state.setdefault("vps_push_sigs", {})
-    for json_file, csv_file, remote_name in (
-        (SATS_JSON,    CSV_FILE,    "sats.json"),
-        (ZAPS_JSON,    ZAPS_CSV,    "zaps.json"),
-        (MEETUPS_JSON, MEETUPS_CSV, "meetups.json"),
-    ):
-        if not json_file.exists():
+    # (local_file, remote_name, sig_source): sig_source is the timestamp-free
+    # file whose content decides whether a push is needed.
+    targets = [
+        # Live, Caddy-served, read by the site via /api/*.
+        (SATS_JSON,           "sats.json",                 CSV_FILE),
+        (ZAPS_JSON,           "zaps.json",                 ZAPS_CSV),
+        (MEETUPS_JSON,        "meetups.json",              MEETUPS_CSV),
+        # Off-box backups (not a public endpoint).
+        (CSV_FILE,            "sats.csv",                  CSV_FILE),
+        (FOUNTAIN_CSV,        "fountain-api.csv",          FOUNTAIN_CSV),
+        (ZAPS_CSV,            "zaps.csv",                   ZAPS_CSV),
+        (MEETUPS_CSV,         "meetups.csv",               MEETUPS_CSV),
+        (ZAPPED_NOTES_CACHE,  "zapped-notes-cache.json.bak", ZAPPED_NOTES_CACHE),
+    ]
+    for local_file, remote_name, sig_source in targets:
+        if not local_file.exists():
             continue
-        sig = hashlib.sha1(csv_file.read_bytes()).hexdigest() if csv_file.exists() else ""
+        sig = hashlib.sha1(sig_source.read_bytes()).hexdigest() if sig_source.exists() else ""
         if sig and sigs.get(remote_name) == sig:
             print(f"  {remote_name}: data unchanged — skip push")
             continue
-        if push_file_to_vps(config, json_file, remote_name, VPS_KEY_FILE):
+        if push_file_to_vps(config, local_file, remote_name, VPS_KEY_FILE):
             sigs[remote_name] = sig
 
 
@@ -2187,8 +2222,9 @@ def main():
     write_meetups_json()
     print(f"Wrote {len(meetup_rows)} rows → {MEETUPS_JSON}")
 
-    # Dual-write the website-facing JSON to the VPS (in addition to git autopush).
-    push_website_json_to_vps(state, config)
+    # Deliver the live JSON to the VPS (the site's /api/* source) and back up
+    # the derived CSVs + the non-regenerable zap-note cache there too.
+    push_data_to_vps(state, config)
 
     # Persist state: the Alby cursor (if it advanced) and the Castamatic
     # stream cache (which may have grown even when the cursor didn't).
@@ -2203,7 +2239,10 @@ def main():
 
     if AUTOPUSH:
         print("\n─── git autopush ───")
-        git_autopush()
+        git_autopush(state)
+        # git_autopush records the ledger sha in state AFTER the save above;
+        # persist it so the next idle run actually skips the git pull.
+        save_state(state)
 
 
 if __name__ == "__main__":

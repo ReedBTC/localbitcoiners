@@ -44,6 +44,23 @@ data/community_events.json
 data/community_market.json
 data/community_articles.json
 
+# --- Supporter data (VPS migration, Phase 4): served to the site from the VPS
+# via /api/{sats,zaps,meetups} and backed up there by sats-log's push_data_to_vps
+# — no longer committed, so the pipeline can run every few minutes without a
+# Cloudflare rebuild per run. sats-log still commits data/leaderboards.csv (the
+# published-notes ledger) and data/value-splits.csv stays tracked (a hand-edited
+# INPUT, not derived). The .bak copy of the non-regenerable zap-note cache lives
+# on the VPS. NOTE: git rm --cached was run once when these were first ignored;
+# the working-tree files remain and are still written each run.
+data/sats.json
+data/zaps.json
+data/meetups.json
+data/sats.csv
+data/fountain-api.csv
+data/zaps.csv
+data/meetups.csv
+data/zapped-notes-cache.json
+
 # --- Python ---
 bots/**/__pycache__/
 bots/**/*.pyc
