@@ -2000,12 +2000,23 @@ def push_data_to_vps(state, config):
       * LIVE JSON the site reads through /api/* (sats/zaps/meetups.json). These
         are the supporter data's only delivery path now that git no longer
         carries them.
-      * BACKUPS of everything else that used to live in git and is otherwise
-        only on this box: the derived CSVs (sats/fountain-api/zaps/meetups) and
-        — most importantly — zapped-notes-cache.json, which is NOT regenerable
-        once a zapped note ages off the relays. Caddy serves *.json generically,
-        so the cache goes up as a .bak name to keep it off the public endpoints;
-        the .csv backups aren't served at all.
+      * BACKUPS of the derived data that used to live in git: sats/zaps/meetups
+        CSVs (which just mirror the already-public JSON) plus — most importantly
+        — zapped-notes-cache.json, which is NOT regenerable once a zapped note
+        ages off the relays.
+
+    Serving model: Caddy on the VPS serves ONLY *.json from the landing dir over
+    HTTP (that's how the site reads the three endpoints); any other extension
+    falls through to the strfry relay and returns a generic 37-byte "use a Nostr
+    client" 200 — so the .csv backups and the .bak cache here are NOT publicly
+    fetchable, only reachable over the rsync/ssh path. The zap cache still goes up
+    as .bak (not .json) so it can't be served even if that rule ever loosens.
+
+    fountain-api.csv is deliberately NOT pushed: it's sensitive (Fountain-internal
+    user_ids, USD amounts, per-supporter behavioral breakdowns beyond the public
+    supporters page) and regenerable from Firestore, so there's no reason to place
+    it on the public web-root dir at all — don't rely on the *.json-only detail to
+    keep sensitive data private. Only put already-public / non-sensitive files here.
 
     Every payload carries (or mirrors) a per-run generated_at, so gate each push
     on a sha1 of the timestamp-free content it represents — the mirrored CSV for
@@ -2023,9 +2034,10 @@ def push_data_to_vps(state, config):
         (SATS_JSON,           "sats.json",                 CSV_FILE),
         (ZAPS_JSON,           "zaps.json",                 ZAPS_CSV),
         (MEETUPS_JSON,        "meetups.json",              MEETUPS_CSV),
-        # Off-box backups (not a public endpoint).
+        # Off-box backups (private: .csv/.bak aren't HTTP-served, see docstring).
+        # fountain-api.csv is intentionally excluded — sensitive AND regenerable
+        # from Firestore, so it stays off the public web-root dir entirely.
         (CSV_FILE,            "sats.csv",                  CSV_FILE),
-        (FOUNTAIN_CSV,        "fountain-api.csv",          FOUNTAIN_CSV),
         (ZAPS_CSV,            "zaps.csv",                   ZAPS_CSV),
         (MEETUPS_CSV,         "meetups.csv",               MEETUPS_CSV),
         (ZAPPED_NOTES_CACHE,  "zapped-notes-cache.json.bak", ZAPPED_NOTES_CACHE),
