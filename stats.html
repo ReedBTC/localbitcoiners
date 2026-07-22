@@ -99,6 +99,7 @@
       --bucket-adbudget: #8b5cf6;  /* purple */
       --bucket-fountain: #eab308;  /* gold */
       --bucket-costs:    #64748b;  /* slate — neutral, reads as "expense" */
+      --bucket-samourai: #2563eb;  /* blue — Ep 015 donated to the Samourai devs */
 
       /* App palette for the app-mix-over-time chart. Distinct hues so 6
          lines are still readable; unknown apps fall through to slate. */
@@ -278,6 +279,7 @@
     .stats-band-adbudget { fill: var(--bucket-adbudget); stroke: var(--bucket-adbudget); }
     .stats-band-fountain { fill: var(--bucket-fountain); stroke: var(--bucket-fountain); }
     .stats-band-costs    { fill: var(--bucket-costs);    stroke: var(--bucket-costs); }
+    .stats-band-samourai { fill: var(--bucket-samourai); stroke: var(--bucket-samourai); }
     /* App-keyed band variants for the cumulative "By App" view — same
        .stats-chart-band base; only the fill/stroke colors differ. */
     .stats-band-app-fountain   { fill: var(--app-fountain);   stroke: var(--app-fountain); }
@@ -406,6 +408,8 @@
     .stats-bar-svg { width: 100%; height: auto; display: block; }
     .stats-bar { fill: var(--orange); }
     .stats-bar-anon { fill: var(--muted); }
+    /* Broken-axis "tear" slashes between the two segments of an outlier bar. */
+    .stats-bar-break { fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; }
     .stats-bar-label {
       fill: var(--navy);
       font-family: 'Source Serif 4', Georgia, serif;
@@ -634,6 +638,7 @@
     <li><span class="stats-legend-swatch" style="--c: var(--bucket-guests);"></span>Guests</li>
     <li><span class="stats-legend-swatch" style="--c: var(--bucket-adbudget);"></span>V4V Budget</li>
     <li><span class="stats-legend-swatch" style="--c: var(--bucket-fountain);"></span>Fountain</li>
+    <li><span class="stats-legend-swatch" style="--c: var(--bucket-samourai);"></span>Samourai Devs</li>
     <li><span class="stats-legend-swatch" style="--c: var(--bucket-costs);"></span>Costs</li>
   </ul>
   <ul class="stats-chart-legend-list" data-stats-legend-apps hidden>

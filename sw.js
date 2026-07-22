@@ -89,7 +89,12 @@
 // avatars UNSTYLED (no orange fill, natural-size pfps) until a 2nd revalidate.
 // Bump evicts the stale boost-actions.css, boosts-thread.css, calendar-events.js
 // and feeds.js so mobile/PWA get the new styling on first navigation.
-const VERSION = 'lb-v39';
+//
+// lb-v40: stats page — new "Samourai Devs" split band (Ep 015 donated in full)
+// and a broken-axis "tear" on the outlier bar in the episode-sats leaderboard.
+// New CSS rules (.stats-band-samourai, .stats-bar-break, --bucket-samourai) live
+// in stats.html and are emitted by stats.js, so evict both together.
+const VERSION = 'lb-v40';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

@@ -60,6 +60,13 @@
     { ms: Date.parse('2026-07-01T00:00:00Z'), dollars: 49, sats: 74700 }, // Fountain 38112 + Riverside 36588
   ];
 
+  // Ep 015 was donated in full to the Samourai Wallet devs: the guest set his
+  // value split to billandkeonne@getalby.com, and Reed + Rev committed their
+  // host shares (plus the V4V-budget/aquafox leg, with Reed covering the
+  // Fountain leg manually) to the same cause. So 100% of Ep 015's sats route to
+  // a dedicated "Samourai Devs" split bucket rather than the usual recipients.
+  var SAMOURAI_EP = 15;
+
   var canvas = document.querySelector('[data-stats-canvas]');
   var subEl = document.querySelector('[data-stats-sub]');
   var boardCanvas = document.querySelector('[data-stats-leaderboard]');
@@ -175,12 +182,21 @@
       var dayMs = Math.floor(Date.parse(row.settled_at) / DAY_MS) * DAY_MS;
       byDay[dayMs] = (byDay[dayMs] || 0) + row.total_sats;
       var bkt = byDayBuckets[dayMs] || (byDayBuckets[dayMs] =
-        { reed: 0, rev: 0, guests: 0, aquafox: 0, fountain: 0 });
-      bkt.reed     += row.reed_sats     || 0;
-      bkt.rev      += row.rev_sats      || 0;
-      bkt.guests   += row.guests_sats   || 0;
-      bkt.aquafox  += row.aquafox_sats  || 0;
-      bkt.fountain += row.fountain_sats || 0;
+        { reed: 0, rev: 0, guests: 0, aquafox: 0, fountain: 0, samourai: 0 });
+      // Ep 015's entire take was donated to the Samourai devs — route the whole
+      // row there instead of splitting it across the normal recipient buckets,
+      // so the split view credits it as one Samourai band. total_sats equals the
+      // sum of the per-recipient legs (other-agent guarantee), so conservation
+      // with the cumulative line still holds.
+      if (parseInt(row.episode_num, 10) === SAMOURAI_EP) {
+        bkt.samourai += row.total_sats;
+      } else {
+        bkt.reed     += row.reed_sats     || 0;
+        bkt.rev      += row.rev_sats      || 0;
+        bkt.guests   += row.guests_sats   || 0;
+        bkt.aquafox  += row.aquafox_sats  || 0;
+        bkt.fountain += row.fountain_sats || 0;
+      }
       var app = row.app || 'Other';
       seenApps[app] = true;
       var appBkt = byDayApps[dayMs] || (byDayApps[dayMs] = Object.create(null));
@@ -208,7 +224,7 @@
     // sum of all six bands at every day still equals `cumulative`.
     var days = [];
     var run = 0;
-    var rReedRaw = 0, rRevRaw = 0, rGuests = 0, rAquafox = 0, rFountain = 0;
+    var rReedRaw = 0, rRevRaw = 0, rGuests = 0, rAquafox = 0, rFountain = 0, rSamourai = 0;
     var costIdx = 0, cumCostSats = 0;
     var rApps = Object.create(null);  // running per-app cumulative
     for (var d = minMs; d <= maxMs; d += DAY_MS) {
@@ -221,6 +237,7 @@
         rGuests   += bktD.guests;
         rAquafox  += bktD.aquafox;
         rFountain += bktD.fountain;
+        rSamourai += bktD.samourai;
       }
       var appBktD = byDayApps[d];
       if (appBktD) {
@@ -244,6 +261,7 @@
         ms: d, daily: v, cumulative: run,
         reed: reedNet, rev: revNet, costs: costsActual,
         guests: rGuests, aquafox: rAquafox, fountain: rFountain,
+        samourai: rSamourai,
         apps: appsSnap,
       });
     }
@@ -333,6 +351,7 @@
       if (view === 'splits') {
         BUCKETS = [
           { k: 'costs',    cls: 'stats-band-costs',    label: 'Costs' },
+          { k: 'samourai', cls: 'stats-band-samourai', label: 'Samourai Devs' },
           { k: 'fountain', cls: 'stats-band-fountain', label: 'Fountain' },
           { k: 'aquafox',  cls: 'stats-band-adbudget', label: 'V4V Budget' },
           { k: 'guests',   cls: 'stats-band-guests',   label: 'Guests' },
@@ -921,7 +940,8 @@
       });
       boardCanvas.innerHTML = buildBarSvg(items, metric === 'sats'
         ? 'Episodes ranked by total sats received'
-        : 'Episodes ranked by unique supporters');
+        : 'Episodes ranked by unique supporters',
+        { breakOutlier: metric === 'sats' });
       if (boardSubEl) {
         boardSubEl.textContent = metric === 'sats'
           ? 'Top ' + sorted.length + ' episodes by total sats received (boosts + streams)'
@@ -1017,7 +1037,13 @@
   // Horizontal bar chart. `items` is a pre-sorted [{ label, value,
   // isAnon? }] array, drawn top to bottom; the left margin auto-fits the
   // longest label. Shared by the episode + supporter leaderboards.
-  function buildBarSvg(items, ariaLabel) {
+  // opts.breakOutlier: when one bar dwarfs the rest (e.g. Ep 015's donated
+  // 2.1M sats), draw the other bars to scale against the SECOND-largest value
+  // so they stay readable, and render the outlier as a fixed-length "torn" bar
+  // (a broken axis) rather than to scale. The true value still labels the end,
+  // so the number tells the real story even though the bar isn't to scale.
+  function buildBarSvg(items, ariaLabel, opts) {
+    opts = opts || {};
     var W = 720;
     var rowH = 30, barH = 18, mT = 14, mB = 14, mR = 92;
     var longest = 0;
@@ -1028,20 +1054,58 @@
     var H = mT + mB + items.length * rowH;
     var tw = W - mL - mR;
 
-    var maxVal = 0;
+    // Largest + second-largest, and which row is the max.
+    var maxVal = 0, secondVal = 0, outIdx = -1;
     for (var j = 0; j < items.length; j++) {
-      if (items[j].value > maxVal) maxVal = items[j].value;
+      var v = items[j].value;
+      if (v > maxVal) { secondVal = maxVal; maxVal = v; outIdx = j; }
+      else if (v > secondVal) { secondVal = v; }
     }
     if (maxVal <= 0) maxVal = 1;
+
+    // Only break when the top bar is a genuine outlier — so the feature is
+    // self-disabling if the leaderboard ever evens out.
+    var BREAK_RATIO = 1.8;
+    var doBreak = !!opts.breakOutlier && items.length >= 2 && outIdx >= 0 &&
+      secondVal > 0 && maxVal >= BREAK_RATIO * secondVal;
+
+    // When breaking: normal bars scale so the 2nd-largest fills NORM_FRAC of the
+    // track; the outlier's main segment runs to OUT_MAIN, a GAP_W tear, then a
+    // short tip out to OUT_END — visibly the longest, but cut.
+    var NORM_FRAC = 0.70, OUT_MAIN = 0.80, OUT_END = 0.90, GAP_W = 14;
+    var scaleMax = doBreak ? secondVal : maxVal;
+    var normFullW = doBreak ? tw * NORM_FRAC : tw;
 
     var parts = [];
     for (var k = 0; k < items.length; k++) {
       var it = items[k];
       var cy = mT + k * rowH + rowH / 2;
-      var bw = Math.max((it.value / maxVal) * tw, 2);
       var cls = it.isAnon ? 'stats-bar stats-bar-anon' : 'stats-bar';
       parts.push('<text class="stats-bar-label" x="' + (mL - 8) + '" y="' +
         (cy + 4) + '">' + svgEsc(it.label) + '</text>');
+
+      if (doBreak && k === outIdx) {
+        // Torn outlier bar: main segment + tip, with two break slashes between.
+        var mainW = tw * OUT_MAIN;
+        var gapStart = mL + mainW;
+        var gapEnd = gapStart + GAP_W;
+        var tipEnd = mL + tw * OUT_END;
+        var top = cy - barH / 2;
+        parts.push('<rect class="' + cls + '" x="' + mL + '" y="' + top +
+          '" width="' + mainW + '" height="' + barH + '" rx="3"/>');
+        parts.push('<rect class="' + cls + '" x="' + gapEnd + '" y="' + top +
+          '" width="' + (tipEnd - gapEnd) + '" height="' + barH + '" rx="3"/>');
+        parts.push('<path class="stats-bar-break" d="M' + (gapStart + 2) + ',' +
+          (cy + barH / 2 + 3) + ' L' + (gapStart + 8) + ',' + (cy - barH / 2 - 3) +
+          ' M' + (gapStart + 8) + ',' + (cy + barH / 2 + 3) + ' L' +
+          (gapStart + 14) + ',' + (cy - barH / 2 - 3) + '"/>');
+        parts.push('<text class="stats-bar-value" x="' + (tipEnd + 8) + '" y="' +
+          (cy + 4) + '">' + fmtSats(it.value) + '</text>');
+        continue;
+      }
+
+      var bw = Math.max((it.value / scaleMax) * normFullW, 2);
+      if (bw > normFullW) bw = normFullW;   // guard rounding past the cap
       parts.push('<rect class="' + cls + '" x="' + mL + '" y="' + (cy - barH / 2) +
         '" width="' + bw + '" height="' + barH + '" rx="3"/>');
       parts.push('<text class="stats-bar-value" x="' + (mL + bw + 8) + '" y="' +
