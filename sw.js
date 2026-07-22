@@ -90,11 +90,12 @@
 // Bump evicts the stale boost-actions.css, boosts-thread.css, calendar-events.js
 // and feeds.js so mobile/PWA get the new styling on first navigation.
 //
-// lb-v40: stats page — new "Samourai Devs" split band (Ep 015 donated in full)
-// and a broken-axis "tear" on the outlier bar in the episode-sats leaderboard.
-// New CSS rules (.stats-band-samourai, .stats-bar-break, --bucket-samourai) live
-// in stats.html and are emitted by stats.js, so evict both together.
-const VERSION = 'lb-v40';
+// lb-v41: stats page — drop the per-episode "Ep N" text labels across the top
+// of the Podcast Value Details chart (tooltips already cover it, and the labels
+// were crowding the top margin). Tightened the chart's top margin to reclaim the
+// freed space; removed the now-dead .stats-chart-eplabel CSS. stats.js + stats.html
+// both changed, so evict both together.
+const VERSION = 'lb-v41';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

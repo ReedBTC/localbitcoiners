@@ -302,7 +302,7 @@
   // ── Inline-SVG chart renderer ──────────────────────────────────────
   function buildSvg(days, episodes, view, minMs, maxMs) {
     var W = 960, H = 360;
-    var mL = 64, mR = 20, mT = 30, mB = 44;
+    var mL = 64, mR = 20, mT = 18, mB = 44;
     var pw = W - mL - mR, ph = H - mT - mB;
     var spanMs = Math.max(maxMs - minMs, DAY_MS);
     // Both stacked views (splits + apps) sum to the cumulative line, so
@@ -439,9 +439,11 @@
     }
 
     // Episode publish markers — a wide, faint highlight band per release
-    // plus an "Ep N" label; both brighten on hover (CSS, via the <g>
-    // wrapper). Bands are clamped to the plot so edge episodes don't
-    // overhang the axes. Labels may crowd once there are many episodes.
+    // that brightens on hover (CSS, via the <g> wrapper) and carries the
+    // "Ep N — date" tooltip. Bands are clamped to the plot so edge
+    // episodes don't overhang the axes. The per-episode text label is
+    // intentionally omitted — the tooltip covers it and the labels crowd
+    // the top margin once there are many episodes.
     var bandW = 5;
     for (var e = 0; e < episodes.length; e++) {
       var ep = episodes[e];
@@ -456,9 +458,7 @@
       var tip = 'Ep ' + ep.num + ' — ' + fmtDateET(ep.pubMs);
       parts.push('<g class="stats-chart-epmark" data-tip="' + xmlEsc(tip) + '">' +
         '<rect class="stats-chart-epband" x="' + bx + '" y="' + mT +
-        '" width="' + (bxEnd - bx) + '" height="' + ph + '" rx="2"/>' +
-        '<text class="stats-chart-eplabel" x="' + ex + '" y="' + (mT - 9) +
-        '">Ep ' + ep.num + '</text></g>');
+        '" width="' + (bxEnd - bx) + '" height="' + ph + '" rx="2"/></g>');
     }
 
     // Daily view: mark every day that actually received sats with a
