@@ -90,12 +90,9 @@
 // Bump evicts the stale boost-actions.css, boosts-thread.css, calendar-events.js
 // and feeds.js so mobile/PWA get the new styling on first navigation.
 //
-// lb-v41: stats page — drop the per-episode "Ep N" text labels across the top
-// of the Podcast Value Details chart (tooltips already cover it, and the labels
-// were crowding the top margin). Tightened the chart's top margin to reclaim the
-// freed space; removed the now-dead .stats-chart-eplabel CSS. stats.js + stats.html
-// both changed, so evict both together.
-const VERSION = 'lb-v41';
+// lb-v42: hide one more bad boost note (added its hex id to EXCLUDED_NOTE_IDS
+// in boosts-thread.js) — suppresses it from boosts.html + stats.html.
+const VERSION = 'lb-v42';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

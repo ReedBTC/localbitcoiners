@@ -47,12 +47,14 @@ export { STATIC_RELAYS }
 //   💬 message line; corrected replies republished to the megathread.
 //   2026-07-22: boost note published with the wrong sat total (the leg-retry
 //   amount_total bug fixed in lb-v39); corrected note republished manually.
+//   2026-07-22: additional bad boost note hidden at Reed's request.
 const EXCLUDED_NOTE_IDS = new Set([
   '3d37e26095d46e844f4ad80ed00ce6bec94e9ba39b5b25278d3b1a8acfe20afc',
   '82d715867ce36bcf121eb8ef3b9844b42b6b9e9151b255328f98534bb30619ef',
   'bdf30ffae16bab70291733961931d95ca2bd73ed16341a236d9025bac26009a4',
   'a1e400e578c1cd78fecd5348a533c487ca57b85723968e66cb3567b93c6f8dfd',
   '44313741181237c5a833358f261f0e1bde53f5b3e2d3d54f6e95355965a5e82d',
+  '0a9bae72c5f6327bc4dfb18d85f2bc38ab66bf868529da49e3a213f39b40f282',
 ])
 
 // ── Module state ─────────────────────────────────────────────────────
