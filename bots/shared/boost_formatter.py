@@ -364,6 +364,7 @@ def make_cache():
         "fountain_comments":     {},    # episode_id  -> list of Fountain comment dicts
         "guid_to_fountain":      None,  # item_guid   -> {fountain_id, guests} (RSS index, lazy)
         "kind_30078":            {},    # payment_hash -> kind 30078 event dict (or None)
+        "kind_30078_by_d":       {},    # d-tag value -> list of ALL kind 30078 events sharing that #d
         "title_cache":           {},    # episode_id  -> (title, guests) for Fountain pages
         "episode_id_map":        None,  # zero-padded ep number -> fountain_id (lazy disk-backed)
         "episode_id_map_dirty":  False,
@@ -437,6 +438,117 @@ def fetch_kind_30078(payment_hash, relays=None, cache=None):
     if cache is not None:
         cache["kind_30078"][payment_hash] = event
     return event
+
+def fetch_all_kind_30078(d_value, relays=None, cache=None):
+    """Query the V4V relay set for ALL kind 30078 events whose `d` tag matches
+    d_value, unioned by event id across relays. Unlike fetch_kind_30078 (first
+    match only), this collects every event to EOSE — required for boost_session
+    reconciliation: since the 2026-07 widget retry fix, one logical boost emits
+    one boost_receipt per round (parent + each retry), all sharing the same
+    `d=boost_session` but signed by DIFFERENT per-round burner keys, so they do
+    NOT replace each other on relays. Returns a list (possibly empty). Cached by
+    d_value. Per-leg events use d=payment_hash, so a #d=boost_session query
+    returns only receipts."""
+    if cache is not None and d_value in cache["kind_30078_by_d"]:
+        return cache["kind_30078_by_d"][d_value]
+    if relays is None:
+        relays = V4V_RELAYS
+    by_id = {}
+    for relay in relays:
+        try:
+            ws = websocket.create_connection(relay, timeout=10)
+            ws.send(json.dumps(["REQ", "boostall", {"kinds": [30078], "#d": [d_value]}]))
+            while True:
+                msg = json.loads(ws.recv())
+                if msg[0] == "EVENT":
+                    by_id[msg[2]["id"]] = msg[2]
+                elif msg[0] == "EOSE":
+                    ws.close()
+                    break
+        except Exception as e:
+            print(f"  [warn] relay query failed {relay}: {e}")
+    events = list(by_id.values())
+    if cache is not None:
+        cache["kind_30078_by_d"][d_value] = events
+    return events
+
+def _merge_receipt_outcomes(receipts, our_payment_hash):
+    """Collapse every boost_receipt sharing a boost_session into one true outcome.
+
+    Since 2026-07 the login widget retries a failed leg as a NEW single-leg
+    boost that REUSES the parent boost_session and re-stamps the parent's full
+    amount_total. So a logical boost can span several receipts under one
+    `d=boost_session`, each covering a subset of the legs. We rebuild:
+
+      intended    = max `amount` across receipts (the parent total; they agree)
+      landed      = sum over recipients of the settled amount, resolving each
+                    recipient (by address) to its BEST status across all
+                    receipts (paid > uncertain > failed) so a leg that
+                    failed-then-retried counts once, as paid. Distinct paid
+                    payment_hashes for one address (a genuine double-pay) sum.
+      uncertain   = same, for recipients whose best status is uncertain
+      legs_failed = recipients whose best status is exactly `failed` (post-retry;
+                    non-paid/uncertain/failed statuses e.g. skipped are ignored,
+                    matching the receipt's own legs_failed = confirmed-only count)
+
+    `our_payment_hash` is the leg that SETTLED on our node: whatever any receipt
+    claims about it, it really paid, so its address is forced to paid (the node
+    supersedes the receipt for our own leg; other legs land on nodes we can't
+    see, so the receipts stay authoritative for them).
+
+    Backward-compatible: a boost with no retries has exactly one receipt and this
+    returns its own amount / amount_paid / amount_uncertain / legs_failed.
+
+    Returns (intended_msats, paid_msats, uncertain_msats, legs_failed, sender).
+    """
+    receipts = [r for r in receipts
+                if any(t[0] == "type" and len(t) >= 2 and t[1] == "boost_receipt"
+                       for t in r.get("tags", []))]
+    if not receipts:
+        return 0, 0, 0, 0, ""
+
+    RANK = {"paid": 3, "uncertain": 2, "failed": 1}
+    intended = 0
+    sender = ""
+    by_addr = {}   # address -> {"rank", "status", "amt", "paid_hashes": {ph: msats}}
+
+    for r in receipts:
+        rtags = {t[0]: t[1] for t in r.get("tags", []) if len(t) >= 2}
+        try:
+            intended = max(intended, int(rtags.get("amount", 0) or 0))
+        except Exception:
+            pass
+        if not sender:
+            sender = (rtags.get("sender", "") or "").strip()
+        for t in r.get("tags", []):
+            if t[0] != "leg_result" or len(t) < 4:
+                continue
+            addr   = t[1] or ""
+            try:    msats = int(t[2] or 0)
+            except Exception: msats = 0
+            status = t[3] or "failed"
+            ph     = t[4] if len(t) >= 5 else ""
+            # Our own leg really paid, regardless of what the receipt recorded.
+            if our_payment_hash and ph == our_payment_hash:
+                status = "paid"
+            slot = by_addr.setdefault(addr, {"rank": 0, "status": "", "amt": 0,
+                                             "paid_hashes": {}})
+            if status == "paid" and ph:
+                slot["paid_hashes"][ph] = msats
+            if RANK.get(status, 0) > slot["rank"]:
+                slot["rank"]   = RANK[status]
+                slot["status"] = status
+                slot["amt"]    = msats
+
+    paid_msats = uncertain_msats = legs_failed = 0
+    for slot in by_addr.values():
+        if slot["status"] == "paid":
+            paid_msats += sum(slot["paid_hashes"].values()) or slot["amt"]
+        elif slot["status"] == "uncertain":
+            uncertain_msats += slot["amt"]
+        elif slot["status"] == "failed":
+            legs_failed += 1
+    return intended, paid_msats, uncertain_msats, legs_failed, sender
 
 def fetch_fountain_comments(episode_id, cache):
     """Cached Fountain comments fetch."""
@@ -843,51 +955,20 @@ def _classify_website(tx, ep_num_padded, payment_hash, settled_at, our_msats, ca
         leg_amount_total = 0
     leg_recipient = tags.get("recipient", "") or ""
 
-    # Exact donor intent + actual outcome from the boost_receipt event.
-    # The per-leg 30078 we just read carries the boost_session; the receipt
-    # is the kind 30078 whose `d` tag IS that boost_session (per-leg events
-    # use d=payment_hash, so a #d=boost_session query returns only the
-    # receipt). It records `amount` (donor's exact intended total),
-    # `amount_paid` (what actually landed across all legs), and legs_failed.
-    # _resolve_website_amounts makes the headline the actual-landed figure
-    # and falls back to the leg/divisor estimate when no receipt is on relays
-    # yet (indexing race, or a boost predating the receipt feature).
-    boost_session    = tags.get("boost_session", "") or ""
-    receipt          = fetch_kind_30078(boost_session, cache=cache) if boost_session else None
-    r_paid_msats      = 0
-    r_uncertain_msats = 0
-    r_intended_msats  = 0
-    r_legs_failed     = 0
-    r_sender          = ""
-    if receipt:
-        rtags = {t[0]: t[1] for t in receipt.get("tags", []) if len(t) >= 2}
-        def _ri(tag):
-            try:    return int(rtags.get(tag, 0) or 0)
-            except Exception: return 0
-        r_intended_msats  = _ri("amount")
-        r_paid_msats      = _ri("amount_paid")
-        r_uncertain_msats = _ri("amount_uncertain")  # msats on UNCERTAIN legs
-        r_legs_failed     = _ri("legs_failed")        # CONFIRMED failures only
-        r_sender = (rtags.get("sender", "") or "").strip()
-
-        # Node-authoritative reconciliation of OUR leg. We're here only because
-        # this leg's payment SETTLED on our node, so whatever the receipt claims
-        # about it, it really paid. If the receipt marked our leg `failed` (a
-        # verify gap) or `uncertain` (NWC reply lost), reclassify it to paid —
-        # this counts it as landed and keeps the paid-vs-uncertain audit split
-        # honest. The node supersedes the receipt. (Other legs settle on nodes
-        # we can't see, so the receipt remains authoritative for them.)
-        for t in receipt.get("tags", []):
-            if t[0] == "leg_result" and len(t) >= 5 and t[4] == payment_hash:
-                try:    leg_amt = int(t[2] or 0)
-                except Exception: leg_amt = 0
-                if t[3] == "failed":
-                    r_paid_msats += leg_amt
-                    r_legs_failed = max(0, r_legs_failed - 1)
-                elif t[3] == "uncertain":
-                    r_paid_msats      += leg_amt
-                    r_uncertain_msats  = max(0, r_uncertain_msats - leg_amt)
-                break
+    # Exact donor intent + actual outcome, MERGED across every boost_receipt
+    # sharing this boost_session. Receipts use d=boost_session; per-leg events
+    # use d=payment_hash, so #d=boost_session returns only receipts. Since the
+    # 2026-07 retry fix a logical boost emits one receipt per round (parent +
+    # each retry — distinct burner authors, same session), so we union them:
+    # intended = parent total, landed = distinct settled legs resolved per
+    # recipient (paid>uncertain>failed), our own node leg forced to paid. See
+    # _merge_receipt_outcomes. _resolve_website_amounts then makes the headline
+    # the actual-landed figure, falling back to the leg amount_total / divisor
+    # when no receipt is on relays yet (indexing race, or a pre-receipt boost).
+    boost_session = tags.get("boost_session", "") or ""
+    receipts = fetch_all_kind_30078(boost_session, cache=cache) if boost_session else []
+    (r_intended_msats, r_paid_msats, r_uncertain_msats,
+     r_legs_failed, r_sender) = _merge_receipt_outcomes(receipts, payment_hash)
 
     # Recover attribution for an anon (burner-signed) leg from the boost
     # receipt's claimed sender npub. When a donor's signer is unavailable (e.g.
