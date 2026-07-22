@@ -296,8 +296,18 @@ export default function MultiLegBoostForm({
 
   // Retry a SINGLE leg, in place — the modal stays on the done view and only
   // that row re-runs. Handles both 'failed' (confirmed not paid) and
-  // 'uncertain' (settlement unknown) legs. Each retry is its own boost session
-  // (own receipt), which the bot reconciles by actual sats.
+  // 'uncertain' (settlement unknown) legs.
+  //
+  // A retry pays ONLY the failed leg's own share (never re-charges the full
+  // boost — that would re-trigger the double-spend guard below), but it must
+  // still REPORT the parent boost's identity so the record isn't orphaned:
+  //   - it reuses the original boost's session id (result.boostSession), so
+  //     the retried leg's 30078 ties back to the parent boost, and
+  //   - it stamps the parent's full total (progressTotalSats, the amount the
+  //     donor actually boosted) as amount_total — not the leg's own share.
+  // The bot keys reconciliation on the shared session and reports the true
+  // total. See the boostQueue/payAllLegs `amountTotalSats`/`boostSession`
+  // params for how the leg-share-paid vs parent-total-reported split flows.
   async function handleRetryLeg(index) {
     const recipient = progressRecipients[index]
     const current = legStates[index]
@@ -306,7 +316,14 @@ export default function MultiLegBoostForm({
     // browser — retrying would just instantly re-fail. No-op.
     if (recipient.unpayable) return
 
-    const totalSats = Math.max(1, Math.round((current?.msats || 0) / 1000))
+    // Amount to actually PAY this run: the failed leg's own share.
+    const legSats = Math.max(1, Math.round((current?.msats || 0) / 1000))
+    // Parent boost identity to REPORT. progressTotalSats is the donor's full
+    // boost total (set on the initial run and never overwritten by a retry);
+    // result.boostSession is the session every original leg was tagged with.
+    // Fall back gracefully if the initial result is somehow missing.
+    const parentTotalSats = Math.max(legSats, Math.round(progressTotalSats || 0))
+    const parentSession = result?.boostSession || null
     const totalWeight = recipient.splitWeight || 1
     // Route this single-leg run's status (leg index 0) back onto the
     // original row so the existing done view updates in place.
@@ -361,7 +378,9 @@ export default function MultiLegBoostForm({
         presigned = await presignAllowlistedLegs({
           recipients: [recipient],
           totalWeight,
-          totalMsats: totalSats * 1000,
+          totalMsats: legSats * 1000,          // distribute = this leg's share
+          amountTotalMsats: parentTotalSats * 1000,  // report = parent total
+          boostSession: parentSession || undefined,  // reuse the parent session
           message: message.trim(),
           donorNpub: senderNpub,
           pageUrl: SITE_URL,
@@ -378,7 +397,9 @@ export default function MultiLegBoostForm({
     const handle = submitBoost({
       episode: episodeMeta,
       splits: { recipients: [recipient], totalWeight },
-      totalSats,
+      totalSats: legSats,                 // pay only this leg's share
+      amountTotalSats: parentTotalSats,   // but report the parent boost total
+      boostSession: parentSession || undefined,   // under the parent session
       message: message.trim(),
       donorNpub: senderNpub,
       lnurlCache,

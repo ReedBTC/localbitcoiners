@@ -148,8 +148,14 @@ const STATUSES = {
 
 /** Build the per-leg extraTags shared between the presign step and the
  *  inline burner-signed publish. Centralized so the two paths stay in
- *  sync; if the bot ever cares about a new tag, add it here once. */
-function buildLegExtraTags({ episodeMeta, boostSession, legIndex, legCount, totalMsats }) {
+ *  sync; if the bot ever cares about a new tag, add it here once.
+ *
+ *  `amountTotalMsats` is the donor's full boost total to REPORT, which is
+ *  distinct from `totalMsats` (the amount actually distributed across this
+ *  run's legs) on a retry: a retry pays only the failed leg's share but must
+ *  still report the parent boost's total. When omitted it falls back to
+ *  `totalMsats`, so a normal (non-retry) boost is unchanged. */
+function buildLegExtraTags({ episodeMeta, boostSession, legIndex, legCount, totalMsats, amountTotalMsats }) {
   return [
     ['episode', String(episodeMeta?.number ?? '')],
     ['episode_title', episodeMeta?.title || ''],
@@ -162,7 +168,9 @@ function buildLegExtraTags({ episodeMeta, boostSession, legIndex, legCount, tota
     // a recipient bot recover the donor's intended total from any single leg
     // it sees — published before payment, so it's reliable even when the
     // post-payment boost_receipt (which also carries actual-paid) is lost.
-    ['amount_total', String(totalMsats || 0)],
+    // On a retry this is the PARENT total, not the retried leg's share, so the
+    // bot can tie the retry back to the original boost's true total.
+    ['amount_total', String(amountTotalMsats ?? totalMsats ?? 0)],
   ]
 }
 
@@ -183,6 +191,7 @@ async function runLeg({
   boostSession,
   legCount,
   totalMsats,
+  amountTotalMsats,   // parent boost total to REPORT (defaults to totalMsats)
   burnerSk,
   wallet,        // { kind, payInvoice } — NWC client or WebLN adapter
   message,
@@ -292,7 +301,7 @@ async function runLeg({
     } else if (shouldPublishMetadata(leg.recipient.address)) {
       update({ status: STATUSES.PUBLISHING })
       const extraTags = buildLegExtraTags({
-        episodeMeta, boostSession, legIndex: leg.index, legCount, totalMsats,
+        episodeMeta, boostSession, legIndex: leg.index, legCount, totalMsats, amountTotalMsats,
       })
       // Burner-signed → strip the donor's npub from the `sender` tag.
       // Same rationale as the presign fallback: a burner key can't
@@ -408,13 +417,17 @@ export async function presignAllowlistedLegs({
   recipients,
   totalWeight,
   totalMsats,
+  amountTotalMsats,   // parent total to REPORT; defaults to totalMsats (non-retry)
   message,
   donorNpub,
   pageUrl,
   episodeMeta,
   lnurlCache,
+  boostSession: reuseSession,   // retry threads the parent session in to reuse it
 }) {
-  const boostSession = uuid4()
+  // Reuse the caller's session on a retry so the retried leg's 30078 ties back
+  // to the original boost; mint a fresh one for a first-time boost.
+  const boostSession = reuseSession || uuid4()
   const byAddress = {}
 
   if (!Array.isArray(recipients) || recipients.length === 0) {
@@ -454,7 +467,7 @@ export async function presignAllowlistedLegs({
         if (!paymentHash) continue
 
         const extraTags = buildLegExtraTags({
-          episodeMeta, boostSession, legIndex: leg.index, legCount: legs.length, totalMsats,
+          episodeMeta, boostSession, legIndex: leg.index, legCount: legs.length, totalMsats, amountTotalMsats,
         })
         const userTemplate = buildDonationBoostagramTemplate({
           paymentHash,
@@ -522,6 +535,14 @@ export async function presignAllowlistedLegs({
  * @param {number} params.totalWeight
  * @param {number} params.totalMsats           Total amount in millisats; floored
  *                                             into per-leg shares by weight.
+ * @param {number} [params.amountTotalMsats]   Parent boost total to REPORT on
+ *                                             the 30078s. Defaults to totalMsats;
+ *                                             set only on a retry, where the leg
+ *                                             share paid ≠ the parent total.
+ * @param {string} [params.boostSession]       Reuse this session id instead of
+ *                                             minting one — a retry threads the
+ *                                             original boost's session in so its
+ *                                             leg ties back to the parent.
  * @param {string} params.message              Donor's message; copied verbatim
  *                                             into every leg's kind 30078 content.
  * @param {string} params.donorNpub            Donor's npub for the sender tag,
@@ -559,6 +580,9 @@ export async function payAllLegs({
   recipients,
   totalWeight,
   totalMsats,
+  amountTotalMsats,   // parent boost total to REPORT; defaults to totalMsats.
+                      // Differs from totalMsats only on a retry (leg share paid,
+                      // parent total reported).
   message,
   donorNpub,
   pageUrl,
@@ -567,8 +591,16 @@ export async function payAllLegs({
   lnurlCache,
   onStatus,
   presigned,
+  boostSession: reuseSession,   // retry reuses the original boost's session id
 }) {
-  const boostSession = presigned?.boostSession || uuid4()
+  // Session precedence: a presigned bundle already carries the session it
+  // stamped on its events, so honor that first; otherwise reuse an explicitly
+  // threaded session (retry); otherwise mint a fresh one.
+  const boostSession = presigned?.boostSession || reuseSession || uuid4()
+  // What we REPORT as the boost total. On a normal boost this equals the
+  // distributed total; on a retry it's the parent total, kept distinct from
+  // the leg share actually being paid this run.
+  const reportTotalMsats = amountTotalMsats ?? totalMsats
   const burnerSk = generateBurnerKeypair().sk
   const legs = distributeMsats(totalMsats, recipients, totalWeight)
   const comment = formatEpisodeComment(episodeMeta?.number)
@@ -587,6 +619,7 @@ export async function payAllLegs({
         boostSession,
         legCount: legs.length,
         totalMsats,
+        amountTotalMsats: reportTotalMsats,
         burnerSk,
         wallet,
         message,

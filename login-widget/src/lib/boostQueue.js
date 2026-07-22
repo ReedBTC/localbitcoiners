@@ -118,6 +118,11 @@ export function submitBoost({
   episode,
   splits,
   totalSats,
+  amountTotalSats,  // optional parent boost total to REPORT (sats). Defaults to
+                    // totalSats; set only on a retry, where totalSats is the
+                    // failed leg's share but the reported total must stay the
+                    // donor's full boost total.
+  boostSession,     // optional session id to reuse (retry threads the parent's in)
   message,
   donorNpub,
   lnurlCache,
@@ -149,6 +154,12 @@ export function submitBoost({
     console.warn('[boostQueue] submitBoost: totalSats below minimum')
     return null
   }
+  // What we REPORT as the boost total (per-leg amount_total + receipt amount).
+  // Equals `sats` for a normal boost; on a retry it's the donor's full parent
+  // total while `sats` is only the failed leg's share being re-paid. Never let
+  // it fall below `sats` (a report smaller than what we're actually moving
+  // would be nonsensical).
+  const reportSats = Math.max(sats, Number(amountTotalSats) > 0 ? Number(amountTotalSats) : 0)
   if (!wallet || typeof wallet.payInvoice !== 'function') {
     console.warn('[boostQueue] submitBoost: wallet adapter unavailable')
     return null
@@ -176,6 +187,7 @@ export function submitBoost({
         recipients: splits.recipients,
         totalWeight: splits.totalWeight,
         totalMsats: sats * 1000,
+        amountTotalMsats: reportSats * 1000,
         message,
         donorNpub,
         pageUrl: SITE_URL,
@@ -184,6 +196,7 @@ export function submitBoost({
         lnurlCache,
         presigned,
         onStatus,
+        boostSession,
       })
     } catch (e) {
       // payAllLegs is documented as never-throws; this is belt-and-
@@ -245,7 +258,7 @@ export function submitBoost({
         walletKind: wallet?.kind || '',
         walletProvider: clientInfo?.walletProvider || 'unknown',
         browser: clientInfo?.browser || 'unknown',
-        totalMsatsRequested: sats * 1000,
+        totalMsatsRequested: reportSats * 1000,
         legs: result.legs,
       }).catch((e) => {
         console.warn('[boostQueue] boost receipt publish failed', e?.message || e)
