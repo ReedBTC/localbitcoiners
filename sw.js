@@ -90,9 +90,12 @@
 // Bump evicts the stale boost-actions.css, boosts-thread.css, calendar-events.js
 // and feeds.js so mobile/PWA get the new styling on first navigation.
 //
-// lb-v42: hide one more bad boost note (added its hex id to EXCLUDED_NOTE_IDS
-// in boosts-thread.js) — suppresses it from boosts.html + stats.html.
-const VERSION = 'lb-v42';
+// lb-v43: stats supporter leaderboard (Total Sats view) now gets the same
+// broken-axis "tear" as the episode board — but data-driven for the top N
+// outliers: adminpacman + sovreign both dwarf the field, so both are torn and
+// the rest scale against #3. buildBarSvg generalized from single-outlier to a
+// cliff-detected break group. stats.js only.
+const VERSION = 'lb-v43';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

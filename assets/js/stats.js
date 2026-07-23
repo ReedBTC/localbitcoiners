@@ -1037,11 +1037,15 @@
   // Horizontal bar chart. `items` is a pre-sorted [{ label, value,
   // isAnon? }] array, drawn top to bottom; the left margin auto-fits the
   // longest label. Shared by the episode + supporter leaderboards.
-  // opts.breakOutlier: when one bar dwarfs the rest (e.g. Ep 015's donated
-  // 2.1M sats), draw the other bars to scale against the SECOND-largest value
-  // so they stay readable, and render the outlier as a fixed-length "torn" bar
-  // (a broken axis) rather than to scale. The true value still labels the end,
-  // so the number tells the real story even though the bar isn't to scale.
+  // opts.breakOutlier: when the top bar(s) dwarf the rest, draw the other
+  // bars to scale against the largest NON-outlier value so they stay
+  // readable, and render each outlier as a fixed-length "torn" bar (a broken
+  // axis) rather than to scale. How many bars get torn is data-driven: we
+  // break at the single biggest relative cliff among the first MAX_BREAK
+  // rows — so one giant episode (Ep 015's donated 2.1M) breaks just the top
+  // bar, while two whales atop the supporter board (adminpacman + sovreign,
+  // both dwarfing #3) break the top two. The true value still labels each
+  // bar's end, so the number tells the real story even off-scale.
   function buildBarSvg(items, ariaLabel, opts) {
     opts = opts || {};
     var W = 720;
@@ -1054,26 +1058,38 @@
     var H = mT + mB + items.length * rowH;
     var tw = W - mL - mR;
 
-    // Largest + second-largest, and which row is the max.
-    var maxVal = 0, secondVal = 0, outIdx = -1;
-    for (var j = 0; j < items.length; j++) {
-      var v = items[j].value;
-      if (v > maxVal) { secondVal = maxVal; maxVal = v; outIdx = j; }
-      else if (v > secondVal) { secondVal = v; }
+    // Rank the rows by value (descending) so we can find the "outlier group":
+    // the leading bars that dwarf the rest. We break at the single biggest
+    // relative cliff among the first MAX_BREAK boundaries — data-driven, so
+    // the count of torn bars matches the shape of the data and self-disables
+    // when the leaderboard evens out.
+    var order = items.map(function (it, idx) { return idx; })
+      .sort(function (a, b) { return items[b].value - items[a].value; });
+
+    var BREAK_RATIO = 1.8, MAX_BREAK = 2;
+    var nBreak = 0, bestRatio = 0;
+    if (opts.breakOutlier) {
+      var lastC = Math.min(MAX_BREAK, order.length - 1);
+      for (var c = 1; c <= lastC; c++) {
+        var hi = items[order[c - 1]].value, lo = items[order[c]].value;
+        if (lo <= 0) break;
+        var ratio = hi / lo;
+        if (ratio >= BREAK_RATIO && ratio > bestRatio) { bestRatio = ratio; nBreak = c; }
+      }
     }
-    if (maxVal <= 0) maxVal = 1;
+    var doBreak = nBreak > 0;
 
-    // Only break when the top bar is a genuine outlier — so the feature is
-    // self-disabling if the leaderboard ever evens out.
-    var BREAK_RATIO = 1.8;
-    var doBreak = !!opts.breakOutlier && items.length >= 2 && outIdx >= 0 &&
-      secondVal > 0 && maxVal >= BREAK_RATIO * secondVal;
+    // breakRank[originalIdx] = 0-based rank within the outlier group (0 = biggest).
+    var breakRank = Object.create(null);
+    for (var b = 0; b < nBreak; b++) breakRank[order[b]] = b;
 
-    // When breaking: normal bars scale so the 2nd-largest fills NORM_FRAC of the
-    // track; the outlier's main segment runs to OUT_MAIN, a GAP_W tear, then a
-    // short tip out to OUT_END — visibly the longest, but cut.
-    var NORM_FRAC = 0.70, OUT_MAIN = 0.80, OUT_END = 0.90, GAP_W = 14;
-    var scaleMax = doBreak ? secondVal : maxVal;
+    // When breaking: normal bars scale so the largest NON-outlier fills
+    // NORM_FRAC of the track; each outlier's main segment runs to OUT_MAIN, a
+    // GAP_W tear, then a short tip staggered by OUT_STAGGER per rank so a
+    // bigger outlier still reads as the longer torn bar.
+    var NORM_FRAC = 0.70, OUT_MAIN = 0.80, OUT_END = 0.90, OUT_STAGGER = 0.04, GAP_W = 14;
+    var scaleMax = doBreak ? items[order[nBreak]].value : items[order[0]].value;
+    if (scaleMax <= 0) scaleMax = 1;
     var normFullW = doBreak ? tw * NORM_FRAC : tw;
 
     var parts = [];
@@ -1084,12 +1100,13 @@
       parts.push('<text class="stats-bar-label" x="' + (mL - 8) + '" y="' +
         (cy + 4) + '">' + svgEsc(it.label) + '</text>');
 
-      if (doBreak && k === outIdx) {
-        // Torn outlier bar: main segment + tip, with two break slashes between.
+      if (doBreak && k in breakRank) {
+        // Torn outlier bar: main segment + staggered tip, two break slashes between.
+        var r = breakRank[k];
         var mainW = tw * OUT_MAIN;
         var gapStart = mL + mainW;
         var gapEnd = gapStart + GAP_W;
-        var tipEnd = mL + tw * OUT_END;
+        var tipEnd = mL + tw * (OUT_END - r * OUT_STAGGER);
         var top = cy - barH / 2;
         parts.push('<rect class="' + cls + '" x="' + mL + '" y="' + top +
           '" width="' + mainW + '" height="' + barH + '" rx="3"/>');
@@ -1184,7 +1201,8 @@
       });
       peopleCanvas.innerHTML = buildBarSvg(items, metric === 'sats'
         ? 'Supporters ranked by total sats sent'
-        : 'Supporters ranked by episodes supported');
+        : 'Supporters ranked by episodes supported',
+        { breakOutlier: metric === 'sats' });
       if (peopleSubEl) {
         peopleSubEl.textContent = metric === 'sats'
           ? 'Top 10 supporters by total sats sent (boosts + streams)'
