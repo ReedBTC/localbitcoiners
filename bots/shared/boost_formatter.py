@@ -102,6 +102,12 @@ LB_SHOW_URL   = f"https://fountain.fm/show/{LB_SHOW_ID}"
 # the note with the show / episode. See build_podcast_guid_tags.
 LB_FEED_GUID  = "56fbb1aa-da79-5e4b-bebc-3b934ab8914c"
 
+# Podcast Index feed id for the Local Bitcoiners feed (byfeedid=7683299).
+# The most spoof-resistant of the feed-identity signals a boostagram carries.
+# Confirmed against the PI API alongside LB_FEED_GUID / RSS_FEED. See
+# LB_FEED_IDENTITY and feed_verdict for how these gate incoming boosts.
+LB_FEED_ID    = "7683299"
+
 # Production gate for the website-boost path. While True, every bot that
 # detects a `source=website` BoostInfo routes its publish through write_dry_run_event
 # regardless of the bot's own DRY_RUN setting. Flip to False only after eyeballing
@@ -163,6 +169,103 @@ def get_divisor(settled_at):
     if settled_at >= SPLIT_CUTOFF_V2:
         return DIVISOR_V2
     return DIVISOR_V1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Feed-identity gating
+# ─────────────────────────────────────────────────────────────────────────────
+# The node (reed@localbitcoiners.com) is a SHARED Lightning value-split
+# recipient: Reed guests on other shows that split to this address, and a new
+# podcast is spinning up on the same address. So a boost landing here is NOT
+# automatically Local Bitcoiners — it has to positively identify our feed.
+#
+# Real-world finding (surveyed off the live node): keysend boostagrams carry NO
+# podcast:guid. The signals that DO appear are `feedId`, feed `url`, and the
+# `podcast` title — and none is populated by every app (LB boosts show
+# feedId=7683299 from some apps but 0 from others; url present from some, empty
+# from others; only the title is near-universal). So identity is a multi-signal
+# bundle and the verdict treats a missing/placeholder signal as ABSENT, never as
+# a mismatch. `guid` is kept for forward-compat even though no app sends it yet.
+#
+# feed_verdict is deliberately generic (takes an `identity`) so a future bot for
+# the OTHER podcasts can reuse it with its own identity bundle rather than
+# hardcoding Local Bitcoiners.
+LB_FEED_IDENTITY = {
+    "feed_ids":  {LB_FEED_ID},                 # "7683299"
+    "feed_urls": {RSS_FEED},                    # feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU
+    "titles":    {LB_SHOW_TITLE.lower()},       # "local bitcoiners"
+    "guids":     {LB_FEED_GUID.lower()},        # 56fbb1aa-...
+}
+
+FEED_MATCH  = "match"    # a present signal positively names the target feed
+FEED_OTHER  = "other"    # a present signal positively names a DIFFERENT feed
+FEED_ABSENT = "absent"   # no usable feed signal present
+
+def _norm_feed_url(u):
+    return (u or "").strip().lower().rstrip("/")
+
+def _norm_feed_id(v):
+    """feedId of 0 / '' / None means 'not provided' — treat as absent, not a
+    mismatch. (Fountain and PodcastGuru send 0 even for real LB boosts.)"""
+    s = str(v or "").strip()
+    return "" if s in ("", "0") else s
+
+def feed_verdict(meta, identity):
+    """Decide whether a boost's feed-identity `meta` belongs to `identity`.
+
+    `meta` — loosely-typed signals pulled off a boostagram / fetched boost page:
+    any of `feed_id`, `feed_url`, `title`, `guid` (missing keys are fine).
+    `identity` — bundle of `feed_ids` / `feed_urls` / `titles` / `guids` sets
+    (titles + guids compared lowercased; urls normalized).
+
+    Each PRESENT signal votes match (names the target feed) or other (names a
+    different feed); missing / placeholder signals abstain. A single `other`
+    vote is decisive even if another signal matches — mixed signals are treated
+    as untrustworthy and rejected. If nothing names the target and nothing
+    contradicts it, the verdict is ABSENT and the caller decides what to do."""
+    saw_match = saw_other = False
+
+    def _vote(present, is_match):
+        nonlocal saw_match, saw_other
+        if not present:
+            return
+        if is_match:
+            saw_match = True
+        else:
+            saw_other = True
+
+    fid = _norm_feed_id(meta.get("feed_id"))
+    _vote(fid, fid in {str(x) for x in identity["feed_ids"]})
+
+    url = _norm_feed_url(meta.get("feed_url"))
+    _vote(url, url in {_norm_feed_url(u) for u in identity["feed_urls"]})
+
+    title = (meta.get("title") or "").strip().lower()
+    _vote(title, title in {t.lower() for t in identity["titles"]})
+
+    guid = (meta.get("guid") or "").strip().lower()
+    _vote(guid, guid in {g.lower() for g in identity["guids"]})
+
+    if saw_other:
+        return FEED_OTHER
+    if saw_match:
+        return FEED_MATCH
+    return FEED_ABSENT
+
+def lb_feed_verdict(meta):
+    """feed_verdict specialized to the Local Bitcoiners feed."""
+    return feed_verdict(meta, LB_FEED_IDENTITY)
+
+def _keysend_feed_meta(boostagram):
+    """Extract feed-identity signals from a Podcasting 2.0 keysend boostagram.
+    Field-name casing varies by app, so check the known variants."""
+    return {
+        "feed_id":  (boostagram.get("feedId") or boostagram.get("feedID")
+                     or boostagram.get("feed_id")),
+        "feed_url": boostagram.get("url"),
+        "title":    boostagram.get("podcast"),
+        "guid":     (boostagram.get("guid") or boostagram.get("feedGuid")
+                     or boostagram.get("podcastGuid")),
+    }
 
 # Match @npub1.../npub1.../@nevent1.../nevent1.../@naddr1.../naddr1... and
 # rewrite to the canonical nostr: URI so Nostr clients render as mentions.
@@ -707,6 +810,37 @@ def build_rss_item_index(cache):
     cache["guid_to_fountain"] = index
     return index
 
+_FOUNTAIN_SHOW_RE = re.compile(r'fountain\.fm/show/([A-Za-z0-9_-]+)')
+
+def _fountain_episode_feed(episode_url, cache):
+    """Positively classify a Fountain episode's FEED by reading its page.
+
+    Returns:
+      'lb'      — the page carries LB's show id or feed guid
+      'other'   — the page loaded and links a different show (positively not LB)
+      'unknown' — the page couldn't be fetched/parsed (caller must NOT reject)
+
+    Used to gate episode-level Fountain boosts/streams whose page id isn't a
+    known LB RSS episode. Reading the page directly (rather than trusting the
+    RSS item set) means an RSS-fetch failure — which empties that set — can't
+    turn every Fountain boost into a false 'other'. Cached per-run by url; only
+    consulted for un-recognized episodes, so the common LB case pays nothing."""
+    fc = cache.setdefault("fountain_episode_feed", {})
+    if episode_url in fc:
+        return fc[episode_url]
+    verdict = "unknown"
+    try:
+        html = requests.get(episode_url, timeout=10).text
+        if LB_SHOW_ID in html or LB_FEED_GUID in html:
+            verdict = "lb"
+        elif _FOUNTAIN_SHOW_RE.search(html):
+            verdict = "other"
+        # page loaded but carries no show marker at all → stay 'unknown'
+    except Exception as e:
+        print(f"  [warn] Fountain feed check failed for {episode_url}: {e}")
+    fc[episode_url] = verdict
+    return verdict
+
 def _extract_episode_number(title):
     """Pull a zero-padded episode number from an LB title string. None if absent.
     Matches the convention used by episodesats / topboosts."""
@@ -1109,6 +1243,34 @@ def _classify_fountain_boost(tx, desc, payment_hash, settled_at, our_msats, cach
             return _classify_tardbox_boost(tx, parsed, payment_hash, settled_at, our_msats, cache)
 
         show_level  = "/show/" in (episode_url or "")
+
+        # Feed gate (genuine Fountain URLs only — Castamatic/Tardbox already
+        # dispatched above). Show-level URLs carry the show id inline; reject a
+        # non-LB show outright. Episode-level URLs carry a Fountain page id: if
+        # it's a known LB RSS episode we're done; otherwise positively check the
+        # episode page's feed and reject only a confirmed OTHER show (a fresh LB
+        # episode or an unreachable page is kept — never dropped on uncertainty).
+        if episode_url and "fountain.fm" in episode_url:
+            if show_level:
+                sid = episode_url.rstrip("/").split("/show/")[-1].split("/")[0]
+                if sid and sid != LB_SHOW_ID:
+                    print(f"  [skip] Fountain show boost {payment_hash[:12]}… "
+                          f"not Local Bitcoiners (show={sid!r})")
+                    return None
+            elif episode_id:
+                _lb_ids = {v.get("fountain_id") for v in build_rss_item_index(cache).values()
+                           if v.get("fountain_id")}
+                if episode_id not in _lb_ids:
+                    feed = _fountain_episode_feed(episode_url, cache)
+                    if feed == "other":
+                        print(f"  [skip] Fountain boost {payment_hash[:12]}… episode "
+                              f"{episode_id!r} belongs to another show — not Local Bitcoiners")
+                        return None
+                    if feed == "unknown":
+                        print(f"  [review] Fountain boost {payment_hash[:12]}… episode "
+                              f"{episode_id!r} not in LB RSS and feed unconfirmed — "
+                              f"accepting; verify if unexpected")
+
         title_pair  = cache["title_cache"].get(episode_id) if episode_id else None
         if title_pair is None and episode_url:
             title_pair = scrape_fountain_episode(episode_url)
@@ -1207,6 +1369,29 @@ def _classify_castamatic_boost(tx, parsed, payment_hash, settled_at, our_msats, 
         except Exception as e:
             print(f"  [warn] Castamatic fetch failed for {boost_url}: {e}")
         fc[boost_url] = boost_data
+
+    # Feed gate. Castamatic's JSON can carry feed identity (title / url / id);
+    # reject only when it POSITIVELY names a different feed. Unlike keysend we
+    # don't reject on ABSENT here — BOLT11 boost metadata is spottier and the
+    # item_guid→LB-RSS resolution below is the positive-LB path, so an
+    # absent-feed-field Castamatic boost must not be dropped.
+    # Castamatic's JSON uses `feed_title` + `feed_guid` (confirmed against live
+    # boost payloads); the other key spellings are defensive for other apps that
+    # reuse this rss::payment::boost <json-url> convention.
+    _cm_verdict = lb_feed_verdict({
+        "feed_id":  (boost_data.get("feed_id") or boost_data.get("feedID")
+                     or boost_data.get("feedId")),
+        "feed_url": (boost_data.get("feed_url") or boost_data.get("feedUrl")
+                     or boost_data.get("url")),
+        "title":    (boost_data.get("feed_title") or boost_data.get("podcast")
+                     or boost_data.get("podcast_title")),
+        "guid":     (boost_data.get("feed_guid") or boost_data.get("guid")
+                     or boost_data.get("podcast_guid") or boost_data.get("feedGuid")),
+    })
+    if _cm_verdict == FEED_OTHER:
+        print(f"  [skip] Castamatic boost {payment_hash[:12]}… not Local Bitcoiners "
+              f"(feed=other, title={boost_data.get('podcast')!r})")
+        return None
 
     sender_name = boost_data.get("sender_name") or None
     item_title  = boost_data.get("item_title")
@@ -1330,6 +1515,23 @@ def _classify_tardbox_boost(tx, parsed, payment_hash, settled_at, our_msats, cac
             print(f"  [warn] Tardbox fetch failed for {boost_url}: {e}")
         fc[boost_url] = page
 
+    # Feed gate. Tardbox/BMB renders the feed title (and sometimes a feed URL)
+    # as labeled rows; reject only when they POSITIVELY name a different feed.
+    # As with Castamatic, don't drop on ABSENT — the episode-number→Fountain-id
+    # resolution below is the positive-LB path.
+    # Tardbox labels the feed/show name row `Show` (confirmed against live boost
+    # pages); it exposes no feed URL or guid row, so title is the only signal.
+    _tb_verdict = lb_feed_verdict({
+        "feed_id":  None,
+        "feed_url": page.get("Feed") or page.get("URL") or page.get("Feed URL"),
+        "title":    page.get("Show") or page.get("Podcast"),
+        "guid":     page.get("GUID") or page.get("Podcast GUID"),
+    })
+    if _tb_verdict == FEED_OTHER:
+        print(f"  [skip] Tardbox/BMB boost {payment_hash[:12]}… not Local Bitcoiners "
+              f"(feed=other, title={page.get('Podcast')!r})")
+        return None
+
     sender_npub = None
     sender_name = None
     raw_from    = page.get("From", "")
@@ -1431,6 +1633,30 @@ def _classify_fountain_stream(tx, desc, payment_hash, settled_at, our_msats, cac
     else:
         return None
 
+    # Feed gate — mirror the boost path so streams to OTHER Fountain-hosted
+    # podcasts that split to this address don't land in LB stats. Show-level
+    # streams for a different show are rejected; episode-level streams for an
+    # unknown episode get the positive page check and are rejected only on a
+    # confirmed OTHER show (fresh LB episode / unreachable page is kept).
+    if show_level:
+        sid = show_match.group(1).split("/")[0]
+        if sid and sid != LB_SHOW_ID:
+            print(f"  [skip] Fountain show stream {payment_hash[:12]}… "
+                  f"not Local Bitcoiners (show={sid!r})")
+            return None
+    elif episode_id:
+        _lb_ids = {v.get("fountain_id") for v in build_rss_item_index(cache).values()
+                   if v.get("fountain_id")}
+        if episode_id not in _lb_ids:
+            feed = _fountain_episode_feed(episode_url, cache)
+            if feed == "other":
+                print(f"  [skip] Fountain stream {payment_hash[:12]}… episode "
+                      f"{episode_id!r} belongs to another show — not Local Bitcoiners")
+                return None
+            if feed == "unknown":
+                print(f"  [review] Fountain stream {payment_hash[:12]}… episode "
+                      f"{episode_id!r} not in LB RSS and feed unconfirmed — accepting")
+
     divisor     = get_divisor(settled_at)
     total_msats = round(our_msats / divisor) if divisor else our_msats
 
@@ -1453,6 +1679,19 @@ def _classify_keysend(tx, boostagram, payment_hash, settled_at, our_msats, cache
     no external lookups required. Total sats = boostagram.valueMsatTotal (the
     sender's full intended amount) when present, since keysend payments do not
     pass through the RSS zap split — the full amount lands here."""
+    # Feed gate. The node is a shared LN split recipient, so a keysend boost is
+    # only ours if the boostagram positively identifies the LB feed. Reject
+    # anything that names a different feed AND the (near-impossible) case where
+    # no feed signal is present at all — every real keysend boost observed on
+    # the node carries at least the `podcast` title, so ABSENT here is a red
+    # flag worth logging rather than silently trusting.
+    verdict = lb_feed_verdict(_keysend_feed_meta(boostagram))
+    if verdict != FEED_MATCH:
+        print(f"  [skip] keysend boost {payment_hash[:12]}… not Local Bitcoiners "
+              f"(feed={verdict}, podcast={boostagram.get('podcast')!r}, "
+              f"feedId={boostagram.get('feedId')!r}, url={boostagram.get('url')!r})")
+        return None
+
     message = boostagram.get("message", "") or ""
     if message.strip().lower() == "undefined":
         message = NO_COMMENT_PLACEHOLDER
