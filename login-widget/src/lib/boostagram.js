@@ -656,11 +656,19 @@ export function buildEpisodeBoostShareTemplate({
     ['t', 'localbitcoiners'],
     ['t', 'boost'],
     ['t', 'podcast'],
+    // Topic tags NIP-73 boost consumers (OnlyBoosts, the community-feed
+    // detectors) key on to tell a boost note from any other kind 1.
+    ['t', 'boostagram'],
+    ['t', 'value4value'],
     ['r', pageUrl],
     ['client', 'localbitcoiners.com'],
   ]
   if (RECIPIENT_PUBKEY_HEX) tags.push(['p', RECIPIENT_PUBKEY_HEX])
   if (fountainUrl) tags.push(['r', fountainUrl])
+  // Machine-readable boost amount in millisats (NIP-57 convention). Without
+  // it the amount lives only in the free-text content and consumers can't
+  // parse it, so the note gets dropped as a boost. Total sent, not per-leg.
+  tags.push(['amount', String(Math.round((Number(amountSats) || 0) * 1000))])
   // NIP-73 external-content tags: feed GUID always, episode item GUID when known.
   tags.push(['i', `podcast:guid:${FEED_GUID}`])
   tags.push(['k', 'podcast:guid'])
@@ -751,10 +759,14 @@ export async function publishBoostShareNote({
   const tags = [
     ['t', 'localbitcoiners'],
     ['t', 'boost'],
+    ['t', 'boostagram'],
+    ['t', 'value4value'],
     ['r', pageUrl],
     ['client', 'localbitcoiners.com'],
   ]
   if (RECIPIENT_PUBKEY_HEX) tags.push(['p', RECIPIENT_PUBKEY_HEX])
+  // Machine-readable boost amount in millisats (NIP-57 convention).
+  tags.push(['amount', String(Math.round((Number(amountSats) || 0) * 1000))])
   // NIP-73 external-content tags. Show-level share: feed GUID only.
   tags.push(['i', `podcast:guid:${FEED_GUID}`])
   tags.push(['k', 'podcast:guid'])

@@ -95,7 +95,7 @@
 // outliers: adminpacman + sovreign both dwarf the field, so both are torn and
 // the rest scale against #3. buildBarSvg generalized from single-outlier to a
 // cliff-detected break group. stats.js only.
-const VERSION = 'lb-v43';
+const VERSION = 'lb-v44';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

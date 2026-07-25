@@ -111,6 +111,9 @@ export function buildExternalNoteTemplate({
   const tags = [
     ['t', 'boost'],
     ['t', 'podcast'],
+    // Topic tags NIP-73 boost consumers key on.
+    ['t', 'boostagram'],
+    ['t', 'value4value'],
     ['client', 'localbitcoiners.com'],
   ]
   if (bmbUrl) tags.push(['r', bmbUrl])
