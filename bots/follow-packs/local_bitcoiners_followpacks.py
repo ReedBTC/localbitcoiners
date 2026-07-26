@@ -73,14 +73,23 @@ CO_HOSTS = [
     "npub1f5pre6wl6ad87vr4hr5wppqq30sh58m4p33mthnjreh03qadcajs7gwt3z",  # Rev
 ]
 
+# Minimum lifetime sats to enter the bottom tier — and therefore to appear in
+# any pack on boost/stream/zap history alone. Raised from 1 to 100 so a single
+# token sat doesn't earn a place in the packs the website reads for supporter
+# status. Nobody already published is dropped by this: see the grandfathering
+# in compute_tier_members(). The website's own TIERS in supporters.js keeps its
+# floor of 1 on purpose — /supporters displays everyone who has ever boosted;
+# this is only about pack membership.
+ENTRY_TIER_MIN_SATS = 100
+
 # Booster tier floors (inclusive), highest first — a supporter lands in the
 # first tier they clear, by lifetime total_sats (boosts + streams). Mirrors
-# TIERS in supporters.js.
+# TIERS in supporters.js apart from the entry floor above.
 TIER_PACKS = [
-    (100000, "lb-supporters-100k",  "Local Bitcoiners — 100k+ Boosters & Streamers"),
-    (69000,  "lb-supporters-69k",   "Local Bitcoiners — 69k+ Boosters & Streamers"),
-    (21000,  "lb-supporters-21k",   "Local Bitcoiners — 21k+ Boosters & Streamers"),
-    (1,      "lb-supporters-other", "Local Bitcoiners — All Other Boosters & Streamers"),
+    (100000,              "lb-supporters-100k",  "Local Bitcoiners — 100k+ Boosters & Streamers"),
+    (69000,               "lb-supporters-69k",   "Local Bitcoiners — 69k+ Boosters & Streamers"),
+    (21000,               "lb-supporters-21k",   "Local Bitcoiners — 21k+ Boosters & Streamers"),
+    (ENTRY_TIER_MIN_SATS, "lb-supporters-other", "Local Bitcoiners — All Other Boosters & Streamers"),
 ]
 
 GUESTS_PACK = ("lb-supporters-guests", "Local Bitcoiners — Show Guests")
@@ -116,7 +125,7 @@ def load_sats_rows():
 
 ZAP_MIN_SATS = 100  # min lifetime zap total for an npub to earn tier credit from zaps
 
-def compute_tier_members(rows):
+def compute_tier_members(rows, state=None):
     """{tier_slug: [npub, ...]} — lifetime total_sats per sender_npub (boosts +
     streams + zaps); name-only (no npub) supporters omitted. Hosts (Reed/Rev)
     are included by what they've boosted, mirroring supporters.js. Each npub
@@ -124,7 +133,13 @@ def compute_tier_members(rows):
 
     Zap rows (source == 'zap') are accumulated separately and only added to an
     npub's total when their aggregate zap sats reach ZAP_MIN_SATS — prevents
-    single tiny zaps from qualifying someone for the entry-level tier."""
+    single tiny zaps from qualifying someone for the entry-level tier.
+
+    `state` (optional) is the published-pack state, used to grandfather the
+    ENTRY_TIER_MIN_SATS raise: the floor applies going forward, but nobody who
+    was already published into the entry pack is removed for falling under it.
+    Graduation still wins — a grandfathered member who later clears a higher
+    tier moves up rather than being held in both."""
     totals = {}
     zap_totals = {}
     for r in rows:
@@ -150,6 +165,32 @@ def compute_tier_members(rows):
             if total >= floor:
                 packs[slug].append(npub)
                 break
+
+    # Grandfather the entry-floor raise. Anyone the entry pack has already
+    # published stays in it even if their lifetime total is now under
+    # ENTRY_TIER_MIN_SATS — the floor governs who gets in from here on, not who
+    # gets removed. Members already placed in a tier this run are skipped, so a
+    # grandfathered supporter who has since climbed to a higher tier graduates
+    # normally instead of appearing twice.
+    if state:
+        entry_slug = TIER_PACKS[-1][1]
+        prev_hexes = set((state.get(entry_slug) or {}).get("members") or [])
+        if prev_hexes:
+            placed = set()
+            for members in packs.values():
+                for npub in members:
+                    h = npub_to_hex(npub)
+                    if h:
+                        placed.add(h)
+            kept = 0
+            for npub in totals:
+                h = npub_to_hex(npub)
+                if h and h in prev_hexes and h not in placed:
+                    packs[entry_slug].append(npub)
+                    kept += 1
+            if kept:
+                print(f"  [{entry_slug}] grandfathered {kept} member(s) below the "
+                      f"{ENTRY_TIER_MIN_SATS}-sat floor (already published)")
     return packs
 
 
@@ -270,7 +311,7 @@ def main():
     outbox = get_outbox_relays(SHOW_HEX) or []
     relays = list(dict.fromkeys(outbox + NOSTR_RELAYS))
 
-    tier_members = compute_tier_members(rows)
+    tier_members = compute_tier_members(rows, state)
     # Co-hosts first, then the RSS-derived episode guests (deduped by npub).
     guests       = list(dict.fromkeys(CO_HOSTS + compute_guests()))
     coders       = list(CODING_CONTRIBUTORS)

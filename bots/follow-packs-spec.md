@@ -62,7 +62,7 @@ website link's `?p=` MUST be the same pubkey.
 | `lb-supporters-100k`    | Local Bitcoiners — 100k+ Boosters & Streamers   | tier ≥ 100,000 |
 | `lb-supporters-69k`     | Local Bitcoiners — 69k+ Boosters & Streamers    | tier 69,000–99,999 |
 | `lb-supporters-21k`     | Local Bitcoiners — 21k+ Boosters & Streamers    | tier 21,000–68,999 |
-| `lb-supporters-other`   | Local Bitcoiners — All Other Boosters & Streamers | tier 1–20,999 |
+| `lb-supporters-other`   | Local Bitcoiners — All Other Boosters & Streamers | tier 100–20,999 (grandfathered: members published under the old 1-sat floor are never removed) |
 
 ## Membership — must match the /supporters page exactly
 
