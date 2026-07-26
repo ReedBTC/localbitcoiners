@@ -330,7 +330,12 @@ function featureButton(a) {
     e.stopPropagation()
     btn.disabled = true
     try {
-      await featureArticle({ pubkey: a.pubkey, dTag: a.dTag, naddr: a.naddr }, (msg) => showToast(msg, true))
+      // The card's author profile is already resolved, which lets the boost
+      // modal name the author and route their split without a second lookup.
+      await featureArticle(
+        { pubkey: a.pubkey, dTag: a.dTag, naddr: a.naddr, author: profileFor(a.pubkey) },
+        (msg) => showToast(msg, true),
+      )
     } finally {
       btn.disabled = false
     }
@@ -1020,7 +1025,10 @@ async function runLookup(m, onFeatured) {
   feature.addEventListener('click', async () => {
     feature.disabled = true
     try {
-      await featureArticle({ pubkey: a.pubkey, dTag: a.dTag, naddr }, (msg) => showToast(msg, true))
+      await featureArticle(
+        { pubkey: a.pubkey, dTag: a.dTag, naddr, author: profileFor(a.pubkey) },
+        (msg) => showToast(msg, true),
+      )
       m.closeFn()
       onFeatured?.()
     } finally {

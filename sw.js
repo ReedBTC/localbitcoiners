@@ -108,7 +108,14 @@
 // signer before conceding to the anonymous burner. The widget bundle is
 // stale-while-revalidate cached, so without a bump a returning donor keeps
 // boosting through the old bundle for one more session.
-const VERSION = 'lb-v46';
+// lb-v47: a Feature boost from the Articles tab now pays the article's author.
+// The show's third split leg (34%) is reassigned from aquafox30 to the author's
+// kind-0 lud16 for that one boost; the two host legs are untouched, and an
+// author with no Lightning address falls back to the standard splits. Touches
+// the widget bundle plus featured-articles.js/feeds-articles.js, all
+// stale-while-revalidate cached, so without a bump a returning donor would keep
+// featuring articles through the old three-host split for one more session.
+const VERSION = 'lb-v47';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

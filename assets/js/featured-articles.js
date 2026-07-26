@@ -19,7 +19,7 @@
  * owns the Feature action itself.
  */
 import { SimplePool, verifyEvent, nip19 } from '/assets/widgets/nostr-tools.js'
-import { STATIC_RELAYS } from '/assets/js/boosts-thread.js'
+import { STATIC_RELAYS, fetchProfilesFromPrimal } from '/assets/js/boosts-thread.js'
 import { ensureLoginWidget } from '/assets/js/widget-loader.js'
 import { PENDING_PROMOTE_KEY, readPendingPromote, clearPendingPromote } from '/assets/js/calendar-events.js'
 
@@ -216,6 +216,83 @@ export function addConfirmedFeaturedArticle(coord) {
   return Date.now()
 }
 
+// ── Author split resolution ──────────────────────────────────────────
+// A Feature boost reassigns the show's third split leg (34%) to the author of
+// the article being featured, so the sats follow the thing being promoted. The
+// address comes from the author's kind-0 profile: lud16 only, since the boost
+// path speaks Lightning Addresses and cannot pay a bare lud06 LNURL. When no
+// address resolves the boost falls back to the standard show splits, and the
+// modal tells the donor why.
+//
+// Best-effort and time-boxed: the Feature button is already disabled while this
+// runs, so the lookup must not be able to hang the flow. A miss costs the
+// author their share of one boost, never the boost itself.
+const AUTHOR_LOOKUP_TIMEOUT_MS = 2500
+
+function isLightningAddress(s) {
+  return typeof s === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim())
+}
+
+function withTimeout(promise, ms, fallback) {
+  return Promise.race([
+    promise.catch(() => fallback),
+    new Promise((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ])
+}
+
+// kind-0 straight off the relays, for authors Primal's cache doesn't hold.
+async function fetchAuthorProfileFromRelays(pubkey, relays = STATIC_RELAYS) {
+  const pool = new SimplePool()
+  try {
+    const ev = await pool.get(relays, { kinds: [0], authors: [pubkey] }).catch(() => null)
+    if (!ev || ev.pubkey !== pubkey) return null
+    let ok = false
+    try { ok = verifyEvent(ev) } catch {}
+    if (!ok) return null
+    const meta = JSON.parse(ev.content)
+    return {
+      name: meta.display_name || meta.name || '',
+      lud16: typeof meta.lud16 === 'string' ? meta.lud16.trim() : '',
+    }
+  } catch {
+    return null
+  } finally {
+    try { pool.close(relays) } catch {}
+  }
+}
+
+/**
+ * Resolve the { name, address } the boost modal needs for an article's author.
+ * `hint` is the caller's already-loaded profile (the Articles tab resolves
+ * author profiles for its cards), which skips the network entirely.
+ * Always returns an object; `address` is '' when the author has no lud16.
+ */
+export async function resolveArticleAuthorSplit(pubkey, hint = null) {
+  const out = { name: hint?.name || '', address: '' }
+  if (isLightningAddress(hint?.lud16)) {
+    out.address = hint.lud16.trim()
+    return out
+  }
+  if (!/^[0-9a-f]{64}$/i.test(pubkey || '')) return out
+
+  // A hint that resolved but carried no lud16 came from the same Primal cache
+  // this would query, so skip straight to the relays; that keeps the worst case
+  // at one timeout for the common "author simply has no address" outcome.
+  const primalHint = hint && typeof hint === 'object'
+  const fromPrimal = primalHint ? null : await withTimeout(
+    fetchProfilesFromPrimal([pubkey]).then((m) => m.get(pubkey) || null),
+    AUTHOR_LOOKUP_TIMEOUT_MS,
+    null,
+  )
+  const profile = isLightningAddress(fromPrimal?.lud16)
+    ? fromPrimal
+    : await withTimeout(fetchAuthorProfileFromRelays(pubkey), AUTHOR_LOOKUP_TIMEOUT_MS, null)
+
+  if (profile?.name && !out.name) out.name = profile.name
+  if (isLightningAddress(profile?.lud16)) out.address = profile.lud16.trim()
+  return out
+}
+
 // ── The Feature action ───────────────────────────────────────────────
 // Same prose shape as the Events tab's Promote, so a Feature from a card and a
 // Feature from the Find modal are indistinguishable to the boost bot (which
@@ -235,13 +312,16 @@ export function naddrForArticle(pubkey, dTag, relays = STATIC_RELAYS) {
   } catch { return '' }
 }
 
-// Open the show-boost modal with the article's naddr prefilled. `onFail` gets a
-// message to surface (the caller owns its own toast).
-export async function featureArticle({ pubkey, dTag, naddr }, onFail) {
+// Open the show-boost modal with the article's naddr prefilled and the third
+// split leg pointed at the article's author. `author` is the caller's cached
+// kind-0 profile, if it has one. `onFail` gets a message to surface (the caller
+// owns its own toast).
+export async function featureArticle({ pubkey, dTag, naddr, author = null }, onFail) {
   const coord = articleCoord(pubkey, dTag)
   const bech32 = naddr || naddrForArticle(pubkey, dTag)
   if (!bech32) { onFail?.('Could not build this article’s address'); return }
   try {
+    const authorSplit = await resolveArticleAuthorSplit(pubkey, author)
     // Record intent before handing off so the settle listener knows which
     // coordinate to light up. A cancelled boost is harmless: the TTL and the
     // "any leg succeeded" gate keep it from featuring anything.
@@ -250,7 +330,7 @@ export async function featureArticle({ pubkey, dTag, naddr }, onFail) {
     } catch {}
     await ensureLoginWidget()
     const prefillMessage = `${FEATURE_TEMPLATE}\n\nnostr:${bech32}`
-    if (window.LBLogin?.openShowBoost) window.LBLogin.openShowBoost({ prefillMessage })
+    if (window.LBLogin?.openShowBoost) window.LBLogin.openShowBoost({ prefillMessage, authorSplit })
     else onFail?.('Boost unavailable right now — please try again')
   } catch (e) {
     console.error('[articles] feature failed', e)

@@ -341,6 +341,7 @@ function ShowBoostHost() {
     <BoostModal
       user={user || null}
       prefillMessage={state.prefillMessage || ''}
+      authorSplit={state.authorSplit || null}
       onClose={() => setShowBoostState(null)}
       onSettled={(r) => {
         // Let the community-status chip (community-status.js) know this npub
@@ -820,20 +821,33 @@ const api = {
    * and the NWC paste field. Auto-engage was removed because Alby's
    * per-domain permission can silently re-grant on a shared browser,
    * leaking one user's wallet to another's first boost click.
+   *
+   * `authorSplit` ({ name, address }) reassigns the show's third split
+   * leg to the author of a featured article — see BoostModal. It is
+   * carried through every gate re-entry so a boost that had to stop for
+   * login or a wallet connect still pays the author on resume. The two
+   * host legs are not reassignable from here.
    */
   async openShowBoost(opts = {}) {
     const prefillMessage = typeof opts?.prefillMessage === 'string' ? opts.prefillMessage : ''
+    const authorSplit = opts?.authorSplit && typeof opts.authorSplit === 'object'
+      ? {
+          name: typeof opts.authorSplit.name === 'string' ? opts.authorSplit.name : '',
+          address: typeof opts.authorSplit.address === 'string' ? opts.authorSplit.address : '',
+        }
+      : null
+    const reopen = { prefillMessage, authorSplit }
 
     // Gate 1: signed in?
     if (!currentUser || currentUser === undefined) {
-      setPendingAction(() => api.openShowBoost({ prefillMessage }))
+      setPendingAction(() => api.openShowBoost(reopen))
       api.requestLogin()
       return
     }
 
     // Gate 1.5: real user (not a stub)?
     if (isStubUser(currentUser)) {
-      setPendingAction(() => api.openShowBoost({ prefillMessage }))
+      setPendingAction(() => api.openShowBoost(reopen))
       ensureRealRestore()
       return
     }
@@ -848,18 +862,18 @@ const api = {
       wallet.ensureReady(currentUser)
         .then((ok) => {
           if (ok) {
-            api.openShowBoost({ prefillMessage })
+            api.openShowBoost(reopen)
           } else {
-            handleWalletGateFailure(() => api.openShowBoost({ prefillMessage }))
+            handleWalletGateFailure(() => api.openShowBoost(reopen))
           }
         })
         .catch(() => {
-          handleWalletGateFailure(() => api.openShowBoost({ prefillMessage }))
+          handleWalletGateFailure(() => api.openShowBoost(reopen))
         })
       return
     }
 
-    setShowBoostState({ prefillMessage })
+    setShowBoostState({ prefillMessage, authorSplit })
   },
 
   /**
