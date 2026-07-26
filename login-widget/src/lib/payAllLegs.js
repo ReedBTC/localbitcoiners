@@ -303,23 +303,50 @@ async function runLeg({
       const extraTags = buildLegExtraTags({
         episodeMeta, boostSession, legIndex: leg.index, legCount, totalMsats, amountTotalMsats,
       })
-      // Burner-signed → strip the donor's npub from the `sender` tag.
-      // Same rationale as the presign fallback: a burner key can't
-      // cryptographically vouch for any user identity, so claiming one
-      // would let any client publish receipts under arbitrary npubs.
-      // Anon mode already passes donorNpub='' here; this also covers
-      // the attributed-mode-but-presign-skipped edge (e.g. LNURL fetch
-      // failed during presign so this leg fell through to legacy).
-      const template = buildDonationBoostagramTemplate({
-        paymentHash,
-        donorNpub: '',
-        recipientLud16: leg.recipient.address,
-        amountMsats: leg.msats,
-        message: message || '',
-        pageUrl,
-        extraTags,
-      })
-      const signed = signDonationBoostagramWithBurner(template, burnerSk)
+      // Attributed donor with no presigned event for this leg. Reaching
+      // here does NOT mean the signer failed — the common cause is a
+      // transient LNURL/invoice hiccup during presign, which skips the
+      // leg's presign entry entirely and costs the donor their
+      // attribution even though their signer was healthy the whole time.
+      // So try the real signer once more before conceding: it's the same
+      // session presign used, and recovering here is the difference
+      // between a named boost and an unexplained "Anon" in the feed.
+      //
+      // Falling back to the burner still STRIPS the npub from `sender`.
+      // A burner key can't cryptographically vouch for a user identity,
+      // so claiming one would let any client publish receipts under
+      // arbitrary npubs. Anon mode (donorNpub === '') never attempts the
+      // user signer at all — going anonymous there is the donor's choice.
+      let signed = null
+      if (donorNpub) {
+        try {
+          signed = await signDonationBoostagramWithUserResilient(
+            buildDonationBoostagramTemplate({
+              paymentHash,
+              donorNpub,
+              recipientLud16: leg.recipient.address,
+              amountMsats: leg.msats,
+              message: message || '',
+              pageUrl,
+              extraTags,
+            })
+          )
+        } catch (e) {
+          console.warn('[lb] inline re-sign failed for', leg.recipient.address, e?.message || e)
+        }
+      }
+      if (!signed) {
+        const template = buildDonationBoostagramTemplate({
+          paymentHash,
+          donorNpub: '',
+          recipientLud16: leg.recipient.address,
+          amountMsats: leg.msats,
+          message: message || '',
+          pageUrl,
+          extraTags,
+        })
+        signed = signDonationBoostagramWithBurner(template, burnerSk)
+      }
       const { eventId, published } = await publishSignedBoostagram(signed)
       update({ eventId, metadataPublished: !!published })
     }

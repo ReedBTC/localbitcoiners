@@ -102,7 +102,13 @@
 // .art-feature / .art-find* rules inside feeds.html's inline <style> — the
 // classic stale-CSS case, so the bump is what makes returning mobile/PWA
 // visitors see the section styled on first navigation instead of raw.
-const VERSION = 'lb-v45';
+// lb-v46: boost attribution fix in the widget bundle. A logged-in donor could
+// land as "Anon" when a transient LNURL hiccup skipped a leg's presign, even
+// with a perfectly healthy signer; the payment path now re-signs with the real
+// signer before conceding to the anonymous burner. The widget bundle is
+// stale-while-revalidate cached, so without a bump a returning donor keeps
+// boosting through the old bundle for one more session.
+const VERSION = 'lb-v46';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
