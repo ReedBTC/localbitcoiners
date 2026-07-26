@@ -1142,6 +1142,165 @@
     .art-showmore:hover { background: var(--tint); border-color: var(--accent); }
     .art-more-count { font-size: 0.75rem; color: var(--muted); }
 
+    /* ── Featured Articles ────────────────────────────────────────────
+       Featured Events is a bare header over a grid; this section is a
+       bounded gold container instead, because it owns a range filter the
+       feed below it does not obey. The 1W/1M/All control sits INSIDE the
+       border, so the filter's scope is stated by the layout rather than by
+       a label. Gold is #e0a92e — the same accent as boosted event cards
+       and top-tier supporter rings — deliberately not the tab's purple
+       accent, which belongs to page-level chrome. */
+    .art-featured {
+      --gold: #e0a92e;
+      --gold-d: #a9761a;
+      margin: 0 0 1.5rem;
+      padding: 0.85rem 0.9rem 0.9rem;
+      border: 1px solid var(--gold);
+      border-radius: 12px;
+      background: rgba(224,169,46,0.05);
+      box-shadow: 0 0 0 3px rgba(224,169,46,0.07);
+    }
+    .art-featured-head {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 0.5rem 0.9rem; margin-bottom: 0.8rem;
+    }
+    .art-featured-title {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.02rem; font-weight: 700; color: var(--gold-d);
+    }
+    .art-featured-count {
+      font-family: var(--sans, inherit); font-size: 0.72rem; font-weight: 700;
+      color: var(--gold-d); background: rgba(224,169,46,0.18);
+      padding: 0.05rem 0.42rem; border-radius: 999px;
+    }
+    .art-featured-actions {
+      display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+    }
+
+    /* Range pills — same near-square shape as the page-level .pcast-range
+       control, but gold-on-gold so they read as part of the box. */
+    .art-featured-range { display: flex; flex-shrink: 0; }
+    .art-featured-range-btn {
+      min-width: 2rem; padding: 0.5rem 0.35rem;
+      font: inherit; font-size: 0.72rem; font-weight: 700; line-height: 1.2;
+      color: var(--gold-d); background: transparent;
+      border: none; border-radius: 6px; cursor: pointer; opacity: 0.6;
+      transition: background 0.12s, opacity 0.12s;
+    }
+    .art-featured-range-btn:hover { opacity: 1; background: rgba(224,169,46,0.14); }
+    .art-featured-range-btn.is-active {
+      opacity: 1; background: rgba(224,169,46,0.28);
+    }
+
+    .art-featured-find {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.35rem 0.7rem; font: inherit; font-size: 0.78rem; font-weight: 600;
+      color: var(--gold-d); background: var(--white);
+      border: 1px solid var(--gold); border-radius: 999px; cursor: pointer;
+      white-space: nowrap; transition: background 0.12s;
+    }
+    .art-featured-find:hover { background: rgba(224,169,46,0.14); }
+
+    .art-featured-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem; }
+    .art-featured-empty { margin: 0; font-size: 0.85rem; color: var(--muted); }
+    .art-featured-more {
+      display: block; margin: 0.7rem auto 0;
+      padding: 0.42rem 1.1rem; font: inherit; font-size: 0.8rem; font-weight: 700;
+      color: var(--gold-d); background: var(--white);
+      border: 1px solid var(--gold); border-radius: 999px; cursor: pointer;
+      transition: background 0.12s;
+    }
+    .art-featured-more:hover { background: rgba(224,169,46,0.14); }
+
+    /* A featured card inside the box gets a static gold hairline, not the
+       pulsing halo the Events tab puts on boosted cards — the container is
+       already carrying the gold, and five pulsing cards is noise. */
+    .art-card--featured { border-color: var(--gold); }
+    .art-card--featured:hover { box-shadow: 0 6px 18px rgba(224,169,46,0.22); }
+
+    /* "Feature" — the boost-this-into-Featured action, in the card foot where
+       the featured cards carry their booster credit. Orange fill + white bolt
+       SVG (house convention for orange-background buttons; never the ⚡
+       emoji). */
+    .art-feature {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      padding: 0.3rem 0.7rem; font: inherit; font-size: 0.78rem; font-weight: 700;
+      color: #fff; background: var(--orange);
+      border: none; border-radius: 999px; cursor: pointer;
+      transition: background 0.12s;
+    }
+    .art-feature:hover { background: var(--orange-d); }
+    .art-feature:disabled { opacity: 0.6; cursor: default; }
+    .art-feature-bolt { width: 0.9em; height: 0.9em; flex-shrink: 0; }
+
+    /* "Featured by (pfp) Name · 3d ago" — sits where the Feature button is on
+       an unfeatured card. Muted so it reads as a credit, not an action; the
+       relative age is what makes the range filter legible. */
+    .art-featured-by {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      max-width: 60%; padding: 0; font: inherit; font-size: 0.75rem;
+      color: var(--muted); background: none; border: none; cursor: pointer;
+    }
+    .art-featured-by--anon { cursor: default; }
+    .art-featured-by-label { flex-shrink: 0; }
+    .art-featured-by-name {
+      font-weight: 600; color: var(--text);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .art-featured-by:hover .art-featured-by-name { color: var(--gold-d); }
+    .art-featured-when { flex-shrink: 0; white-space: nowrap; }
+
+    /* ── "Find an Article to Feature" modal ───────────────────────────
+       Reuses the event composer's backdrop/card chrome so both Find modals
+       are one thing; the body is a single paste box, since an article is
+       always addressable by naddr. */
+    .art-find-help { margin: 0 0 0.8rem; font-size: 0.85rem; color: var(--muted); line-height: 1.45; }
+    .art-find-row { display: flex; gap: 0.5rem; }
+    .art-find-input {
+      flex: 1; min-width: 0; padding: 0.55rem 0.7rem;
+      font: inherit; font-size: 0.85rem; color: var(--text);
+      background: var(--white); border: 1px solid var(--border); border-radius: 8px;
+    }
+    .art-find-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .art-find-go {
+      padding: 0.55rem 1.1rem; font: inherit; font-size: 0.82rem; font-weight: 700;
+      color: #fff; background: var(--accent); border: none; border-radius: 8px;
+      cursor: pointer; white-space: nowrap;
+    }
+    .art-find-go:disabled { opacity: 0.6; cursor: default; }
+    .art-find-status { margin: 0.7rem 0 0; font-size: 0.82rem; color: var(--muted); }
+    .art-find-status:empty { display: none; }
+    .art-find-result:not(:empty) { margin-top: 0.9rem; }
+    .art-find-preview {
+      display: flex; gap: 0.75rem; align-items: flex-start;
+      padding: 0.7rem; border: 1px solid var(--gold, #e0a92e); border-radius: 10px;
+      background: rgba(224,169,46,0.05);
+    }
+    .art-find-preview-media {
+      flex-shrink: 0; width: 68px; height: 68px; border-radius: 8px;
+      overflow: hidden; background: var(--tint);
+    }
+    .art-find-preview-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .art-find-preview-media--none {
+      display: flex; align-items: center; justify-content: center; font-size: 1.5rem; opacity: 0.5;
+    }
+    .art-find-preview-body { min-width: 0; }
+    .art-find-preview-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 0.98rem; font-weight: 700; line-height: 1.25; color: var(--text);
+    }
+    .art-find-preview-meta {
+      display: flex; align-items: center; gap: 0.35rem; margin-top: 0.2rem;
+      font-size: 0.76rem; color: var(--muted);
+    }
+    .art-find-preview-summary {
+      margin: 0.35rem 0 0; font-size: 0.82rem; line-height: 1.4; color: var(--muted);
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+      overflow-wrap: anywhere;
+    }
+    .art-find-feature { margin-top: 0.8rem; padding: 0.5rem 1.1rem; font-size: 0.85rem; }
+
     /* ── Shared feed toggle pill (panel head) ─────────────────────────
        A default-off switch that widens a feed. Used by the Articles tab
        ("Include short articles") and the Events tab ("Include virtual
@@ -1327,6 +1486,16 @@
       .art-card-media { width: 72px; height: 72px; }
       .art-reader-title { font-size: 1.5rem; }
       .art-prose { font-size: 1rem; }
+      /* Featured box: the title can't share a row with both the range pills
+         and the Find button here, so the actions wrap onto their own line and
+         pin right (still inside the gold border, which is the whole point). */
+      .art-featured { padding: 0.75rem 0.7rem 0.8rem; }
+      .art-featured-actions { margin-left: auto; }
+      .art-featured-find { font-size: 0.74rem; padding: 0.3rem 0.6rem; }
+      /* The card foot runs out of room for "Read Full Article" plus a booster
+         credit, so let the two stack rather than squeezing the name to nothing. */
+      .art-card-foot { flex-wrap: wrap; gap: 0.35rem 0.5rem; }
+      .art-featured-by { max-width: 100%; }
       /* Events head: keep the range buttons + type dropdown at the top-right
          beside the Create button (align-items:flex-start top-aligns them).
          flex-wrap is a safety net for very narrow screens where the controls

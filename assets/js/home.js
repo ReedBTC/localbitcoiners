@@ -56,8 +56,16 @@
     zapRows.forEach(addNpub);
     var supporterCount = Object.keys(npubs).length;
 
-    var meetupCount = (meetups && typeof meetups.row_count === 'number')
-      ? meetups.row_count : rows(meetups).length;
+    // The boosted-naddr log is no longer calendar-only — Featured Articles
+    // boosts kind-30023 naddrs through the same path, so its rows land in the
+    // same file. `row_count` would silently fold featured articles into the
+    // meetup number, so count NIP-52 rows off the coordinate's kind prefix
+    // (authoritative, and present on every row) instead of trusting the total.
+    var meetupCount = rows(meetups).filter(function (r) {
+      var k = r && typeof r.coordinate === 'string'
+        ? parseInt(r.coordinate.split(':')[0], 10) : 0;
+      return k === 31922 || k === 31923;
+    }).length;
 
     var sc = $('explore-supporters-count');
     if (sc && supporterCount) sc.textContent = fmtInt(supporterCount) + ' people';

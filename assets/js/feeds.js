@@ -314,6 +314,19 @@ function npubToHex(npub) {
   } catch { return '' }
 }
 
+// The boosted-naddr log is not calendar-only. Featured Articles boosts a
+// kind-30023 naddr through the same path, so its rows land in the same file;
+// this tab takes only the NIP-52 ones. The kind is read off the coordinate
+// (always present and authoritative) rather than the `event_kind` column.
+function coordKind(coordinate) {
+  return parseInt(String(coordinate).split(':')[0], 10)
+}
+
+function isCalendarCoord(coordinate) {
+  const k = coordKind(coordinate)
+  return k === KIND_DATE_EVENT || k === KIND_TIME_EVENT
+}
+
 // Read the boosted-event log. Returns the set of boosted coordinates, any relay
 // hints from their naddrs, and a coord→booster map (who paid to feature it, for
 // the "Featured by …" credit). Rows are newest-first, so the first booster seen
@@ -330,6 +343,7 @@ async function fetchBoostedSet() {
     const rows = Array.isArray(data?.rows) ? data.rows : []
     for (const r of rows) {
       if (!r || typeof r.coordinate !== 'string') continue
+      if (!isCalendarCoord(r.coordinate)) continue
       coords.add(r.coordinate)
       if (typeof r.naddr === 'string') {
         for (const h of relayHintsFromNaddr(r.naddr)) hints.add(h)
@@ -918,6 +932,10 @@ async function loadEvents() {
     if (!d || !(d.anySucceeded || d.anyUncertain)) return
     const pending = readPendingPromote()
     if (!pending || !pending.coord) return
+    // The pending slot is shared with the Articles tab's Feature flow (one slot,
+    // boosts are sequential). Leave a non-calendar coordinate alone so the
+    // Articles listener still finds it — whoever claims it clears it.
+    if (!isCalendarCoord(pending.coord)) return
     clearPendingPromote()
     addConfirmedFeatured(pending.coord)
     state.featuredCoords.add(pending.coord)

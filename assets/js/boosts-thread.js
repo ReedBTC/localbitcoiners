@@ -300,7 +300,10 @@ function buildEmbedNoteEl(seg) {
       link.href = `https://mynostr.app/${seg.data.bech32}`
       link.textContent = '📅 Linked event on Nostr →'
     } else {
-      link.href = `https://njump.me/${seg.data.bech32}`
+      // Articles read on mynostr.app, matching the link the boost publisher
+      // now writes into the note itself for kind-30023 naddrs (the bot sends
+      // calendar naddrs to plektos and articles to MyNostr).
+      link.href = `https://mynostr.app/${seg.data.bech32}`
       link.textContent = '📄 Linked article on Nostr →'
     }
     link.target = '_blank'

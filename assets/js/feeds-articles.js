@@ -22,11 +22,24 @@
  * first time the tab is opened.
  */
 import { nip19, verifyEvent } from '/assets/widgets/nostr-tools.js'
-import { fetchProfilesFromPrimal, setCachedProfile } from '/assets/js/boosts-thread.js'
+import { fetchProfilesFromPrimal, setCachedProfile, STATIC_RELAYS } from '/assets/js/boosts-thread.js'
 import { buildActionBar, configureBoostActions } from '/assets/js/boost-actions.js'
 import { marked } from '/assets/widgets/marked.esm.js'
 import DOMPurify from '/assets/widgets/dompurify.esm.js'
 import { ensureLoginWidget } from '/assets/js/widget-loader.js'
+import {
+  articleCoord,
+  isArticleCoord,
+  fetchFeaturedArticleSet,
+  fetchArticlesFromRelays,
+  fetchArticleByNaddr,
+  naddrFromText,
+  readConfirmedFeaturedArticles,
+  addConfirmedFeaturedArticle,
+  readPendingPromote,
+  clearPendingPromote,
+  featureArticle,
+} from '/assets/js/featured-articles.js'
 
 // The reply/repost/like/zap actions publish via the login-widget bundle
 // (window.LBLogin), lazy-loaded on first need. Mirrors feeds-podcasts.js.
@@ -36,6 +49,17 @@ const API_URL = '/api/community-articles'
 const KIND_ARTICLE = 30023
 const INITIAL_CARDS = 20        // articles rendered per "load more" batch
 const PROFILE_CHUNK = 80        // Primal user_infos drops results on large batches
+
+// Featured articles are a single-column list of full-width cards, not the
+// multi-column grid the Events tab uses, so the section fills the viewport
+// fast. Show this many, rest behind "Show more featured".
+const FEATURED_INITIAL = 5
+
+// Range windows for the Featured section, in days (All = no window). This
+// filter is scoped to the featured section alone and runs on when an article
+// was FEATURED, never on when it was published.
+const FEATURED_RANGES = [['1w', '1W', 7], ['1m', '1M', 30], ['all', 'All', 0]]
+const FEATURED_DEFAULT_RANGE = 'all'
 
 // ── Tiny DOM helper (same contract as feeds-podcasts.js / feeds-market.js) ──
 function h(tag, attrs = {}, children = []) {
@@ -224,8 +248,8 @@ const SHORT_MAX = 420
 const profiles = new Map()
 function profileFor(pubkey) { return profiles.get(pubkey) || null }
 
-async function loadAuthorProfiles(articles) {
-  const pks = [...new Set(articles.map((a) => a.pubkey).filter(Boolean))]
+async function loadAuthorProfiles(articles, extraPubkeys = []) {
+  const pks = [...new Set([...articles.map((a) => a.pubkey), ...extraPubkeys].filter(Boolean))]
   for (let i = 0; i < pks.length; i += PROFILE_CHUNK) {
     try {
       const got = await fetchProfilesFromPrimal(pks.slice(i, i + PROFILE_CHUNK))
@@ -287,7 +311,78 @@ function openAttrs(a, onOpen) {
   }
 }
 
-function articleCard(a, onOpen) {
+// ── Featured affordances ─────────────────────────────────────────────
+// "Feature" opens the show-boost modal with this article's naddr prefilled;
+// the boost lands in the same boosted-naddr log the Events tab reads, and the
+// article floats up into the Featured section. Orange fill + white bolt SVG,
+// the house convention for orange-background buttons (never the ⚡ emoji).
+const FEATURE_BOLT_SVG =
+  '<svg class="art-feature-bolt" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
+  '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg>'
+
+function featureButton(a) {
+  const btn = h('button', {
+    class: 'art-feature', type: 'button',
+    title: 'Feature — boost this article into the Featured section',
+  })
+  btn.innerHTML = FEATURE_BOLT_SVG + '<span>Feature</span>'
+  btn.addEventListener('click', async (e) => {
+    e.stopPropagation()
+    btn.disabled = true
+    try {
+      await featureArticle({ pubkey: a.pubkey, dTag: a.dTag, naddr: a.naddr }, (msg) => showToast(msg, true))
+    } finally {
+      btn.disabled = false
+    }
+  })
+  return btn
+}
+
+// Compact relative age ("4h ago", "3d ago", "6w ago"). This sits on every
+// featured card next to the booster's name, which is what makes the section's
+// 1W / 1M / All filter legible without a label explaining it.
+function relAge(ms) {
+  if (!ms) return ''
+  const secs = Math.max(0, Math.round((Date.now() - ms) / 1000))
+  if (secs < 60) return 'just now'
+  const mins = Math.round(secs / 60)
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.round(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.round(hrs / 24)
+  if (days < 7) return `${days}d ago`
+  const wks = Math.round(days / 7)
+  if (wks < 6) return `${wks}w ago`
+  const mos = Math.round(days / 30)
+  if (mos < 12) return `${mos}mo ago`
+  return `${Math.round(days / 365)}y ago`
+}
+
+// "Featured by (pfp) Name · 3d ago" — who paid to feature this article, sitting
+// where the Feature button is on an unfeatured card. Muted, so it reads as a
+// credit rather than another action. Click copies the booster's npub.
+function featuredByEl(info) {
+  const when = relAge(info?.featuredAt)
+  if (!info || !info.by || !info.by.pubkey) {
+    return when ? h('span', { class: 'art-featured-by art-featured-by--anon' }, [
+      h('span', { class: 'art-featured-by-label', text: 'Featured' }),
+      h('span', { class: 'art-featured-when', text: when }),
+    ]) : null
+  }
+  const pk = info.by.pubkey
+  const el = h('button', {
+    class: 'art-featured-by', type: 'button', title: 'Copy npub',
+    onclick: (e) => { e.stopPropagation(); copyNpub(pk) },
+  }, [
+    h('span', { class: 'art-featured-by-label', text: 'Featured by' }),
+    avatarEl(pk, 18),
+    h('span', { class: 'art-featured-by-name', text: authorName(pk) }),
+  ])
+  if (when) el.appendChild(h('span', { class: 'art-featured-when', text: '· ' + when }))
+  return el
+}
+
+function articleCard(a, onOpen, { featured = false, info = null } = {}) {
   const open = openAttrs(a, onOpen)
   const media = a.image
     ? h('div', { class: 'art-card-media art-card-media--link', ...open }, h('img', { src: a.image, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }))
@@ -300,9 +395,12 @@ function articleCard(a, onOpen) {
     h('span', { class: 'art-byline-when', text: fullDate(a.date) }),
   ])
 
+  // An already-featured card drops the Feature button — it only means "get this
+  // into Featured" — and credits whoever paid for it in the same slot.
   const foot = h('div', { class: 'art-card-foot' }, [
     h('button', { class: 'art-read', type: 'button', onclick: () => onOpen(a) },
       ['Read Full Article', h('span', { 'aria-hidden': 'true', text: ' →' })]),
+    featured ? featuredByEl(info) : featureButton(a),
   ])
 
   const body = h('div', { class: 'art-card-body' }, [
@@ -312,8 +410,9 @@ function articleCard(a, onOpen) {
     foot,
   ])
 
-  const card = h('article', { class: 'art-card' }, [media, body, moreMenu(a)])
+  const card = h('article', { class: 'art-card' + (featured ? ' art-card--featured' : '') }, [media, body, moreMenu(a)])
   card._article = a
+  if (featured) card._featuredInfo = info
   return card
 }
 
@@ -364,6 +463,15 @@ function repaintCards(cardsEl) {
     if (oldAv) oldAv.replaceWith(avatarEl(a.pubkey, 22, { interactive: true }))
     const nameEl = byline.querySelector('.art-byline-name')
     if (nameEl) nameEl.textContent = authorName(a.pubkey)
+    // Booster credit on featured cards resolves on the same pass.
+    const credit = cardEl.querySelector('.art-featured-by')
+    const bpk = cardEl._featuredInfo?.by?.pubkey
+    if (credit && bpk) {
+      const bAv = credit.querySelector('.art-avatar')
+      if (bAv) bAv.replaceWith(avatarEl(bpk, 18))
+      const bName = credit.querySelector('.art-featured-by-name')
+      if (bName) bName.textContent = authorName(bpk)
+    }
   })
 }
 
@@ -680,6 +788,265 @@ function mountToolbar(panel, els) {
   head.appendChild(h('div', { class: 'art-toolbar' }, els))
 }
 
+// ── Featured section ─────────────────────────────────────────────────
+// The Featured Events section is a bare header over a grid; this one is a
+// bounded gold container instead, because it owns a filter that the feed below
+// it does NOT obey. Boxed-versus-unboxed is the whole signal: the 1W/1M/All
+// control sits inside the border, so its scope is visibly the border's
+// contents. The pills are gold rather than the tab's purple accent for the
+// same reason — every other range control on /feeds is page-level.
+function featuredRangeControl(state, onPick) {
+  const wrap = h('div', {
+    class: 'art-featured-range', role: 'group',
+    'aria-label': 'Filter featured articles by when they were featured',
+  })
+  const btns = FEATURED_RANGES.map(([key, label, days]) => {
+    const b = h('button', {
+      class: 'art-featured-range-btn', type: 'button', text: label,
+      title: days ? `Featured in the last ${days} days` : 'Every featured article',
+    })
+    b.addEventListener('click', () => { setActive(key); onPick(key) })
+    return b
+  })
+  function setActive(key) {
+    btns.forEach((el, i) => {
+      const on = FEATURED_RANGES[i][0] === key
+      el.classList.toggle('is-active', on)
+      el.setAttribute('aria-pressed', on ? 'true' : 'false')
+    })
+  }
+  setActive(state.range)
+  wrap.append(...btns)
+  return wrap
+}
+
+function rangeDays(key) {
+  const row = FEATURED_RANGES.find(([k]) => k === key)
+  return row ? row[2] : 0
+}
+
+function rangeLabel(key) {
+  const days = rangeDays(key)
+  return days === 7 ? 'the last 7 days' : days === 30 ? 'the last 30 days' : ''
+}
+
+// Featured articles, newest-featured first. `state.featured` is coord → info;
+// an entry whose article we can't resolve (not in the snapshot, backfill
+// missed it) is skipped rather than rendered as a stub.
+function featuredEntries(state, byCoord) {
+  const out = []
+  for (const [coord, info] of state.featured) {
+    const a = byCoord.get(coord)
+    if (a) out.push({ a, info })
+  }
+  out.sort((x, y) => (y.info.featuredAt || 0) - (x.info.featuredAt || 0))
+  return out
+}
+
+function inFeaturedRange(info, range) {
+  const days = rangeDays(range)
+  if (!days) return true
+  return (info.featuredAt || 0) >= Date.now() - days * 86400000
+}
+
+function featuredEmpty(state, anyFeatured) {
+  const label = rangeLabel(state.range)
+  const text = anyFeatured && label
+    ? `No articles featured in ${label}.`
+    : 'No featured articles yet — boost an article to feature it here.'
+  return h('p', { class: 'art-featured-empty', text })
+}
+
+// Builds the whole gold box. `visible` is filled with the coordinates rendered
+// (or collapsed behind "Show more") so the main feed can drop them; an article
+// shown in the box must never also appear below it.
+function buildFeaturedSection(state, byCoord, onOpen, visible, onChange) {
+  const entries = featuredEntries(state, byCoord)
+  const inRange = entries.filter((e) => inFeaturedRange(e.info, state.range))
+  for (const e of inRange) visible.add(articleCoord(e.a.pubkey, e.a.dTag))
+
+  const head = h('div', { class: 'art-featured-head' }, [
+    h('div', { class: 'art-featured-title' }, [
+      h('span', { class: 'art-featured-star', 'aria-hidden': 'true', text: '⭐' }),
+      h('span', { text: 'Featured Articles' }),
+      inRange.length ? h('span', { class: 'art-featured-count', text: String(inRange.length) }) : null,
+    ]),
+    h('div', { class: 'art-featured-actions' }, [
+      featuredRangeControl(state, (key) => { state.range = key; state.featShown = FEATURED_INITIAL; onChange() }),
+      h('button', {
+        class: 'art-featured-find', type: 'button',
+        'aria-haspopup': 'dialog',
+        onclick: () => openFindModal(onChange),
+      }, [h('span', { 'aria-hidden': 'true', text: '🔍' }), h('span', { text: 'Find an Article to Feature' })]),
+    ]),
+  ])
+
+  const body = h('div', { class: 'art-featured-list' })
+  const shown = inRange.slice(0, state.featShown)
+  for (const { a, info } of shown) body.appendChild(articleCard(a, onOpen, { featured: true, info }))
+
+  const section = h('section', { class: 'art-featured', 'aria-label': 'Featured articles' }, [head])
+
+  if (shown.length) {
+    section.appendChild(body)
+    const rest = inRange.length - shown.length
+    if (rest > 0) {
+      section.appendChild(h('button', {
+        class: 'art-featured-more', type: 'button',
+        onclick: () => { state.featShown += FEATURED_INITIAL; onChange() },
+      }, `Show ${Math.min(FEATURED_INITIAL, rest)} more featured`))
+    }
+  } else if (state.featuredLoading) {
+    section.appendChild(h('div', { class: 'art-featured-list' }, h('div', { class: 'feed-skeleton' })))
+  } else {
+    section.appendChild(featuredEmpty(state, entries.length > 0))
+  }
+
+  return section
+}
+
+// ── "Find an Article to Feature" modal ───────────────────────────────
+// The Events tab's equivalent is a stack of flows rendered by the login widget;
+// this one is a single paste box, because an article is always addressable by
+// naddr and there is no "my articles" list to browse on this site. Reuses the
+// event-composer chrome so both modals look like one thing.
+let findModal = null
+
+function buildFindModal() {
+  const input = h('input', {
+    class: 'art-find-input', type: 'text', spellcheck: 'false',
+    placeholder: 'naddr1… or a link containing one',
+    'aria-label': 'Article address',
+  })
+  const status = h('p', { class: 'art-find-status', role: 'status', 'aria-live': 'polite' })
+  const result = h('div', { class: 'art-find-result' })
+  const lookup = h('button', { class: 'art-find-go', type: 'button' }, 'Look Up')
+
+  const card = h('div', { class: 'event-composer-card', role: 'document' }, [
+    h('button', { class: 'event-composer-close', type: 'button', 'aria-label': 'Close' }, '×'),
+    h('h2', { class: 'event-composer-title', id: 'afm-title', text: 'Find an Article to Feature' }),
+    h('p', { class: 'art-find-help' },
+      'Paste a long-form article’s address. A MyNostr, njump, or Habla link works too — anything with an naddr1 in it.'),
+    h('div', { class: 'art-find-row' }, [input, lookup]),
+    status,
+    result,
+  ])
+  const backdrop = h('div', {
+    class: 'event-composer-backdrop art-find-backdrop', role: 'dialog',
+    'aria-modal': 'true', 'aria-labelledby': 'afm-title', hidden: 'hidden',
+  }, card)
+
+  return { backdrop, card, input, status, result, lookup, close: card.firstChild }
+}
+
+function openFindModal(onFeatured) {
+  if (!findModal) {
+    findModal = buildFindModal()
+    document.body.appendChild(findModal.backdrop)
+
+    const close = () => {
+      findModal.backdrop.hidden = true
+      document.removeEventListener('keydown', onKey)
+    }
+    const onKey = (e) => { if (e.key === 'Escape') close() }
+    findModal.onKey = onKey
+    findModal.closeFn = close
+    findModal.close.addEventListener('click', close)
+    findModal.backdrop.addEventListener('click', (e) => { if (e.target === findModal.backdrop) close() })
+    findModal.lookup.addEventListener('click', () => runLookup(findModal, onFeatured))
+    findModal.input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); runLookup(findModal, onFeatured) }
+    })
+  }
+  findModal.onFeatured = onFeatured
+  findModal.status.textContent = ''
+  findModal.result.innerHTML = ''
+  findModal.input.value = ''
+  findModal.backdrop.hidden = false
+  document.addEventListener('keydown', findModal.onKey)
+  findModal.input.focus()
+}
+
+// Articles pulled in by the paste flow are remembered here so the card can
+// render in the Featured section the moment the boost settles, before the
+// boosted-naddr log has caught up.
+const pastedArticles = new Map()   // coord -> article
+
+async function runLookup(m, onFeatured) {
+  const naddr = naddrFromText(m.input.value)
+  m.result.innerHTML = ''
+  if (!naddr) {
+    m.status.textContent = 'That doesn’t contain an article address. Paste an naddr1… or a link with one in it.'
+    return
+  }
+  m.status.textContent = 'Looking up…'
+  m.lookup.disabled = true
+  let found = null
+  try {
+    found = await fetchArticleByNaddr(naddr)
+  } catch (e) {
+    console.warn('[articles] lookup failed', e)
+  } finally {
+    m.lookup.disabled = false
+  }
+
+  if (found && found.wrongKind) {
+    m.status.textContent = `That address points to a kind-${found.wrongKind} event, not a long-form article.`
+    return
+  }
+  if (!found) {
+    m.status.textContent = 'Couldn’t find that article on the relays we query. Check the address, or try a link from the client it was published in.'
+    return
+  }
+
+  const a = parseArticle(found.event)
+  if (!a) {
+    m.status.textContent = 'That article is missing the address tag we need to feature it.'
+    return
+  }
+  a.naddr = naddr
+  pastedArticles.set(found.coord, a)
+  m.status.textContent = ''
+
+  // Author name/avatar for the preview — best-effort, the preview renders
+  // either way.
+  loadAuthorProfiles([a]).then(() => {
+    const nameEl = m.result.querySelector('.art-find-preview-author')
+    if (nameEl) nameEl.textContent = authorName(a.pubkey)
+  })
+
+  const feature = h('button', { class: 'art-feature art-find-feature', type: 'button' })
+  feature.innerHTML = FEATURE_BOLT_SVG + '<span>Feature This Article</span>'
+  feature.addEventListener('click', async () => {
+    feature.disabled = true
+    try {
+      await featureArticle({ pubkey: a.pubkey, dTag: a.dTag, naddr }, (msg) => showToast(msg, true))
+      m.closeFn()
+      onFeatured?.()
+    } finally {
+      feature.disabled = false
+    }
+  })
+
+  m.result.append(
+    h('div', { class: 'art-find-preview' }, [
+      a.image
+        ? h('div', { class: 'art-find-preview-media' }, h('img', { src: a.image, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }))
+        : h('div', { class: 'art-find-preview-media art-find-preview-media--none' }, '📄'),
+      h('div', { class: 'art-find-preview-body' }, [
+        h('div', { class: 'art-find-preview-title', text: a.title }),
+        h('div', { class: 'art-find-preview-meta' }, [
+          h('span', { class: 'art-find-preview-author', text: authorName(a.pubkey) }),
+          h('span', { class: 'art-dot', 'aria-hidden': 'true', text: '·' }),
+          h('span', { text: fullDate(a.date) }),
+        ]),
+        a.summary ? h('p', { class: 'art-find-preview-summary', text: a.summary }) : null,
+      ]),
+    ]),
+    feature,
+  )
+}
+
 // ── Entry point ──────────────────────────────────────────────────────
 export async function renderArticles({ panel, list }) {
   let data
@@ -716,12 +1083,31 @@ export async function renderArticles({ panel, list }) {
   // initials now, repaint once author profiles resolve.
   const profilesReady = loadAuthorProfiles(articles)
 
-  // Default view hides short (<SHORT_MAX) bodies; the toggle shows everything.
-  const state = { includeShort: false }
+  // Every article we can render, snapshot or backfilled. The main feed only
+  // ever draws from `articles` (the supporter-scoped snapshot); `byCoord` also
+  // holds articles pulled in by a feature, which belong in the gold box but not
+  // in the community feed.
+  const byCoord = new Map()
+  for (const a of articles) byCoord.set(articleCoord(a.pubkey, a.dTag), a)
+
+  const state = {
+    // Default view hides short (<SHORT_MAX) bodies; the toggle shows everything.
+    includeShort: false,
+    // Featured section only: 1W / 1M / All over when an article was featured.
+    // Defaults to All until the section is busy enough to want a tighter window.
+    range: FEATURED_DEFAULT_RANGE,
+    // coord -> { featuredAt, by, sats, naddr }. Seeded with anything featured
+    // from this browser recently, so a fresh boost stays lit across a reload
+    // until the authoritative log catches up.
+    featured: readConfirmedFeaturedArticles(),
+    featuredLoading: true,
+    featShown: FEATURED_INITIAL,
+  }
   const matches = (a) => state.includeShort || a.content.length >= SHORT_MAX
 
   let view = articles
   let shown = 0
+  const featuredMount = h('div', { class: 'art-featured-mount' })
   const cards = h('div', { class: 'art-list' })
   const moreWrap = h('div', { class: 'art-more-wrap' })
 
@@ -743,8 +1129,16 @@ export async function renderArticles({ panel, list }) {
     }
   }
 
+  // Repaints the gold box and the feed together: which articles the box holds
+  // depends on the active range, and the feed is defined as "everything not in
+  // the box right now". An article that drops out of the window rejoins the
+  // feed in its chronological place, Feature button restored, so a lapsed
+  // feature can be renewed with one boost.
   function rerender() {
-    view = articles.filter(matches)
+    const visible = new Set()
+    featuredMount.innerHTML = ''
+    featuredMount.appendChild(buildFeaturedSection(state, byCoord, onOpen, visible, rerender))
+    view = articles.filter(matches).filter((a) => !visible.has(articleCoord(a.pubkey, a.dTag)))
     shown = 0
     cards.innerHTML = ''
     renderMore()
@@ -755,9 +1149,91 @@ export async function renderArticles({ panel, list }) {
   list.className = ''
   list.style.display = ''
   list.innerHTML = ''
-  list.append(cards, moreWrap)
+  list.append(featuredMount, cards, moreWrap)
   rerender()
 
   // Author names/avatars resolve async — repaint cards in place once resolved.
-  profilesReady.then(() => repaintCards(cards))
+  profilesReady.then(() => { repaintCards(cards); repaintCards(featuredMount) })
+
+  // Optimistic feature: when a boost settles and a Feature click is pending for
+  // an ARTICLE coordinate, light it up now rather than waiting for the log. The
+  // pending slot is shared with the Events tab, so a calendar coordinate is left
+  // untouched for that listener to claim.
+  window.addEventListener('lb:show-boost-settled', (ev) => {
+    const d = ev && ev.detail
+    if (!d || !(d.anySucceeded || d.anyUncertain)) return
+    const pending = readPendingPromote()
+    if (!pending || !pending.coord || !isArticleCoord(pending.coord)) return
+    clearPendingPromote()
+    const ts = addConfirmedFeaturedArticle(pending.coord)
+    // The booster is whoever is logged in; credit them immediately instead of
+    // showing an anonymous "Featured · just now" until the log lands.
+    let by = null
+    try {
+      const u = window.LBLogin?.getUser?.()
+      if (u && u.pubkey) by = { pubkey: u.pubkey, name: u.name || '', picture: u.picture || u.image || '' }
+    } catch {}
+    const prev = state.featured.get(pending.coord)
+    state.featured.set(pending.coord, {
+      featuredAt: ts,
+      by: by || prev?.by || null,
+      sats: prev?.sats || 0,
+      naddr: pending.naddr || prev?.naddr || '',
+    })
+    // An article featured through the Find modal isn't in the snapshot; the
+    // copy fetched during lookup is the only one we have until the next refresh.
+    if (!byCoord.has(pending.coord) && pastedArticles.has(pending.coord)) {
+      byCoord.set(pending.coord, pastedArticles.get(pending.coord))
+    }
+    rerender()
+    if (by) loadAuthorProfiles([], [by.pubkey]).then(() => repaintCards(featuredMount))
+  })
+
+  // The authoritative featured set, then any featured article missing from the
+  // supporter snapshot straight from relays. Best-effort throughout: a failure
+  // here leaves the section showing whatever the optimistic set knows about.
+  try {
+    const { featured, hints } = await fetchFeaturedArticleSet()
+    for (const [coord, info] of featured) {
+      const prev = state.featured.get(coord)
+      // The log is authoritative for the booster credit; the local optimistic
+      // timestamp can still be newer than the last log refresh.
+      state.featured.set(coord, {
+        ...info,
+        featuredAt: Math.max(info.featuredAt || 0, prev?.featuredAt || 0),
+        by: info.by || prev?.by || null,
+      })
+    }
+
+    const missing = [...state.featured.keys()].filter((c) => !byCoord.has(c))
+    if (missing.length) {
+      const relays = [...new Set([...STATIC_RELAYS, ...hints])]
+      const found = await fetchArticlesFromRelays(missing, relays)
+      const added = []
+      for (const [coord, ev] of found) {
+        const a = parseArticle(ev)
+        if (!a) continue
+        byCoord.set(coord, a)
+        added.push(a)
+      }
+      // New authors + every booster still need names and avatars.
+      const boosters = [...state.featured.values()].map((i) => i.by?.pubkey).filter(Boolean)
+      if (added.length || boosters.length) await loadAuthorProfiles(added, boosters)
+    } else {
+      const boosters = [...state.featured.values()].map((i) => i.by?.pubkey).filter(Boolean)
+      if (boosters.length) await loadAuthorProfiles([], boosters)
+    }
+  } catch (e) {
+    console.warn('[articles] featured load failed', e)
+  }
+  // Deliberately swallowed: loadArticles() replaces the whole panel with an
+  // error placeholder if this function throws, and the feed itself is already
+  // painted by now. A relay hiccup in the featured pass must not take the
+  // working article list down with it.
+  try {
+    state.featuredLoading = false
+    rerender()
+  } catch (e) {
+    console.warn('[articles] featured repaint failed', e)
+  }
 }

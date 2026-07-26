@@ -95,7 +95,14 @@
 // outliers: adminpacman + sovreign both dwarf the field, so both are torn and
 // the rest scale against #3. buildBarSvg generalized from single-outlier to a
 // cliff-detected break group. stats.js only.
-const VERSION = 'lb-v44';
+// lb-v45: Featured Articles on /feeds. New gold-bordered featured section on
+// the Articles tab with its own 1W/1M/All range filter, a per-card Feature
+// button, and a "Find an Article to Feature" paste-an-naddr modal. Adds
+// /assets/js/featured-articles.js and a block of new .art-featured* /
+// .art-feature / .art-find* rules inside feeds.html's inline <style> — the
+// classic stale-CSS case, so the bump is what makes returning mobile/PWA
+// visitors see the section styled on first navigation instead of raw.
+const VERSION = 'lb-v45';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
