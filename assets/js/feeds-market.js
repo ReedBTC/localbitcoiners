@@ -3,14 +3,16 @@
  * Surfaces NIP-99 (kind 30402) listings from the show's supporter follow
  * packs PLUS the Local Bitcoiners house merchant, in two labelled sections:
  *
- *   • "Show Merch" — the house store (MERCHANT_HEX). This is the whole of the
- *     retired /merch page: that page was folded in here (lb-v48) once the cart,
- *     checkout and product modal it owned were already shared with this tab.
- *     Sorted newest-first rather than Buy-Now-first, since every house listing
- *     is Buy Now by definition. Renders the sold-out notice when empty so an
- *     empty catalog still reads as "store, restocking" and not "no store".
+ *   • "Show Merch" — the house store (MERCHANT_HEX), in its own bordered box.
+ *     This is the whole of the retired /merch page: that page was folded in
+ *     here (lb-v48) once the cart, checkout and product modal it owned were
+ *     already shared with this tab. Sorted newest-first rather than
+ *     Buy-Now-first, since every house listing is Buy Now by definition.
+ *     Renders the sold-out notice when empty so an empty catalog still reads
+ *     as "store, restocking" and not "no store".
  *
- *   • "Community Marketplace" — everything else, badged as below.
+ *   • "Community Marketplace" — everything else, badged as below. Its header
+ *     carries the /supporters link and the "Manage / List Items" button.
  *
  *   • "Buy Now"  — the listing is Gamma checkout-ready (structured shipping
  *     that resolves) AND the seller is payable over Lightning (their kind-0
@@ -137,9 +139,10 @@ function placeholder(title, body) {
 // A non-collapsible section label, mirroring the one the Events tab builds
 // (sectionHead in feeds.js). Rebuilt here rather than imported: feeds.js
 // lazy-imports this module, so importing it back would be a static cycle.
-function sectionHead(label) {
-  return h('div', { class: 'feed-section-head' }, [
-    h('span', { class: 'feed-section-label', text: label }),
+// `label` is anything h() accepts as children, so a heading can carry a link.
+function sectionHead(label, className) {
+  return h('div', { class: 'feed-section-head' + (className ? ' ' + className : '') }, [
+    h('span', { class: 'feed-section-label' }, label),
   ])
 }
 
@@ -566,16 +569,16 @@ function openContactModal(item, relays) {
 }
 
 // ── "Manage / List Items" button ─────────────────────────────────────
-// Shown in the panel head for logged-in users only, deep-linking to their own
-// marketplace on MyNostr (where they can list/manage items). Re-rendered on
-// login state changes. Replaces the old count pill.
-function renderManageButton(panel) {
-  const head = panel.querySelector('.feed-panel-head')
+// Shown for logged-in users only, deep-linking to their own marketplace on
+// MyNostr (where they can list/manage items). It sits in the Community
+// Marketplace header rather than the panel head: listing an item puts you in
+// that section, not in Show Merch. Re-rendered on login state changes, so it
+// re-queries the header each time instead of capturing the node.
+function renderManageButton(list) {
+  const head = list.querySelector('.market-community-head')
   if (!head) return
   const prev = head.querySelector('.market-manage-btn')
   if (prev) prev.remove()
-  const count = head.querySelector('.feed-count')
-  if (count) count.hidden = true
 
   const user = window.LBLogin?.getUser?.()
   if (!user || !user.pubkey) return
@@ -684,12 +687,17 @@ export async function renderMarket({ panel, list, relays, members } = {}) {
   // routes here and opens the cart at the end of this function.
   window.openMerchCart = openCart
 
-  // Manage button shows immediately (independent of the fetch) and tracks
-  // login changes — the loader runs once, so subscribe just once here.
-  renderManageButton(panel)
+  // The manage button replaced the panel head's count pill, which stays hidden
+  // whether or not anyone is logged in.
+  const count = panel.querySelector('.feed-panel-head .feed-count')
+  if (count) count.hidden = true
+
+  // The button itself lives in the Community Marketplace header, so it can only
+  // render once the sections exist; it tracks login changes from there. The
+  // loader runs once, so subscribe just once here.
   if (!renderMarket._manageWired) {
     renderMarket._manageWired = true
-    window.LBLogin?.onChange?.(() => renderManageButton(panel))
+    window.LBLogin?.onChange?.(() => renderManageButton(list))
   }
 
   const { items, rate } = await loadMarketItems({ relays, members })
@@ -711,15 +719,26 @@ export async function renderMarket({ panel, list, relays, members } = {}) {
   list.className = ''
   list.innerHTML = ''
 
-  list.appendChild(sectionHead('Show Merch'))
-  list.appendChild(house.length
-    ? grid(house)
-    : placeholder(SOLD_OUT_MSG, ' New show gear is on the way — check back soon.'))
+  // Show Merch is boxed so the house store reads as its own storefront rather
+  // than the first few cards of the community list.
+  list.appendChild(h('section', { class: 'market-house' }, [
+    sectionHead('Show Merch'),
+    house.length
+      ? grid(house)
+      : placeholder(SOLD_OUT_MSG, ' New show gear is on the way — check back soon.'),
+  ]))
 
-  list.appendChild(sectionHead('Community Marketplace'))
+  // "Community" links to /supporters: the section is scoped to the supporter
+  // follow packs, so that page is the answer to "whose listings are these?".
+  list.appendChild(sectionHead([
+    h('a', { class: 'feed-section-link', href: '/supporters' }, 'Community'),
+    ' Marketplace',
+  ], 'market-community-head'))
   list.appendChild(community.length
     ? grid(community)
     : placeholder('No listings yet', ' No marketplace listings from supporters right now — check back soon.'))
+
+  renderManageButton(list)
 
   // Arriving from the nav cart icon (/feeds#market-cart) → open the cart now
   // that the catalog is merged, so every line (house AND community seller)

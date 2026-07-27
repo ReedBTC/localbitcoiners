@@ -363,9 +363,8 @@
        give it breathing room from the cards above. */
     .feed-list + .feed-section-head { margin-top: 1.6rem; }
     .feed-section-head + .feed-list { margin-top: 0.8rem; }
-    /* Same spacing when the section above rendered its empty/sold-out box
-       instead of a grid (Show Merch with an empty house catalog). */
-    .feed-placeholder + .feed-section-head { margin-top: 1.6rem; }
+    /* Same spacing when a section renders its empty/sold-out box instead of a
+       grid (Show Merch with an empty house catalog). */
     .feed-section-head + .feed-placeholder { margin-top: 0.8rem; }
     .feed-section-count {
       font-family: inherit;
@@ -538,9 +537,39 @@
        Buy-Now items carry none — the "Add to cart" button says it all.
        The card image is the shared merch carousel (arrows via merch.css).
        Rendered by feeds-market.js. */
-    /* "Manage / List Items" — shown in the panel head for logged-in users,
-       deep-links to their MyNostr marketplace. Replaces the old count pill. */
+    /* ── Show Merch box ──
+       The house store, boxed so it reads as its own storefront and not as the
+       first few cards of the community list. Deliberately the tab's own orange
+       rather than the gold used by Featured Events / Featured Articles: gold
+       means "boosted into a featured slot" everywhere else on this page, and
+       the show's own merch was not boosted there. */
+    .market-house {
+      margin: 0 0 1.5rem;
+      padding: 0.85rem 0.9rem 0.9rem;
+      border: 1px solid var(--market-accent);
+      border-radius: 12px;
+      background: rgba(217,123,14,0.05);
+      box-shadow: 0 0 0 3px rgba(217,123,14,0.07);
+    }
+    /* The header is already inside the box's padding, so it doesn't need the
+       leading space a standalone section header carries. */
+    .market-house .feed-section-head { padding-top: 0; }
+
+    /* "Community" in the Community Marketplace header links to /supporters —
+       that page answers "whose listings are these?". Inherits the header's
+       colour so it reads as part of the title, not as a stray link. */
+    .feed-section-link {
+      color: inherit; text-decoration: underline;
+      text-underline-offset: 3px; text-decoration-thickness: 1px;
+      transition: color 0.12s;
+    }
+    .feed-section-link:hover { color: var(--accent); }
+
+    /* "Manage / List Items" — shown in the Community Marketplace header for
+       logged-in users, deep-links to their MyNostr marketplace. Pushed to the
+       right edge of that header row; wraps on narrow screens. */
     .market-manage-btn {
+      margin-left: auto;
       flex-shrink: 0;
       display: inline-flex; align-items: center;
       padding: 0.4rem 0.85rem;

@@ -122,7 +122,14 @@
 // baked into each precached HTML, so without a bump a returning visitor would
 // keep clicking through to a page that 301s. Also covers the cached
 // feeds.html + feeds-market.js/merch.js/nav.js that carry the new cart routing.
-const VERSION = 'lb-v48';
+// lb-v49: Show Merch gets a bordered box (the tab's orange, not the gold that
+// means "boosted into a featured slot" elsewhere on /feeds), "Community" in the
+// Community Marketplace header links to /supporters, and Manage / List Items
+// moves from the panel head down to that header. New .market-house /
+// .feed-section-link rules inside feeds.html's inline <style> — the classic
+// stale-CSS case, so the bump is what makes returning mobile/PWA visitors see
+// the box on first navigation instead of an unstyled section.
+const VERSION = 'lb-v49';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
