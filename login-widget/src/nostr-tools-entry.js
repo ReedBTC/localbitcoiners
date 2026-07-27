@@ -5,7 +5,7 @@
 // session-token theft, fake boosts under the donor's npub, etc.
 //
 // Vite emits this as `assets/widgets/nostr-tools.js` (ESM). Consumers:
-// boosts.html (`SimplePool`, `nip19`, `verifyEvent`) and merch.html
+// boosts.html (`SimplePool`, `nip19`, `verifyEvent`) and merch.js
 // (adds `getEventHash` + `nip59` for NIP-17/Gamma gift-wrapped orders).
 // Add new exports here when a page needs more.
 //

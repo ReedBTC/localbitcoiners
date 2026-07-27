@@ -115,7 +115,14 @@
 // the widget bundle plus featured-articles.js/feeds-articles.js, all
 // stale-while-revalidate cached, so without a bump a returning donor would keep
 // featuring articles through the old three-host split for one more session.
-const VERSION = 'lb-v47';
+// lb-v48: /merch retired into the /feeds Marketplace tab. The store is now a
+// "Show Merch" section above "Community Marketplace"; merch.js keeps the
+// catalog/modal/cart but no longer boots a page. Every page's nav changed (the
+// Merch link and the cart icon's href both point at /feeds now), and the nav is
+// baked into each precached HTML, so without a bump a returning visitor would
+// keep clicking through to a page that 301s. Also covers the cached
+// feeds.html + feeds-market.js/merch.js/nav.js that carry the new cart routing.
+const VERSION = 'lb-v48';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

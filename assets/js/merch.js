@@ -1,11 +1,17 @@
-/* Local Bitcoiners merch storefront — NIP-99 + Gamma-spec.
+/* Local Bitcoiners merch engine — NIP-99 + Gamma-spec.
+ *
+ * No page of its own: the storefront it used to render at /merch is now the
+ * "Show Merch" section of the /feeds Marketplace tab (lb-v48). What lives here
+ * is the catalog, the product modal, and the cart/checkout, imported by
+ * feeds-market.js (both marketplace sections) and home-merch.js (the homepage
+ * marquee). Nothing runs on import.
  *
  * READ-ONLY catalog: products (kind 30402), collections (30405) and
  * shipping options (30406) are fetched from the show's merchant npub.
  * Listings are created/edited elsewhere (plebeian.market, mynostr, …);
- * this page never writes them.
+ * this module never writes them.
  *
- * CHECKOUT is a full Gamma-spec order flow, but the page never touches
+ * CHECKOUT is a full Gamma-spec order flow, but it never touches
  * a private key directly. It leans entirely on the shared login widget:
  *   - window.LBLogin.signEvent / publishEvent  → sign + broadcast events
  *   - window.LBLogin.getNDK().signer.encrypt   → NIP-44 seal encryption
@@ -458,18 +464,12 @@ function cartLines() {
 }
 
 // Cart state changed — let the shared nav (nav.js) repaint its cart badge.
-// The nav owns the badge so the count shows on every page, not just /merch.
+// The nav owns the badge so the count shows on every page, not just /feeds.
 function updateCartBadge() {
   window.dispatchEvent(new Event('lb-cart-changed'))
 }
 
-// ── Rendering: storefront grid ───────────────────────────────────────
-function badgeFor(p) {
-  if (p.visibility === 'pre-order') return h('span', { class: 'merch-badge merch-badge-pre', text: 'Pre-order' })
-  if (p.stock === 0) return h('span', { class: 'merch-badge merch-badge-out', text: 'Sold out' })
-  return null
-}
-
+// ── Rendering: shared pieces ─────────────────────────────────────────
 function chevron(dir) {
   const span = h('span', { class: 'merch-chev', 'aria-hidden': 'true' })
   span.innerHTML = dir === 'left'
@@ -507,33 +507,6 @@ function imageCarousel(images, alt, { className = '', onIndexChange } = {}) {
   return { wrap, show }
 }
 
-function productCard(p) {
-  const media = h('div', { class: 'merch-card-media' },
-    p.images.length
-      ? imageCarousel(p.images, p.title, { className: 'merch-card-carousel' }).wrap
-      : h('div', { class: 'merch-card-noimg', text: '🛍️' }))
-  const badge = badgeFor(p)
-  if (badge) media.appendChild(badge)
-
-  const sub = h('div', { class: 'merch-card-sub' }, priceLabel(p.priceAmount, p.priceCurrency))
-  applySatHint(sub, p) // appends "≈ N sats" once the rate resolves
-
-  return h('div', {
-    class: 'merch-card',
-    role: 'button',
-    tabindex: '0',
-    onclick: () => openProductModal(p),
-    onkeydown: (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); openProductModal(p) } },
-  }, [
-    media,
-    h('div', { class: 'merch-card-body' }, [
-      h('h3', { class: 'merch-card-title', text: p.title }),
-      p.summary ? h('p', { class: 'merch-card-summary', text: p.summary }) : null,
-      sub,
-    ]),
-  ])
-}
-
 // Append a "≈ N sats" hint to a price element for fiat-priced items.
 async function applySatHint(el, p) {
   const c = String(p.priceCurrency || 'USD').toUpperCase()
@@ -541,20 +514,6 @@ async function applySatHint(el, p) {
   const rate = await getBtcUsd()
   const sats = toSats(p.priceAmount, p.priceCurrency, rate)
   if (sats != null) el.appendChild(h('span', { class: 'merch-sat-hint', text: `  ≈ ${fmtSats(sats)}` }))
-}
-
-function renderGrid() {
-  const grid = document.getElementById('merch-grid')
-  const loading = document.getElementById('merch-loading')
-  const empty = document.getElementById('merch-empty')
-  loading.style.display = 'none'
-  grid.innerHTML = ''
-  if (!catalog.products.length) {
-    empty.style.display = 'block'
-    return
-  }
-  empty.style.display = 'none'
-  for (const p of catalog.products) grid.appendChild(productCard(p))
 }
 
 // ── Modal scaffolding ────────────────────────────────────────────────
@@ -667,7 +626,7 @@ function paymentLud16ForMerchant(merchantHex, profile) {
 }
 
 // ── Product detail modal ─────────────────────────────────────────────
-// opts (all optional; the /merch storefront passes none):
+// opts (all optional; the homepage marquee passes none):
 //   sellerHeader — a node inserted under the title (e.g. seller pfp + name)
 //   actions      — node(s) to render in place of the default Qty/Add/Buy row
 //                  (the /feeds classifieds pass a "Contact seller" button)
@@ -1701,42 +1660,21 @@ function showOrderSuccess(orders, grandTotal, diag = []) {
   try { window.LBLogin?.confetti?.() } catch {}
 }
 
-// ── Init ─────────────────────────────────────────────────────────────
-async function init() {
-  // Expose the cart opener so the shared nav cart icon (nav.js) can open the
-  // modal in place on this page; paint the initial badge count.
-  window.openMerchCart = openCart
-  updateCartBadge()
-
-  try {
-    await fetchCatalog()
-    renderGrid()
-  } catch (e) {
-    console.error('[merch] catalog load failed', e)
-    document.getElementById('merch-loading').style.display = 'none'
-    document.getElementById('merch-error').style.display = 'block'
-  }
-
-  // Arriving from the nav cart icon on another page (/merch.html#cart) →
-  // open the cart now that the catalog is loaded so lines resolve to products.
-  if (location.hash === '#cart') openCart()
-}
-
-// Only auto-run the full storefront on the merch page. Other pages (e.g. the
-// homepage merch marquee) import the reusable exports below instead, and drive
-// their own fetch/render — running init() there would touch missing DOM.
-if (document.getElementById('merch-grid')) init()
+// ── Exports ──────────────────────────────────────────────────────────
+// This module has no page of its own and boots nothing on import: the Show
+// Merch section of the /feeds Marketplace tab replaced the /merch storefront
+// (lb-v48), so every consumer drives its own fetch and render through the
+// exports below.
 
 // Reusable pieces for the homepage merch marquee (home-merch.js): the shared
 // catalog fetch/state, the price→sats helpers, and the exact product detail
-// modal so a card click on the homepage opens the same modal as /merch.
+// modal so a card click on the homepage opens the same modal as /feeds.
 export { fetchCatalog, catalog, openProductModal, toSats, getBtcUsd, fmtSats, priceLabel }
 
 // Additional reusable pieces for the /feeds community marketplace
 // (feeds-market.js): the house-merchant identity + payment routing, the
 // catalog-merge entry point, the shared cart/checkout, and the NIP-17
-// gift-wrap send used for buyer↔seller DMs. All are import-safe on other
-// pages — init() only runs where #merch-grid exists (see above).
+// gift-wrap send used for buyer↔seller DMs.
 export {
   MERCHANT_HEX,
   ingestListings,

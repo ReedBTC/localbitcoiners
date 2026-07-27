@@ -3,11 +3,11 @@
  * scrolling the OPPOSITE direction (leftward).
  *
  * Cards are simplified here (image + title + price in sats only), but a
- * click opens the exact same product detail modal as /merch — we reuse
- * merch.js's fetchCatalog()/catalog + openProductModal() so there's one
- * source of truth for the catalog and the modal (including add-to-cart /
- * checkout). merch.js only auto-runs its full storefront when #merch-grid
- * is present, so importing it here is inert beyond the exports we use.
+ * click opens the exact same product detail modal as the Show Merch section
+ * of /feeds#market — we reuse merch.js's fetchCatalog()/catalog +
+ * openProductModal() so there's one source of truth for the catalog and the
+ * modal (including add-to-cart / checkout). merch.js boots nothing on import,
+ * so pulling it in here is inert beyond the exports we use.
  *
  * Falls back to a "Sold Out — Restocking Inventory" message on an empty
  * catalog or any fetch failure.

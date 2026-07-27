@@ -363,6 +363,10 @@
        give it breathing room from the cards above. */
     .feed-list + .feed-section-head { margin-top: 1.6rem; }
     .feed-section-head + .feed-list { margin-top: 0.8rem; }
+    /* Same spacing when the section above rendered its empty/sold-out box
+       instead of a grid (Show Merch with an empty house catalog). */
+    .feed-placeholder + .feed-section-head { margin-top: 1.6rem; }
+    .feed-section-head + .feed-placeholder { margin-top: 0.8rem; }
     .feed-section-count {
       font-family: inherit;
       font-weight: 600;
@@ -1556,7 +1560,7 @@
               <h4>Show</h4>
               <a href="/episodes.html"><span aria-hidden="true">🎧</span> Episodes</a>
               <a href="/stats.html"><span aria-hidden="true">📊</span> Stats</a>
-              <a href="/merch.html"><span aria-hidden="true">👕</span> Merch</a>
+              <a href="/feeds#market"><span aria-hidden="true">👕</span> Merch</a>
             </div>
             <div class="nav-explore-group">
               <h4>Community</h4>
@@ -1589,10 +1593,11 @@
       </button>
     </div>
     <!-- Cart icon → merch checkout cart. Hidden by nav.js until the cart
-         (sessionStorage 'lb_merch_cart') has items, except on /merch where
-         it always shows. Click opens the cart modal on /merch (merch.js
-         exposes window.openMerchCart) or navigates to /merch.html#cart. -->
-    <a id="nav-cart-link" class="nav-cart" href="/merch.html#cart" aria-label="View cart" style="display:none">
+         (sessionStorage 'lb_merch_cart') has items, except on the /feeds
+         Marketplace tab where it always shows. Click opens the cart modal in
+         place once that tab has hydrated (feeds-market.js exposes
+         window.openMerchCart) or navigates to /feeds#market-cart. -->
+    <a id="nav-cart-link" class="nav-cart" href="/feeds#market-cart" aria-label="View cart" style="display:none">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
         <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
@@ -1914,6 +1919,18 @@
 
   function panelFor(feed) { return document.getElementById('panel-' + feed); }
 
+  // #market-cart is the sitewide nav cart icon's target (the cart modal has no
+  // page of its own since /merch was folded in). It routes to the Marketplace
+  // tab and raises a flag feeds-market.js consumes once the catalog is merged,
+  // so cart lines from any seller resolve to products before the modal opens.
+  function routeFeed(raw) {
+    if (raw === 'market-cart') {
+      window.__lbOpenCartOnMarket = true;
+      return 'market';
+    }
+    return raw;
+  }
+
   function activate(feed, { focus = false, updateHash = true } = {}) {
     if (!FEEDS.includes(feed)) feed = 'events';
     document.body.setAttribute('data-active-feed', feed);
@@ -1954,12 +1971,17 @@
   });
 
   window.addEventListener('hashchange', () => {
-    activate((location.hash || '').replace('#', ''), { updateHash: false });
+    const raw = (location.hash || '').replace('#', '');
+    const feed = routeFeed(raw);
+    // Normalize the hash back to the plain tab (#market-cart -> #market) so a
+    // reload doesn't reopen the cart.
+    activate(feed, { updateHash: feed !== raw });
   });
 
   // Deep-link support: /feeds#events lands on the Events tab.
-  const initial = (location.hash || '').replace('#', '');
-  activate(FEEDS.includes(initial) ? initial : 'events', { updateHash: false });
+  const rawInitial = (location.hash || '').replace('#', '');
+  const initial = routeFeed(rawInitial);
+  activate(FEEDS.includes(initial) ? initial : 'events', { updateHash: initial !== rawInitial });
 })();
 </script>
 

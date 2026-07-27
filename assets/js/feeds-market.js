@@ -1,12 +1,21 @@
 /* Community marketplace feed — the Marketplace tab on /feeds.
  *
  * Surfaces NIP-99 (kind 30402) listings from the show's supporter follow
- * packs PLUS the Local Bitcoiners house merchant, in one badged list:
+ * packs PLUS the Local Bitcoiners house merchant, in two labelled sections:
+ *
+ *   • "Show Merch" — the house store (MERCHANT_HEX). This is the whole of the
+ *     retired /merch page: that page was folded in here (lb-v48) once the cart,
+ *     checkout and product modal it owned were already shared with this tab.
+ *     Sorted newest-first rather than Buy-Now-first, since every house listing
+ *     is Buy Now by definition. Renders the sold-out notice when empty so an
+ *     empty catalog still reads as "store, restocking" and not "no store".
+ *
+ *   • "Community Marketplace" — everything else, badged as below.
  *
  *   • "Buy Now"  — the listing is Gamma checkout-ready (structured shipping
  *     that resolves) AND the seller is payable over Lightning (their kind-0
  *     lud16, or — for the house store — the hardcoded merch address). These
- *     reuse the exact multi-merchant cart + checkout from /merch.
+ *     reuse the exact multi-merchant cart + checkout merch.js provides.
  *
  *   • "Classified" — everything else. We show what's missing to be
  *     checkout-ready (straight from the shared Gamma grader) and offer a
@@ -14,8 +23,8 @@
  *
  * Grading uses assets/js/gamma-compliance.js — a verbatim port of MyNostr's
  * grader, so "checkout-ready" here means exactly what it means there. The
- * cart, checkout, catalog and gift-wrap send are all reused from merch.js
- * (import-safe: merch.js only boots its storefront where #merch-grid exists).
+ * cart, checkout, catalog and gift-wrap send are all reused from merch.js,
+ * which is now a pure module (no page of its own) that this tab drives.
  *
  * Entry point: renderMarket({ panel, list, relays, members }) — feeds.js
  * resolves the supporter set + relays and hands them in, then lazy-imports
@@ -113,11 +122,30 @@ function showSkeletons(list, n = 4) {
 function renderPlaceholder(list, title, body) {
   list.className = ''
   list.innerHTML = ''
-  list.appendChild(h('div', { class: 'feed-placeholder' }, [
+  list.appendChild(placeholder(title, body))
+}
+
+// The placeholder box on its own, for callers appending it to a section rather
+// than replacing the whole list.
+function placeholder(title, body) {
+  return h('div', { class: 'feed-placeholder' }, [
     h('strong', { text: title }),
     document.createTextNode(body),
-  ]))
+  ])
 }
+
+// A non-collapsible section label, mirroring the one the Events tab builds
+// (sectionHead in feeds.js). Rebuilt here rather than imported: feeds.js
+// lazy-imports this module, so importing it back would be a static cycle.
+function sectionHead(label) {
+  return h('div', { class: 'feed-section-head' }, [
+    h('span', { class: 'feed-section-label', text: label }),
+  ])
+}
+
+// Shown in place of the Show Merch grid when the house catalog is empty.
+// Same copy as the homepage merch marquee (home-merch.js).
+const SOLD_OUT_MSG = 'Sold Out — Restocking Inventory'
 
 // ── Fetch every marketplace event authored by the supporter set ──────
 // Per-relay + merge (like merch.js's fetchCatalog) so a thinly-replicated
@@ -253,7 +281,7 @@ function classify(product, profile) {
   const isHouse = product.merchant === MERCHANT_HEX
   const payLud16 = paymentLud16ForMerchant(product.merchant, profile)
   const grade = gradeMerchListing(product)
-  // House store is always Buy Now (its checkout is proven on /merch and it may
+  // House store is always Buy Now (its checkout is the proven path, and it may
   // use collection-scoped shipping the strict grader flags). Other sellers must
   // be graded checkout-ready AND payable over Lightning.
   const buyNow = !!payLud16 && (isHouse || grade.ready)
@@ -366,7 +394,7 @@ function shareMenu(product) {
   return wrap
 }
 
-// Full listing view — reuses the /merch product modal (carousel + thumbnails +
+// Full listing view — reuses the shared merch.js product modal (carousel + thumbnails +
 // description + specs + shipping), swapping in the seller header and, for
 // classifieds, a "Contact seller" action in place of Qty/Add/Buy.
 function openDetail(item, onContact) {
@@ -651,10 +679,9 @@ export async function renderMarket({ panel, list, relays, members } = {}) {
   // path no supporter relays are resolved, so fall back to the static set.
   feedRelays = (relays && relays.length) ? relays : STATIC_RELAYS
 
-  // Let the shared nav cart icon open the cart IN PLACE on /feeds (merch.js
-  // only wires this on /merch, via its init). Without it the icon would
-  // navigate to /merch.html#cart, where the LB-only catalog can't resolve a
-  // community seller's line and would silently drop it.
+  // Let the shared nav cart icon open the cart IN PLACE once this tab has
+  // hydrated. Until then the icon is a plain link to /feeds#market-cart, which
+  // routes here and opens the cart at the end of this function.
   window.openMerchCart = openCart
 
   // Manage button shows immediately (independent of the fetch) and tracks
@@ -666,15 +693,39 @@ export async function renderMarket({ panel, list, relays, members } = {}) {
   }
 
   const { items, rate } = await loadMarketItems({ relays, members })
-  if (!items.length) {
-    renderPlaceholder(list, 'No listings yet', 'No marketplace listings from supporters right now — check back soon.')
-    return
+  const onContact = (item) => openContactModal(item, feedRelays)
+
+  // Split the one classified list into the two rendered sections. Inside Show
+  // Merch the shared Buy-Now-first sort carries no information (the house store
+  // is always Buy Now), so order it newest-first instead.
+  const house = items.filter((it) => it.isHouse)
+    .sort((a, b) => (b.product.created_at || 0) - (a.product.created_at || 0))
+  const community = items.filter((it) => !it.isHouse)
+
+  const grid = (section) => {
+    const g = h('div', { class: 'feed-list market-grid' })
+    for (const item of section) g.appendChild(renderCard(item, rate, onContact))
+    return g
   }
 
-  const onContact = (item) => openContactModal(item, feedRelays)
-  const grid = h('div', { class: 'feed-list market-grid' })
-  for (const item of items) grid.appendChild(renderCard(item, rate, onContact))
   list.className = ''
   list.innerHTML = ''
-  list.appendChild(grid)
+
+  list.appendChild(sectionHead('Show Merch'))
+  list.appendChild(house.length
+    ? grid(house)
+    : placeholder(SOLD_OUT_MSG, ' New show gear is on the way — check back soon.'))
+
+  list.appendChild(sectionHead('Community Marketplace'))
+  list.appendChild(community.length
+    ? grid(community)
+    : placeholder('No listings yet', ' No marketplace listings from supporters right now — check back soon.'))
+
+  // Arriving from the nav cart icon (/feeds#market-cart) → open the cart now
+  // that the catalog is merged, so every line (house AND community seller)
+  // resolves to a product.
+  if (window.__lbOpenCartOnMarket) {
+    window.__lbOpenCartOnMarket = false
+    openCart()
+  }
 }

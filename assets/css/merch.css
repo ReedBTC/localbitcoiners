@@ -1,6 +1,7 @@
-/* Merch storefront styles. Relies on the CSS custom properties defined
- * in merch.html's <head> (--cream, --navy, --green-d, --orange, …),
- * matching the rest of the site's espresso/green theme. */
+/* Merch product-modal, cart and checkout styles. Loaded by every page that
+ * can open the store's modals (feeds.html, index.html) and relies on the CSS
+ * custom properties defined in each of their <head>s (--cream, --navy,
+ * --green-d, --orange, …), matching the site's espresso/green theme. */
 
 /* ── Cart button in nav ── */
 .merch-cart-wrap { position: relative; flex-shrink: 0; }
@@ -21,12 +22,10 @@
   display: none; align-items: center; justify-content: center;
 }
 
-/* ── Grid ── */
-.merch-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 1.5rem;
-}
+/* ── Product card ──
+   The storefront grid these belonged to retired with /merch (lb-v48); the
+   /feeds Marketplace tab has its own .market-card. What's left is what the
+   homepage merch marquee (home-merch.js) still renders. */
 .merch-card {
   background: var(--white);
   border: 1px solid var(--border);
@@ -76,36 +75,13 @@
 .merch-detail-carousel .merch-carousel-arrow { width: 38px; height: 38px; opacity: 0.9; }
 .merch-detail-carousel:hover .merch-carousel-arrow { opacity: 1; }
 .merch-detail-carousel .merch-chev svg { width: 22px; height: 22px; }
-.merch-badge {
-  position: absolute; top: 0.6rem; left: 0.6rem;
-  font-size: 0.7rem; font-weight: 800; text-transform: uppercase;
-  letter-spacing: 0.05em; padding: 0.2rem 0.5rem; border-radius: 4px;
-}
-.merch-badge-pre { background: var(--orange); color: #2d2010; }
-.merch-badge-out { background: #8a8275; color: var(--white); }
 .merch-card-body { padding: 0.9rem 1rem 1.1rem; display: flex; flex-direction: column; gap: 0.3rem; }
 .merch-card-title {
   font-family: 'Playfair Display', Georgia, serif;
   font-size: 1.05rem; font-weight: 700; line-height: 1.25; color: var(--text);
 }
-.merch-card-summary { font-size: 0.88rem; color: var(--muted); line-height: 1.4; }
 .merch-card-sub { font-weight: 700; color: var(--green-d); margin-top: 0.2rem; }
 .merch-sat-hint { font-weight: 400; font-size: 0.8rem; color: var(--muted); }
-
-/* ── Loading / empty / error ── */
-.merch-state { text-align: center; padding: 3rem 0; color: var(--muted); font-style: italic; }
-.merch-coming-soon {
-  font-family: 'Playfair Display', Georgia, serif;
-  font-style: normal; font-weight: 700;
-  font-size: clamp(1.8rem, 5vw, 2.8rem);
-  color: var(--green-d); padding: 5rem 1rem;
-}
-.merch-spinner {
-  display: inline-block; width: 36px; height: 36px;
-  border: 3px solid var(--border); border-top-color: var(--green-d);
-  border-radius: 50%; animation: merch-spin 0.8s linear infinite; margin-bottom: 1rem;
-}
-@keyframes merch-spin { to { transform: rotate(360deg); } }
 
 /* ── Modal overlay ── */
 .merch-overlay {

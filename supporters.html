@@ -496,7 +496,7 @@
               <h4>Show</h4>
               <a href="/episodes.html"><span aria-hidden="true">🎧</span> Episodes</a>
               <a href="/stats.html"><span aria-hidden="true">📊</span> Stats</a>
-              <a href="/merch.html"><span aria-hidden="true">👕</span> Merch</a>
+              <a href="/feeds#market"><span aria-hidden="true">👕</span> Merch</a>
             </div>
             <div class="nav-explore-group">
               <h4>Community</h4>
@@ -529,10 +529,11 @@
       </button>
     </div>
     <!-- Cart icon → merch checkout cart. Hidden by nav.js until the cart
-         (sessionStorage 'lb_merch_cart') has items, except on /merch where
-         it always shows. Click opens the cart modal on /merch (merch.js
-         exposes window.openMerchCart) or navigates to /merch.html#cart. -->
-    <a id="nav-cart-link" class="nav-cart" href="/merch.html#cart" aria-label="View cart" style="display:none">
+         (sessionStorage 'lb_merch_cart') has items, except on the /feeds
+         Marketplace tab where it always shows. Click opens the cart modal in
+         place once that tab has hydrated (feeds-market.js exposes
+         window.openMerchCart) or navigates to /feeds#market-cart. -->
+    <a id="nav-cart-link" class="nav-cart" href="/feeds#market-cart" aria-label="View cart" style="display:none">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
         <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
