@@ -5,9 +5,9 @@
   },
   "relays": {
     "c330881e28768381dd8bdfd274341dca0c5882c29b8642ea4bc82f7563264592": [
-      "wss://relay.damus.io",
+      "wss://relay.fountain.fm",
       "wss://relay.ditto.pub",
-      "wss://relay.primal.net",
+      "wss://nos.lol",
       "wss://pyramid.fiatjaf.com"
     ]
   }

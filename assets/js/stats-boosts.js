@@ -91,7 +91,10 @@ function fetchEventsById(ids, relays) {
     try { ws = new WebSocket(url) } catch (e) { clearTimeout(timer); return resolve([]) }
     const sub = 'sx' + Math.random().toString(36).slice(2, 8)
     const got = []
-    ws.onopen = () => ws.send(JSON.stringify(['REQ', sub, { ids }]))
+    // kinds is not optional in practice: several relays reject a filter that
+    // carries only ids (purplepag.es answers `blocked: filters must specify at
+    // least one kind`), and these extras are all kind 1 anyway.
+    ws.onopen = () => ws.send(JSON.stringify(['REQ', sub, { kinds: [1], ids }]))
     ws.onmessage = (e) => {
       let m
       try { m = JSON.parse(e.data) } catch { return }

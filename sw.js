@@ -129,7 +129,17 @@
 // .feed-section-link rules inside feeds.html's inline <style> — the classic
 // stale-CSS case, so the bump is what makes returning mobile/PWA visitors see
 // the box on first navigation instead of an unstyled section.
-const VERSION = 'lb-v49';
+// lb-v50: relay lists re-derived by measurement instead of reputation, after a
+// listener on mobile saw a boosts feed ~50 notes short of the same page on
+// desktop. The read set had drifted to where two of its five relays carried the
+// thread at all, leaving Primal's 4.8 MB cache response as the only source for
+// the rest and a 6s timeout deciding how much of the feed a phone got. The new
+// set covers 399 of 399 known boosts from relays alone. This is a JS + bundle
+// change across boosts-thread.js, merch.js, home-people.js, episode-enhance.js,
+// feeds-market.js, stats-boosts.js and login-widget.js, all of them
+// stale-while-revalidate cached, so without a bump the returning mobile/PWA
+// visitors who hit the bug in the first place would keep the old relay lists.
+const VERSION = 'lb-v50';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

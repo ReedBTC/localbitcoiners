@@ -22,12 +22,15 @@ const SATS_URL = '/api/sats';
 // author + d-tag. https://following.space/d/lb-supporters-guests?p=<hex>
 const PACK_AUTHOR_HEX = 'c330881e28768381dd8bdfd274341dca0c5882c29b8642ea4bc82f7563264592';
 const PACK_D = 'lb-supporters-guests';
+// Measured against the show's own kind-39089 packs, 2026-08-12: nos.lol, ditto
+// and nostr.mom each hold all 7, relay.mostr.pub 4, relay.primal.net 1.
+// relay.damus.io, purplepag.es and relay.nostr.band hold NONE — damus led this
+// list and answered zero, so the packs were rendering off nos.lol alone.
+// relay.fountain.fm is not a candidate here; it rejects kind 39089 outright.
 const PACK_RELAYS = [
-  'wss://relay.damus.io',
   'wss://nos.lol',
-  'wss://relay.primal.net',
-  'wss://relay.nostr.band',
-  'wss://purplepag.es',
+  'wss://relay.ditto.pub',
+  'wss://nostr.mom',
 ];
 
 // Lifetime-sats tier → pfp ring (mirrors supporters.js TIERS).

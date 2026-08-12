@@ -76,14 +76,32 @@ const LUD16_RE = /^[a-zA-Z0-9_.+-]+@([a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9]
 // parallel from EpisodeBoostModal's mount-time prefetch.
 const LNURL_BODY_BYTE_CAP = 64 * 1024
 
-// Relays used for kind 30078 publishing. Same set the rest of the Nostr
-// boost ecosystem watches; broad enough for any future bot subscribing
-// to the metadata stream.
+// Relays used for kind 30078 publishing.
+//
+// This is a publish set that has to stay READABLE: these receipts are what the
+// per-leg forensics for a "my boost didn't work" report are reconstructed from,
+// so retention is the requirement, not just reach. Measured against the show's
+// own 30078s on 2026-08-12: nos.lol held 5, relay.ditto.pub 3, nostr.mom 3,
+// and relay.damus.io 4 on the runs where it answered at all.
+//
+// ⚠️ purplepag.es was in this list and could NEVER have stored a single one of
+// these. It accepts kinds 0, 3 and 10002 only, so every kind-30078 publish to
+// it has been silently discarded for as long as the list has looked like this.
+// A relay has to accept the kind at all before anything else about it matters.
+// relay.damus.io is out for intermittently answering a connect with HTTP 503,
+// which on a publish is a lost receipt rather than a slow query.
+//
+// relay.primal.net stays on the reach asymmetry rather than on evidence, and
+// the distinction is worth keeping straight: it retained none of the receipts
+// measured above and holds none of this author's kind-1s either. It is one
+// socket on an explicit action against a delivery story that cannot be measured
+// from outside. Don't cite it as grounds for keeping a low-scoring relay in a
+// READ set, where the same reasoning does not hold.
 const BOOSTAGRAM_RELAYS = [
-  'wss://relay.damus.io',
   'wss://nos.lol',
+  'wss://relay.ditto.pub',
+  'wss://nostr.mom',
   'wss://relay.primal.net',
-  'wss://purplepag.es',
 ]
 
 // ─── bolt11 payment hash extractor ──────────────────────────────────────────

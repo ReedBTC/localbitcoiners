@@ -38,21 +38,31 @@ const MERCHANT_HEX = (() => {
   return data
 })()
 
-// Same relay set the boost feed uses (boosts-thread.js).
+// The general-relay half of the boost feed's read set (boosts-thread.js), which
+// is where the measurement behind that list lives. relay.fountain.fm is
+// deliberately absent: it is the strongest relay we have for kind 1 and answers
+// a REQ for the kinds this file reads (30402 listings, kind 0) with `kinds not
+// supported`, so here it would be a socket that can only ever return nothing.
 const RELAYS = [
-  'wss://relay.damus.io',
   'wss://nos.lol',
-  'wss://relay.primal.net',
-  'wss://relay.nostr.band',
-  'wss://purplepag.es',
+  'wss://relay.ditto.pub',
+  'wss://nostr.mom',
 ]
 
 // Where to drop NIP-17 gift-wraps when the merchant has published no
 // kind-10050 DM-relay list (and no usable 10002). Write-friendly relays
 // the merchant's DM client is likely to read.
+// Reach, not coverage: this is a PUBLISH set, and the two questions have
+// opposite shapes. Asking who HAS an event is measurable and a useless member
+// costs latency on every query; asking who will SEE one is not, and a member
+// too many costs a single socket on a rare action while one too few costs
+// delivery nobody can observe. So this stays deliberately generous, and
+// relay.primal.net keeps its slot on that asymmetry rather than on evidence.
+// relay.damus.io is out because it intermittently answers a connect with HTTP
+// 503, which is a delivery failure rather than a wasted socket.
 const DEFAULT_DM_RELAYS = [
-  'wss://relay.damus.io',
   'wss://nos.lol',
+  'wss://relay.ditto.pub',
   'wss://relay.primal.net',
   'wss://relay.0xchat.com',
 ]

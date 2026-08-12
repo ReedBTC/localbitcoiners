@@ -65,10 +65,12 @@
   }
 
   // ── Relay query (kind-0 profile metadata) ──────────────────────
+  // kind-0 only. Measured over 92 booster pubkeys, 2026-08-12: nos.lol 92%,
+  // ditto 89%, nostr.mom 79%, relay.damus.io 71%, relay.primal.net 12%.
   var RELAYS = [
-    'wss://relay.damus.io',
     'wss://nos.lol',
-    'wss://relay.primal.net',
+    'wss://relay.ditto.pub',
+    'wss://nostr.mom',
   ];
   var OVERALL_TIMEOUT_MS = 4500;
   var PER_RELAY_TIMEOUT_MS = 3500;

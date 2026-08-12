@@ -1,18 +1,56 @@
 import NDK from '@nostr-dev-kit/ndk'
 import { withTimeout } from './utils.js'
 
+// NDK's explicit pool. Two jobs: IDENTITY READS (the signed-in user's kind 0
+// and kind 10002) and, because a bare `ev.publish()` goes to the pool, the base
+// set that user-authored notes publish to alongside the user's own write relays
+// that ensureUserWriteRelays adds below.
+//
+// Measured 2026-08-12 over the 92 distinct booster pubkeys behind the boost
+// megathread — kind 0 / kind 10002:
+//     nos.lol            92% / 84%
+//     relay.ditto.pub    89% / 50%
+//     nostr.mom          79% / 62%
+//     relay.damus.io     71% / 45%
+//     purplepag.es       41% / 35%
+//     relay.primal.net   12% /  7%
+//
+// relay.primal.net is out at 12% / 7%. That is the RELAY; cache1.primal.net is
+// a different service, is what the Primal client actually reads, and is queried
+// elsewhere in the site untouched by this list. relay.fountain.fm is
+// deliberately absent despite being the best relay we have for kind 1: it
+// answered 0% for both kinds this pool reads.
 export const FALLBACK_RELAYS = [
-  'wss://relay.damus.io',
   'wss://nos.lol',
-  'wss://relay.primal.net',
-  'wss://purplepag.es',
+  'wss://relay.ditto.pub',
+  'wss://nostr.mom',
+]
+
+// NDK's outbox pool — a SECOND pool, separate from explicitRelayUrls, that it
+// opens on its own to resolve a user's kind-10002 before publishing to their
+// write relays.
+//
+// ⚠️ Left unset this falls back to NDK's own hardcoded
+// `DEFAULT_OUTBOX_RELAYS = ["wss://purplepag.es/", "wss://nos.lol/"]`
+// (@nostr-dev-kit/ndk 2.18.1), and the outbox model is ON unless
+// `enableOutboxModel: false` is passed. That is why removing a relay from the
+// lists in this repo is not on its own enough to stop the browser dialing it:
+// purplepag.es survives the sweep inside the library rather than in our source.
+// Naming the pair here is what actually retires it. Keep this a profile /
+// relay-list set; resolving a kind-10002 is its only job.
+const OUTBOX_RELAYS = [
+  'wss://nos.lol',
+  'wss://relay.ditto.pub',
 ]
 
 let ndkInstance = null
 
 export function getNDK() {
   if (!ndkInstance) {
-    ndkInstance = new NDK({ explicitRelayUrls: FALLBACK_RELAYS })
+    ndkInstance = new NDK({
+      explicitRelayUrls: FALLBACK_RELAYS,
+      outboxRelayUrls: OUTBOX_RELAYS,
+    })
   }
   return ndkInstance
 }

@@ -57,7 +57,13 @@ const MARKET_KINDS = [30402, 30405, 30406]
 const KIND_DELETION = 5
 const AUTHOR_CHUNK = 50
 // Profile-heavy relay added to the query so kind-0s propagate widely.
-const PROFILE_RELAY = 'wss://purplepag.es'
+// Unioned into the caller's relays for kind-0 lookups, so it matters most when
+// a caller passes its own set. purplepag.es held this slot as the dedicated
+// profile aggregator; measured over 92 booster pubkeys on 2026-08-12 it
+// answered 41% of them and added ZERO once nos.lol and ditto were present,
+// while nos.lol alone answered 92%. Don't restore an aggregator here on the
+// reasoning that aggregating is its job — re-measure instead.
+const PROFILE_RELAY = 'wss://nos.lol'
 
 // Hourly marketplace snapshot (Cloudflare Pages Function proxying the file
 // bots/community-feeds pushes to the VPS). Same raw signed NIP-99 listings a

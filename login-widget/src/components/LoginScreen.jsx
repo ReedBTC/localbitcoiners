@@ -376,14 +376,22 @@ export default function LoginScreen({ onLogin, embedded = false }) {
 
       // Different signers publish the connect response to different relays;
       // advertise + subscribe to a broad set so whichever relay the signer
-      // picks, we'll see the response. nsec.app, primal, and damus cover
+      // picks, we'll see the response. nsec.app, primal, and ditto cover
       // most named bunkers; nos.lol + relay.nostr.band catch Amber-on-
       // Android configurations that publish to a wider set or fall back
       // to a "well-known" relay when the user's preferred isn't reachable.
+      //
+      // ⚠️ This is NIP-46 transport, not a content read set — the coverage
+      // measurement behind the relay lists elsewhere in this repo says nothing
+      // about which relays a signer app will choose, so don't prune this list
+      // against that table. The one change made on 2026-08-12 was replacing
+      // relay.damus.io with relay.ditto.pub, on damus intermittently answering
+      // a WebSocket connect with HTTP 503; a bunker handshake that lands on a
+      // refused socket is a login that fails with nothing to show the user.
       const NC_RELAYS = [
         'wss://relay.nsec.app',
         'wss://relay.primal.net',
-        'wss://relay.damus.io',
+        'wss://relay.ditto.pub',
         'wss://nos.lol',
         'wss://relay.nostr.band',
       ]

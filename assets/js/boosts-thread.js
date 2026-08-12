@@ -28,12 +28,60 @@ export const ROOT_NEVENT = 'nevent1qvzqqqqqqypzpses3q0zsa5rs8wchh7jws6pmjsvtzpv9
 
 const PRIMAL_WS_URL = 'wss://cache1.primal.net/v1'
 const PRIMAL_TIMEOUT_MS = 6000
+// The site-wide READ set. Exported and imported by feeds.js, feeds-articles.js,
+// feeds-market.js, featured-articles.js, supporter-set.js and stats-boosts.js,
+// so it answers for every kind this site reads, not just the boost thread.
+//
+// Chosen by measurement rather than reputation, 2026-08-12, against the 399
+// boost notes on the megathread and the 92 distinct booster pubkeys mentioned
+// in them. Coverage per relay:
+//
+//   relay              kind 1  kind 0  kind 10002  kind 3
+//   relay.fountain.fm     92%      0%          0%      9%
+//   relay.ditto.pub       88%     89%         50%     90%
+//   relay.damus.io        52%     71%         45%     78%
+//   nos.lol               50%     92%         84%     97%
+//   nostr.mom             38%     79%         62%     78%
+//   relay.mostr.pub       29%     74%         49%     64%
+//   relay.wavlake.com      0%     59%         41%     35%
+//   purplepag.es           0%     41%         35%     59%
+//   relay.primal.net       0%     12%          7%     22%
+//   relay.nostr.band       0%      0%          0%      0%
+//
+// Marginal coverage is what picked the four, and they are not all here for the
+// same reason. fountain answers 368 of the 399 notes and ditto takes that to
+// 398; nos.lol adds ZERO kind-1 and earns its slot outright on the other three
+// kinds, where it is the single best relay we have; nostr.mom holds the one
+// note the first three miss and is a second source behind nos.lol for profiles
+// and follow packs. That last slot is the weakest case in the list — one note
+// and redundancy — and is worth re-examining before it is taken as settled.
+//
+// The set that shipped before this one covered 349 of 399, and that gap is
+// exactly what a listener saw as boosts silently missing from the feed. The
+// four below cover 399 of 399 from relays alone, which is what takes the page
+// off depending on Primal's cache (a 4.8 MB response behind a 6s timeout) for
+// completeness rather than for speed.
+//
+// ⚠️ relay.fountain.fm is a kind-1 relay ONLY. It answers a REQ for kinds
+// 39089 or 30078 with `kinds not supported`, returns no kind 0 at all, and does
+// not EOSE on an UNFILTERED kind-1 REQ. Every consumer here filters by id,
+// author or #e, which it answers normally; keep it that way. It costs one
+// socket on the addressable-kind queries and contributes nothing to them, which
+// is the price of one list serving every reader rather than a per-kind seam
+// someone eventually imports the wrong half of.
+//
+// ⚠️ Don't re-add a relay because it is famous or because it aggregates.
+// purplepag.es was here as the dedicated profile aggregator and scored 41% with
+// ZERO marginal contribution once nos.lol and ditto are present; relay.damus.io
+// intermittently answers a WebSocket connect with HTTP 503 and holds none of
+// the show's follow packs; relay.nostr.band answered 0% on every kind tested
+// and burns the full connection budget failing on every load. Re-measure
+// instead — the script that produced this table is in the lb-v50 commit.
 const STATIC_RELAYS = [
-  'wss://relay.damus.io',
+  'wss://relay.fountain.fm',
   'wss://nos.lol',
-  'wss://relay.primal.net',
-  'wss://relay.nostr.band',
-  'wss://purplepag.es',
+  'wss://relay.ditto.pub',
+  'wss://nostr.mom',
 ]
 export { STATIC_RELAYS }
 
@@ -477,12 +525,30 @@ function eventReferencesRoot(ev, rootId) {
   return false
 }
 
+// ⚠️ maxWait is load-bearing, not a tuning knob. Left unset, the vendored pool
+// applies its own baseEoseTimeout of 4400ms per relay, and that timer fires a
+// SYNTHETIC eose — subscribeEose then closes the subscription while events are
+// still streaming, so a slow link silently returns a truncated thread rather
+// than an error. Measured from a wired desktop this query takes ~3.8s against
+// that 4400ms default, which is no margin at all for a phone on cellular, and a
+// truncated relay result is now the whole feed rather than a supplement.
+//
+// The cost is honest and worth stating: maxWait also raises the per-relay
+// connection timeout (the pool derives it as maxWait - 1000 once maxWait clears
+// its 3000ms default), so one dead relay now holds the query ~7s instead of
+// ~3s, and fetchBoostThread paints only after Promise.all settles. A spinner
+// for a few seconds longer beats a feed that is quietly missing notes, but the
+// real answer is to paint from the relays as soon as they resolve and repaint
+// when Primal lands; that changes this function's contract and its three
+// callers, so it is deliberately not bundled in here.
+const RELAY_MAX_WAIT_MS = 8000
+
 async function fetchThreadNotesFromRelays(rootId, relays) {
   const pool = new SimplePool()
   try {
     const [root, replies] = await Promise.all([
-      pool.get(relays, { kinds: [1], ids: [rootId] }).catch(() => null),
-      pool.querySync(relays, { kinds: [1], '#e': [rootId], limit: 500 }).catch(() => []),
+      pool.get(relays, { kinds: [1], ids: [rootId] }, { maxWait: RELAY_MAX_WAIT_MS }).catch(() => null),
+      pool.querySync(relays, { kinds: [1], '#e': [rootId], limit: 500 }, { maxWait: RELAY_MAX_WAIT_MS }).catch(() => []),
     ])
     const notes = []
     if (root && root.id === rootId && verifyEvent(root)) notes.push(root)
@@ -659,12 +725,24 @@ export async function fetchBoostThread({ rootNevent = ROOT_NEVENT } = {}) {
   }
 
   // Fetch from Primal and the relays in parallel, then union the note
-  // sets by id. Primal's thread_view is fast and carries kind-0 profile
-  // data, but a connection that closes mid-stream silently yields a
-  // PARTIAL thread — and the old code accepted that as complete so long
-  // as the root event was present. Relays are the completeness backstop;
-  // merging both is what keeps low-frequency notes (e.g. the three ep-1
-  // boosts among 120+) from intermittently vanishing.
+  // sets by id.
+  //
+  // ⚠️ The relays are the PRIMARY source and Primal is the supplement, which
+  // is the reverse of how this read until 2026-08-12. Primal's thread_view is
+  // one 4.8 MB response carrying ~1,900 events of which we keep the kind 1 and
+  // kind 0 — about 11% — and it delivers the notes at the very END of that
+  // stream, so a connection that misses PRIMAL_TIMEOUT_MS loses nearly all of
+  // them at once rather than a proportional slice. On a phone that is routine,
+  // and it is why a listener on mobile saw a feed 50 boosts short of the same
+  // page on desktop while every refresh returned a different subset.
+  //
+  // STATIC_RELAYS now covers 399 of 399 known boosts on its own (see the table
+  // at the top of this file), so a slow or dropped Primal response costs speed
+  // and some profile hydration, not notes. Keep the union: Primal still fills
+  // kind-0 for authors the relays don't carry, and it is the faster of the two
+  // when it lands. Note the onclose handler in primalQuery resolves with a
+  // partial event list rather than rejecting, which is safe only because the
+  // relay side no longer depends on it.
   const relays = Array.from(new Set([...STATIC_RELAYS, ...hintRelays]))
   const [primal, relayNotes] = await Promise.all([
     fetchThreadFromPrimal(rootId).catch((e) => {
