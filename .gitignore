@@ -51,6 +51,11 @@ data/community_articles.json
 # regenerates from the relays, so it has no business in git history.
 data/boost_wall.json
 
+# --- Profile cache: kind-0s for every npub the site displays, rebuilt daily
+# from a relay sweep + Primal's cache and served off the VPS. Derived from the
+# relays and from the files above, so it belongs beside them, not in history.
+data/profiles.json
+
 # --- Supporter data (VPS migration, Phase 4): served to the site from the VPS
 # via /api/{sats,zaps,meetups} and backed up there by sats-log's push_data_to_vps
 # — no longer committed, so the pipeline can run every few minutes without a

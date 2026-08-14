@@ -15,6 +15,7 @@ formatted kind-1 notes to Nostr crediting the senders.
 | `boost-leaders/` | Leaderboard: who has boosted the most distinct episodes | manual |
 | `top-boosts/` | Leaderboard: biggest single boosts of all time | manual |
 | `weekly-recap/` | Leaderboard: most-sat episodes (a.k.a. "episodesats") | manual |
+| `profiles/` | Resolves a kind-0 for every npub the site displays into `data/profiles.json` | daily, 09:45 UTC |
 
 The three leaderboards are typically fired together via `run-leaderboards.sh`
 about an hour before the weekly Local Bitcoiners recording.
@@ -31,6 +32,7 @@ bots/
 │   └── local_bitcoiners_boosts.py
 ├── boost-leaders/
 ├── top-boosts/
+├── profiles/                  # read-only: caches kind-0s, publishes nothing
 ├── ...
 └── run-leaderboards.sh        # fires all three leaderboards in sequence
 ```
@@ -126,6 +128,36 @@ python3 bots/boost-publisher/build_boost_wall.py --push      # rebuild + ship
 The file is gitignored and served from the VPS via `functions/api/boost-wall.js`,
 the same path `community_boosts.json` uses (an unrelated dataset — that one
 is *other* podcasts' boosts for the /feeds tab).
+
+## The profile cache (`data/profiles.json`)
+
+Once the wall stopped costing a thread query, resolving names and avatars
+became the slowest thing on the page — one batched profile call plus a relay
+ladder, repeated on the boost wall, /supporters, /stats and the homepage.
+`profiles/` resolves that set once a night instead.
+
+The npub set is derived, not configured: senders from `data/sats.csv`, senders
+*and* `nostr:npub1…` mentions from `data/boost_wall.json`, show guests from the
+RSS `[guests: …]` marker, and the two hand-maintained rosters (co-hosts, coding
+contributors) imported from `follow-packs`. A new supporter is therefore covered
+by the next run with nothing to redeploy.
+
+Coverage is why it queries two sources. Relays alone reach ~95% of the set, and
+partial coverage is worth nothing here — the browser call it replaces is one
+batched round trip, so anything less than complete leaves the live ladder in
+place. Primal's cache holds most of the stragglers, taking it to 152/153; the
+last one has no kind-0 anywhere, and is omitted rather than written blank so the
+site can tell "unknown" from "deliberately empty".
+
+```bash
+python3 bots/profiles/local_bitcoiners_profiles.py --dry-run    # resolve + report
+python3 bots/profiles/local_bitcoiners_profiles.py --push       # rebuild + ship
+python3 bots/profiles/local_bitcoiners_profiles.py --no-primal  # relays only (~95%)
+```
+
+Gitignored and served from the VPS, same path as the boost wall. Every event is
+signature-verified before it goes in, and the raw signed kind-0 ships alongside
+the parsed fields so the site can check rather than trust it.
 
 ## Forking for your own podcast
 

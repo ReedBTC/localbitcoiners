@@ -197,6 +197,66 @@ def fetch_events_multi(relays, filter_templates, author_hexes,
     return list(seen.values())
 
 
+# ── Primal cache ─────────────────────────────────────────────────────────────
+PRIMAL_CACHE = "wss://cache1.primal.net/v1"
+
+
+def fetch_primal_user_infos(pubkey_hexes, cache_url=PRIMAL_CACHE, batch_size=100,
+                            timeout=DEFAULT_RELAY_TIMEOUT, max_wall_seconds=30):
+    """kind-0 events for `pubkey_hexes` out of Primal's cache, as {hex: event}.
+
+    Not a relay — Primal's cache speaks the nostr wire protocol but takes a
+    `cache` filter instead of a normal one, so `query_relay` can't be pointed at
+    it. Worth the separate path because Primal has crawled profiles that are no
+    longer on any relay we query: on the site's supporter set the relay union
+    tops out at 95% and this recovers 7 of the 8 stragglers.
+
+    The response mixes in Primal's own out-of-spec kinds (10000108 user scores,
+    10000133 …) alongside the kind-0s — those are dropped. Everything kept is
+    signature-verified like any other untrusted source; a cache is exactly the
+    place a forged profile could enter, and callers serve these publicly."""
+    hexes = list(dict.fromkeys(pubkey_hexes))
+    out = {}
+    for i in range(0, len(hexes), batch_size):
+        batch = hexes[i:i + batch_size]
+        deadline = time.monotonic() + max_wall_seconds
+        try:
+            ws = websocket.create_connection(cache_url, timeout=timeout)
+            sub = "pc"
+            ws.send(json.dumps(["REQ", sub,
+                                {"cache": ["user_infos", {"pubkeys": batch}]}]))
+            while time.monotonic() < deadline:
+                remaining = deadline - time.monotonic()
+                ws.settimeout(max(0.1, min(timeout, remaining)))
+                try:
+                    msg = json.loads(ws.recv())
+                except Exception:
+                    break
+                if not isinstance(msg, list) or not msg:
+                    continue
+                if msg[0] == "EVENT" and len(msg) >= 3:
+                    ev = msg[2]
+                    if ev.get("kind") != 0 or ev.get("pubkey") not in set(batch):
+                        continue
+                    if not verify_raw_event(ev):
+                        print(f"    [warn] primal: dropped {ev.get('pubkey','')[:12]}… "
+                              f"— bad signature")
+                        continue
+                    prev = out.get(ev["pubkey"])
+                    if not prev or (ev.get("created_at") or 0) > (prev.get("created_at") or 0):
+                        out[ev["pubkey"]] = ev
+                elif msg[0] == "EOSE":
+                    break
+            try:
+                ws.send(json.dumps(["CLOSE", sub]))
+            except Exception:
+                pass
+            ws.close()
+        except Exception as e:
+            print(f"    [warn] primal cache: {e}")
+    return out
+
+
 # ── signature verification ────────────────────────────────────────────────────
 def verify_raw_event(raw):
     """True iff `raw` (a relay EVENT dict) has a valid id + schnorr signature.
