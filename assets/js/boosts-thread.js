@@ -86,6 +86,20 @@ const STATIC_RELAYS = [
 ]
 export { STATIC_RELAYS }
 
+// ⚠️ STATIC_RELAYS is the NOTE list. Anything querying a kind other than 1 has
+// to filter it, because relay.fountain.fm is kind-1 only and answers everything
+// else with `kinds not supported`.
+//
+// That refusal is not free, and it is not cheap-because-it-is-fast. Measured on
+// boosts.html, the calendar query spent 1158 ms connecting to fountain and got
+// its rejection 30 ms later — the slowest connect in the whole trace, gating a
+// Promise.all that waits on every relay in the list. Dropping it costs nothing:
+// it can never hold a NIP-52 calendar event.
+const KIND1_ONLY_RELAYS = new Set(['wss://relay.fountain.fm'])
+export function relaysForAddressableKinds(relays) {
+  return relays.filter((u) => !KIND1_ONLY_RELAYS.has(u))
+}
+
 // Hardcoded boost-note exclusions. kind-1 notes can't be deleted from
 // relays, so when boost-publisher emits a note that's wrong (e.g. the
 // Castamatic-message-dropping bug fixed in boost_formatter), we leave the
@@ -443,36 +457,98 @@ function parseProfileEvent(ev) {
   }
 }
 
-// ── Primal cache: low-level query ────────────────────────────────────
+// ── Primal cache: one shared socket ──────────────────────────────────
+// Every query used to open its own WebSocket and close it on EOSE. A single
+// page load makes three (user_infos, events, user_infos again for embed
+// authors), and measured on boosts.html those connects cost 478 + 396 + 398 ms
+// — about 800 ms spent redialling a host already spoken to. Primal multiplexes
+// on subscription id like any relay, so one socket serves them all.
+//
+// The socket closes on its own once nothing has used it for PRIMAL_IDLE_MS,
+// so a page that queries once still ends up with no lingering connection; it
+// just doesn't pay to reconnect for a query arriving moments later.
+const PRIMAL_IDLE_MS = 5000
+let primalSocket = null      // Promise<WebSocket> while connecting or open
+let primalIdleTimer = null
+const primalSubs = new Map() // subId → { onEvent, onDone }
+
+function releasePrimalSocketWhenIdle() {
+  clearTimeout(primalIdleTimer)
+  if (primalSubs.size) return
+  primalIdleTimer = setTimeout(() => {
+    if (primalSubs.size) return
+    const pending = primalSocket
+    primalSocket = null
+    Promise.resolve(pending).then((ws) => { try { ws?.close() } catch {} }).catch(() => {})
+  }, PRIMAL_IDLE_MS)
+}
+
+function openPrimalSocket() {
+  if (primalSocket) return primalSocket
+  primalSocket = new Promise((resolve, reject) => {
+    let ws
+    try { ws = new WebSocket(PRIMAL_WS_URL) } catch (e) { return reject(e) }
+    const failed = (err) => {
+      // Drop the memoized promise so the NEXT caller redials rather than
+      // inheriting a dead socket for the life of the page.
+      if (primalSocket) primalSocket = null
+      // Everything still waiting resolves with what it has; callers of this
+      // module treat an empty result as "unavailable", never as "none exist".
+      for (const [, sub] of primalSubs) sub.onDone()
+      primalSubs.clear()
+      reject(err)
+    }
+    ws.onopen = () => resolve(ws)
+    ws.onerror = () => failed(new Error('Primal WS error'))
+    ws.onclose = () => failed(new Error('Primal WS closed'))
+    ws.onmessage = (e) => {
+      let msg; try { msg = JSON.parse(e.data) } catch { return }
+      const [type, subId, payload] = msg
+      const sub = primalSubs.get(subId)
+      if (!sub) return
+      if (type === 'EVENT' && payload) sub.onEvent(payload)
+      else if (type === 'EOSE' || type === 'CLOSED') sub.onDone()
+    }
+  })
+  return primalSocket
+}
+
 function primalQuery(op, params, timeoutMs = PRIMAL_TIMEOUT_MS) {
   return new Promise((resolve, reject) => {
     let settled = false
     const events = []
-    const finish = (val, err) => {
+    const subId = `lb_${op}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+    const finish = (err) => {
       if (settled) return
       settled = true
       clearTimeout(timer)
-      try { ws.close() } catch {}
-      if (err) reject(err); else resolve(val)
+      primalSubs.delete(subId)
+      // Tell Primal to stop streaming this sub; the socket stays up for the
+      // next query. Best-effort — a closed socket makes this moot.
+      Promise.resolve(primalSocket)
+        .then((ws) => { try { ws?.send(JSON.stringify(['CLOSE', subId])) } catch {} })
+        .catch(() => {})
+      releasePrimalSocketWhenIdle()
+      if (err) reject(err); else resolve(events)
     }
-    const ws = new WebSocket(PRIMAL_WS_URL)
-    const subId = `lb_${op}_${Date.now()}`
     const timer = setTimeout(
-      () => finish(null, new Error(`Primal "${op}" timed out`)),
+      () => finish(new Error(`Primal "${op}" timed out`)),
       timeoutMs,
     )
-    ws.onopen = () => {
-      ws.send(JSON.stringify(['REQ', subId, { cache: [op, params] }]))
-    }
-    ws.onerror = () => finish(null, new Error(`Primal WS error (${op})`))
-    // If close fires before EOSE, treat whatever we have as the result.
-    ws.onclose = () => { if (!settled) finish(events) }
-    ws.onmessage = (e) => {
-      let msg; try { msg = JSON.parse(e.data) } catch { return }
-      const [type, , payload] = msg
-      if (type === 'EVENT' && payload) events.push(payload)
-      else if (type === 'EOSE') finish(events)
-    }
+    primalSubs.set(subId, {
+      onEvent: (ev) => events.push(ev),
+      // As before, a close arriving before EOSE yields whatever arrived
+      // rather than failing the query.
+      onDone: () => finish(null),
+    })
+    openPrimalSocket().then(
+      (ws) => {
+        if (settled) return
+        try { ws.send(JSON.stringify(['REQ', subId, { cache: [op, params] }])) }
+        catch { finish(new Error(`Primal send failed (${op})`)) }
+      },
+      () => finish(new Error(`Primal WS error (${op})`)),
+    )
   })
 }
 
@@ -836,7 +912,7 @@ function isWsUrl(u) {
 // (mentioned npubs, quoted notes, NIP-52 calendar events), and populates
 // the module-level caches. Returns the parsed thread structure for the
 // caller to render.
-export async function fetchBoostThread({ rootNevent = ROOT_NEVENT } = {}) {
+export async function fetchBoostThread({ rootNevent = ROOT_NEVENT, onPartial = null } = {}) {
   let rootId, hintRelays = []
   try {
     const decoded = nip19.decode(rootNevent)
@@ -900,6 +976,23 @@ export async function fetchBoostThread({ rootNevent = ROOT_NEVENT } = {}) {
   for (const [pk, p] of profiles) setCachedProfile(pk, p)
   for (const ev of notes) embedCache.set(ev.id, ev)
 
+  // Every note is in hand here, and with the profile cache the authors and
+  // boosters already have names and avatars. What is left — quoted notes,
+  // NIP-52 calendar cards, and profiles for anyone the nightly file missed —
+  // is enrichment of a few cards, not the feed.
+  //
+  // Measured on boosts.html, this point is reached at ~1.3 s while the call
+  // did not resolve until ~4.6 s, so a caller that waits for the return value
+  // stares at a spinner for three seconds holding a complete thread. onPartial
+  // lets it paint now and repaint when the rest lands; finishBoostThread
+  // evicts exactly the cards whose content changed, so the repaint is cheap.
+  //
+  // Callers that don't pass onPartial behave exactly as before.
+  if (typeof onPartial === 'function') {
+    try { onPartial({ rootEvent: root, childrenOf }) }
+    catch (e) { console.warn('[boosts-thread] onPartial threw', e) }
+  }
+
   return finishBoostThread({ root, childrenOf, notes, hintRelays })
 }
 
@@ -951,27 +1044,40 @@ async function finishBoostThread({ root, childrenOf, notes, hintRelays }) {
   const wantedPubkeys     = new Set()
   const wantedEventIds    = new Set()
   const wantedCalendarCoords = new Set()
+  // note id → the refs it mentions, so that once resolution finishes we can
+  // evict exactly the cards whose content changed. A caller that painted early
+  // has already rendered these with a truncated npub or an embed skeleton, and
+  // getOrRenderCard would otherwise hand back that same stale node forever.
+  const refsByNote = new Map()
   for (const ev of notes) {
+    const refs = { pubkeys: [], eventIds: [], coords: [] }
     for (const m of (ev.content || '').matchAll(NOSTR_URI_RE)) {
       try {
         const decoded = nip19.decode(m[1])
-        if (decoded.type === 'npub') wantedPubkeys.add(decoded.data)
-        else if (decoded.type === 'nprofile') wantedPubkeys.add(decoded.data.pubkey)
-        else if (decoded.type === 'note') wantedEventIds.add(decoded.data)
-        else if (decoded.type === 'nevent') wantedEventIds.add(decoded.data.id)
+        if (decoded.type === 'npub') { wantedPubkeys.add(decoded.data); refs.pubkeys.push(decoded.data) }
+        else if (decoded.type === 'nprofile') { wantedPubkeys.add(decoded.data.pubkey); refs.pubkeys.push(decoded.data.pubkey) }
+        else if (decoded.type === 'note') { wantedEventIds.add(decoded.data); refs.eventIds.push(decoded.data) }
+        else if (decoded.type === 'nevent') { wantedEventIds.add(decoded.data.id); refs.eventIds.push(decoded.data.id) }
         else if (decoded.type === 'naddr') {
           const { kind, pubkey, identifier } = decoded.data
           if ((kind === KIND_DATE_EVENT || kind === KIND_TIME_EVENT) && pubkey && identifier) {
-            wantedCalendarCoords.add(`${kind}:${pubkey}:${identifier}`)
+            const coord = `${kind}:${pubkey}:${identifier}`
+            wantedCalendarCoords.add(coord)
+            refs.coords.push(coord)
           }
         }
       } catch {}
+    }
+    if (refs.pubkeys.length || refs.eventIds.length || refs.coords.length) {
+      refsByNote.set(ev.id, refs)
     }
   }
   const missingPubkeys     = [...wantedPubkeys].filter(pk => !profileCache.has(pk))
   const missingEventIds    = [...wantedEventIds].filter(id => !embedCache.has(id))
   const missingCalendar    = [...wantedCalendarCoords].filter(c => !calendarCache.has(c))
-  const calendarFetchRelays = Array.from(new Set([...STATIC_RELAYS, ...hintRelays]))
+  const calendarFetchRelays = relaysForAddressableKinds(
+    Array.from(new Set([...STATIC_RELAYS, ...hintRelays])),
+  )
 
   if (missingPubkeys.length || missingEventIds.length || missingCalendar.length) {
     const [extraProfiles, extraEvents, extraCalendar] = await Promise.all([
@@ -1005,6 +1111,22 @@ async function finishBoostThread({ root, childrenOf, notes, hintRelays }) {
     if (embedAuthorPubkeys.size) {
       const more = await fetchProfilesForDisplay([...embedAuthorPubkeys])
       for (const [pk, p] of more) setCachedProfile(pk, p)
+    }
+
+    // Drop the cards that were painted before these resolved. Scoped to notes
+    // that actually referenced something missing — a full cardCache clear would
+    // rebuild all 400 nodes to fix the handful that changed.
+    const wasMissing = {
+      pubkeys: new Set(missingPubkeys),
+      eventIds: new Set(missingEventIds),
+      coords: new Set(missingCalendar),
+    }
+    for (const [noteId, refs] of refsByNote) {
+      const touched =
+        refs.pubkeys.some((pk) => wasMissing.pubkeys.has(pk)) ||
+        refs.eventIds.some((id) => wasMissing.eventIds.has(id)) ||
+        refs.coords.some((c) => wasMissing.coords.has(c))
+      if (touched) evictCard(noteId)
     }
   }
 

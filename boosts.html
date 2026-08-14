@@ -440,11 +440,29 @@
   }
 
   async function init() {
-    // fetchBoostThread owns the Primal-first + relay-fallback fetch, the
+    // fetchBoostThread owns the cached-wall fetch, the live fallback, the
     // mention/quote/calendar resolution, and cache seeding.
-    const { rootEvent, childrenOf, error } = await fetchBoostThread()
+    //
+    // onPartial fires once the whole thread is built and profiles are
+    // hydrated, which is ~1.3s ahead of the resolution of quoted notes and
+    // calendar cards. Paint there: the wall is complete and correctly named at
+    // that point, and the enrichment only changes a handful of cards. The
+    // final paint below repaints those — finishBoostThread evicts exactly the
+    // cards whose content changed, so it reuses the other ~390 DOM nodes.
+    let painted = false
+    const { rootEvent, childrenOf, error } = await fetchBoostThread({
+      onPartial: ({ rootEvent: r, childrenOf: c }) => {
+        state.rootEvent  = r
+        state.childrenOf = c
+        configureBoostActions({ rootEvent: r, childrenOf: c, rerender: rerenderBoosts })
+        paint(r, c)
+        painted = true
+      },
+    })
     if (error || !rootEvent) {
-      showError()
+      // A partial paint means the thread rendered and only enrichment failed;
+      // replacing it with an error screen would throw away a working feed.
+      if (!painted) showError()
       return
     }
     state.rootEvent  = rootEvent
