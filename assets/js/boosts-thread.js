@@ -584,6 +584,107 @@ async function fetchProfilesFromRelays(pubkeys, relays) {
   }
 }
 
+// ── Pre-assembled wall (primary source) ──────────────────────────────
+// /api/boost-wall proxies a file the bots build: every kind-1 in the thread
+// as its raw signed event, plus the payment context that was in hand when the
+// note was published. It replaces a ~5 MB Primal thread_view and four relay
+// sockets with one ~660 KB cached fetch, on all four pages that call
+// fetchBoostThread (boosts.html, index.html, stats.html, /ep###).
+//
+// Same-origin is NOT a reason to trust it. These are signed events and they
+// stay verified here exactly as the relay path verifies them; the proxy is
+// transport. What we do skip is `eventReferencesRoot` being the only filter —
+// the file is scoped to one thread, so a record that doesn't reference the
+// root is a bug in the writer and is dropped rather than rendered.
+const BOOST_WALL_URL = '/api/boost-wall'
+const BOOST_WALL_TIMEOUT_MS = 8000
+
+// Payment context by event id, populated only when the wall file is the
+// source. The thread's own notes carry no episode identifier — the publisher
+// puts the NIP-73 GUID tags on the standalone twin, not on the boost-board
+// reply, so a GUID-aware client doesn't surface every boost twice — which is
+// why episode/sats/app live in the record and not in the event's tags.
+// Absent for anything the relay fallback supplied, so callers must treat a
+// miss as "unknown", never as zero.
+const boostMetaById = new Map()
+export function getBoostMeta(id) {
+  return boostMetaById.get(id) || null
+}
+
+// ⚠️ episode_num is a zero-padded STRING ("019", "001") matching sats.csv's
+// column, and is absent rather than 0 when unknown. Compare it as a string or
+// normalize explicitly; `=== 19` will never match.
+function parseWallRecord(rec) {
+  const num = typeof rec.episode_num === 'string' ? rec.episode_num : null
+  return {
+    paymentHash:  rec.payment_hash  || null,
+    sats:         Number.isFinite(rec.sats) ? rec.sats : null,
+    senderNpub:   rec.sender_npub   || null,
+    senderName:   rec.sender_name   || null,
+    episodeId:    rec.episode_id    || null,
+    episodeNum:   num,
+    episodeTitle: rec.episode_title || null,
+    showLevel:    rec.show_level === true,
+    app:          rec.app           || null,
+    source:       rec.source        || null,
+    settledAt:    rec.settled_at    || null,
+    standaloneId: rec.standalone_id || null,
+  }
+}
+
+// Verifying the whole wall is ~1.3 ms per event, so ~550 ms for 400 notes on a
+// wired desktop and several times that on a phone. As one loop that is a
+// single long task that blocks paint and input for the duration, which would
+// spend a good part of what the file just saved. Yielding between chunks keeps
+// the total the same but lets the browser stay responsive through it.
+async function verifyEventsChunked(events, chunkSize = 40) {
+  const verified = []
+  for (let i = 0; i < events.length; i += chunkSize) {
+    const end = Math.min(i + chunkSize, events.length)
+    for (let j = i; j < end; j++) {
+      if (verifyEvent(events[j])) verified.push(events[j])
+    }
+    if (end < events.length) await new Promise((r) => setTimeout(r, 0))
+  }
+  return verified
+}
+
+// Returns null on anything unexpected so the caller falls back to the live
+// path. That deliberately includes a body that doesn't parse: the upstream
+// relay answers a MISSING file with HTTP 200 and 37 bytes of English prose
+// ("Please use a Nostr client to connect."), so a 200 is not on its own
+// evidence that the file exists.
+async function fetchThreadFromBoostWall(rootId) {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), BOOST_WALL_TIMEOUT_MS)
+  try {
+    const resp = await fetch(BOOST_WALL_URL, { signal: ctrl.signal })
+    if (!resp.ok) return null
+    const records = await resp.json()
+    if (!Array.isArray(records) || records.length === 0) return null
+
+    const candidates = []
+    const meta = new Map()
+    for (const rec of records) {
+      const ev = rec?.event
+      if (!ev || typeof ev.id !== 'string' || ev.kind !== 1) continue
+      if (ev.id !== rootId && !eventReferencesRoot(ev, rootId)) continue
+      candidates.push(ev)
+      meta.set(ev.id, parseWallRecord(rec))
+    }
+
+    const notes = await verifyEventsChunked(candidates)
+    // No root means buildThread would return nothing renderable. Treat a
+    // rootless file as a failed fetch rather than as an empty wall.
+    if (!notes.some((ev) => ev.id === rootId)) return null
+    return { notes, meta }
+  } catch {
+    return null
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 // ── Card renderer ────────────────────────────────────────────────────
 export function renderNoteCard(ev, { isRoot = false } = {}) {
   const profile = profileCache.get(ev.pubkey)
@@ -724,6 +825,66 @@ export async function fetchBoostThread({ rootNevent = ROOT_NEVENT } = {}) {
     return { rootEvent: null, childrenOf: new Map(), error: 'invalid-root' }
   }
 
+  const relays = Array.from(new Set([...STATIC_RELAYS, ...hintRelays]))
+
+  // ── Primary: the pre-assembled wall ────────────────────────────────
+  // One cached same-origin fetch replaces both live sources below. When it
+  // answers we skip them entirely rather than unioning, because the file is
+  // rebuilt daily from a relay scan of the whole thread and appended to per
+  // boost, so it already contains what the union would find — including the
+  // root, the corrections published by hand, and the replies from other
+  // pubkeys that the publisher never wrote.
+  //
+  // The honest cost is staleness. A note reaches the file when the publisher
+  // next runs and reaches the browser after the proxy's 300s cache, so a brand
+  // new boost can be ~5 minutes later here than it would have been off the
+  // relays. The publisher's own cadence already meant a boost was not instant,
+  // so this widens an existing window rather than opening a new one; if it ever
+  // needs to be tighter, a post-boost relay top-up belongs at the call sites
+  // that know a boost just settled, not in this function.
+  const wall = await fetchThreadFromBoostWall(rootId)
+
+  let notes, profiles
+  boostMetaById.clear()
+
+  if (wall) {
+    notes = wall.notes
+    for (const [id, m] of wall.meta) boostMetaById.set(id, m)
+    // The file carries no kind-0. The thread has only a handful of distinct
+    // authors (the show bot plus a couple of others), so this is one small
+    // request, and the profiles.size === 0 relay fallback below still covers
+    // it if Primal is unreachable.
+    profiles = await fetchProfilesFromPrimal([
+      ...new Set(notes.map((n) => n.pubkey)),
+    ]).catch(() => new Map())
+  } else {
+    ;({ notes, profiles } = await fetchThreadFromLiveSources(rootId, relays))
+  }
+
+  const { root, childrenOf } = buildThread(rootId, notes)
+  if (!root) {
+    return { rootEvent: null, childrenOf: new Map(), error: 'no-root' }
+  }
+
+  // If Primal was unreachable we have notes but no author profiles — back-fill
+  // them from relays so cards aren't all bare npubs.
+  if (notes.length && profiles.size === 0) {
+    profiles = await fetchProfilesFromRelays(
+      [...new Set(notes.map((n) => n.pubkey))],
+      relays,
+    ).catch(() => new Map())
+  }
+
+  for (const [pk, p] of profiles) setCachedProfile(pk, p)
+  for (const ev of notes) embedCache.set(ev.id, ev)
+
+  return finishBoostThread({ root, childrenOf, notes, hintRelays })
+}
+
+// ── Fallback: the live path ──────────────────────────────────────────
+// Unchanged from before the wall file existed, and still the whole path
+// whenever /api/boost-wall is unreachable, stale-empty, or rootless.
+async function fetchThreadFromLiveSources(rootId, relays) {
   // Fetch from Primal and the relays in parallel, then union the note
   // sets by id.
   //
@@ -743,7 +904,6 @@ export async function fetchBoostThread({ rootNevent = ROOT_NEVENT } = {}) {
   // when it lands. Note the onclose handler in primalQuery resolves with a
   // partial event list rather than rejecting, which is safe only because the
   // relay side no longer depends on it.
-  const relays = Array.from(new Set([...STATIC_RELAYS, ...hintRelays]))
   const [primal, relayNotes] = await Promise.all([
     fetchThreadFromPrimal(rootId).catch((e) => {
       console.warn('[boosts-thread] Primal fetch failed', e)
@@ -758,27 +918,14 @@ export async function fetchBoostThread({ rootNevent = ROOT_NEVENT } = {}) {
   const notesById = new Map()
   for (const ev of relayNotes) if (ev?.id) notesById.set(ev.id, ev)
   for (const ev of primal.notes) if (ev?.id) notesById.set(ev.id, ev)
-  const notes = [...notesById.values()]
-  let profiles = primal.profiles
+  return { notes: [...notesById.values()], profiles: primal.profiles }
+}
 
-  const { root, childrenOf } = buildThread(rootId, notes)
-  if (!root) {
-    return { rootEvent: null, childrenOf: new Map(), error: 'no-root' }
-  }
-
-  // If Primal was unreachable we have notes (from relays) but no author
-  // profiles — back-fill them from relays so cards aren't all bare npubs.
-  if (notes.length && profiles.size === 0) {
-    profiles = await fetchProfilesFromRelays(
-      [...new Set(notes.map((n) => n.pubkey))],
-      relays,
-    ).catch(() => new Map())
-  }
-
-  for (const [pk, p] of profiles) setCachedProfile(pk, p)
-  for (const ev of notes) embedCache.set(ev.id, ev)
-
-  // Resolve mention/quote/calendar cross-references so cards render rich.
+// ── Cross-reference resolution ───────────────────────────────────────
+// Shared by both sources: mentioned npubs, quoted notes and NIP-52 calendar
+// events are referenced from note CONTENT, so they have to be resolved live
+// no matter where the notes themselves came from.
+async function finishBoostThread({ root, childrenOf, notes, hintRelays }) {
   const wantedPubkeys     = new Set()
   const wantedEventIds    = new Set()
   const wantedCalendarCoords = new Set()

@@ -30,6 +30,19 @@ const ALLOWED_ORIGINS = new Set([
   "http://127.0.0.1:5173",
 ]);
 
+// The file is a JSON array of records. Anything that doesn't start with `[`
+// after whitespace is not the boost wall, whatever status code carried it.
+function looksLikeJsonArray(text) {
+  return typeof text === "string" && text.trimStart().startsWith("[");
+}
+
+function badUpstream(corsHeaders) {
+  return new Response("Boost wall upstream did not return JSON", {
+    status: 502,
+    headers: corsHeaders,
+  });
+}
+
 function pickCorsOrigin(originHeader) {
   if (typeof originHeader === "string" && ALLOWED_ORIGINS.has(originHeader)) {
     return originHeader;
@@ -69,6 +82,16 @@ export async function onRequest(context) {
       });
     }
 
+    // ⚠️ resp.ok is NOT evidence the file exists. The upstream is a relay host,
+    // and Caddy answers a path it doesn't serve with HTTP 200 and a 37-byte
+    // body: "Please use a Nostr client to connect." Passing that through would
+    // hand the page a 200 with Content-Type: application/json containing
+    // English prose, and the wall would silently render empty instead of
+    // falling back to the live relay path. Verified against this exact URL
+    // before the bots started writing the file. `looksLikeJson` below is the
+    // guard; it is a shape check, not a full parse, since parsing ~660 KB in
+    // the Function just to re-serialize it would be wasted work.
+
     // Cheap pre-flight check on Content-Length. The streamed read below is
     // the real guard — a hostile/misbehaving upstream can omit or lie about
     // this header.
@@ -93,6 +116,7 @@ export async function onRequest(context) {
           headers: corsHeaders,
         });
       }
+      if (!looksLikeJsonArray(text)) return badUpstream(corsHeaders);
       return new Response(text, {
         status: 200,
         headers: {
@@ -124,6 +148,7 @@ export async function onRequest(context) {
     let off = 0;
     for (const c of chunks) { buf.set(c, off); off += c.byteLength; }
     const json = new TextDecoder("utf-8").decode(buf);
+    if (!looksLikeJsonArray(json)) return badUpstream(corsHeaders);
 
     return new Response(json, {
       status: 200,
