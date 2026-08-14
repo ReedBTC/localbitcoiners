@@ -2,6 +2,8 @@
 // - HTML: network-first (always try fresh, fall back to cache offline)
 // - RSS (/api/rss): stale-while-revalidate (returning visitors see cached
 //   episodes instantly; fresh feed loads in background for next visit)
+// - Other /api/* live-data proxies: network-first, cache only as an offline
+//   fallback — these are feeds, and SWR would serve them a visit behind
 // - Widget bundles (/assets/widgets/*): stale-while-revalidate (serve
 //   cached immediately, refresh in background, next page picks up new code)
 // - Other same-origin static assets: stale-while-revalidate (serve cached
@@ -139,7 +141,25 @@
 // feeds-market.js, stats-boosts.js and login-widget.js, all of them
 // stale-while-revalidate cached, so without a bump the returning mobile/PWA
 // visitors who hit the bug in the first place would keep the old relay lists.
-const VERSION = 'lb-v53';
+// lb-v51: the boost mega-thread is read from /api/boost-wall (a bot-written
+// file) instead of a ~5 MB Primal thread_view plus four relay sockets, on
+// boosts.html, index.html, stats.html and every /ep###.
+// lb-v52: names and avatars come from /api/profiles, a nightly kind-0 sweep
+// covering every npub the site displays, retiring the batched Primal
+// user_infos round trip on /supporters, /stats, the homepage and the wall.
+// Adds /assets/js/profile-cache.js (precached below).
+// lb-v53: the wall paints when the thread is built (~1.6s) instead of when
+// quoted notes and calendar cards finish resolving (~4.6s); fountain dropped
+// from the calendar query (kind-1 only, 1158ms to connect before refusing);
+// Primal queries share one socket instead of redialling per query.
+// lb-v54: ⚠️ the /api/* live-data proxies are network-first, NOT
+// stale-while-revalidate. SWR returns `cached || network` and never consults
+// Cache-Control, so once the boost wall moved from a WebSocket the worker
+// never saw to an ordinary HTTP GET, a returning visitor would have been
+// served the wall as of their last visit and a new boost would have taken TWO
+// page loads to appear. /api/rss keeps SWR on purpose. The bump also evicts
+// any lb-v53 STATIC_CACHE entry already holding a wall response.
+const VERSION = 'lb-v54';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
@@ -223,6 +243,43 @@ function isRssRequest(url) {
   return url.pathname === '/api/rss';
 }
 
+// Live-data proxies: /api/boost-wall, /api/profiles, /api/sats, /api/zaps,
+// /api/community-*, /api/meetups. NOT /api/rss, which has its own
+// stale-while-revalidate branch below on purpose (the episode list is worth
+// showing instantly and barely changes).
+//
+// ⚠️ These must NOT go through staleWhileRevalidate. It does
+// `return cached || networkP`, so it hands back whatever is in the cache
+// regardless of age and only updates for NEXT time — Cache-Control is never
+// consulted. That is right for a hashed asset and wrong for a feed: a
+// returning visitor would see the boost wall as of their last visit, and a new
+// boost would take TWO page loads to appear. Before the wall moved to an HTTP
+// GET it arrived over a WebSocket the worker never saw, so this staleness is
+// new with that change rather than pre-existing behaviour for this data.
+function isLiveDataRequest(url) {
+  return url.pathname.startsWith('/api/') && url.pathname !== '/api/rss';
+}
+
+// Network-first: fresh data normally, cached copy only when the network fails,
+// which keeps the offline/flaky-link resilience the SW exists for. With no
+// cached copy the fetch error propagates, so the page's own catch runs — for
+// the boost wall that means falling back to the live relay path rather than
+// rendering empty.
+async function networkFirst(request, cacheName) {
+  const cache = await caches.open(cacheName);
+  try {
+    const response = await fetch(request, { cache: 'no-cache' });
+    if (response && response.ok && response.type === 'basic') {
+      cache.put(request, response.clone()).catch(() => {});
+    }
+    return response;
+  } catch (err) {
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    throw err;
+  }
+}
+
 // Stale-while-revalidate helper: serve cached immediately if present,
 // fetch fresh in the background, update cache for next visit. Falls
 // back to network-only when no cached copy exists yet.
@@ -282,6 +339,11 @@ self.addEventListener('fetch', (event) => {
     // fresh feed updates the cache in background. Cloudflare worker
     // already caches upstream for 5 min, so freshness is bounded.
     event.respondWith(staleWhileRevalidate(request, RSS_CACHE));
+    return;
+  }
+
+  if (isLiveDataRequest(url)) {
+    event.respondWith(networkFirst(request, STATIC_CACHE));
     return;
   }
 
