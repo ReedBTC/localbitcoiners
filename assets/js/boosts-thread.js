@@ -16,6 +16,7 @@
  * mutating repaints.
  */
 import { SimplePool, nip19, verifyEvent } from '/assets/widgets/nostr-tools.js'
+import { resolveProfiles } from '/assets/js/profile-cache.js'
 import {
   KIND_DATE_EVENT,
   KIND_TIME_EVENT,
@@ -496,6 +497,27 @@ async function fetchProfilesFromPrimal(pubkeys) {
   } catch { return new Map() }
 }
 
+// Display-path profile resolution: the nightly cache first, Primal only for
+// whoever it doesn't hold (someone who boosted since last night's sweep).
+//
+// ⚠️ Deliberately NOT wired into the exported fetchProfilesFromPrimal, which
+// boost-actions.js calls to read a recipient's lud16 before paying them. A
+// cache hit that predates a user adding or changing their Lightning address
+// would satisfy that call and suppress the live lookup, which is the wrong
+// trade on a payment path. Display names and avatars can be a night stale;
+// a payout address cannot.
+async function fetchProfilesForDisplay(pubkeys) {
+  if (!pubkeys.length) return new Map()
+  const { found, missing } = await resolveProfiles(pubkeys).catch(() => ({
+    found: new Map(),
+    missing: pubkeys,
+  }))
+  if (!missing.length) return found
+  const live = await fetchProfilesFromPrimal(missing)
+  for (const [pk, p] of live) found.set(pk, p)
+  return found
+}
+
 async function fetchEventsFromPrimal(eventIds) {
   if (!eventIds.length) return { notes: new Map(), profiles: new Map() }
   try {
@@ -854,7 +876,7 @@ export async function fetchBoostThread({ rootNevent = ROOT_NEVENT } = {}) {
     // authors (the show bot plus a couple of others), so this is one small
     // request, and the profiles.size === 0 relay fallback below still covers
     // it if Primal is unreachable.
-    profiles = await fetchProfilesFromPrimal([
+    profiles = await fetchProfilesForDisplay([
       ...new Set(notes.map((n) => n.pubkey)),
     ]).catch(() => new Map())
   } else {
@@ -953,7 +975,7 @@ async function finishBoostThread({ root, childrenOf, notes, hintRelays }) {
 
   if (missingPubkeys.length || missingEventIds.length || missingCalendar.length) {
     const [extraProfiles, extraEvents, extraCalendar] = await Promise.all([
-      fetchProfilesFromPrimal(missingPubkeys),
+      fetchProfilesForDisplay(missingPubkeys),
       fetchEventsFromPrimal(missingEventIds),
       fetchCalendarEventsFromRelays(missingCalendar, calendarFetchRelays),
     ])
@@ -981,7 +1003,7 @@ async function finishBoostThread({ root, childrenOf, notes, hintRelays }) {
       if (parsed?.pubkey && !profileCache.has(parsed.pubkey)) embedAuthorPubkeys.add(parsed.pubkey)
     }
     if (embedAuthorPubkeys.size) {
-      const more = await fetchProfilesFromPrimal([...embedAuthorPubkeys])
+      const more = await fetchProfilesForDisplay([...embedAuthorPubkeys])
       for (const [pk, p] of more) setCachedProfile(pk, p)
     }
   }

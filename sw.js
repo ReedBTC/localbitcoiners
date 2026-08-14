@@ -139,7 +139,7 @@
 // feeds-market.js, stats-boosts.js and login-widget.js, all of them
 // stale-while-revalidate cached, so without a bump the returning mobile/PWA
 // visitors who hit the bug in the first place would keep the old relay lists.
-const VERSION = 'lb-v51';
+const VERSION = 'lb-v52';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
@@ -172,6 +172,7 @@ const PRECACHE_URLS = [
   '/assets/js/ep-sats.js',
   '/assets/js/ep-boosts.js',
   '/assets/js/boosts-thread.js',
+  '/assets/js/profile-cache.js',
   '/assets/js/calendar-events.js',
   '/assets/js/boost-actions.js',
   '/assets/js/nav.js',

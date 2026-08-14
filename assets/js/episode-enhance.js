@@ -563,7 +563,22 @@
     }
     if (!pendingHexes.length) return Promise.resolve(out);
 
-    return fetchProfilesFromPrimal(pendingHexes).then(function (primalBest) {
+    // Ladder step 2 of 4: the site-wide profile cache. One nightly file
+    // covering every npub this site displays, so the Primal round trip below
+    // — measured at 1.3-1.7s and previously the dominant cost on /supporters,
+    // /stats and the homepage — usually has nothing left to ask for.
+    //
+    // Dynamic import keeps this script's zero-dependency load path intact: it
+    // stays a plain deferred <script>, and pages that never resolve a profile
+    // never fetch the module. Any failure resolves to "nothing found", which
+    // leaves pendingHexes untouched and the old Primal → relay ladder exactly
+    // as it was.
+    function continueWithPrimal() {
+      if (!pendingHexes.length) {
+        saveProfileCache(cache);
+        return Promise.resolve(out);
+      }
+      return fetchProfilesFromPrimal(pendingHexes).then(function (primalBest) {
       var stillMissing = [];
       for (var ph = 0; ph < pendingHexes.length; ph++) {
         var hex2 = pendingHexes[ph];
@@ -606,7 +621,28 @@
         saveProfileCache(cache);
         return out;
       });
-    });
+      });
+    }
+
+    return import('/assets/js/profile-cache.js')
+      .then(function (mod) { return mod.resolveProfiles(pendingHexes); })
+      .catch(function () { return { found: new Map(), missing: pendingHexes }; })
+      .then(function (res) {
+        res.found.forEach(function (prof, hex) {
+          var np = npubByHex[hex];
+          if (!np) return;
+          // Route the picture through safeImageUrl the same way the Primal and
+          // relay branches do — the cache stores what the kind-0 said, not a
+          // vetted URL.
+          out[np] = { name: prof.name || null, picture: safeImageUrl(prof.picture) };
+          cache[np] = {
+            name: out[np].name, picture: out[np].picture,
+            cachedAt: Date.now(),
+          };
+        });
+        pendingHexes = res.missing;
+        return continueWithPrimal();
+      });
   }
 
   function parseProfileMeta(ev) {
