@@ -901,7 +901,7 @@ async function loadEvents() {
     deletedCoords: new Map(),
     profiles: new Map(),
     relays: STATIC_RELAYS,
-    range: '1m',            // forward window: 1W / 1M / All (default 1M)
+    range: 'all',           // forward window: 1W / 1M / All (default All)
     typeFilter: 'inperson', // In-Person / Virtual / All Types (default In-Person)
     // Boosted events that render in the Featured section. Seeded with the
     // optimistic "just promoted" coords so a fresh boost glows immediately;
