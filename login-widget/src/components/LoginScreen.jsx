@@ -9,6 +9,7 @@ import { useIsMobile } from '../hooks/useIsMobile.js'
 import {
   connectViaBunkerUrl,
   connectViaNostrConnectUri,
+  probeRelayReachability,
   generateSecretKey,
   getPublicKey,
   bytesToHex,
@@ -97,9 +98,31 @@ function loadPendingNip46() {
       sessionStorage.removeItem(PENDING_NIP46_KEY)
       return null
     }
+    // A URI cached before NC_RELAYS changed still advertises the old relays.
+    // Without this check, a user who retries inside the 10-minute window gets
+    // a URI built from the list we just fixed and reproduces the original bug
+    // on the first attempt after deploy. Comparing against the live set means
+    // no manual key-versioning is needed the next time the list moves.
+    //
+    // A subset passes on purpose: the reachability preflight can legitimately
+    // drop a relay at generation time. Only relays absent from the current
+    // set invalidate the record.
+    const advertised = pendingUriRelays(parsed.nostrConnectUri)
+    if (!advertised.length || !advertised.every(r => NC_RELAYS.includes(r))) {
+      sessionStorage.removeItem(PENDING_NIP46_KEY)
+      return null
+    }
     return parsed
   } catch {
     return null
+  }
+}
+
+function pendingUriRelays(uri) {
+  try {
+    return new URL(uri).searchParams.getAll('relay')
+  } catch {
+    return []
   }
 }
 
@@ -139,6 +162,11 @@ export default function LoginScreen({ onLogin, embedded = false }) {
   const [ncTab, setNcTab] = useState(null) // 'qr' | 'paste' — set after mount based on device
   const [qrUri, setQrUri] = useState(null)
   const [qrWaiting, setQrWaiting] = useState(false)
+  // What the QR flow is actually waiting on. The bunker-paste path has had a
+  // stage label for a while; the QR path showed an undifferentiated "Waiting
+  // for signer..." for up to five minutes, which is indistinguishable from
+  // broken. Empty string falls back to that generic label.
+  const [qrStatus, setQrStatus] = useState('')
   const [copied, setCopied] = useState(false)
   // Bunker/NIP-46 can request user-approval via a web URL (nsec.app etc).
   // On mobile, window.open from an async callback is blocked by popup blockers,
@@ -238,6 +266,7 @@ export default function LoginScreen({ onLogin, embedded = false }) {
       qrSignerRef.current = null
     }
     setQrWaiting(false)
+    setQrStatus('')
     clearPendingNip46()
     abortExtensionPoll()
   }
@@ -388,6 +417,7 @@ export default function LoginScreen({ onLogin, embedded = false }) {
     }
     setQrUri(null)
     setQrWaiting(false)
+    setQrStatus('')
     setError('')
     clearPendingNip46()
     setNcTab(tab)
@@ -425,6 +455,24 @@ export default function LoginScreen({ onLogin, embedded = false }) {
         }
       }
       if (!clientSecretKey) {
+        // Advertise only relays that answer right now. Costs at most the
+        // preflight budget before the QR appears and removes the failure mode
+        // where the signer picks a dead relay out of the URI and the user
+        // waits out the whole timeout for a reply that can never arrive.
+        setQrStatus('Checking signer relays…')
+        const live = await probeRelayReachability(NC_RELAYS)
+        if (aborter.signal.aborted) return
+        // Fall back to the full list rather than block login on a strict
+        // budget: one slow-but-live relay still beats refusing to start. But
+        // zero reachable relays is a real, reportable failure, and saying so
+        // in seconds is the entire point of this preflight.
+        if (!live.length) {
+          throw new Error(
+            'Could not reach any signer relay. Check your internet connection and try again.'
+          )
+        }
+        const relays = live.length >= 2 ? live : NC_RELAYS
+
         clientSecretKey = generateSecretKey()
         clientSecret = bytesToHex(clientSecretKey)
         const clientPubkey = getPublicKey(clientSecretKey)
@@ -433,13 +481,14 @@ export default function LoginScreen({ onLogin, embedded = false }) {
         const secret = bytesToHex(secretBytes)
         nostrConnectUri = createNostrConnectURI({
           clientPubkey,
-          relays: NC_RELAYS,
+          relays,
           secret,
           name: 'Local Bitcoiners',
           url: 'https://localbitcoiners.com',
         })
         savePendingNip46({ clientSecret, nostrConnectUri })
       }
+      setQrStatus('')
       setQrUri(nostrConnectUri)
 
       const signer = await connectViaNostrConnectUri({
@@ -458,7 +507,22 @@ export default function LoginScreen({ onLogin, embedded = false }) {
             setAuthUrl(url)
           } catch {}
         },
-        timeoutMs: 300000,
+        // Mirrors the bunker-paste path's stage labels. 'waiting' means our
+        // subscription is live and the ball is in the user's court;
+        // 'get_public_key' is the second Amber prompt users routinely miss
+        // because they've already switched back to the browser.
+        onStage: (stage) => {
+          if (stage === 'waiting') {
+            setQrStatus('Waiting for you to approve in your signer app…')
+          } else if (stage === 'get_public_key') {
+            setQrStatus('Approved — waiting for your signer to send your pubkey (check for a SECOND prompt)')
+          }
+        },
+        // 180s, down from 300s, matching the bunker path. The ceiling is
+        // generous because the wait is on a human tabbing into a signer app;
+        // what made five minutes intolerable was the silence, not the length,
+        // and the stage labels above are the actual fix for that.
+        timeoutMs: 180000,
       })
 
       if (qrSignerRef.current !== handle) {
@@ -474,6 +538,7 @@ export default function LoginScreen({ onLogin, embedded = false }) {
       }
 
       setQrWaiting(false)
+      setQrStatus('')
       setLoading(true)
       ndk.signer = signer
       await connectAndWait(ndk)
@@ -490,12 +555,16 @@ export default function LoginScreen({ onLogin, embedded = false }) {
     } catch (err) {
       if (qrSignerRef.current !== handle) return
       setQrWaiting(false)
+      setQrStatus('')
       qrResubscribeBusRef.current = null
       if (qrStuckTimerRef.current) {
         clearTimeout(qrStuckTimerRef.current)
         qrStuckTimerRef.current = null
       }
-      setError('QR login failed: ' + (err.message || 'unknown error'))
+      const msg = err?.message || 'unknown error'
+      // The preflight message is already written for the user and names the
+      // actual cause; prefixing it with "QR login failed" would bury that.
+      setError(/signer relay/i.test(msg) ? msg : 'QR login failed: ' + msg)
     } finally {
       setLoading(false)
     }
@@ -515,6 +584,7 @@ export default function LoginScreen({ onLogin, embedded = false }) {
     setQrStuckPrompt(false)
     setQrUri(null)
     setQrWaiting(false)
+    setQrStatus('')
     setError('')
     clearPendingNip46()
     startQrFlow()
@@ -746,10 +816,13 @@ export default function LoginScreen({ onLogin, embedded = false }) {
               {copied ? 'Copied!' : 'Copy connection link'}
             </button>
           )}
-          {qrWaiting && qrUri && !qrStuckPrompt && (
-            <div className="flex items-center justify-center gap-2 text-xs text-neutral-500">
-              <span className="inline-block w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
-              Waiting for signer...
+          {/* Not gated on qrUri: the reachability preflight runs before the
+              URI exists, and that window is exactly when the user would
+              otherwise be staring at an unlabelled spinner. */}
+          {qrWaiting && !qrStuckPrompt && (
+            <div className="flex items-start justify-center gap-2 text-xs text-neutral-500 text-center leading-snug">
+              <span className="inline-block w-2 h-2 rounded-full bg-orange-500 animate-pulse flex-shrink-0 mt-1" />
+              <span>{qrStatus || 'Waiting for signer...'}</span>
             </div>
           )}
 
@@ -856,9 +929,9 @@ export default function LoginScreen({ onLogin, embedded = false }) {
                   </button>
                 </div>
                 {!qrStuckPrompt && (
-                  <div className="flex items-center gap-2 text-xs text-neutral-500">
-                    <span className="inline-block w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
-                    Waiting for signer to connect...
+                  <div className="flex items-start gap-2 text-xs text-neutral-500 text-center leading-snug">
+                    <span className="inline-block w-2 h-2 rounded-full bg-orange-500 animate-pulse flex-shrink-0 mt-1" />
+                    <span>{qrStatus || 'Waiting for signer to connect...'}</span>
                   </div>
                 )}
                 {qrStuckPrompt && (
@@ -882,7 +955,7 @@ export default function LoginScreen({ onLogin, embedded = false }) {
           ) : qrWaiting ? (
             <div className="flex flex-col items-center py-4">
               <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
-              <p className="text-xs text-neutral-500 mt-2">Generating QR...</p>
+              <p className="text-xs text-neutral-500 mt-2 text-center leading-snug">{qrStatus || 'Generating QR...'}</p>
             </div>
           ) : (
             <div className="flex flex-col items-center py-4 gap-2">

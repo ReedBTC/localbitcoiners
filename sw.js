@@ -159,7 +159,7 @@
 // served the wall as of their last visit and a new boost would have taken TWO
 // page loads to appear. /api/rss keeps SWR on purpose. The bump also evicts
 // any lb-v53 STATIC_CACHE entry already holding a wall response.
-const VERSION = 'lb-v54';
+const VERSION = 'lb-v55';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

@@ -238,6 +238,49 @@ function sanitizeRelayUrls(urls) {
   return out
 }
 
+// Reachability preflight for the relays we're about to advertise in a
+// nostrconnect URI. A relay that won't complete a WebSocket handshake cannot
+// carry the signer's reply, and advertising one costs the user the entire
+// timeout with no feedback — that is exactly how the dead relay.nsec.app and
+// relay.nostr.band entries presented as "Amber login silently fails".
+//
+// Measuring at generation time makes that failure class self-healing: a host
+// that dies after this code ships gets dropped from the URI on the next login
+// instead of waiting for someone to notice and re-probe by hand.
+//
+// Deliberately tolerant. Returns whichever relays opened inside the budget;
+// the caller decides what to do with a short list rather than having a
+// too-aggressive budget hard-fail an otherwise working login.
+export function probeRelayReachability(relays, timeoutMs = 2500) {
+  return Promise.all(relays.map((url) => new Promise((resolve) => {
+    let ws
+    let settled = false
+    const done = (ok) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      try { ws?.close() } catch {}
+      resolve(ok ? url : null)
+    }
+    const timer = setTimeout(() => done(false), timeoutMs)
+    try {
+      ws = new WebSocket(url)
+    } catch {
+      return done(false)
+    }
+    // Open is the whole test — we only need to know the socket completes.
+    // Write acceptance can't be probed without publishing, so that stays a
+    // manual check when the list changes (see NC_RELAYS).
+    ws.onopen = () => done(true)
+    ws.onerror = () => done(false)
+    ws.onclose = () => done(false)
+  }))).then((results) => {
+    const live = results.filter(Boolean)
+    dlog('relay preflight', { advertised: relays.length, live: live.length, dropped: relays.filter(r => !live.includes(r)) })
+    return live
+  })
+}
+
 // nostrconnect:// path. Client publishes the URI (QR/deeplink), bunker
 // initiates by sending a kind 24133 event to our client pubkey.
 //
@@ -248,7 +291,7 @@ function sanitizeRelayUrls(urls) {
 // (older spec, still widely emitted) — both of which would be silently
 // ignored. nostr-login solves this the same way we do (see reference
 // implementation /tmp/nl-nip46.ts `parseNostrConnectReply` and `listen`).
-export async function connectViaNostrConnectUri({ ndk, connectionUri, clientSecretKey, onAuthUrl, signal, resubscribeBus, timeoutMs = 300000 }) {
+export async function connectViaNostrConnectUri({ ndk, connectionUri, clientSecretKey, onAuthUrl, onStage, signal, resubscribeBus, timeoutMs = 180000 }) {
   const uri = new URL(connectionUri)
   const relays = uri.searchParams.getAll('relay')
   const secret = uri.searchParams.get('secret')
@@ -383,6 +426,10 @@ export async function connectViaNostrConnectUri({ ndk, connectionUri, clientSecr
     }
 
     buildPoolAndSub()
+    // Subscription is live, so from here the wait is on the human and their
+    // signer app, not on us. Say so — a spinner reads as broken, whereas
+    // "waiting for approval" reads as a wait the user controls.
+    try { onStage?.('waiting') } catch {}
   })
 
   // The wait-for-reply pool is only for the handshake; BunkerSigner below
@@ -411,6 +458,7 @@ export async function connectViaNostrConnectUri({ ndk, connectionUri, clientSecr
   // the response is published. 15s was tight; 30s gives the user
   // headroom without making well-behaved bunkers feel slow.
   dlog('handshake done; calling get_public_key')
+  try { onStage?.('get_public_key') } catch {}
   const userPubkey = await withTimeout(
     bs.getPublicKey(),
     30000,
