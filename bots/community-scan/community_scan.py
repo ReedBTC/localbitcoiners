@@ -41,7 +41,7 @@ from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "shared"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from nostr_utils import load_config, NOSTR_RELAYS                       # noqa: E402
+from nostr_utils import load_config, BOOST_SCAN_RELAYS                  # noqa: E402
 from collector_common import (                                          # noqa: E402
     fetch_events_multi, verify_raw_event, load_community_npubs,
     resolve_scan_relays, push_file_to_vps,
@@ -129,7 +129,7 @@ def deep_relays(members, state, force):
               f"({int(age // 60)} min old)")
         return cache["relays"]
     print("Resolving deep relay set (base + per-member NIP-65 outbox)...")
-    relays = resolve_scan_relays(members, NOSTR_RELAYS, resolve_outbox=True)
+    relays = resolve_scan_relays(members, BOOST_SCAN_RELAYS, resolve_outbox=True)
     state["scan_relays"] = {"relays": relays, "resolved_at": int(time.time()),
                             "member_hash": member_hash(members)}
     print(f"{len(relays)} deep relays (cached {RELAY_CACHE_TTL // 3600}h)")
@@ -196,7 +196,7 @@ def scoped_backfill(new_members, wall):
     """Full-history fetch scoped to just newly-added members, on base + THEIR
     outbox relays. Returns (boost_raw, feed_by_kind, deletions, newest_ts)."""
     print(f"New members ({len(new_members)}) — scoped full-history backfill...")
-    nm_relays = resolve_scan_relays(new_members, NOSTR_RELAYS, resolve_outbox=True)
+    nm_relays = resolve_scan_relays(new_members, BOOST_SCAN_RELAYS, resolve_outbox=True)
     print(f"  {len(nm_relays)} relays for the new-member backfill")
     return fetch_bucket(nm_relays, new_members,
                         boost_since=SINCE_CUTOFF, feed_since=None,
@@ -254,7 +254,7 @@ def main():
 
     # ── tier setup: relay set + scan modes ──
     if tier == "quick":
-        relays = list(NOSTR_RELAYS)
+        relays = list(BOOST_SCAN_RELAYS)
         full_content = first_run
         wide_deletions = first_run
         refresh_profiles = first_run

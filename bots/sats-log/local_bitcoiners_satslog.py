@@ -85,7 +85,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "shared"))
 from boost_formatter import (
     classify_lb_tx, make_cache, persist_cache,
     build_rss_item_index, _extract_episode_number,
-    NIP52_KINDS, _NADDR_RE, decode_naddr,
+    FEATURABLE_KINDS, _NADDR_RE, decode_naddr,
 )
 from nostr_utils import (
     load_config, hex_to_npub, npub_to_hex,
@@ -138,7 +138,7 @@ MEETUP_COLUMNS = [
     "source",           # boost source (website | fountain_boost | keysend | ...)
     "naddr",            # the naddr1... as found in the message, lowercased
     "coordinate",       # kind:pubkey:identifier — stable dedup key for the event
-    "event_kind",       # 31922 (date-based) | 31923 (time-based)
+    "event_kind",       # 31922 (date) | 31923 (time) calendar event | 30023 (article)
     "sender_npub",      # booster's npub when known; empty otherwise
     "sender_name",      # booster's display name when known; empty otherwise
     "episode_num",      # zero-padded episode the boost landed on, if derivable
@@ -1875,25 +1875,29 @@ def build_sats_zap_rows(zap_rows, relays, cache, neg_cache, now, retry_after=864
 
 
 # ---------------------------------------------------------------------------
-# Meetups — NIP-52 calendar-event naddrs shared via boost
+# Featured events — addressable-event naddrs shared via boost
 #
-# Boosters sometimes promote a local meetup by pasting its NIP-52 calendar
-# event (an naddr1...) into the boost message. This pass scans every boost
-# message for those naddrs and logs them to data/meetups.csv so the website
-# can build a meetups page. Pure transform of rows already in sats.csv — the
-# pipeline's full rewrite means the first run backfills the whole history.
+# Boosters promote something by pasting its naddr1... into the boost message:
+# a NIP-52 calendar event (a local meetup → the site's Events tab) or a NIP-23
+# long-form article (→ the site's Articles tab). This pass scans every boost
+# message for those naddrs and logs them to data/meetups.csv; the website
+# splits Events vs Articles by the `event_kind` column. (The file keeps its
+# meetups.* name for continuity even though it now also carries articles.)
+# Pure transform of rows already in sats.csv — the pipeline's full rewrite
+# means the first run backfills the whole history.
 #
-# NIP52_KINDS / _NADDR_RE / decode_naddr live in boost_formatter (imported
-# above) so this meetups pass and the boost-publisher's plektos.app link agree
-# on what counts as a NIP-52 calendar event.
+# FEATURABLE_KINDS / _NADDR_RE / decode_naddr live in boost_formatter (imported
+# above) so this pass and the boost-publisher's web link agree on what counts
+# as a featurable event.
 # ---------------------------------------------------------------------------
 
 
 def extract_meetup_rows(boost_rows):
-    """Scan boost messages for NIP-52 calendar-event naddrs and return one
-    meetup row per (event × boost). Occurrence grain: the same meetup boosted
-    on three episodes yields three rows; the website dedups on `coordinate`.
-    A naddr repeated within a single message is counted once."""
+    """Scan boost messages for featurable naddrs (NIP-52 calendar events +
+    NIP-23 articles) and return one row per (event × boost). Occurrence grain:
+    the same event boosted on three episodes yields three rows; the website
+    dedups on `coordinate`. A naddr repeated within a single message is counted
+    once."""
     rows = []
     for r in boost_rows:
         message = r.get("message") or ""
@@ -1903,7 +1907,7 @@ def extract_meetup_rows(boost_rows):
         for m in _NADDR_RE.finditer(message):
             token = m.group(0).lower()
             decoded = decode_naddr(token)
-            if not decoded or decoded["kind"] not in NIP52_KINDS:
+            if not decoded or decoded["kind"] not in FEATURABLE_KINDS:
                 continue
             coordinate = f'{decoded["kind"]}:{decoded["pubkey"]}:{decoded["identifier"]}'
             if coordinate in seen_here:

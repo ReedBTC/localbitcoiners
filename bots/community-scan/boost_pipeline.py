@@ -21,7 +21,7 @@ import bech32
 import requests
 import websocket
 
-from nostr_utils import hex_to_npub, NOSTR_RELAYS
+from nostr_utils import hex_to_npub, BOOST_SCAN_RELAYS
 from boost_formatter import strip_fountain_trailer, LB_FEED_GUID
 
 PODCAST_INDEX_BASE = "https://api.podcastindex.org/api/1.0"
@@ -166,7 +166,7 @@ def classify_boost(event, receipt_cache):
                 candidate_ids.append(eid)
         for cid in dict.fromkeys(candidate_ids):
             if cid not in receipt_cache:
-                receipt_cache[cid] = fetch_event_by_id(cid, NOSTR_RELAYS)
+                receipt_cache[cid] = fetch_event_by_id(cid, BOOST_SCAN_RELAYS)
             receipt = receipt_cache[cid]
             if receipt and receipt.get("kind") == 9735:
                 is_boost = True

@@ -306,8 +306,12 @@ def main():
     rows  = load_sats_rows()
     state = load_state()
 
-    # Publish target: the show's own outbox (NIP-65) unioned with the fallback
-    # set, so packs land on the show's relays plus the broad defaults.
+    # Publish target: the show's own outbox (NIP-65) unioned with NOSTR_RELAYS,
+    # so packs land on the show's relays plus the broad defaults. Measured
+    # 2026-08-12: nos.lol, relay.ditto.pub and nostr.mom each hold all 7 of our
+    # packs; relay.damus.io, purplepag.es and relay.nostr.band hold none — the
+    # first three only reach us through NOSTR_RELAYS, not through the outbox.
+    # publish_to_nostr drops the kind-1-only relays (fountain) for kind 39089.
     outbox = get_outbox_relays(SHOW_HEX) or []
     relays = list(dict.fromkeys(outbox + NOSTR_RELAYS))
 
