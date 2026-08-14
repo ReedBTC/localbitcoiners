@@ -40,6 +40,42 @@ import {
 const PENDING_NIP46_KEY = 'lb_pending_nip46'
 const PENDING_NIP46_MAX_AGE_MS = 10 * 60 * 1000
 
+// Relays advertised inside the nostrconnect:// URI. The signer app publishes
+// its connect reply to whichever of these it can reach, so this list is pure
+// transport: every entry must complete a TCP/WS handshake AND accept a kind
+// 24133 write from an unknown pubkey.
+//
+// ⚠️ Two independent constraints apply here, and they are easy to confuse:
+//
+//   1. Coverage. This is NOT a content read set. The relay-coverage
+//      measurement behind the lists elsewhere in this repo says nothing about
+//      which relay a signer app will choose, so do NOT prune this list
+//      against that table.
+//   2. Reachability. Coverage being irrelevant does not make a dead host
+//      harmless. A relay that will not complete a handshake, or that refuses
+//      the write, is useless as transport no matter how good its coverage is,
+//      and an unreachable entry listed first is a login that hangs with
+//      nothing to show the user.
+//
+// lb-v50 got (1) right and (2) wrong, which is how relay.nsec.app (connection
+// refused on :443) and relay.nostr.band (blackholes the handshake — worse
+// than refusing, because callers burn the full timeout) survived here.
+//
+// All five below were measured on 2026-08-14: WS handshake, a REQ for kind
+// 24133, and an accepted kind-24133 publish, two passes each. Re-measure
+// before adding or removing an entry; do not add one on reputation.
+//
+// Dropping relay.nsec.app is safe despite the name: an nsec.app bunker
+// publishes to whatever relays the URI advertises and does not require its
+// own host in the list, only mutual reachability.
+export const NC_RELAYS = [
+  'wss://relay.primal.net',
+  'wss://relay.ditto.pub',
+  'wss://nos.lol',
+  'wss://nostr.mom',
+  'wss://purplerelay.com',
+]
+
 function savePendingNip46(state) {
   try {
     if (!state?.clientSecret || !state?.nostrConnectUri) return
@@ -373,28 +409,6 @@ export default function LoginScreen({ onLogin, embedded = false }) {
     try {
       const ndk = getNDK()
       await connectAndWait(ndk)
-
-      // Different signers publish the connect response to different relays;
-      // advertise + subscribe to a broad set so whichever relay the signer
-      // picks, we'll see the response. nsec.app, primal, and ditto cover
-      // most named bunkers; nos.lol + relay.nostr.band catch Amber-on-
-      // Android configurations that publish to a wider set or fall back
-      // to a "well-known" relay when the user's preferred isn't reachable.
-      //
-      // ⚠️ This is NIP-46 transport, not a content read set — the coverage
-      // measurement behind the relay lists elsewhere in this repo says nothing
-      // about which relays a signer app will choose, so don't prune this list
-      // against that table. The one change made on 2026-08-12 was replacing
-      // relay.damus.io with relay.ditto.pub, on damus intermittently answering
-      // a WebSocket connect with HTTP 503; a bunker handshake that lands on a
-      // refused socket is a login that fails with nothing to show the user.
-      const NC_RELAYS = [
-        'wss://relay.nsec.app',
-        'wss://relay.primal.net',
-        'wss://relay.ditto.pub',
-        'wss://nos.lol',
-        'wss://relay.nostr.band',
-      ]
 
       // Reuse the saved secret + URI if we published one recently.
       let clientSecretKey
