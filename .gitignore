@@ -7,6 +7,7 @@ CLAUDE_CODE_HANDOFF.md
 # --- Bots: operational state (regenerable from Alby Hub / Nostr) ---
 bots/**/state.json
 bots/**/state.json.bak
+bots/**/state.json.bak-*
 bots/**/state.json.before-*
 bots/**/*.lock
 bots/**/state_*.json
@@ -43,6 +44,12 @@ data/community_boosts.json
 data/community_events.json
 data/community_market.json
 data/community_articles.json
+
+# --- Boost wall: the boost mega-thread as raw signed events, written by
+# bots/boost-publisher (live) and build_boost_wall.py (reconcile), served off
+# the VPS. Same reason as the files above — it changes every ~10 minutes and
+# regenerates from the relays, so it has no business in git history.
+data/boost_wall.json
 
 # --- Supporter data (VPS migration, Phase 4): served to the site from the VPS
 # via /api/{sats,zaps,meetups} and backed up there by sats-log's push_data_to_vps

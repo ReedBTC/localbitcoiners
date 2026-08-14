@@ -15,30 +15,93 @@ import requests
 import websocket
 from pynostr.key import PrivateKey
 
-# Small, fast, reliable bootstrap set used for metadata lookups (kind 0, kind 3,
-# kind 10002). All are popular general-purpose relays that respond within a few
-# seconds. purplepag.es is a profile aggregator — specifically useful for finding
-# kind 0 / kind 10002 events that haven't propagated widely.
+# Small, fast bootstrap set used for metadata lookups (kind 0, kind 3, kind
+# 10002). This is a READ set: a member that holds nothing costs latency on every
+# lookup, so it's kept lean and re-measured rather than grown by reputation.
+# Re-derived 2026-08-12 against the 92 booster pubkeys on the boost megathread
+# (kind 0 / kind 3 / kind 10002 hit rate per relay):
+#   nos.lol 92/97/84 · relay.ditto.pub 89/90/50 · nostr.mom 79/78/62
+# Dropped: purplepag.es (41/59/35 — added zero marginal coverage once nos.lol
+# and ditto were in, despite being the dedicated profile aggregator),
+# relay.primal.net (12/22/7), relay.damus.io (71/78/45 but intermittently
+# answers the WebSocket connect with HTTP 503, so it's a timeout on the
+# critical path of every lookup).
 BOOTSTRAP_RELAYS = [
-    "wss://relay.damus.io",
     "wss://nos.lol",
-    "wss://relay.primal.net",
-    "wss://purplepag.es",
+    "wss://relay.ditto.pub",
+    "wss://nostr.mom",
 ]
 
-# Kind-1 fallback set used by `publish_to_nostr` when an account has no kind 10002
-# outbox to resolve. Trimmed in 2026-04 to drop chronically-flaky relays
-# (nostr.band, snort.social, oxtr.dev, current.fyi) — they timed out on every run.
-# Notes are no longer routinely broadcast to this set; the outbox model handles
-# the normal publish path. relay.fountain.fm is retained because Fountain users
-# often have profiles there.
+# Kind-1 publish set. Unioned with the author's kind-10002 outbox by
+# `publish_to_nostr` (see there) — it is no longer a fallback that only fires
+# when an account has no 10002, because the LB show account HAS a 10002 whose
+# write set (damus / ditto / primal / pyramid) misses three of the four relays
+# the website reads notes back from.
+#
+# A publish set answers "who will see this", which can't be measured from
+# outside: an extra member costs one socket, an omission costs reach nobody can
+# observe. So this list is deliberately generous — EXCEPT that everything here
+# must be able to store what we send it. Re-derived 2026-08-12; the first four
+# are exactly what localbitcoiners.com reads (399/399 known boosts from relays
+# alone), so they are the audience this list has to reach:
+#   relay.fountain.fm 92% of the megathread · relay.ditto.pub 88% ·
+#   nos.lol 50% · nostr.mom 38%
+# relay.damus.io (52%) and relay.primal.net stay for reach beyond the site —
+# primal serves the mobile clients' cache even though it returns ~none of our
+# notes on a direct REQ.
+#
+# Dropped 2026-08-12:
+#   relay.getalby.com/v1 — NWC transport, not a general relay. It and the bare
+#     host answer EVERY REQ with `blocked: Request rejected`, so a note
+#     published there can never be read back by anyone. (NWC is unaffected: a
+#     wallet connection carries its own relay in the connection string and
+#     never consults this list.)
+#   purplepag.es — accepts kinds 0/3/10002 only; measured 0% on kind 1 and has
+#     never stored a boost note.
 NOSTR_RELAYS = [
-    "wss://relay.damus.io",
-    "wss://purplepag.es",
-    "wss://nos.lol",
-    "wss://relay.getalby.com/v1",
-    "wss://relay.primal.net",
     "wss://relay.fountain.fm",
+    "wss://relay.ditto.pub",
+    "wss://nos.lol",
+    "wss://nostr.mom",
+    "wss://relay.damus.io",
+    "wss://relay.primal.net",
+]
+
+# Relays that accept kind 1 and nothing else. relay.fountain.fm answers a REQ
+# for 30078 / 39089 / kind 0 with `kinds not supported` and returns no profile
+# data at all — it's a note relay only. `publish_to_nostr` drops these for
+# kind != 1 so the note path can keep fountain (mandatory: ~90% of Fountain
+# boosts live only there) without the follow-pack and receipt paths wasting a
+# socket on a guaranteed rejection.
+#
+# Reading from fountain has a second trap: it does NOT send EOSE on an
+# unfiltered kind-1 REQ, so always filter by author, id or #e or the query
+# hangs until timeout.
+KIND1_ONLY_RELAYS = {
+    "wss://relay.fountain.fm",
+}
+
+# Read-only base relay set for the community-scan boost/feed collector. This is
+# NOT a publish set — keep it separate from NOSTR_RELAYS (the kind-1 publish
+# set). It also answers a different question: where OTHER podcasts' boosts land,
+# an audience whose relay ranking does not transfer to ours (chadf.nostr1.com
+# and podtards.com score ~0% on our own notes; relay.ditto.pub is 88% for us
+# against 32% there, because our boost notes have one bot author rather than
+# dozens of distinct boosters). Re-measure per audience; never copy a table over.
+# Chosen empirically 2026-07-24 by probing where NIP-73 podcast-boost notes
+# actually land (see bots/boost-relay-landscape.md). Dropped purplepag.es /
+# getalby / primal (profile/relay-list relays, ~0 boost notes) and added the
+# bitcoin/podcasting relays that carry the most boost content. relay.fountain.fm
+# is mandatory: ~90% of Fountain boosts live only there.
+BOOST_SCAN_RELAYS = [
+    "wss://relay.damus.io",
+    "wss://nos.lol",
+    "wss://relay.fountain.fm",
+    "wss://nostr21.com",
+    "wss://chadf.nostr1.com",
+    "wss://podtards.com",
+    "wss://nostr.mom",
+    "wss://relay.wavlake.com",
 ]
 
 def load_config(config_file):
@@ -384,32 +447,91 @@ def write_dry_run_event(note_text, nsec, prefix, extra_tags=None, reply_to_event
     path.write_text(json.dumps(event, indent=2, ensure_ascii=False))
     return path, event_id
 
-def publish_to_nostr(note_text, nsec, reply_to_event_id=None, relays=None, extra_tags=None, kind=1, created_at=None):
+def _send_event(relay, msg, timeout=10):
+    """Send one pre-serialized ["EVENT", …] frame to one relay.
+
+    Returns (accepted, detail). NIP-20's reply is ["OK", <id>, <accepted>, <msg>]
+    — the third element is the verdict, so `parsed[0] == "OK"` alone is NOT
+    acceptance: a relay that refuses the event still answers with an OK frame
+    (`["OK", id, false, "blocked: …"]`). Reading only the frame name printed a ✓
+    for every rejection, which is how a kind the relay doesn't store looks
+    exactly like a successful publish.
+
+    `detail` is prefixed with "!" for a transport-level failure (worth a retry)
+    and unprefixed for a relay's own refusal (retrying can't change it)."""
+    try:
+        ws = websocket.create_connection(relay, timeout=timeout)
+        ws.settimeout(timeout)
+        try:
+            ws.send(msg)
+            # Some relays send an AUTH/NOTICE frame ahead of the OK.
+            for _ in range(4):
+                parsed = json.loads(ws.recv())
+                if parsed[0] == "OK":
+                    ok = bool(parsed[2]) if len(parsed) > 2 else False
+                    return ok, (parsed[3] if len(parsed) > 3 else "") or ""
+                if parsed[0] in ("NOTICE", "CLOSED"):
+                    return False, " ".join(str(x) for x in parsed[1:])[:120]
+            return False, "no OK frame"
+        finally:
+            ws.close()
+    except Exception as e:
+        return False, f"!{type(e).__name__}: {e}"
+
+
+def publish_to_nostr(note_text, nsec, reply_to_event_id=None, relays=None, extra_tags=None, kind=1, created_at=None, return_event=False):
     """Sign and broadcast a Nostr event. Returns the event_id on success, None on failure.
     kind defaults to 1 (text note); pass kind=3 for a contact list, etc.
+
+    `return_event=True` returns the full signed event dict instead of just the id
+    (the id is still `event["id"]`). Opt-in so the 16 existing callers keep the
+    id-or-None contract they were written against. Use it when the event itself
+    has to be persisted — boost_wall.json ships the raw signed reply so the
+    website can render and `verifyEvent` it without a relay round-trip.
     Pass `created_at` to override the timestamp (e.g. backdating a corrected
     republish to its original note's time); defaults to now.
 
     When `relays` is None, the publish target is resolved per NIP-65: the author's
-    kind 10002 outbox is fetched and used. If no 10002 is found, kind-1 falls back
-    to NOSTR_RELAYS with a warning; replaceable / non-kind-1 events refuse to publish
-    rather than scatter copies across a hardcoded set their author hasn't opted into.
+    kind 10002 outbox is fetched. For kind 1 that outbox is UNIONED with
+    NOSTR_RELAYS (order: outbox first, then the extras) — the show's 10002 write
+    set reaches only one of the four relays localbitcoiners.com reads notes back
+    from, so outbox-only publishing left the site depending on propagation. For
+    replaceable / non-kind-1 events the outbox is used alone, and a missing 10002
+    refuses to publish rather than scatter copies across a hardcoded set their
+    author hasn't opted into.
     Pass `relays=` explicitly to override entirely."""
     try:
         pk         = PrivateKey.from_nsec(nsec)
         pubkey     = pk.public_key.hex()
 
         if relays is None:
-            relays = get_outbox_relays(pubkey)
-            if not relays:
-                if kind == 1:
-                    print(f"  [warn] No kind 10002 outbox for {pubkey[:12]}... — falling back to NOSTR_RELAYS")
-                    relays = NOSTR_RELAYS
-                else:
-                    raise RuntimeError(
-                        f"No kind 10002 outbox for {pubkey[:12]}... — refusing to publish "
-                        f"kind {kind} (replaceable) to fallback relays. Pass relays= explicitly "
-                        f"or publish a kind 10002 for this account first.")
+            outbox = get_outbox_relays(pubkey)
+            if kind == 1:
+                if not outbox:
+                    print(f"  [warn] No kind 10002 outbox for {pubkey[:12]}... — publishing to NOSTR_RELAYS only")
+                relays = list(dict.fromkeys(outbox + NOSTR_RELAYS))
+            elif outbox:
+                relays = outbox
+            else:
+                raise RuntimeError(
+                    f"No kind 10002 outbox for {pubkey[:12]}... — refusing to publish "
+                    f"kind {kind} (replaceable) to fallback relays. Pass relays= explicitly "
+                    f"or publish a kind 10002 for this account first.")
+
+        # Kind-1-only relays reject everything else outright, and they arrive
+        # here from three directions (NOSTR_RELAYS, an author's 10002, or an
+        # explicit list), so filter at the publish boundary rather than at each
+        # caller. See KIND1_ONLY_RELAYS.
+        if kind != 1:
+            kept = [r for r in relays if r not in KIND1_ONLY_RELAYS]
+            for r in relays:
+                if r in KIND1_ONLY_RELAYS:
+                    print(f"    – {r.split('/')[2]} (kind-1 only, skipped for kind {kind})")
+            if not kept:
+                raise RuntimeError(
+                    f"Every relay in the publish list is kind-1 only — nowhere to "
+                    f"publish kind {kind}. Pass relays= explicitly.")
+            relays = kept
         if created_at is None:
             created_at = int(time.time())
         tags       = []
@@ -436,19 +558,30 @@ def publish_to_nostr(note_text, nsec, reply_to_event_id=None, relays=None, extra
 
         msg = json.dumps(["EVENT", event])
 
+        accepted = 0
         for relay in relays:
-            try:
-                ws = websocket.create_connection(relay, timeout=10)
-                ws.send(msg)
-                result = ws.recv()
-                ws.close()
-                parsed = json.loads(result)
-                status = "✓" if parsed[0] == "OK" else "✗"
-                print(f"    {status} {relay.split('/')[2]}")
-            except Exception as e:
-                print(f"    ✗ {relay.split('/')[2]}: {e}")
+            ok, detail = _send_event(relay, msg)
+            retried = False
+            # One retry on a transport failure only (relay.damus.io intermittently
+            # answers the WebSocket connect with HTTP 503 — on a publish that's a
+            # lost note, not a slow query). A relay that answered with OK-false
+            # made a decision; re-sending won't change it.
+            if not ok and detail.startswith("!"):
+                retried = True
+                time.sleep(2)
+                ok, detail = _send_event(relay, msg)
+            accepted += 1 if ok else 0
+            status = "✓" if ok else "✗"
+            note   = detail.removeprefix("!") if not ok else ""
+            if retried:
+                note = (note + " " if note else "") + "(after retry)"
+            print(f"    {status} {relay.split('/')[2]}{': ' + note if note else ''}")
 
-        return event_id
+        if accepted == 0:
+            print(f"  [warn] kind {kind} event {event_id[:12]}… was accepted by 0 of "
+                  f"{len(relays)} relays — it is not readable anywhere")
+
+        return event if return_event else event_id
 
     except Exception as e:
         print(f"  [error] Nostr publish failed: {e}")

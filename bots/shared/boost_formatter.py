@@ -60,15 +60,38 @@ LB_DONATION_APP_IDS = {28}
 # losing an entry to a race just means the next run re-adds it.
 EPISODE_ID_MAP_FILE = _BOTS_ROOT / "shared/lb_episode_ids.json"
 
-# Fixed relay set defined by the V4V 2.0 spec (see v4v-2.0-spec-update.md at
-# the repo root, "Relay Set"). Donation publishers write kind-30078 events
-# here; recipient bots query here. Keep in lockstep with the spec — changes
-# affect every V4V 2.0 bot.
+# Relay set for V4V 2.0 kind-30078 boostagrams / boost receipts (see
+# v4v-2.0-spec-update.md at the repo root, "Relay Set"). Donation publishers
+# write here; recipient bots query here. Keep in lockstep with the website —
+# a receipt we can't read is a boost we mis-report.
+#
+# This is the one read set where a missing relay silently discards data rather
+# than costing latency: `_merge_receipt_outcomes` rebuilds a boost's true total
+# by unioning every receipt sharing a boost_session, and since the 2026-07
+# retry fix those receipts are signed by DIFFERENT per-round burner keys, so
+# they don't replace each other on relays. Miss the relay holding the retry
+# round and the boost silently under-reports — the same failure mode as the
+# 2026-07 under-report bug, arriving from the read side instead.
+#
+# Re-measured 2026-08-12 against the last 40 website boost legs
+# (#d=payment_hash) and their 39 boost_sessions:
+#   nos.lol 97% (39/40 legs, 38/39 sessions, misses 0 of 38 receipt events)
+#   relay.damus.io 75% — flaky, but holds pre-2026-08 history
+#   relay.ditto.pub 22% and climbing: it has the newest receipts, which is the
+#     website's post-lb-v50 write set landing
+#   nostr.mom 0% today, but accepts kind 30078 and is in the website's write
+#     set now, so it fills in going forward
+#   relay.primal.net 0% (accepts the kind, holds none of ours — kept only
+#     because the website still writes there)
+# Dropped purplepag.es: it stores no kind 30078 from ANY author (kinds 0/3/
+# 10002 only), so it could never have answered one of these queries.
+# Order matters — fetch_kind_30078 returns on the first relay that answers.
 V4V_RELAYS = [
-    "wss://relay.damus.io",
     "wss://nos.lol",
+    "wss://relay.ditto.pub",
+    "wss://nostr.mom",
+    "wss://relay.damus.io",
     "wss://relay.primal.net",
-    "wss://purplepag.es",
 ]
 
 # Localbitcoiners.com website boosts arrive as BOLT11 with this exact LNURL
@@ -154,6 +177,22 @@ def record_published_event(events, payment_hash, event_id, settled_at):
         "settled_at":   settled_at,
         "published_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
+
+def record_reply_event(events, payment_hash, reply_id):
+    """Patch the boost-board reply's event id onto an existing record.
+
+    Separate from record_published_event rather than a parameter on it because
+    the two ids are known at different moments: the standalone note is recorded
+    and persisted the instant it lands (it's irreversibly on the relays by then,
+    so the record can't wait on the reply succeeding), and the reply publishes
+    after. The reply id is what boost_wall.json / the website's mega-thread key
+    on — the standalone note is not part of that thread."""
+    if not payment_hash or not reply_id:
+        return
+    rec = events.get(payment_hash)
+    if rec is None:
+        return
+    rec["reply_id"] = reply_id
 
 FOUNTAIN_VIEWER = "c330881e28768381dd8bdfd274341dca0c5882c29b8642ea4bc82f7563264592"
 RSS_FEED        = "https://feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU"
@@ -343,14 +382,34 @@ def strip_fountain_trailer(message):
 # meetups pass imports these so the two paths agree on what counts as a meetup.)
 NIP52_KINDS = {31922, 31923}
 
+# NIP-23 long-form article. Boosted articles are "featured" on the site's
+# Articles tab the same way boosted calendar events are featured on the Events
+# tab — same row schema, same log file — so the kind gate widens rather than
+# forking a parallel pipeline. Keep NIP52_KINDS meaning strictly NIP-52; the
+# Events-tab reader still filters on it.
+KIND_ARTICLE     = 30023
+FEATURABLE_KINDS = NIP52_KINDS | {KIND_ARTICLE}
+
 # Match an naddr1 bech32 token anywhere — bare, nostr:-prefixed, or embedded in
 # a URL (njump.me/naddr1..., etc.). The lookbehind skips naddr1 glued to a
 # preceding word char. Data charset excludes bech32's 1/b/i/o.
 _NADDR_RE = re.compile(r'(?<!\w)naddr1[02-9ac-hj-np-z]+', re.IGNORECASE)
 
-# plektos.app (NIP-52 calendar client) per-event URL. createEventUrl in the
-# plektos source builds `${origin}/event/${naddr}` for addressable events.
-PLEKTOS_EVENT_URL = "https://plektos.app/event/{naddr}"
+# Web-view URLs for the addressable events a boost can carry, so clients that
+# don't render an embedded naddr still give readers something to click.
+#   plektos.app (NIP-52 calendar client) — createEventUrl builds
+#     `${origin}/event/${naddr}`; it's calendar-only, no article view.
+#   mynostr.app renders a NIP-23 article at the bare bech32 root.
+PLEKTOS_EVENT_URL   = "https://plektos.app/event/{naddr}"   # 31922 / 31923
+MYNOSTR_ARTICLE_URL = "https://mynostr.app/{naddr}"         # 30023
+
+# Per featurable kind: (line emoji, URL template). Calendar output stays
+# byte-identical to the old plektos-only path; articles get 📄 + a MyNostr link.
+_WEB_LINK_BY_KIND = {
+    31922: ("📅", PLEKTOS_EVENT_URL),
+    31923: ("📅", PLEKTOS_EVENT_URL),
+    30023: ("📄", MYNOSTR_ARTICLE_URL),
+}
 
 def decode_naddr(entity):
     """Decode a NIP-19 naddr1... into {kind, pubkey, identifier, relays}, or
@@ -393,25 +452,28 @@ def decode_naddr(entity):
     except Exception:
         return None
 
-def plektos_links_for_message(message):
-    """plektos.app view URLs for each distinct NIP-52 calendar-event naddr in
-    `message`, in first-seen order. Many Nostr clients don't render NIP-52
-    calendar events, so the boost note carries a web link too. Non-calendar
-    naddrs (kind not in NIP52_KINDS) and malformed tokens are skipped; an event
-    referenced twice in one message yields one link."""
+def web_links_for_message(message):
+    """(emoji, url) for each distinct featurable naddr in `message`, in
+    first-seen order. Many Nostr clients don't render an embedded naddr, so the
+    boost note carries a web link too — a plektos.app view for NIP-52 calendar
+    events, a mynostr.app view for NIP-23 articles. naddrs whose kind isn't in
+    _WEB_LINK_BY_KIND and malformed tokens are skipped; an event referenced
+    twice in one message yields one link (dedupe on coordinate)."""
     if not message or "naddr1" not in message.lower():
         return []
     links, seen = [], set()
     for m in _NADDR_RE.finditer(message):
         token = m.group(0).lower()
         decoded = decode_naddr(token)
-        if not decoded or decoded["kind"] not in NIP52_KINDS:
+        link = decoded and _WEB_LINK_BY_KIND.get(decoded["kind"])
+        if not link:
             continue
         coordinate = f'{decoded["kind"]}:{decoded["pubkey"]}:{decoded["identifier"]}'
         if coordinate in seen:
             continue
         seen.add(coordinate)
-        links.append(PLEKTOS_EVENT_URL.format(naddr=token))
+        emoji, url_tmpl = link
+        links.append((emoji, url_tmpl.format(naddr=token)))
     return links
 
 def parse_description(description):
@@ -534,6 +596,14 @@ def fetch_kind_30078(payment_hash, relays=None, cache=None):
                 elif msg[0] == "EOSE":
                     ws.close()
                     break
+                # A relay that won't serve the kind (e.g. `kinds not supported`)
+                # answers CLOSED and then nothing — without this the loop blocks
+                # on recv until the socket timeout, once per query.
+                elif msg[0] in ("CLOSED", "NOTICE"):
+                    print(f"  [warn] {relay} refused the 30078 query: "
+                          f"{' '.join(str(x) for x in msg[1:])[:80]}")
+                    ws.close()
+                    break
             if event:
                 break
         except Exception as e:
@@ -566,6 +636,11 @@ def fetch_all_kind_30078(d_value, relays=None, cache=None):
                 if msg[0] == "EVENT":
                     by_id[msg[2]["id"]] = msg[2]
                 elif msg[0] == "EOSE":
+                    ws.close()
+                    break
+                elif msg[0] in ("CLOSED", "NOTICE"):   # see fetch_kind_30078
+                    print(f"  [warn] {relay} refused the 30078 query: "
+                          f"{' '.join(str(x) for x in msg[1:])[:80]}")
                     ws.close()
                     break
         except Exception as e:
@@ -1854,12 +1929,12 @@ def format_note_from_info(info):
         else:
             lines.append(f'💬 {nostrify_mentions(message)}')
 
-    # Booster pasted a NIP-52 calendar event (naddr) into their message — add a
-    # plektos.app web link so clients that don't render NIP-52 events still let
-    # readers see what's being boosted. One line per distinct event. See
-    # plektos_links_for_message.
-    for plektos_url in plektos_links_for_message(message):
-        lines.append(f"📅 {plektos_url}")
+    # Booster pasted an addressable event (naddr) into their message — a NIP-52
+    # calendar event or a NIP-23 article — so add a web link for clients that
+    # don't render an embedded naddr. One line per distinct event; the emoji is
+    # kind-specific (📅 calendar / 📄 article). See web_links_for_message.
+    for emoji, url in web_links_for_message(message):
+        lines.append(f"{emoji} {url}")
 
     if info["episode_title"]:
         line = f"🎙️ {info['episode_title']}"

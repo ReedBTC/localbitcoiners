@@ -12,10 +12,11 @@ from nostr_utils import (
 )
 from boost_formatter import (
     build_note_from_tx, load_published_events, save_published_events,
-    record_published_event, make_cache, is_dry_run, persist_cache,
-    build_podcast_guid_tags,
+    record_published_event, record_reply_event, make_cache, is_dry_run,
+    persist_cache, build_podcast_guid_tags,
 )
 import lnbits_source
+import boost_wall
 
 # --- Config ---
 CREDENTIALS_FILE = Path.home() / ".config/nostr-bots/credentials.env"
@@ -90,6 +91,8 @@ def main():
     boost_board       = config.get("LOCAL_BITCOINERS_BOOST_BOARD")
     published_events  = load_published_events()
     cache             = make_cache()
+    wall              = boost_wall.load_wall()
+    wall_dirty        = False
 
     print(f"Polling Alby Hub... (last seen: {last_seen or 'none — processing all'})\n")
 
@@ -251,7 +254,17 @@ def main():
 
             if boost_board:
                 print("  Publishing reply to boost board...")
-                publish_to_nostr(note, nsec, reply_to_event_id=boost_board, extra_tags=zap_tags)
+                # The REPLY (not the standalone note) is what the website's
+                # mega-thread renders, so this is the event boost_wall.json
+                # carries — hence return_event=True.
+                reply_ev = publish_to_nostr(note, nsec, reply_to_event_id=boost_board,
+                                            extra_tags=zap_tags, return_event=True)
+                if reply_ev:
+                    record_reply_event(published_events, payment_hash, reply_ev["id"])
+                    save_published_events(published_events)
+                    boost_wall.upsert(wall, boost_wall.build_record(
+                        reply_ev, info=info, standalone_id=standalone_id))
+                    wall_dirty = True
         elif effective_dryrun and nsec:
             print("  Building zap splits...")
             zap_tags = build_zap_splits_for_note(note, nsec)
@@ -287,6 +300,16 @@ def main():
         save_published_events(published_events)
 
     persist_cache(cache)
+
+    # Boost wall: one write + one push per run, not per boost. The file is the
+    # whole thread (~500 KB), so a batch of 5 boosts shouldn't mean 5 rsyncs.
+    # A push failure is logged inside push_file_to_vps, never fatal — the local
+    # file is still correct and the next run (or a reconcile) re-pushes it.
+    if wall_dirty and not DRY_RUN:
+        count, size = boost_wall.save_wall(wall)
+        print(f"\n─── Boost wall ───")
+        print(f"  wrote {count} records ({size / 1024:.0f} KB) → data/{boost_wall.WALL_FILE}")
+        boost_wall.push_wall(config)
 
     # Auto-follow any senders we identified this run who we're not already following.
     if nsec and npubs_to_follow:

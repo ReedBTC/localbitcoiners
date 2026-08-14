@@ -99,6 +99,34 @@ what would have been published. **Always start a new bot or a new code
 path with `DRY_RUN = True` and only flip to `False` once you've reviewed
 the dry-run output**, since Nostr publishes can't be undone.
 
+## The boost wall (`data/boost_wall.json`)
+
+The website used to rebuild the boost mega-thread in the browser on every
+page load. `boost-publisher` now also maintains that thread as a static
+file: each record is the raw signed kind-1 reply plus the payment context
+(sats, episode, app, sender) that was in hand when it was published. The
+site fetches one cached JSON instead of a multi-megabyte thread query, and
+still verifies every signature client-side.
+
+Two writers, one shape (`boost-publisher/boost_wall.py`):
+
+- `local_bitcoiners_boosts.py` appends each boost as it publishes it, then
+  pushes the file to the VPS — near-real-time.
+- `build_boost_wall.py` rebuilds the whole file from a relay scan of the
+  thread. This is not just a one-off backfill: the publisher only knows
+  about notes *it* wrote, while the site renders every kind-1 in the
+  thread — including hand-published corrections and replies from other
+  people. Run it on a timer to keep those on the wall.
+
+```bash
+python3 bots/boost-publisher/build_boost_wall.py --dry-run   # report only
+python3 bots/boost-publisher/build_boost_wall.py --push      # rebuild + ship
+```
+
+The file is gitignored and served from the VPS via `functions/api/boost-wall.js`,
+the same path `community_boosts.json` uses (an unrelated dataset — that one
+is *other* podcasts' boosts for the /feeds tab).
+
 ## Forking for your own podcast
 
 These bots are heavily tailored to the Local Bitcoiners RSS feed and
