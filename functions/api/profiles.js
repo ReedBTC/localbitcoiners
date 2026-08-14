@@ -1,23 +1,25 @@
-/* Boost mega-thread, pre-assembled.
+/* Site-wide profile cache.
  *
- * Serves data/boost_wall.json off the VPS: every kind-1 event in the boost
- * thread as its raw signed event, so boosts.html / index.html / stats.html /
- * every /ep### page can render the wall from one cached JSON fetch instead of
- * a ~5 MB Primal thread_view plus four relay sockets per page load. Written by
- * bots/boost-publisher (live, per boost) and rebuilt by build_boost_wall.py.
+ * Serves profiles.json off the VPS: a nightly kind-0 sweep covering every npub
+ * this site displays anywhere — sats.csv senders, npubs mentioned in boost-wall
+ * notes, RSS guests, and the co-host / contributor list. It replaces a batched
+ * Primal user_infos round trip measured at 1.3-1.7 s on /supporters, /stats,
+ * the homepage and the boost wall, all of which ran their own copy of that
+ * ladder. Written nightly by bots/profiles at 09:45 UTC.
  *
- * The events are signed, so keep verifying them client-side — this proxy is a
- * transport, not a source of trust. Unrelated to community-boosts.js, which
- * serves OTHER podcasts' boosts for the /feeds tab.
+ * Each record carries the raw signed kind-0 alongside its parsed fields, so
+ * keep verifying client-side — this proxy is transport, not a source of trust.
+ * See assets/js/profile-cache.js, which reads the rendered fields back out of
+ * the verified event rather than trusting the parsed siblings.
  */
-const BOOST_WALL_URL = "https://relay.mynostr.app/boost_wall.json";
+const PROFILES_URL = "https://relay.mynostr.app/profiles.json";
 
-// Bound the upstream fetch: 10s wall-clock, 10 MB body cap. Same rationale
-// as rss.js — an unbounded fetch could pin the Pages Function's CPU/memory
-// budget. The file is ~640 KB at ~400 notes and grows by ~1,500 notes a year,
-// so the cap leaves years of headroom.
+// Bound the upstream fetch: 10s wall-clock, 5 MB body cap. Same rationale as
+// rss.js — an unbounded fetch could pin the Pages Function's CPU/memory
+// budget. The file is ~190 KB for 152 profiles and grows only with the
+// supporter roster, so this is a wide margin rather than a working limit.
 const FETCH_TIMEOUT_MS = 10_000;
-const RESPONSE_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+const RESPONSE_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 
 // Exact-match origin allowlist — mirrors rss.js. `startsWith` checks let
 // lookalike origins get reflected into Access-Control-Allow-Origin, so this
@@ -30,14 +32,16 @@ const ALLOWED_ORIGINS = new Set([
   "http://127.0.0.1:5173",
 ]);
 
-// The file is a JSON array of records. Anything that doesn't start with `[`
-// after whitespace is not the boost wall, whatever status code carried it.
-function looksLikeJsonArray(text) {
-  return typeof text === "string" && text.trimStart().startsWith("[");
+// ⚠️ This file is a JSON OBJECT keyed by hex pubkey, not an array — the guard
+// here is `{` where boost-wall.js checks for `[`. Don't copy that one's check
+// across; a map that passed an array test would sail through this and reach
+// the page as an unusable shape.
+function looksLikeJsonObject(text) {
+  return typeof text === "string" && text.trimStart().startsWith("{");
 }
 
 function badUpstream(corsHeaders) {
-  return new Response("Boost wall upstream did not return JSON", {
+  return new Response("Profiles upstream did not return JSON", {
     status: 502,
     headers: corsHeaders,
   });
@@ -69,14 +73,14 @@ export async function onRequest(context) {
   const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
 
   try {
-    const resp = await fetch(BOOST_WALL_URL, {
-      headers: { "User-Agent": "LocalBitcoiners-BoostWall-Proxy/1.0" },
+    const resp = await fetch(PROFILES_URL, {
+      headers: { "User-Agent": "LocalBitcoiners-Profiles-Proxy/1.0" },
       cf: { cacheTtl: 300, cacheEverything: true },
       signal: ctrl.signal,
     });
 
     if (!resp.ok) {
-      return new Response("Boost wall upstream returned an error", {
+      return new Response("Profiles upstream returned an error", {
         status: 502,
         headers: corsHeaders,
       });
@@ -86,18 +90,17 @@ export async function onRequest(context) {
     // and Caddy answers a path it doesn't serve with HTTP 200 and a 37-byte
     // body: "Please use a Nostr client to connect." Passing that through would
     // hand the page a 200 with Content-Type: application/json containing
-    // English prose, and the wall would silently render empty instead of
-    // falling back to the live relay path. Verified against this exact URL
-    // before the bots started writing the file. `looksLikeJson` below is the
-    // guard; it is a shape check, not a full parse, since parsing ~660 KB in
-    // the Function just to re-serialize it would be wasted work.
+    // English prose, and every avatar on the page would silently fall back to
+    // a truncated npub instead of the live resolver. `looksLikeJsonObject`
+    // below is the guard; it is a shape check, not a full parse, since parsing
+    // ~190 KB in the Function just to re-serialize it would be wasted work.
 
     // Cheap pre-flight check on Content-Length. The streamed read below is
     // the real guard — a hostile/misbehaving upstream can omit or lie about
     // this header.
     const cl = parseInt(resp.headers.get("content-length") || "", 10);
     if (Number.isFinite(cl) && cl > RESPONSE_MAX_BYTES) {
-      return new Response("Upstream boost-wall file exceeded size limit", {
+      return new Response("Upstream profiles file exceeded size limit", {
         status: 502,
         headers: corsHeaders,
       });
@@ -111,12 +114,12 @@ export async function onRequest(context) {
       // Older runtime — fall back to text() with a length check.
       const text = await resp.text();
       if (text.length > RESPONSE_MAX_BYTES) {
-        return new Response("Upstream boost-wall file exceeded size limit", {
+        return new Response("Upstream profiles file exceeded size limit", {
           status: 502,
           headers: corsHeaders,
         });
       }
-      if (!looksLikeJsonArray(text)) return badUpstream(corsHeaders);
+      if (!looksLikeJsonObject(text)) return badUpstream(corsHeaders);
       return new Response(text, {
         status: 200,
         headers: {
@@ -137,7 +140,7 @@ export async function onRequest(context) {
       if (total > RESPONSE_MAX_BYTES) {
         try { ctrl.abort(); } catch {}
         try { reader.cancel(); } catch {}
-        return new Response("Upstream boost-wall file exceeded size limit", {
+        return new Response("Upstream profiles file exceeded size limit", {
           status: 502,
           headers: corsHeaders,
         });
@@ -148,7 +151,7 @@ export async function onRequest(context) {
     let off = 0;
     for (const c of chunks) { buf.set(c, off); off += c.byteLength; }
     const json = new TextDecoder("utf-8").decode(buf);
-    if (!looksLikeJsonArray(json)) return badUpstream(corsHeaders);
+    if (!looksLikeJsonObject(json)) return badUpstream(corsHeaders);
 
     return new Response(json, {
       status: 200,
@@ -161,7 +164,7 @@ export async function onRequest(context) {
   } catch (err) {
     const isTimeout = err?.name === "AbortError";
     return new Response(
-      isTimeout ? "Boost wall upstream timed out" : "Failed to fetch the boost wall",
+      isTimeout ? "Profiles upstream timed out" : "Failed to fetch profiles",
       { status: 502, headers: corsHeaders }
     );
   } finally {

@@ -30,17 +30,33 @@ import { configureBoostActions } from '/assets/js/boost-actions.js'
     return
   }
 
+  // Paint as soon as the thread is built rather than waiting for quoted
+  // notes and calendar cards to resolve — measured at ~1.3s against ~4.6s
+  // on the full wall. This page filters to one episode, so it usually shows
+  // a handful of cards, and they are all present at the partial stage.
+  let painted = false
+  const showPartial = ({ rootEvent, childrenOf }) => {
+    configureBoostActions({
+      rootEvent, childrenOf,
+      rerender: () => repaint(rootEvent, childrenOf, epNum, status, list),
+    })
+    repaint(rootEvent, childrenOf, epNum, status, list)
+    painted = true
+  }
+
   let result
   try {
-    result = await fetchBoostThread()
+    result = await fetchBoostThread({ onPartial: showPartial })
   } catch (e) {
     console.warn('[ep-boosts] fetch failed', e)
-    status.textContent = 'Couldn\'t load boosts right now — try again later.'
+    if (!painted) status.textContent = 'Couldn\'t load boosts right now — try again later.'
     return
   }
 
   if (result.error || !result.rootEvent) {
-    status.textContent = 'Couldn\'t load boosts right now — try again later.'
+    // Only surface the error if nothing rendered; a partial paint means the
+    // boosts are on screen and only enrichment failed.
+    if (!painted) status.textContent = 'Couldn\'t load boosts right now — try again later.'
     return
   }
 
