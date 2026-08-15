@@ -1,5 +1,21 @@
-CLAUDE_CODE_HANDOFF.md
 .DS_Store
+
+# --- Handoff notes: local working files, never public content ---
+# A handoff is one agent briefing the next on work in flight, so it is stale the
+# moment the work lands, and a reader who finds one on GitHub cannot tell
+# whether it describes the shipped code or something abandoned. Whatever is
+# worth keeping from one belongs in CLAUDE.md or in bots/README.md.
+# Generalized from the exact CLAUDE_CODE_HANDOFF.md this line used to be, which
+# left docs/HANDOFF-*.md and *-handoff.md committable. Also covered by the
+# global ignore; restated here so a clone is self-sufficient.
+*HANDOFF*.md
+*handoff*.md
+
+# --- Claude Code local settings ---
+# Machine-local: an allowlist and absolute home paths, not project content.
+# .claude/agents/ and .claude/skills/ are deliberately NOT ignored.
+.claude/settings.json
+.claude/settings.local.json
 
 # --- Wrangler local dev server scratch (created by `wrangler pages dev`) ---
 .wrangler/
