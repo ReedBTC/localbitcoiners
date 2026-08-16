@@ -181,7 +181,11 @@
 // with a picture rendered square. The image is re-clipped on its own box now.
 // Needs its own bump rather than riding lb-v58: onlyboosts.css is precached, so
 // anyone who loaded lb-v58 is holding the broken sheet in STATIC_CACHE.
-const VERSION = 'lb-v59';
+// lb-v60: the booster dot moves inside the avatar's circle. It was pinned to
+// the corner of the square box, which on a circle is diagonally outside it —
+// unnoticeable at 26px, but visibly detached on a 104px supporter tile.
+// Precached sheet again, so it needs its own bump.
+const VERSION = 'lb-v60';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

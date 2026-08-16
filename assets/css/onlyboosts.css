@@ -47,8 +47,17 @@
 
 .ob-dot {
   position: absolute;
-  top: 0;
-  right: 0;
+  /* ⚠️ INSET, NOT PINNED TO THE CORNER, and the percentage is doing real work.
+     top/right: 0 puts the dot at the corner of the avatar's SQUARE box, which
+     on a circular avatar is diagonally outside the circle — by ~4px on a 26px
+     byline avatar, where it still reads as attached, but by ~15px on a 104px
+     supporter tile, where it floats off on its own.
+     Sitting the dot fully inside the circle at 45° needs an inset of
+     (r - d/2)(1 - 1/√2) ≈ 0.293(r - d/2). Across the range this file covers
+     that peaks just under 14% of the avatar's width, so 14% holds everywhere
+     and scales with the avatar instead of needing a value per surface. */
+  top: 14%;
+  right: 14%;
   /* Percentages resolve against the avatar. 26% keeps it proportional in the
      middle of the range; the clamp stops it from vanishing on a 26px byline or
      growing into a badge on a 104px tile. */
