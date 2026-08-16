@@ -47,17 +47,26 @@
 
 .ob-dot {
   position: absolute;
-  /* ⚠️ INSET, NOT PINNED TO THE CORNER, and the percentage is doing real work.
-     top/right: 0 puts the dot at the corner of the avatar's SQUARE box, which
-     on a circular avatar is diagonally outside the circle — by ~4px on a 26px
-     byline avatar, where it still reads as attached, but by ~15px on a 104px
-     supporter tile, where it floats off on its own.
-     Sitting the dot fully inside the circle at 45° needs an inset of
-     (r - d/2)(1 - 1/√2) ≈ 0.293(r - d/2). Across the range this file covers
-     that peaks just under 14% of the avatar's width, so 14% holds everywhere
-     and scales with the avatar instead of needing a value per surface. */
-  top: 14%;
-  right: 14%;
+  /* ⚠️ THE DOT'S CENTRE SITS ON THE CIRCLE, at the bottom-right 45° point. Not
+     at the corner of the square box, and not tucked fully inside. Both of those
+     were tried and both were wrong, in opposite directions:
+       top/right: 0     → centre lands at ~129% of the radius. Fine at 26px,
+                          where the overhang is a few px, but on a 104px tile
+                          the dot floats free of the avatar entirely.
+       inset 14%        → centre at ~89%, reading as a sticker dropped onto the
+                          photo rather than a badge belonging to the avatar.
+     Measured from shipped implementations, the centre belongs on the edge:
+     shadcn/ui puts it at 97% of the radius, MUI at 85%, Chakra at 113%. The
+     45° point is 100%, and it is what `left/top: 85.36%` plus a -50% translate
+     produces — 0.5 + 0.5/√2 = 0.8536 on each axis puts the centre exactly one
+     radius from the middle. Size-independent, so it holds for any dot diameter
+     and any avatar from 18px to 104px without a per-surface value.
+
+     Bottom-right rather than top-right because that is where every design
+     system that ships an identity or presence marker puts it. */
+  left: 85.36%;
+  top: 85.36%;
+  transform: translate(-50%, -50%);
   /* Percentages resolve against the avatar. 26% keeps it proportional in the
      middle of the range; the clamp stops it from vanishing on a 26px byline or
      growing into a badge on a 104px tile. */

@@ -185,7 +185,10 @@
 // the corner of the square box, which on a circle is diagonally outside it —
 // unnoticeable at 26px, but visibly detached on a 104px supporter tile.
 // Precached sheet again, so it needs its own bump.
-const VERSION = 'lb-v60';
+// lb-v61: booster dot moves to bottom-right with its centre on the circle's
+// edge, matching how shipped design systems place an identity marker. Precached
+// sheet, so it needs its own bump.
+const VERSION = 'lb-v61';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
