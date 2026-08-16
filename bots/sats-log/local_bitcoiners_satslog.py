@@ -217,6 +217,15 @@ CSV_COLUMNS = [
     # policy, but kept separate here so we can reconcile/audit later). 0 for
     # everything else. confirmed-paid = total_sats - uncertain_sats.
     "uncertain_sats",
+    # Provenance for the five split columns — see apply_value_splits(). Values:
+    # "rss(episode_NNN)" / "rss(channel)" / "csv" for a fresh resolution,
+    # "snapshot" when the breakdown was carried forward unchanged from the
+    # previous run, "snapshot(rescaled)" when carried forward but re-fitted to a
+    # corrected total_sats, "<label>+snapshot" when a growing stream aggregate
+    # kept its old breakdown and apportioned only the new sats at the current
+    # split, and "zap" for zap rows (split at ingest, never re-derived). Blank
+    # on rows written before this column existed, and on unsplit rows.
+    "split_source",
 ]
 
 # fountain-api.csv — the *full* Fountain Firestore supporter view, one row per
@@ -436,11 +445,21 @@ def derive_total_method(info):
     total   = info.get("total_sats", 0)
     our     = info.get("our_sats", 0)
 
+    # Since the per-episode divisor landed, the classifier records which tier
+    # produced the total in `amount_method` for these sources too — "rss split"
+    # (the episode's own <podcast:value> weights) vs "sat math" (the flat
+    # historical divisor, now only reached when the feed can't answer). Prefer
+    # it; the divisor-shape inference below is the path for legacy rows
+    # classified before amount_method existed on non-website sources.
+    method = info.get("amount_method") or ""
+
     if source == "fountain_stream":
-        return f"sat math {divisor:g}"
+        return f"{method or 'sat math'} {divisor:g}"
 
     if source == "fountain_boost":
         if divisor == 1.0:
+            if method:
+                return method
             if "castamatic" in app:
                 return "castamatic api"
             if "tardbox" in app or "boostme" in app:
@@ -448,7 +467,7 @@ def derive_total_method(info):
             # Exact donor intent from the matched Fountain comment's
             # action.satoshis (no divisor back-calc).
             return "fountain api"
-        label = f"sat math {divisor:g}"
+        label = f"{method or 'sat math'} {divisor:g}"
         if "castamatic" in app or "tardbox" in app or "boostme" in app:
             label += " (fallback)"
         return label
@@ -622,6 +641,12 @@ def write_sats_json():
 #      hand-maintained fallback for splits that predate the RSS-per-item
 #      regime, or where no RSS analogue exists (general LB donations).
 #
+# Both sources are only consulted for sats we haven't attributed yet. The feed
+# carries only the CURRENT split, so a row already in sats.csv keeps its
+# recorded breakdown (snapshot_existing_splits); otherwise editing an episode's
+# <podcast:value> block would retroactively re-attribute every boost that
+# episode ever took. Change a split and the old sats stay where they landed.
+#
 # The website's middleware (functions/_middleware.js parseValueBlock /
 # parseSplits / matchChannelValue / matchItemValue) does the equivalent
 # parse live at boost time; the helpers here are the Python port. Keep
@@ -657,6 +682,32 @@ BUCKET_BY_ADDRESS = {
 WEBSITE_RECIPIENT_OVERRIDES = {
     "boostbot@fountain.fm": "aquafox30@primal.net",
 }
+
+# Per-episode layer over the map above, shallow-merged on top of it. Mirrors
+# EPISODE_LNADDRESS_OVERRIDES / getRecipientOverrides() in the same widget
+# module. Ep015 runs a Samourai-devs fundraiser split (96/1/1/2 in RSS), and on
+# the website — where Fountain isn't in the payment path at all — that 2% goes
+# to the devs too, merging into a single 98% leg.
+#
+# Keys are sats-log's zero-padded episode_num strings. The widget keys the same
+# table on the UNPADDED INTEGER (15) because that's the shape `episode.number`
+# arrives in from functions/_middleware.js. The two conventions are deliberate;
+# don't "fix" either one to match the other.
+EPISODE_RECIPIENT_OVERRIDES = {
+    "015": {
+        "boostbot@fountain.fm": "billandkeonne@getalby.com",
+    },
+}
+
+
+def _recipient_overrides(episode_num):
+    """The override map in force for one episode — the global map with any
+    per-episode layer merged over it. Show-level rows pass episode_num=None and
+    get the global map, matching the widget's explicit null for show boosts."""
+    per_ep = EPISODE_RECIPIENT_OVERRIDES.get(episode_num or "")
+    if not per_ep:
+        return WEBSITE_RECIPIENT_OVERRIDES
+    return {**WEBSITE_RECIPIENT_OVERRIDES, **per_ep}
 
 
 def _parse_value_block_xml(value_xml):
@@ -732,17 +783,22 @@ def load_rss_value_blocks():
     return blocks
 
 
-def _apply_overrides(recipients, source):
-    """Apply the website's boostbot→aquafox redirect for source=="website"
-    rows, then merge any recipients whose post-override address now matches
-    an existing one (preserves the website client's merge semantics: a
-    single combined leg, weights summed). Returns a new list; input unchanged."""
+def _apply_overrides(recipients, source, episode_num=None):
+    """Apply the website's recipient redirects for source=="website" rows, then
+    merge any recipients whose post-override address now matches an existing one
+    (preserves the website client's merge semantics: a single combined leg,
+    weights summed). Returns a new list; input unchanged.
+
+    `episode_num` selects the per-episode override layer — Ep015's Fountain leg
+    goes to the Samourai devs rather than aquafox, so its 96% and 2% legs merge
+    into one 98% leg exactly as the widget pays it."""
     if source != "website":
         return recipients
+    overrides = _recipient_overrides(episode_num)
     out = []
     idx_by_addr = {}
     for r in recipients:
-        addr = WEBSITE_RECIPIENT_OVERRIDES.get(r["address"], r["address"])
+        addr = overrides.get(r["address"], r["address"])
         if addr in idx_by_addr:
             out[idx_by_addr[addr]]["weight"] += r["weight"]
             continue
@@ -850,11 +906,12 @@ def _resolve_pcts(row, rss_blocks, csv_rules):
         if show_level:
             recipients = rss_blocks.get("__channel__", [])
             label = "rss(channel)"
+            num = None   # a show boost belongs to no episode; no per-episode layer
         else:
             num = row.get("episode_num", "") or ""
             recipients = rss_blocks.get(num) or rss_blocks.get("__channel__", [])
             label = f"rss(episode_{num})" if num else "rss(channel)"
-        recipients = _apply_overrides(recipients, source)
+        recipients = _apply_overrides(recipients, source, num)
         pcts = _buckets_from_recipients(recipients)
         if pcts:
             return pcts, label
@@ -866,36 +923,150 @@ def _resolve_pcts(row, rss_blocks, csv_rules):
     return None, None
 
 
-def apply_value_splits(rows, rss_blocks, csv_rules):
-    """Populate the 5 split columns on every row. Era-3 episode/show boosts
-    use the RSS feed; pre-era-3 + lb_donation use data/value-splits.csv.
-    Returns (matched, unmatched, unmatched_episode_nums)."""
-    matched = unmatched = 0
+def _apportion(total, weights):
+    """Split `total` across the 5 buckets in proportion to `weights` — any
+    positive scale works (percentages summing to 100, or an existing sat
+    breakdown). Rounding drift lands in the largest bucket so the five columns
+    sum to `total` exactly. Returns None if the weights sum to zero."""
+    denom = sum(weights.get(c, 0) for c in SPLIT_COLUMNS)
+    if denom <= 0:
+        return None
+    out = {c: round(total * weights.get(c, 0) / denom) for c in SPLIT_COLUMNS}
+    drift = total - sum(out.values())
+    if drift:
+        out[max(out, key=out.get)] += drift
+    return out
+
+
+def _row_split_key(row):
+    """Stable cross-run identity for a row's split snapshot.
+
+    Boost rows are keyed by payment_hash. Stream rows have none — they're
+    re-aggregated from Alby/Firestore every run — so they key on the same
+    (source, episode, sender) tuple that build_node_stream_rows() and
+    supporter_to_row() aggregate on."""
+    ph = row.get("payment_hash") or ""
+    if ph:
+        return ("hash", ph)
+    return ("agg", row.get("source", "") or "", row.get("episode_id", "") or "",
+            row.get("show_level", "") or "", row.get("sender_npub", "") or "",
+            row.get("sender_name", "") or "")
+
+
+def snapshot_existing_splits(existing_rows):
+    """Index the split breakdown already recorded in data/sats.csv, by row key.
+
+    This is what stops a <podcast:value> edit from rewriting history. The RSS
+    feed only ever carries the CURRENT split, and apply_value_splits() runs over
+    every row (not just new ones) on every run — so without a snapshot, changing
+    an episode's split silently re-attributes every boost that episode ever took.
+    Sats that already landed keep the breakdown they were recorded with; only
+    sats we haven't accounted for yet get the new split.
+
+    Only rows with a complete, positive breakdown are indexed — blank ones stay
+    unindexed so they get a fresh resolution attempt each run. Zap rows are
+    skipped: they're split at ingest by build_sats_zap_rows() and never passed
+    through apply_value_splits() at all."""
+    snap = {}
+    for row in existing_rows:
+        if row.get("kind") == "zap":
+            continue
+        try:
+            total = int(row.get("total_sats") or 0)
+        except (TypeError, ValueError):
+            continue
+        if total <= 0:
+            continue
+        buckets = {}
+        for c in SPLIT_COLUMNS:
+            raw = row.get(c, "")
+            if raw == "" or raw is None:
+                buckets = None
+                break
+            try:
+                buckets[c] = int(raw)
+            except (TypeError, ValueError):
+                buckets = None
+                break
+        if not buckets or sum(buckets.values()) <= 0:
+            continue
+        snap[_row_split_key(row)] = {
+            "buckets": buckets,
+            "total":   sum(buckets.values()),
+            "source":  row.get("split_source", "") or "snapshot",
+        }
+    return snap
+
+
+def apply_value_splits(rows, rss_blocks, csv_rules, snapshot=None):
+    """Populate the 5 split columns + split_source on every row.
+
+    A row already carried in the snapshot keeps its recorded breakdown; only a
+    fresh row (or the unaccounted-for growth of a stream aggregate) is resolved
+    against the current split. Fresh resolution uses the RSS feed for era-3
+    episode/show boosts and data/value-splits.csv for pre-era-3 + lb_donation.
+
+    Two ways a snapshotted row's total can move:
+      - **stream aggregates grow** — they re-sum from source every run, so the
+        prior breakdown is kept and only the delta is apportioned at today's
+        split. Correct by construction for a monotonic aggregate that straddles
+        a split change.
+      - **a boost total gets corrected** (DIVISOR_OVERRIDES / manual override) —
+        the split itself didn't change, just the amount, so the prior ratios are
+        re-fitted to the new total.
+
+    Returns (matched, unmatched, unmatched_episode_nums, frozen)."""
+    snapshot = snapshot or {}
+    matched = unmatched = frozen = 0
     unmatched_nums = Counter()
     for row in rows:
+        key = _row_split_key(row)
         for c in SPLIT_COLUMNS:
             row[c] = ""
+        row["split_source"] = ""
         try:
             total = int(row.get("total_sats") or 0)
         except (TypeError, ValueError):
             total = 0
         if total <= 0:
             continue
-        pcts, _ = _resolve_pcts(row, rss_blocks, csv_rules)
-        if not pcts:
-            unmatched += 1
-            num = row.get("episode_num", "") or "(show/blank)"
-            unmatched_nums[num] += 1
-            continue
-        buckets = {c: round(total * pcts[c] / 100) for c in SPLIT_COLUMNS}
-        # Absorb rounding drift in the largest bucket so the 5 sum to total.
-        drift = total - sum(buckets.values())
-        if drift:
-            buckets[max(buckets, key=buckets.get)] += drift
+
+        snap    = snapshot.get(key)
+        buckets = None
+        label   = None
+
+        if snap:
+            prior, prior_total = snap["buckets"], snap["total"]
+            if total == prior_total:
+                buckets, label = dict(prior), snap["source"]
+                frozen += 1
+            elif total > prior_total and row.get("kind") == "stream":
+                pcts, new_label = _resolve_pcts(row, rss_blocks, csv_rules)
+                if pcts:
+                    grown = _apportion(total - prior_total, pcts)
+                    buckets = {c: prior[c] + grown[c] for c in SPLIT_COLUMNS}
+                    label   = f"{new_label}+snapshot"
+                else:
+                    # No current rule — grow the aggregate at its own prior
+                    # ratios rather than dropping the breakdown entirely.
+                    buckets, label = _apportion(total, prior), "snapshot(rescaled)"
+            else:
+                buckets, label = _apportion(total, prior), "snapshot(rescaled)"
+
+        if buckets is None:
+            pcts, label = _resolve_pcts(row, rss_blocks, csv_rules)
+            if not pcts:
+                unmatched += 1
+                num = row.get("episode_num", "") or "(show/blank)"
+                unmatched_nums[num] += 1
+                continue
+            buckets = _apportion(total, pcts)
+
         for c, v in buckets.items():
             row[c] = v
+        row["split_source"] = label or ""
         matched += 1
-    return matched, unmatched, unmatched_nums
+    return matched, unmatched, unmatched_nums, frozen
 
 
 # ---------------------------------------------------------------------------
@@ -1884,6 +2055,7 @@ def build_sats_zap_rows(zap_rows, relays, cache, neg_cache, now, retry_after=864
             "guests_sats":       0,
             "fountain_sats":     0,
             "uncertain_sats":    0,
+            "split_source":      "zap",
         })
     return sats_rows
 
@@ -2194,10 +2366,14 @@ def main():
     all_rows = all_boost_rows + stream_rows + node_stream_rows
 
     # ── Value-split breakdown — RSS for era 3, value-splits.csv for the rest ──
+    # Rows already carried in sats.csv keep the breakdown they were recorded
+    # with, so editing an episode's <podcast:value> block changes future
+    # attribution without rewriting the past. See snapshot_existing_splits().
     rss_blocks   = load_rss_value_blocks()
     splits_rules = load_value_splits()
-    split_matched, split_unmatched, unmatched_nums = apply_value_splits(
-        all_rows, rss_blocks, splits_rules,
+    split_snapshot = snapshot_existing_splits(existing_rows)
+    split_matched, split_unmatched, unmatched_nums, split_frozen = apply_value_splits(
+        all_rows, rss_blocks, splits_rules, split_snapshot,
     )
 
     # Append zap rows AFTER split processing — their split columns are already
@@ -2207,8 +2383,10 @@ def main():
     print()
     print(f"Value-split breakdown: {rss_ep_count} RSS episode blocks + "
           f"{'channel block' if '__channel__' in rss_blocks else 'no channel block'}, "
-          f"{len(splits_rules)} csv fallback rules → "
-          f"{split_matched} rows split, {split_unmatched} rows with no matching rule")
+          f"{len(splits_rules)} csv fallback rules, "
+          f"{len(split_snapshot)} snapshotted rows → "
+          f"{split_matched} rows split ({split_frozen} carried forward unchanged), "
+          f"{split_unmatched} rows with no matching rule")
     if unmatched_nums:
         for num, count in unmatched_nums.most_common():
             print(f"  [warn] unmatched ({count} rows): episode_num={num}")

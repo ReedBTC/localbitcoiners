@@ -209,6 +209,92 @@ def get_divisor(settled_at):
         return DIVISOR_V2
     return DIVISOR_V1
 
+
+# Every Lightning address that has represented OUR leg of the value split, past
+# and present: the legacy node lud16, Reed's Alby address the feed has carried
+# since era 3, and the self-hosted lnbits address the value block migrated to
+# (see lnbits_source.py). Matched case-insensitively. All three are listed
+# because the feed and the node have not always agreed on which one is live,
+# and a boost is reconstructed against whichever the block actually names.
+OUR_VALUE_ADDRESSES = frozenset({
+    "reed@getalby.com",
+    "reed@localbitcoiners.com",
+    "localbitcoiners@getalby.com",
+})
+
+# Below this, a back-calculated total is dominated by sat-granularity rounding
+# on our own leg rather than by the split: at a 1-sat quantum, a leg of N sats
+# carries roughly 1/N relative uncertainty, so a 10-sat leg reconstructs the
+# total to only ~±10%. Boosts under this threshold still publish — they're real
+# sats and skipping them would lose the donor's message — but they're flagged so
+# a suspicious total is traceable rather than mysterious.
+LOW_PRECISION_LEG_MSATS = 20_000  # 20 sats
+
+
+def resolve_divisor(settled_at, cache, item_guid=None, episode_number=None,
+                    show_level=False, our_msats=0, label=""):
+    """Our leg's share of a boost, taken from the episode's own <podcast:value>
+    block — the per-episode replacement for the flat `get_divisor()`.
+
+    The flat divisor hardcodes the assumption that our leg is 33% of every
+    boost. That assumption breaks the moment an episode's split is edited: at a
+    1% leg it under-states every reconstructed total by ~33x. Reading the block
+    instead means a split change needs no code change, and stays right for
+    episodes whose split never matches the channel default.
+
+    Renormalizes over ALL recipients (not just lnaddress ones) because the rails
+    that reach this path — Fountain BOLT11, keysend, Castamatic, Tardbox — pay
+    every leg, unlike the website's browser flow.
+
+    Returns (divisor, method) where method is "rss split" when the feed
+    answered and "sat math" when it fell back to the flat historical value.
+    CAVEAT: reads the CURRENT feed, so a boost classified long after a split
+    edit reconstructs against the new weights. In practice the bots classify
+    within minutes of settlement, and sats-log snapshots the result thereafter.
+    """
+    # Era guard. Per-item <podcast:value> blocks only became the source of
+    # truth at SPLIT_CUTOFF_V3; before that the show ran flat 98% / 49% splits
+    # the current feed knows nothing about. Reading today's weights for an
+    # older boost would silently restate it at 33%. Mirrors the ERA3_CUTOFF
+    # condition in sats-log's _resolve_pcts().
+    if settled_at < SPLIT_CUTOFF_V3:
+        return get_divisor(settled_at), "sat math"
+
+    recips = []
+    try:
+        build_rss_item_index(cache)
+        if show_level:
+            recips = cache.get("channel_value_all") or []
+        else:
+            entry = None
+            if item_guid:
+                entry = (cache.get("guid_to_fountain") or {}).get(item_guid)
+            if not entry and episode_number:
+                entry = (cache.get("num_to_rss_item") or {}).get(episode_number)
+            recips = (entry or {}).get("value_all") or cache.get("channel_value_all") or []
+    except Exception as e:
+        print(f"  [warn] {label} — RSS divisor lookup failed ({e}); using flat divisor")
+
+    total_weight = sum(r["split"] for r in recips)
+    our_weight   = sum(r["split"] for r in recips
+                       if r["address"].lower() in OUR_VALUE_ADDRESSES)
+
+    if total_weight <= 0 or our_weight <= 0:
+        # No block, or the block names none of our addresses — the flat
+        # historical divisor is the only estimate left. Worth surfacing: it
+        # means the feed and OUR_VALUE_ADDRESSES have drifted apart.
+        if total_weight > 0:
+            print(f"  [warn] {label} — RSS value block names none of "
+                  f"{sorted(OUR_VALUE_ADDRESSES)}; falling back to flat divisor")
+        return get_divisor(settled_at), "sat math"
+
+    divisor = our_weight / total_weight
+    if our_msats and our_msats < LOW_PRECISION_LEG_MSATS and divisor < 1.0:
+        print(f"  [warn] {label} — our leg is only {our_msats / 1000:.3f} sats at a "
+              f"{divisor:.4%} split; reconstructed total is ±{1000 / our_msats:.0%} "
+              f"and may be materially off")
+    return divisor, "rss split"
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Feed-identity gating
 # ─────────────────────────────────────────────────────────────────────────────
@@ -823,6 +909,33 @@ def _parse_value_lnaddress(value_block_xml):
             out.append({"address": a.group(1), "split": int(s.group(1))})
     return out
 
+def _parse_value_recipients(value_block_xml):
+    """Extract [{address, split}] for EVERY recipient in a <podcast:value>
+    block, regardless of type.
+
+    Deliberately different from `_parse_value_lnaddress`, which drops node/
+    keysend recipients because the website's browser LNURL flow can't pay them.
+    Every other rail (Fountain BOLT11, keysend boostagrams, Castamatic, Tardbox)
+    pays all the legs, so reconstructing a total from one of them has to
+    renormalize over the whole block or it over-states the total."""
+    out = []
+    if not value_block_xml:
+        return out
+    for attrs in re.findall(r'<podcast:valueRecipient\b([^>]*?)/?>', value_block_xml):
+        a = re.search(r'address=["\']([^"\']*)["\']', attrs)
+        s = re.search(r'split=["\']([^"\']*)["\']', attrs)
+        if not a or not s:
+            continue
+        try:
+            weight = float(s.group(1))
+        except ValueError:
+            continue
+        if weight <= 0:
+            continue
+        out.append({"address": a.group(1).strip(), "split": weight})
+    return out
+
+
 def build_rss_item_index(cache):
     """Parse the LB RSS feed once per run and return a dict keyed by the
     item's <guid>. Each value is a dict with:
@@ -853,6 +966,7 @@ def build_rss_item_index(cache):
     if cache["guid_to_fountain"] is not None:
         return cache["guid_to_fountain"]
     index = {}
+    num_index = {}
     try:
         rss = requests.get(RSS_FEED, timeout=10).text
         for item_xml in re.findall(r'<item>(.*?)</item>', rss, re.DOTALL):
@@ -871,18 +985,30 @@ def build_rss_item_index(cache):
             if gm and gm.group(1).strip():
                 guests = [n.strip() for n in gm.group(1).split(",") if n.strip()]
             vb = re.search(r'<podcast:value\b.*?</podcast:value>', item_xml, re.DOTALL)
+            vb_xml = vb.group(0) if vb else ""
+            tm  = re.search(r'<title[^>]*>([^<]*)</title>', item_xml)
+            num = _extract_episode_number(tm.group(1).strip()) if tm else None
             index[guid] = {
                 "fountain_id":     fountain_id,
                 "guests":          guests,
-                "value_lnaddress": _parse_value_lnaddress(vb.group(0) if vb else ""),
+                "value_lnaddress": _parse_value_lnaddress(vb_xml),
+                "value_all":       _parse_value_recipients(vb_xml),
+                "episode_number":  num,
             }
+            # Secondary index — the non-website classifiers know the episode
+            # number (off the title) but not always the RSS <guid>.
+            if num:
+                num_index.setdefault(num, index[guid])
         # Channel-level value block (outside any <item>) for show-level boosts.
         chan_xml = re.sub(r'<item>.*?</item>', '', rss, flags=re.DOTALL)
         chan_vb  = re.search(r'<podcast:value\b.*?</podcast:value>', chan_xml, re.DOTALL)
-        cache["channel_value_lnaddress"] = _parse_value_lnaddress(chan_vb.group(0) if chan_vb else "")
+        chan_vb_xml = chan_vb.group(0) if chan_vb else ""
+        cache["channel_value_lnaddress"] = _parse_value_lnaddress(chan_vb_xml)
+        cache["channel_value_all"]       = _parse_value_recipients(chan_vb_xml)
     except Exception as e:
         print(f"  [warn] RSS item index build failed: {e}")
     cache["guid_to_fountain"] = index
+    cache["num_to_rss_item"]  = num_index
     return index
 
 _FOUNTAIN_SHOW_RE = re.compile(r'fountain\.fm/show/([A-Za-z0-9_-]+)')
@@ -1386,11 +1512,16 @@ def _classify_fountain_boost(tx, desc, payment_hash, settled_at, our_msats, cach
     # Fall back to the divisor estimate for anonymous / no-comment boosts
     # where no comment matched (and for show-level boosts, whose comment
     # lookup keys on the show id and returns nothing).
+    episode_number = _extract_episode_number(episode_title)
     if fountain_sats and int(fountain_sats) > 0:
         total_msats = int(fountain_sats) * 1000
         divisor     = 1.0
+        amount_method = "fountain api"
     else:
-        divisor     = get_divisor(settled_at)
+        divisor, amount_method = resolve_divisor(
+            settled_at, cache, episode_number=episode_number,
+            show_level=show_level, our_msats=our_msats,
+            label=f"fountain boost {payment_hash[:12]}...")
         total_msats = round(our_msats / divisor) if divisor else our_msats
 
     info = _new_info("fountain_boost", payment_hash, settled_at, our_msats, total_msats, divisor)
@@ -1400,7 +1531,8 @@ def _classify_fountain_boost(tx, desc, payment_hash, settled_at, our_msats, cach
         "episode_id":     episode_id,
         "episode_title":  episode_title,
         "episode_url":    episode_url,
-        "episode_number": _extract_episode_number(episode_title),
+        "episode_number": episode_number,
+        "amount_method":  amount_method,
         "guests":         guests or [],
         "app_name":       "Fountain",
         "show_level":     show_level,
@@ -1518,8 +1650,12 @@ def _classify_castamatic_boost(tx, parsed, payment_hash, settled_at, our_msats, 
     if total_from_json > 0:
         total_msats = total_from_json
         divisor     = 1.0  # we have donor intent directly; no back-calc needed
+        amount_method = "castamatic api"
     else:
-        divisor     = get_divisor(settled_at)
+        divisor, amount_method = resolve_divisor(
+            settled_at, cache, item_guid=item_guid or None,
+            episode_number=episode_number, our_msats=our_msats,
+            label=f"castamatic boost {payment_hash[:12]}...")
         total_msats = round(our_msats / divisor) if divisor else our_msats
 
     info = _new_info("fountain_boost", payment_hash, settled_at, our_msats, total_msats, divisor)
@@ -1531,6 +1667,7 @@ def _classify_castamatic_boost(tx, parsed, payment_hash, settled_at, our_msats, 
         "episode_title":  item_title,
         "episode_url":    episode_url,
         "episode_number": episode_number,
+        "amount_method":  amount_method,
         "item_guid":      item_guid or None,
         "guests":         guests,
         "app_name":       app_name,
@@ -1661,8 +1798,12 @@ def _classify_tardbox_boost(tx, parsed, payment_hash, settled_at, our_msats, cac
                 total_msats = 0
     if total_msats > 0:
         divisor = 1.0
+        amount_method = "tardbox"
     else:
-        divisor     = get_divisor(settled_at)
+        divisor, amount_method = resolve_divisor(
+            settled_at, cache, episode_number=episode_number,
+            our_msats=our_msats,
+            label=f"tardbox boost {payment_hash[:12]}...")
         total_msats = round(our_msats / divisor) if divisor else our_msats
 
     info = _new_info("fountain_boost", payment_hash, settled_at, our_msats, total_msats, divisor)
@@ -1674,6 +1815,7 @@ def _classify_tardbox_boost(tx, parsed, payment_hash, settled_at, our_msats, cac
         "episode_title":  item_title,
         "episode_url":    episode_url,
         "episode_number": episode_number,
+        "amount_method":  amount_method,
         "guests":         guests,
         "app_name":       app_name,
         "raw_tx":         tx,
@@ -1732,7 +1874,10 @@ def _classify_fountain_stream(tx, desc, payment_hash, settled_at, our_msats, cac
                 print(f"  [review] Fountain stream {payment_hash[:12]}… episode "
                       f"{episode_id!r} not in LB RSS and feed unconfirmed — accepting")
 
-    divisor     = get_divisor(settled_at)
+    episode_number = _extract_episode_number(episode_title)
+    divisor, amount_method = resolve_divisor(
+        settled_at, cache, episode_number=episode_number, show_level=show_level,
+        our_msats=our_msats, label=f"fountain stream {payment_hash[:12]}...")
     total_msats = round(our_msats / divisor) if divisor else our_msats
 
     info = _new_info("fountain_stream", payment_hash, settled_at, our_msats, total_msats, divisor)
@@ -1740,7 +1885,8 @@ def _classify_fountain_stream(tx, desc, payment_hash, settled_at, our_msats, cac
         "episode_id":     episode_id,
         "episode_title":  episode_title,
         "episode_url":    episode_url,
-        "episode_number": _extract_episode_number(episode_title),
+        "episode_number": episode_number,
+        "amount_method":  amount_method,
         "app_name":       "Fountain",
         "show_level":     show_level,
         "raw_tx":         tx,
