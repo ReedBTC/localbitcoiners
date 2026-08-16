@@ -17,7 +17,8 @@
  * episode flow — today the override map only redirects fountain.fm
  * addresses (not in the show splits), but pre-applying means a future
  * override that targets one of these addresses won't silently skip
- * the show-boost path.
+ * the show-boost path. It is called with a null episode number, so
+ * per-episode override layers never apply to a show boost.
  *
  * `authorSplit` reassigns the third leg. A Feature boost from the
  * Articles tab pays the featured article's author out of that leg, so
@@ -44,7 +45,10 @@ const SHOW_RECIPIENTS_RAW = [
 const REASSIGNABLE_ADDRESS = 'aquafox30@primal.net'
 
 function buildSplits(recipients) {
-  const applied = applyRecipientOverrides(recipients)
+  // `null` episode number: a show boost belongs to no episode, so only the
+  // global override map applies. Passed explicitly so the show path can't
+  // silently pick up a per-episode redirect.
+  const applied = applyRecipientOverrides(recipients, null)
   return {
     recipients: applied,
     totalWeight: applied.reduce((acc, r) => acc + (r.splitWeight || 0), 0),

@@ -161,7 +161,13 @@
 // any lb-v53 STATIC_CACHE entry already holding a wall response.
 // lb-v56: the Events feed opens on All rather than the 1M forward window, so
 // the full upcoming calendar is visible without a filter click.
-const VERSION = 'lb-v56';
+// lb-v57: recipient overrides became episode-aware, and Ep015 routes the 2%
+// Fountain leg to the Samourai defense address instead of aquafox30. This is a
+// payment-routing change in login-widget.js that has to take effect in the same
+// window as the RSS split edit and the bot's mirrored table; the widget bundle
+// is stale-while-revalidate, so without a bump a returning visitor would boost
+// Ep015 through the old routing on their first navigation after the deploy.
+const VERSION = 'lb-v57';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

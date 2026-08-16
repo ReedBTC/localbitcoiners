@@ -37,6 +37,49 @@ export const LNADDRESS_OVERRIDES = {
 }
 
 /**
+ * Per-episode override maps, keyed by episode number. Each value has the
+ * same shape as LNADDRESS_OVERRIDES and is shallow-merged OVER the global
+ * map for that episode, so an episode entry replaces the global redirect
+ * for the same source address and leaves every other source address alone.
+ *
+ * Episode 015 is donated in full to the Samourai Wallet developers' legal
+ * defense: the RSS value block for that item splits 96% to
+ * billandkeonne@getalby.com with 1% each to the two hosts and the usual 2%
+ * to Fountain's boostbot. Sending that 2% to aquafox30 would carve a host
+ * cut out of a donation episode, so for Ep015 the Fountain leg is
+ * redirected to billandkeonne@getalby.com instead. It then merges with the
+ * existing 96% leg (same post-override address) into a single 98% leg.
+ *
+ * This table is mirrored on the bot side; the two have to be changed in
+ * the same window as the RSS split edit, or the site and the bot will
+ * disagree about where a leg went.
+ */
+export const EPISODE_LNADDRESS_OVERRIDES = {
+  15: {
+    'boostbot@fountain.fm': {
+      name: 'billandkeonne@getalby.com',
+      address: 'billandkeonne@getalby.com',
+    },
+  },
+}
+
+/**
+ * The override map in effect for one episode: the global map with that
+ * episode's entries layered on top. Show-level boosts (no episode number)
+ * and episodes without an entry get the global map unchanged.
+ *
+ * @param {number|string|null} [episodeNumber]
+ * @returns {object} source lud16 → { name, address }
+ */
+export function getRecipientOverrides(episodeNumber) {
+  const n = Number(episodeNumber)
+  if (!Number.isFinite(n)) return LNADDRESS_OVERRIDES
+  const perEpisode = EPISODE_LNADDRESS_OVERRIDES[n]
+  if (!perEpisode) return LNADDRESS_OVERRIDES
+  return { ...LNADDRESS_OVERRIDES, ...perEpisode }
+}
+
+/**
  * Lightning addresses whose recipients run the LB podcast boost bot
  * (i.e. care about kind 30078 metadata events). For every other
  * recipient — Fountain, Albyhub end users, guest personal addresses —
@@ -79,9 +122,14 @@ export function shouldPublishMetadata(address) {
  *   1. Apply the address/name override (or pass through if none).
  *   2. If the post-override address is already in `out`, merge weights
  *      into the existing entry rather than appending a duplicate.
+ *
+ * @param {Array} recipients
+ * @param {number|string|null} [episodeNumber]  selects the per-episode
+ *   override layer; omit for show-level boosts.
  */
-export function applyRecipientOverrides(recipients) {
+export function applyRecipientOverrides(recipients, episodeNumber) {
   if (!Array.isArray(recipients)) return recipients
+  const overrides = getRecipientOverrides(episodeNumber)
   const out = []
   const indexByAddress = new Map()  // post-override address → index in `out`
 
@@ -90,7 +138,7 @@ export function applyRecipientOverrides(recipients) {
       out.push(r)
       continue
     }
-    const override = LNADDRESS_OVERRIDES[r.address] || null
+    const override = overrides[r.address] || null
     const next = override ? { ...r, ...override } : r
 
     const existingIdx = indexByAddress.get(next.address)

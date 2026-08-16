@@ -941,8 +941,10 @@ const api = {
     }
 
     // Both gates pass — open the form. Apply LB's per-host substitutions
-    // before the modal sees the recipient list.
-    const normalizedRecipients = applyRecipientOverrides(splits.recipients)
+    // before the modal sees the recipient list. The episode number selects
+    // the per-episode override layer (Ep015 reroutes the Fountain leg to
+    // the Samourai defense address rather than to aquafox30).
+    const normalizedRecipients = applyRecipientOverrides(splits.recipients, episode.number)
     setEpisodeBoostState({
       episode,
       splits: { ...splits, recipients: normalizedRecipients },
