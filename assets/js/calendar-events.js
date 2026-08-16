@@ -9,6 +9,9 @@
  */
 import { SimplePool, verifyEvent, nip19 } from '/assets/widgets/nostr-tools.js'
 import { ensureLoginWidget } from '/assets/js/widget-loader.js'
+import {
+  ready as obReady, hasBoosterPage, boosterUrl, wrapWithDot,
+} from '/assets/js/onlyboosts.js'
 
 export const KIND_DATE_EVENT = 31922
 export const KIND_TIME_EVENT = 31923
@@ -152,6 +155,17 @@ export function eventEndMs(parsed) {
 // ── Relay fetch (untrusted source — verify everything) ───────────────
 export async function fetchCalendarEventsFromRelays(coords, relays) {
   if (!coords.length) return new Map()
+  // The single gate for this module. renderCalendarCard() is a synchronous
+  // builder called from feeds.js, home-feeds.js, boosts-thread.js and
+  // featured-articles.js, and it decides link-vs-copy once per card, so the
+  // booster index has to be resolved before any of them build one. Every
+  // surface that renders event cards from relay data comes through here first.
+  //
+  // ⚠️ ONE SURFACE BYPASSES THIS: a calendar event embedded inside a boost note
+  // is parsed straight off the note rather than fetched, so on a cold cache its
+  // host may render as copy-npub even when they have an OnlyBoosts page. It
+  // self-corrects on the next page load once the index is in localStorage.
+  await obReady()
   const out = new Map()
   const byKind = new Map()
   for (const coord of coords) {
@@ -251,12 +265,19 @@ export function renderCalendarCard(parsed, { bech32 = '', profile = null, action
   const authorRow = document.createElement('div')
   authorRow.className = 'embed-author'
 
-  // Avatar + name = one click-to-copy-npub control (like the supporter
-  // cards). Falls back to a plain span if we have no pubkey to copy.
+  // Avatar + name = one control. It opens the host's OnlyBoosts page when they
+  // have one and copies their npub when they don't (like the supporter cards).
+  // Falls back to a plain span if we have no pubkey at all.
   const hasPubkey = /^[0-9a-f]{64}$/i.test(parsed.pubkey || '')
-  const idEl = document.createElement(hasPubkey ? 'button' : 'span')
+  const linked = hasPubkey && hasBoosterPage(parsed.pubkey)
+  const idEl = document.createElement(hasPubkey ? (linked ? 'a' : 'button') : 'span')
   idEl.className = 'author-id'
-  if (hasPubkey) {
+  if (linked) {
+    idEl.href = boosterUrl(parsed.pubkey)
+    idEl.target = '_blank'
+    idEl.rel = 'noopener noreferrer'
+    idEl.title = 'View ' + (profile?.name || 'this booster') + ' on OnlyBoosts'
+  } else if (hasPubkey) {
     idEl.type = 'button'
     idEl.title = 'Copy npub'
     idEl.addEventListener('click', () => copyNpub(parsed.pubkey))
@@ -267,7 +288,9 @@ export function renderCalendarCard(parsed, { bech32 = '', profile = null, action
   img.alt = ''
   img.referrerPolicy = 'no-referrer'
   img.onerror = () => { img.src = '/assets/LocalBitcoiners.png' }
-  idEl.appendChild(img)
+  // The dot belongs on the avatar, not on the control — the control spans the
+  // avatar AND the name, so its top-right corner is out past the name text.
+  idEl.appendChild(linked ? wrapWithDot(img) : img)
 
   const nameEl = document.createElement('span')
   nameEl.className = 'author-name'
@@ -407,9 +430,15 @@ function buildEventActions(parsed, actionsLeft = null, bech32 = '', { promote = 
 function buildFeaturedBy(info) {
   if (!info || !info.pubkey) return document.createElement('span')
   const hasPubkey = /^[0-9a-f]{64}$/i.test(info.pubkey)
-  const el = document.createElement(hasPubkey ? 'button' : 'span')
+  const linked = hasPubkey && hasBoosterPage(info.pubkey)
+  const el = document.createElement(hasPubkey ? (linked ? 'a' : 'button') : 'span')
   el.className = 'featured-by'
-  if (hasPubkey) {
+  if (linked) {
+    el.href = boosterUrl(info.pubkey)
+    el.target = '_blank'
+    el.rel = 'noopener noreferrer'
+    el.title = 'View ' + (info.name || 'this booster') + ' on OnlyBoosts'
+  } else if (hasPubkey) {
     el.type = 'button'
     el.title = 'Copy npub'
     el.addEventListener('click', () => copyNpub(info.pubkey))
@@ -431,7 +460,7 @@ function buildFeaturedBy(info) {
   img.alt = ''
   img.referrerPolicy = 'no-referrer'
   img.onerror = () => { img.src = '/assets/LocalBitcoiners.png' }
-  el.appendChild(img)
+  el.appendChild(linked ? wrapWithDot(img) : img)
 
   const name = document.createElement('span')
   name.className = 'featured-by-name'

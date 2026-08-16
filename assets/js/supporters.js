@@ -165,17 +165,9 @@
     var name = opts.name || (npub ? shortNpub(npub) : 'Anonymous');
     var picture = opts.picture || null;
 
-    // Cards with an npub are copy-to-clipboard buttons; name-only
-    // supporters (no npub) are static — there's nothing to copy.
-    var card = document.createElement(npub ? 'button' : 'div');
-    card.className = 'sup-card' + (npub ? ' is-copyable' : '');
-    if (npub) {
-      card.type = 'button';
-      card.title = 'Click to copy npub';
-      card.setAttribute('aria-label', 'Copy npub for ' + name);
-      card.addEventListener('click', function () { copyNpub(npub); });
-    }
-
+    // The avatar is built first because the OnlyBoosts wiring below needs it
+    // to hang the booster dot on, and the card's element type depends on the
+    // answer that wiring gives.
     var avatar = document.createElement('span');
     avatar.className = 'sup-avatar' + (opts.ring ? ' ' + opts.ring : '');
     var img = null;
@@ -187,6 +179,33 @@
       avatar.appendChild(img);
     } else {
       avatar.classList.add('is-blank');
+    }
+
+    // Cards with an npub are interactive; name-only supporters (no npub) are
+    // static — there's nothing to click. An interactive card is an <a> when the
+    // person has an OnlyBoosts page and a copy-to-clipboard <button> when they
+    // do not. .is-copyable drives the hover treatment for both.
+    //
+    // ⚠️ The <a>/<button> split is decided HERE and never revised, so init()
+    // must have awaited obReady() before any card is built. See the note there.
+    var ob = window.LBOnlyBoosts || null;
+    var linked = !!(npub && ob && ob.hasBoosterPage(npub));
+    var card = document.createElement(npub ? (linked ? 'a' : 'button') : 'div');
+    card.className = 'sup-card' + (npub ? ' is-copyable' : '');
+    if (npub) {
+      if (!linked) {
+        card.type = 'button';
+        card.title = 'Click to copy npub';
+        card.setAttribute('aria-label', 'Copy npub for ' + name);
+      }
+      if (ob) {
+        ob.wireBoosterAction(card, {
+          id: npub, name: name, avatar: avatar,
+          onCopy: function () { copyNpub(npub); },
+        });
+      } else {
+        card.addEventListener('click', function () { copyNpub(npub); });
+      }
     }
 
     var nameEl = document.createElement('span');
@@ -220,7 +239,7 @@
     }
 
     if (npub) {
-      registerCard(npub, { avatar: avatar, nameEl: nameEl, hasName: !!opts.name });
+      registerCard(npub, { card: card, avatar: avatar, nameEl: nameEl, hasName: !!opts.name });
     }
     return card;
   }
@@ -269,7 +288,18 @@
     if (!recs || !prof) return;
     for (var i = 0; i < recs.length; i++) {
       var rec = recs[i];
-      if (prof.name) { rec.nameEl.textContent = prof.name; rec.hasName = true; }
+      if (prof.name) {
+        rec.nameEl.textContent = prof.name;
+        rec.hasName = true;
+        // Cards are built before profiles resolve, so a booster's link was
+        // labelled with their truncated npub. Name it now that we know it.
+        if (rec.card && rec.card.tagName === 'A') {
+          rec.card.title = 'View ' + prof.name + ' on OnlyBoosts';
+          rec.card.setAttribute('aria-label', 'View ' + prof.name + ' on OnlyBoosts');
+        } else if (rec.card) {
+          rec.card.setAttribute('aria-label', 'Copy npub for ' + prof.name);
+        }
+      }
       if (prof.picture && rec.avatar.classList.contains('is-blank')) {
         rec.avatar.classList.remove('is-blank');
         var img = document.createElement('img');
@@ -475,6 +505,30 @@
     return Object.keys(set);
   }
 
+  // Wait for the OnlyBoosts booster index before painting cards, so makeCard()
+  // knows up front whether each person links out or copies.
+  //
+  // ⚠️ This file is a classic deferred script and cannot import the module, so
+  // it reads it off window. The <script type="module"> for it sits earlier in
+  // supporters.html and deferred scripts run in document order, which means the
+  // global is normally there already; the poll is insurance against a future
+  // edit reordering those tags, not an expected path. Either way this resolves
+  // rather than rejects — a missing index just means every card copies, which
+  // is what the page did before.
+  function obReady() {
+    var ob = window.LBOnlyBoosts;
+    if (ob && ob.ready) return ob.ready();
+    return new Promise(function (res) {
+      var tries = 0;
+      (function poll() {
+        var o = window.LBOnlyBoosts;
+        if (o && o.ready) { o.ready().then(res, res); return; }
+        if (++tries > 20) { res(); return; }  // ~1s, then paint without it
+        setTimeout(poll, 50);
+      })();
+    });
+  }
+
   function init() {
     var errEl = document.getElementById('supporters-error');
 
@@ -492,7 +546,7 @@
     // Guest → episode-number map from the RSS shownotes ([guests: …]).
     var epP = guestEpisodeMap();
 
-    Promise.all([satsP, guestsP, epP]).then(function (res) {
+    Promise.all([satsP, guestsP, epP, obReady()]).then(function (res) {
       var people = aggregate(res[0]);
       var guestNpubs = res[1];
       var epMap = res[2] || Object.create(null);

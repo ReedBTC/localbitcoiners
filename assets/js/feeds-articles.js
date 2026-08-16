@@ -22,6 +22,9 @@
  * first time the tab is opened.
  */
 import { nip19, verifyEvent } from '/assets/widgets/nostr-tools.js'
+import {
+  ready as obReady, hasBoosterPage, boosterUrl, wrapWithDot,
+} from '/assets/js/onlyboosts.js'
 import { fetchProfilesFromPrimal, setCachedProfile, STATIC_RELAYS } from '/assets/js/boosts-thread.js'
 import { buildActionBar, configureBoostActions } from '/assets/js/boost-actions.js'
 import { marked } from '/assets/widgets/marked.esm.js'
@@ -276,29 +279,55 @@ function initials(name) {
   return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase()
 }
 
-// When interactive, the avatar is a copy-npub affordance (matches the rest of
-// the site: click a pfp/name → copy its npub).
-function avatarEl(pubkey, size = 26, { interactive = false } = {}) {
+// When interactive, the avatar opens the author's OnlyBoosts page if they have
+// one, and otherwise copies their npub (the historical behavior, and still what
+// happens for the many article authors who have never boosted a podcast).
+//
+// ⚠️ `dot` forces the mark on a NON-interactive avatar. The featured-by chip is
+// one control wrapping a small avatar, so the chip carries the click and the
+// avatar inside it only carries the cue.
+function avatarEl(pubkey, size = 26, { interactive = false, dot = false } = {}) {
   const p = profileFor(pubkey)
   const style = `--art-av:${size}px`
   const extra = interactive ? ' art-avatar--btn' : ''
-  const common = interactive
-    ? { style, title: 'Copy npub', role: 'button', tabindex: '0',
-        onclick: (e) => { e.stopPropagation(); copyNpub(pubkey) },
-        onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copyNpub(pubkey) } } }
-    : { style }
-  if (p && isSafeUrl(p.picture)) {
-    return h('img', { class: 'art-avatar' + extra, src: p.picture, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer', ...common })
+  const linked = hasBoosterPage(pubkey)
+  const who = authorName(pubkey)
+  let common
+  if (!interactive) {
+    common = { style }
+  } else if (linked) {
+    const url = boosterUrl(pubkey)
+    const open = (e) => { e.stopPropagation(); window.open(url, '_blank', 'noopener') }
+    common = { style, title: 'View ' + who + ' on OnlyBoosts', 'aria-label': 'View ' + who + ' on OnlyBoosts',
+               role: 'button', tabindex: '0', onclick: open,
+               onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(e) } } }
+  } else {
+    common = { style, title: 'Copy npub', role: 'button', tabindex: '0',
+               onclick: (e) => { e.stopPropagation(); copyNpub(pubkey) },
+               onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copyNpub(pubkey) } } }
   }
-  return h('span', { class: 'art-avatar art-avatar--none' + extra, ...common }, initials(authorName(pubkey)))
+  const node = (p && isSafeUrl(p.picture))
+    ? h('img', { class: 'art-avatar' + extra, src: p.picture, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer', ...common })
+    : h('span', { class: 'art-avatar art-avatar--none' + extra, ...common }, initials(who))
+  // An <img> cannot hold the dot, so a marked avatar comes back wrapped.
+  return (linked && (interactive || dot)) ? wrapWithDot(node) : node
 }
 
-// Author display name as a copy-npub button.
+// Author display name: a link to their OnlyBoosts page, or the copy-npub button.
 function nameButton(pubkey, cls) {
+  const who = authorName(pubkey)
+  if (hasBoosterPage(pubkey)) {
+    return h('a', {
+      class: cls, href: boosterUrl(pubkey),
+      target: '_blank', rel: 'noopener noreferrer',
+      title: 'View ' + who + ' on OnlyBoosts',
+      onclick: (e) => e.stopPropagation(),
+    }, who)
+  }
   return h('button', {
     class: cls, type: 'button', title: 'Copy npub',
     onclick: (e) => { e.stopPropagation(); copyNpub(pubkey) },
-  }, authorName(pubkey))
+  }, who)
 }
 
 // ── Cards ────────────────────────────────────────────────────────────
@@ -375,14 +404,25 @@ function featuredByEl(info) {
     ]) : null
   }
   const pk = info.by.pubkey
-  const el = h('button', {
-    class: 'art-featured-by', type: 'button', title: 'Copy npub',
-    onclick: (e) => { e.stopPropagation(); copyNpub(pk) },
-  }, [
+  const linked = hasBoosterPage(pk)
+  const kids = [
     h('span', { class: 'art-featured-by-label', text: 'Featured by' }),
-    avatarEl(pk, 18),
+    // The chip is the click target, so the avatar stays non-interactive and
+    // takes the dot only as a cue.
+    avatarEl(pk, 18, { dot: true }),
     h('span', { class: 'art-featured-by-name', text: authorName(pk) }),
-  ])
+  ]
+  const el = linked
+    ? h('a', {
+        class: 'art-featured-by', href: boosterUrl(pk),
+        target: '_blank', rel: 'noopener noreferrer',
+        title: 'View ' + authorName(pk) + ' on OnlyBoosts',
+        onclick: (e) => e.stopPropagation(),
+      }, kids)
+    : h('button', {
+        class: 'art-featured-by', type: 'button', title: 'Copy npub',
+        onclick: (e) => { e.stopPropagation(); copyNpub(pk) },
+      }, kids)
   if (when) el.appendChild(h('span', { class: 'art-featured-when', text: '· ' + when }))
   return el
 }
@@ -1059,7 +1099,13 @@ async function runLookup(m, onFeatured) {
 export async function renderArticles({ panel, list }) {
   let data
   try {
-    const resp = await fetch(API_URL, { headers: { Accept: 'application/json' } })
+    // Booster index alongside the feed fetch — avatarEl()/nameButton() decide
+    // link-vs-copy synchronously and are never revised, so the answer must be
+    // in hand before the first byline renders. obReady() resolves either way.
+    const [resp] = await Promise.all([
+      fetch(API_URL, { headers: { Accept: 'application/json' } }),
+      obReady(),
+    ])
     if (!resp.ok) throw new Error('HTTP ' + resp.status)
     data = await resp.json()
   } catch (e) {

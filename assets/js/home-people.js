@@ -13,6 +13,7 @@
  * degrades quietly — a failed source leaves a short empty-state message.
  */
 import { SimplePool, nip19 } from '/assets/widgets/nostr-tools.js';
+import { ready as obReady, hasBoosterPage, wireBoosterAction } from '/assets/js/onlyboosts.js';
 
 // ── config ──────────────────────────────────────────────────────────
 const GUESTS_URL = '/api/guests';
@@ -122,6 +123,16 @@ function applyProfile(npub, prof) {
   if (!recs || !prof) return;
   for (const rec of recs) {
     if (prof.name && rec.nameEl) rec.nameEl.textContent = prof.name;
+    // Cards are built before profiles resolve, so a booster's link was labelled
+    // with their truncated npub. Name it now that we know it.
+    if (prof.name && rec.card) {
+      if (rec.card.tagName === 'A') {
+        rec.card.title = 'View ' + prof.name + ' on OnlyBoosts';
+        rec.card.setAttribute('aria-label', 'View ' + prof.name + ' on OnlyBoosts');
+      } else {
+        rec.card.setAttribute('aria-label', 'Copy npub for ' + prof.name);
+      }
+    }
     if (prof.picture && rec.avatar && rec.avatar.classList.contains('is-blank')) {
       rec.avatar.classList.remove('is-blank');
       const img = document.createElement('img');
@@ -163,17 +174,26 @@ function makeCard(opts) {
   const npub = opts.npub || null;
   const name = opts.name || (npub ? shortNpub(npub) : 'Anonymous');
 
-  const card = document.createElement(npub ? 'button' : 'div');
+  // Interactive cards are an <a> when the person has an OnlyBoosts page and a
+  // copy-to-clipboard <button> when they do not.
+  //
+  // ⚠️ Decided here and never revised, so the initGuests/initSupporters callers
+  // must have awaited obReady() before building any card.
+  const linked = !!npub && hasBoosterPage(npub);
+  const card = document.createElement(npub ? (linked ? 'a' : 'button') : 'div');
   card.className = 'people-card';
-  if (npub) {
+  if (npub && !linked) {
     card.type = 'button';
     card.title = 'Click to copy npub';
     card.setAttribute('aria-label', 'Copy npub for ' + name);
-    card.addEventListener('click', () => copyNpub(npub));
   }
 
   const avatar = makeAvatar(npub, opts.picture, opts.ring);
   card.appendChild(avatar);
+
+  if (npub) {
+    wireBoosterAction(card, { id: npub, name, avatar, onCopy: () => copyNpub(npub) });
+  }
 
   const nameEl = document.createElement('span');
   nameEl.className = 'people-name';
@@ -194,7 +214,7 @@ function makeCard(opts) {
     card.appendChild(eps);
   }
 
-  registerNode(npub, { avatar, nameEl });
+  registerNode(npub, { card, avatar, nameEl });
   return card;
 }
 
@@ -363,7 +383,9 @@ async function fetchApiGuests() {
 }
 async function initGuests(el) {
   skeletons(el);
-  const [packNpubs, epMap] = await Promise.all([fetchPackGuests(), guestEpisodeMap()]);
+  // obReady() is folded into the same wait so makeCard() knows, per person,
+  // whether to build a link or a copy button. It resolves either way.
+  const [packNpubs, epMap] = await Promise.all([fetchPackGuests(), guestEpisodeMap(), obReady()]);
   let npubs = packNpubs;
   if (!npubs.length) npubs = await fetchApiGuests();
   if (!npubs.length) { emptyState(el, 'Guest roster coming soon.'); return; }
@@ -388,6 +410,7 @@ async function initSupporters(el) {
 
   const people = aggregate(rows);
   if (!people.length) { emptyState(el, 'Be the first to boost the show!'); return; }
+  await obReady();  // see the note in initGuests
   const npubs = people.map((p) => p.npub).filter(Boolean);
   const cache = cachedProfiles(npubs);
   const cards = people.map((p) => {

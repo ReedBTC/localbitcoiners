@@ -28,6 +28,7 @@
  */
 
 import { SimplePool, nip19, nip59, getEventHash } from '/assets/widgets/nostr-tools.js'
+import { ready as obReady, hasBoosterPage, boosterUrl } from '/assets/js/onlyboosts.js'
 
 // ── Constants ────────────────────────────────────────────────────────
 const MERCHANT_NPUB = 'npub1cvcgs83gw6pcrhvtmlf8gdqaegx93qkznwry96jteqhh2cexgkfq45rtya'
@@ -347,6 +348,11 @@ function shipChoiceLabel(product, choice) {
 }
 
 async function fetchCatalog() {
+  // npubChip() decides link-vs-copy synchronously when a product description
+  // renders, so the booster index is resolved here first. In practice it is
+  // already warm — descriptions render on modal open, long after this — but
+  // this makes it deterministic. obReady() resolves either way.
+  await obReady()
   // Query each relay INDEPENDENTLY and merge, rather than one pooled
   // querySync across all relays. A pooled query only resolves once every
   // relay has EOSE'd or timed out, and in that shared subscription a
@@ -572,8 +578,31 @@ function renderDescription(text) {
   return p
 }
 
+// An @npub mention inside listing text. When that person has an OnlyBoosts
+// page the chip becomes a link to it; otherwise it stays the copy-to-clipboard
+// button it has always been. No booster dot here — this is a text chip with no
+// avatar to hang one on, so the link treatment is the whole cue.
 function npubChip(npub, hex) {
   let label = npub.slice(0, 10) + '…' + npub.slice(-4)   // until the name resolves
+
+  if (hasBoosterPage(npub)) {
+    const link = h('a', {
+      class: 'merch-npub-chip',
+      text: '@' + label,
+      href: boosterUrl(npub),
+      target: '_blank',
+      rel: 'noopener noreferrer',
+      title: 'View this booster on OnlyBoosts',
+    })
+    resolveProfileName(hex).then(name => {
+      if (!name) return
+      label = name
+      link.textContent = '@' + label
+      link.title = 'View ' + name + ' on OnlyBoosts'
+    })
+    return link
+  }
+
   const chip = h('button', {
     type: 'button',
     class: 'merch-npub-chip',

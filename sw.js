@@ -167,7 +167,15 @@
 // window as the RSS split edit and the bot's mirrored table; the widget bundle
 // is stale-while-revalidate, so without a bump a returning visitor would boost
 // Ep015 through the old routing on their first navigation after the deploy.
-const VERSION = 'lb-v57';
+// lb-v58: clicking a person now opens their OnlyBoosts page when they have one
+// instead of copying their npub, marked by a small blue dot on the avatar. Two
+// reasons this needs a bump rather than riding the normal SWR refresh. The dot
+// is a brand-new rule set in a brand-new sheet, and a returning visitor on the
+// stale CSS would get the behavior change with no cue that anything is
+// clickable-through. And calendar-events.js is precached, so its new import of
+// onlyboosts.js would dangle on a cold load until that file was cached too —
+// both are added to PRECACHE_URLS below.
+const VERSION = 'lb-v58';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
@@ -196,12 +204,14 @@ const PRECACHE_URLS = [
   '/assets/css/episode.css',
   '/assets/css/boosts-thread.css',
   '/assets/css/boost-actions.css',
+  '/assets/css/onlyboosts.css',
   '/assets/js/episode-enhance.js',
   '/assets/js/ep-sats.js',
   '/assets/js/ep-boosts.js',
   '/assets/js/boosts-thread.js',
   '/assets/js/profile-cache.js',
   '/assets/js/calendar-events.js',
+  '/assets/js/onlyboosts.js',
   '/assets/js/boost-actions.js',
   '/assets/js/nav.js',
   '/assets/js/widget-loader.js',

@@ -460,6 +460,7 @@
   <link rel="stylesheet" href="/assets/css/nav.css" />
   <link rel="stylesheet" href="/assets/css/footer.css" />
   <link rel="stylesheet" href="/assets/css/community-status.css" />
+  <link rel="stylesheet" href="/assets/css/onlyboosts.css" />
 </head>
 <body>
 
@@ -755,6 +756,13 @@
   }
 })();
 </script>
+
+<!-- OnlyBoosts booster index (window.LBOnlyBoosts). MUST stay ahead of
+     supporters.js: that file is a classic script and reads this off the global,
+     and deferred scripts run in document order. It starts its fetch on
+     evaluation, so loading it early also overlaps that request with the sats
+     and guests fetches supporters.js is about to make. -->
+<script type="module" src="/assets/js/onlyboosts.js"></script>
 
 <!-- Profile cache + resolver (window.LBEpisodeEnhance). Loaded before
      supporters.js so the grids can paint from cache on first paint. -->

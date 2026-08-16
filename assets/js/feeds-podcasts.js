@@ -24,6 +24,9 @@
  */
 import { nip19 } from '/assets/widgets/nostr-tools.js'
 import {
+  ready as obReady, hasBoosterPage, boosterUrl, wrapWithDot,
+} from '/assets/js/onlyboosts.js'
+import {
   fetchProfilesFromPrimal,
   setCachedProfile,
   parseSegments,
@@ -140,35 +143,58 @@ function initials(profile, npub) {
   return (npub || '').replace(/^npub1/, '').slice(0, 2).toUpperCase() || '👤'
 }
 
-// A booster avatar. `interactive` wires click/keyboard to copy the npub.
+// A booster avatar. `interactive` wires click/keyboard to open the booster's
+// OnlyBoosts page, or to copy their npub when they have no page there.
 // Avatars load eagerly (they're tiny, and `loading=lazy` left off-screen
 // ones perpetually unloaded → looked broken); a picture that fails to load
 // (dead host, hotlink block) swaps to the initials chip via onerror.
+//
+// ⚠️ The avatar node here is often a bare <img>, which cannot hold the booster
+// dot as a child, so a booster's avatar comes back wrapped in a span. Callers
+// must treat the return value as opaque and not assume it carries .pcast-avatar
+// — read the class off the inner node if you ever need it.
 function avatarEl(profile, npub, { size = 26, interactive = false, cls = '' } = {}) {
   const style = `--pcast-av:${size}px`
   const makeInitials = () => wire(h('span', { class: 'pcast-avatar pcast-avatar--none ' + cls, style }, initials(profile, npub)))
+  const linked = !!npub && hasBoosterPage(npub)
 
   function wire(n) {
     if (interactive && npub) {
       n.classList.add('is-interactive')
       n.setAttribute('role', 'button')
       n.setAttribute('tabindex', '0')
-      n.setAttribute('title', 'Copy npub')
-      n.addEventListener('click', (e) => { e.stopPropagation(); copyNpub(npub) })
-      n.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); copyNpub(npub) }
-      })
+      if (linked) {
+        const url = boosterUrl(npub)
+        const who = profile?.name?.trim() || 'this booster'
+        n.setAttribute('title', 'View ' + who + ' on OnlyBoosts')
+        n.setAttribute('aria-label', 'View ' + who + ' on OnlyBoosts')
+        const open = (e) => { e.stopPropagation(); window.open(url, '_blank', 'noopener') }
+        n.addEventListener('click', open)
+        n.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(e) }
+        })
+      } else {
+        n.setAttribute('title', 'Copy npub')
+        n.addEventListener('click', (e) => { e.stopPropagation(); copyNpub(npub) })
+        n.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); copyNpub(npub) }
+        })
+      }
     }
     return n
   }
+
+  // The dot goes on whatever node ends up interactive, so it tracks the avatar
+  // through the onerror swap below rather than being stranded on a dead <img>.
+  const dotted = (n) => (interactive && linked ? wrapWithDot(n) : n)
 
   const pic = profile?.picture
   if (pic && isSafeImg(pic)) {
     const img = h('img', { class: 'pcast-avatar ' + cls, style, src: pic, alt: '', referrerpolicy: 'no-referrer' })
     img.addEventListener('error', () => { img.replaceWith(makeInitials()) }, { once: true })
-    return wire(img)
+    return dotted(wire(img))
   }
-  return makeInitials()
+  return dotted(makeInitials())
 }
 
 // ── Episode link ladder ──────────────────────────────────────────────
@@ -640,10 +666,19 @@ function boostRow(b) {
   const profile = profileFor(b.booster_pubkey)
   const name = profile?.name?.trim() || (b.booster_npub ? b.booster_npub.slice(0, 12) + '…' : 'anon')
 
-  const nameEl = h('button', {
-    class: 'pcast-boost-name', type: 'button', title: 'Copy npub',
-    onclick: () => copyNpub(b.booster_npub),
-  }, name)
+  // A booster with an OnlyBoosts page gets a real link here; everyone else
+  // keeps the copy-npub button. The avatar beside it carries the blue dot.
+  const nameEl = hasBoosterPage(b.booster_npub)
+    ? h('a', {
+        class: 'pcast-boost-name',
+        href: boosterUrl(b.booster_npub),
+        target: '_blank', rel: 'noopener noreferrer',
+        title: 'View ' + name + ' on OnlyBoosts',
+      }, name)
+    : h('button', {
+        class: 'pcast-boost-name', type: 'button', title: 'Copy npub',
+        onclick: () => copyNpub(b.booster_npub),
+      }, name)
 
   const satsEl = (b.sats != null)
     ? h('span', { class: 'pcast-boost-sats' }, [`${fmtSats(b.sats)} `, h('span', { class: 'pcast-bolt', 'aria-hidden': 'true', text: '⚡' })])
@@ -897,7 +932,14 @@ function mountControls(panel, { sortKey, rangeKey, onSort, onRange }) {
 export async function renderPodcasts({ panel, list }) {
   let data
   try {
-    const resp = await fetch(API_URL, { headers: { Accept: 'application/json' } })
+    // The booster index rides along with the feed fetch: boostRow() and
+    // avatarEl() both decide link-vs-copy synchronously and are never revised,
+    // so the answer has to be in hand before the first row is built. obReady()
+    // resolves either way, so a dead index costs the links, not the feed.
+    const [resp] = await Promise.all([
+      fetch(API_URL, { headers: { Accept: 'application/json' } }),
+      obReady(),
+    ])
     if (!resp.ok) throw new Error('HTTP ' + resp.status)
     data = await resp.json()
   } catch (e) {

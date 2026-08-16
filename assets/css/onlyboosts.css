@@ -1,0 +1,82 @@
+/* OnlyBoosts booster dot.
+ *
+ * The small blue mark in the top-right of an avatar meaning "this person has a
+ * page on OnlyBoosts, so clicking opens it instead of copying their npub".
+ * Attached by addBoosterDot() in assets/js/onlyboosts.js.
+ *
+ * ⚠️ DELIBERATELY SMALL, and sized as a share of the avatar rather than fixed.
+ * The avatars this lands on run from 26px (article bylines) to 104px (featured
+ * supporter tiles), so a fixed size is either invisible on one end or a badge
+ * on the other. The ceiling is 9px, which is what the green wallet-connected
+ * dot measures on the 28px nav avatar — that dot is the reference for how loud
+ * this is allowed to be, and this should never exceed it.
+ *
+ * The OnlyBoosts favicon was the other candidate and does not survive the
+ * scale: the mark is an ostrich head plus three broadcast arcs, which at 8px
+ * on an article byline is a smudge rather than a logo.
+ */
+
+.ob-has-dot {
+  /* The dot positions against the avatar, so the avatar must be a containing
+     block. Several of these (.sup-avatar, .people-avatar) are plain spans that
+     were never positioned. */
+  position: relative;
+  overflow: visible;
+}
+
+/* For avatars that cannot hold the dot themselves — see wrapWithDot(). Sized
+   by its content so the dot's percentage still resolves against the avatar. */
+.ob-dot-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  line-height: 0;
+}
+
+.ob-dot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  /* Percentages resolve against the avatar. 26% keeps it proportional in the
+     middle of the range; the clamp stops it from vanishing on a 26px byline or
+     growing into a badge on a 104px tile. */
+  width: clamp(6px, 26%, 9px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #00aff0; /* OnlyBoosts --brand, the same blue as its theme-color */
+  /* A ring in the surface behind it, so the dot reads as a mark ON the avatar
+     rather than a blue pixel IN the photo. Surfaces on a non-cream background
+     override --ob-dot-ring rather than restyling the dot. */
+  box-shadow: 0 0 0 1.5px var(--ob-dot-ring, var(--cream, #fff));
+  pointer-events: none;
+}
+
+/* Controls that link out rather than copy.
+ *
+ * Every one of these was a <button> before this feature and is styled as one by
+ * its own sheet. The <a> form has to inherit that styling rather than pick up
+ * the browser's default blue-and-underlined link treatment, which would make
+ * the same control look like two different things depending on whether the
+ * person happens to have boosted a podcast. Color and decoration only — the
+ * layout, padding and hover all still come from the original rules.
+ */
+a.sup-card,
+a.people-card,
+a.author-id,
+a.featured-by,
+a.pcast-boost-name,
+a.art-featured-by,
+a.art-byline-name,
+a.art-reader-name,
+a.merch-npub-chip {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* .sup-card and .people-card set their own color as buttons; inherit would
+   pull the surrounding text color instead. */
+a.sup-card,
+a.people-card {
+  color: var(--text);
+}
