@@ -46,7 +46,13 @@ bots/leaderboards.bak-*/
 bots/tmp/
 
 # --- Bots: private docs ---
+# bots-config.md carries credential and LAN-host notes. CLAUDE.md has always
+# described it as gitignored, but no rule actually matched it — it survived
+# only because the "bots/nostr bots/" layout it lived in is gone. Globbed on
+# the basename so a copy recreated anywhere under bots/ stays uncommittable.
 bots/CLAUDE.md
+bots/**/bots-config.md
+bots/bots-config.md
 
 # --- Community-boosts data: lives on the VPS (relay.mynostr.app), pushed by
 # the hourly bot via rsync and served by Caddy — deliberately NOT committed,

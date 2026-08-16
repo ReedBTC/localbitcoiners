@@ -161,7 +161,21 @@ AUTOPUSH = True   # git pull/add/commit/push at end of a real run
 PUSH_TO_VPS  = True
 VPS_KEY_FILE = Path.home() / ".ssh" / "relay_mynostr_ed25519"
 
-# Fountain Firestore (anonymous read access — the web client's public api key)
+# Fountain Firestore (anonymous read access).
+#
+# Provenance of the api key, since it looks alarming in a public repo: it is
+# *Fountain's own* public Firebase web-app key, not a Local Bitcoiners
+# credential. The identical string is served to every visitor in fountain.fm's
+# client bundle, and Firebase web keys identify a project rather than authorize
+# access to it — Firestore security rules do the authorizing, which is what
+# makes the `supporters` collection anonymously readable in the first place.
+# There is nothing here we own or could rotate, and moving it out of source
+# would buy no security while giving this collector a way to fail.
+#
+# Secret scanners flag it on the `AIza...` pattern regardless (it is in git
+# history from 8bcb170 onward). Resolve those as a known third-party public
+# key. If it ever stops working, Fountain rotated it: recover the current
+# value from their client bundle.
 FIRESTORE_PROJECT = "fountain-fm"
 FIRESTORE_API_KEY = "AIzaSyDpQs8iMTAn_Bh4uXKBpJPk91iB1JPDs_w"
 FIRESTORE_URL     = (

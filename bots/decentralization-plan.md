@@ -146,8 +146,9 @@ Moving just these kills most of the home-internet dependency.
 
 ### The wall: node-touching bots
 
-Alby Hub is on the LAN. lnbits is `192.168.1.219` via an `/etc/hosts` entry on
-ai71. A VPS can reach neither. Options, best first:
+Alby Hub is on the LAN. lnbits is a private RFC1918 address via an `/etc/hosts`
+entry on ai71 (the address itself is in the credentials file, not here). A VPS
+can reach neither. Options, best first:
 
 **1. NWC instead of the Experimental API token.** NWC rides nostr relays — works
 from anywhere, no port-forwarding, no tunnel, revocable per-connection with a
