@@ -24,6 +24,18 @@
   overflow: visible;
 }
 
+/* ⚠️ THE OVERFLOW OVERRIDE ABOVE HAS A PRICE, and this rule is what pays it.
+   .sup-avatar and .people-avatar are `border-radius: 50%` plus
+   `overflow: hidden`, and that overflow is what clips their <img> into a
+   circle — the image itself is a square filling the box at object-fit: cover.
+   Setting overflow: visible so the dot can sit outside the avatar also lets the
+   image out, and every supporter with a profile picture renders as a square.
+   Re-clipping the image on its own box restores the circle without re-trapping
+   the dot. `inherit` rather than 50% so this holds for any avatar shape. */
+.ob-has-dot > img {
+  border-radius: inherit;
+}
+
 /* For avatars that cannot hold the dot themselves — see wrapWithDot(). Sized
    by its content so the dot's percentage still resolves against the avatar. */
 .ob-dot-wrap {

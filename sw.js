@@ -175,7 +175,13 @@
 // clickable-through. And calendar-events.js is precached, so its new import of
 // onlyboosts.js would dangle on a cold load until that file was cached too —
 // both are added to PRECACHE_URLS below.
-const VERSION = 'lb-v58';
+// lb-v59: fixes the dot's own side effect. lb-v58 set overflow: visible on the
+// avatar so the dot could sit outside it, which also released the <img> that
+// .sup-avatar / .people-avatar were clipping into a circle, and every supporter
+// with a picture rendered square. The image is re-clipped on its own box now.
+// Needs its own bump rather than riding lb-v58: onlyboosts.css is precached, so
+// anyone who loaded lb-v58 is holding the broken sheet in STATIC_CACHE.
+const VERSION = 'lb-v59';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
