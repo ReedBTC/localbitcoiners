@@ -574,27 +574,58 @@ def parse_description(description):
         "message":     match.group(3).strip() if match.group(3) else "",
     }
 
-def get_episode_url_from_rss(ep_title):
-    """Title-based RSS lookup used as a fallback for keysend boosts that come
-    in with an episode title but no URL. Linear scan, no caching — keysend
-    boosts are infrequent enough that this isn't hot.
+# Episode-title values that carry no episode: an app that couldn't resolve what
+# the listener was playing sends a placeholder rather than omitting the field.
+# PodcastGuru sends "0" (the same sentinel it uses for feedId), others send the
+# JS/JSON primitives. Treated as "no episode" everywhere, never as a title.
+JUNK_EPISODE_TITLES = {"", "0", "00", "000", "-", "--", "n/a", "na",
+                       "none", "null", "undefined", "unknown"}
 
-    Pulls the user-facing Fountain URL from `<podcast:contentLink href="...">`,
-    which carries the page-id used at fountain.fm/episode/{id}. The enclosure
-    URL pattern (items/{id}/files/...mp3) carries an unrelated audio-file id
-    and was a previous source of broken links."""
-    try:
-        rss = requests.get(RSS_FEED, timeout=10).text
-        for item in re.findall(r'<item>(.*?)</item>', rss, re.DOTALL):
-            t = re.search(r'<title>(.*?)</title>', item)
-            c = re.search(r'<podcast:contentLink[^>]*href="(https://fountain\.fm/episode/[^"]+)"', item)
-            if t and c:
-                rss_title = (t.group(1).replace("&amp;", "&").replace("&lt;", "<")
-                              .replace("&gt;", ">").replace("&quot;", '"'))
-                if ep_title in rss_title or rss_title in ep_title:
-                    return c.group(1)
-    except Exception as e:
-        print(f"  [warn] RSS episode URL lookup failed: {e}")
+def is_junk_episode_title(title):
+    return (title or "").strip().lower() in JUNK_EPISODE_TITLES
+
+# Shortest title fragment allowed to match an RSS episode by containment. A
+# boostagram title is either the full episode title or a truncation of it, so a
+# genuine match always shares a long run of characters; anything shorter is a
+# coincidence. This is the guard that was missing when a title of "0" matched
+# "…| Ep. 024" and linked a boost to an episode nobody boosted.
+MIN_TITLE_MATCH_CHARS = 10
+
+def get_episode_url_from_rss(ep_title, cache=None):
+    """Title-based RSS lookup used as a fallback for keysend boosts that come
+    in with an episode title but no URL. Returns the user-facing Fountain URL
+    from `<podcast:contentLink href="...">`, which carries the page-id used at
+    fountain.fm/episode/{id}. (The enclosure URL pattern
+    `items/{id}/files/...mp3` carries an unrelated audio-file id and was a
+    previous source of broken links.)
+
+    Matching, most trustworthy first:
+      1. `Ep. NNN` in the boostagram title → the RSS item with that number.
+      2. Containment either way, but only when the shorter of the two strings
+         is at least MIN_TITLE_MATCH_CHARS long.
+
+    Returns None when nothing matches. A boost with no resolvable episode is
+    published as a show-level boost — which NIP-73 represents natively — and
+    that is strictly better than linking a plausible wrong episode."""
+    if is_junk_episode_title(ep_title):
+        return None
+
+    index = build_rss_item_index(cache if cache is not None else make_cache())
+
+    num = _extract_episode_number(ep_title)
+    if num:
+        entry = next((e for e in index.values() if e.get("episode_number") == num), None)
+        if entry and entry.get("fountain_id"):
+            return f"https://fountain.fm/episode/{entry['fountain_id']}"
+
+    want = " ".join(ep_title.split()).casefold()
+    for entry in index.values():
+        rss_title = " ".join((entry.get("title") or "").split()).casefold()
+        if not rss_title or not entry.get("fountain_id"):
+            continue
+        if ((want in rss_title or rss_title in want)
+                and min(len(want), len(rss_title)) >= MIN_TITLE_MATCH_CHARS):
+            return f"https://fountain.fm/episode/{entry['fountain_id']}"
     return None
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -963,10 +994,19 @@ def _parse_value_recipients(value_block_xml):
     return out
 
 
+def _rss_text(s):
+    """Decode the handful of XML entities that appear in LB feed titles."""
+    return ((s or "").replace("&amp;", "&").replace("&lt;", "<")
+            .replace("&gt;", ">").replace("&quot;", '"').replace("&apos;", "'")
+            .strip())
+
 def build_rss_item_index(cache):
     """Parse the LB RSS feed once per run and return a dict keyed by the
     item's <guid>. Each value is a dict with:
 
+      title        str | None  the item's <title>, entity-decoded. Lets a boost
+                               that arrives with an episode guid but no usable
+                               title (some keysend apps) still name its episode.
       fountain_id  str | None  Fountain page id from <podcast:contentLink href=
                                "https://fountain.fm/episode/{id}">. None when
                                Fountain hasn't yet backfilled the contentLink
@@ -1013,11 +1053,13 @@ def build_rss_item_index(cache):
                 guests = [n.strip() for n in gm.group(1).split(",") if n.strip()]
             vb = re.search(r'<podcast:value\b.*?</podcast:value>', item_xml, re.DOTALL)
             vb_xml = vb.group(0) if vb else ""
-            tm  = re.search(r'<title[^>]*>([^<]*)</title>', item_xml)
-            num = _extract_episode_number(tm.group(1).strip()) if tm else None
+            tm    = re.search(r'<title[^>]*>([^<]*)</title>', item_xml)
+            title = _rss_text(tm.group(1)) if tm else None
+            num   = _extract_episode_number(title) if title else None
             index[guid] = {
                 "guid":            guid,
                 "fountain_id":     fountain_id,
+                "title":           title,
                 "guests":          guests,
                 "value_lnaddress": _parse_value_lnaddress(vb_xml),
                 "value_all":       _parse_value_recipients(vb_xml),
@@ -1970,10 +2012,31 @@ def _classify_keysend(tx, boostagram, payment_hash, settled_at, our_msats, cache
         except Exception:
             sender_npub = None
 
+    # RSS item GUID for the episode, if the boostagram TLV carries it. Key name
+    # varies by app (Podcasting 2.0 spec uses `episode_guid`; some send camelCase
+    # or `item_guid`). Feeds the NIP-73 podcast:item:guid tag.
+    item_guid = (boostagram.get("episode_guid") or boostagram.get("episodeGuid")
+                 or boostagram.get("item_guid") or boostagram.get("itemGuid") or "")
+
+    # An app that couldn't resolve what the listener was playing sends a
+    # placeholder title ("0", "undefined") rather than omitting the field.
     episode_title_raw = boostagram.get("episode", "") or ""
-    episode_url       = boostagram.get("boostLink") or boostagram.get("boost_link", "") or ""
+    if is_junk_episode_title(episode_title_raw):
+        episode_title_raw = ""
+
+    episode_url = boostagram.get("boostLink") or boostagram.get("boost_link", "") or ""
+
+    # A guid identifies the episode exactly even when the title doesn't — the
+    # feed knows both, so recover the title/link the boostagram failed to send.
+    if item_guid:
+        entry = build_rss_item_index(cache).get(item_guid) or {}
+        if not episode_title_raw:
+            episode_title_raw = entry.get("title") or ""
+        if not episode_url and entry.get("fountain_id"):
+            episode_url = f"https://fountain.fm/episode/{entry['fountain_id']}"
+
     if not episode_url and episode_title_raw:
-        episode_url = get_episode_url_from_rss(episode_title_raw) or ""
+        episode_url = get_episode_url_from_rss(episode_title_raw, cache) or ""
 
     guests = []
     if episode_url and "fountain.fm" in episode_url:
@@ -1985,14 +2048,20 @@ def _classify_keysend(tx, boostagram, payment_hash, settled_at, our_msats, cache
         if em:
             episode_id = em.group(1)
 
+    # Nothing identifies an episode: no guid, no usable title, no boost link.
+    # That's a boost on the SHOW, which NIP-73 represents natively as the
+    # feed-level podcast:guid pair — the same shape show-level Fountain and
+    # website boosts already take. Publishing it this way is honest; the
+    # alternative (guess an episode from a placeholder title) is what put a
+    # boost on Ep. 024 that nobody made.
+    show_level = not (item_guid or episode_id or episode_title_raw)
+    if show_level:
+        episode_id        = LB_SHOW_ID
+        episode_title_raw = LB_SHOW_TITLE
+        episode_url       = LB_SHOW_URL
+
     value_msat  = boostagram.get("valueMsatTotal") or boostagram.get("value_msat_total") or 0
     total_msats = int(value_msat) if value_msat else our_msats
-
-    # RSS item GUID for the episode, if the boostagram TLV carries it. Key name
-    # varies by app (Podcasting 2.0 spec uses `episode_guid`; some send camelCase
-    # or `item_guid`). Feeds the NIP-73 podcast:item:guid tag.
-    item_guid = (boostagram.get("episode_guid") or boostagram.get("episodeGuid")
-                 or boostagram.get("item_guid") or boostagram.get("itemGuid") or "")
 
     info = _new_info("keysend", payment_hash, settled_at, our_msats, total_msats, 1.0)
     info.update({
@@ -2006,10 +2075,14 @@ def _classify_keysend(tx, boostagram, payment_hash, settled_at, our_msats, cache
         "item_guid":      item_guid or None,
         "guests":         guests or [],
         "app_name":       app_name,
+        "show_level":     show_level,
         "boostagram":     boostagram,
         "raw_tx":         tx,
     })
-    _record_episode_id(cache, info["episode_number"], info["episode_id"])
+    # Show-level boosts carry the show id in episode_id — never let it into the
+    # episode_number → fountain_id map (mirrors the Fountain show-boost guard).
+    if not show_level:
+        _record_episode_id(cache, info["episode_number"], info["episode_id"])
     return info
 
 def _classify_lb_donation(tx, payment_hash, settled_at, our_msats, cache):
@@ -2063,6 +2136,12 @@ def resolve_item_guid(info, cache=None):
     """
     if info.get("item_guid"):
         return info["item_guid"]
+    # A show-level boost belongs to no episode, and its episode_id is the SHOW
+    # id — never resolve one, or the fountain_id sweep below could pair it with
+    # an episode. (No show id matches an item's fountain_id today; this keeps
+    # that from being load-bearing.)
+    if info.get("show_level"):
+        return None
     if cache is None:
         return None
 

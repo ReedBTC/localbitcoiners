@@ -59,6 +59,66 @@ SHOW_PUBKEY_HEX = "c330881e28768381dd8bdfd274341dca0c5882c29b8642ea4bc82f7563264
 # Fountain publishes its note after its own indexing lag.
 MATCH_WINDOW_SEC = 900          # ±15 min
 
+# The donor's message is the third identity signal, after npub and sats. Every
+# publisher we can collide with — Fountain, BoostMeBitch, chadf-boostbot — puts
+# the donor's text into the note verbatim, and we hold the same text from the
+# boostagram / Fountain comment / kind-30078. Two same-size boosts in the same
+# window with different messages are different boosts; a note whose text
+# contains ours is ours even when the sats reconstruction is a few off.
+#
+# A message only counts once it is long enough to be discriminating: "Boost!"
+# or "🔥" would match half the notes on a busy day. Under the floor the message
+# is treated as absent and matching falls back to npub / sats exactly as before.
+MIN_MESSAGE_MATCH_CHARS = 12
+
+# What our own pipeline writes into `message` when the donor sent none. Neither
+# is donor text; both must read as "no message". (The placeholder is
+# boost_formatter.NO_COMMENT_PLACEHOLDER, spelled out here so this module keeps
+# no import on the formatter.)
+_NO_MESSAGE = {"", "*no comment with boost*", "undefined"}
+
+
+def _norm_message(s):
+    """Whitespace-collapsed, casefolded donor text, or "" when there is none
+    usable — the empty string means 'no signal', never 'empty message matches'."""
+    if not s:
+        return ""
+    # data/sats.csv carries some newlines as the two characters `\n`; a relay
+    # note has the real thing. Fold both to a space before collapsing.
+    s = str(s).replace("\\r", " ").replace("\\n", " ")
+    s = " ".join(s.split()).casefold()
+    if s in _NO_MESSAGE or len(s) < MIN_MESSAGE_MATCH_CHARS:
+        return ""
+    return s
+
+
+def message_agreement(payment_message, note_text):
+    """Does the donor's message on the payment agree with a note's text?
+
+    Returns True when one contains the other, False when both are usable and
+    neither contains the other, and None when either side has no usable message
+    (too short, empty, a placeholder) — None means the message says nothing
+    either way and callers must fall back to the other signals.
+
+    Containment rather than equality on purpose: BoostMeBitch and chadf-boostbot
+    wrap the message in their own 💰/👤/🎙️ lines, and Fountain appends a
+    trailer, so the note text is a superset of the message. The reverse holds
+    when the payment side carries extra (a website 30078 with an appended
+    link) and the note carries the bare message.
+
+    False is affirmative evidence, not absence of it, and callers treat it that
+    way — but only alongside another signal. The website widget's donor share
+    note ("Just boosted ⚡ 420 sats to nostr:…") never carries the donor's
+    message, so for an identified donor a False here with the sats agreeing is
+    still their boost; that is why the npub tier only drops a candidate when
+    the message AND the sats both differ.
+    """
+    a = _norm_message(payment_message)
+    b = _norm_message(note_text)
+    if not a or not b:
+        return None
+    return a in b or b in a
+
 # How long a boost with no match yet waits before we conclude nobody published
 # one. Below this the note is held (not published at all) so it can still be
 # published WITH claim tags on the next tick if the donor's note never shows.
@@ -183,6 +243,7 @@ def all_matches(records, info, settled_ts):
     """
     npub = info.get("sender_npub")
     total_sats = info.get("total_sats")
+    message = info.get("message")
     out = []
     for r in records:
         try:
@@ -192,8 +253,15 @@ def all_matches(records, info, settled_ts):
             continue
         if _episode_conflict(r, info):
             continue
+        agree = message_agreement(message, r.get("msg"))
+        # Both sides carry a real message and they are different texts: not this
+        # boost, whatever the sats say. (Same rule find_match applies.)
+        if agree is False and r.get("sats") != total_sats:
+            continue
         booster = r.get("booster") or {}
-        if (npub and booster.get("npub") == npub) or (total_sats and r.get("sats") == total_sats):
+        if ((npub and booster.get("npub") == npub)
+                or (total_sats and r.get("sats") == total_sats)
+                or agree):
             out.append(r)
     return out
 
@@ -201,16 +269,24 @@ def all_matches(records, info, settled_ts):
 def find_match(records, info, settled_ts, consumed=None):
     """The indexed boost that represents this payment, or None.
 
-    Two signals, strongest first:
+    Three signals, strongest first:
 
-      npub  — we know the donor's Nostr identity (Fountain comment, website
-              receipt) and a note from exactly that pubkey sits in the window.
-              For Fountain this is airtight: the npub we read off the comment
-              IS the identity Fountain publishes the note as.
-      sats  — no identity to match on, so fall back to an exact sats match in
-              the window. Amount collisions are possible (two 100-sat boosts
-              20 minutes apart), and they resolve toward suppressing our claim
-              rather than duplicating one — the safe direction.
+      npub     — we know the donor's Nostr identity (Fountain comment, website
+                 receipt) and a note from exactly that pubkey sits in the
+                 window. For Fountain this is airtight: the npub we read off
+                 the comment IS the identity Fountain publishes the note as.
+                 When that donor has several notes in the window, the one whose
+                 text carries our message wins.
+      message  — the note's text contains the donor's message (or vice versa),
+                 see message_agreement. With the sats agreeing too this is as
+                 good as npub; on its own it still identifies the boost when
+                 the sats reconstruction is a few off.
+      sats     — no identity to match on, so fall back to an exact sats match
+                 in the window. Amount collisions are possible (two 100-sat
+                 boosts 20 minutes apart); a candidate whose message POSITIVELY
+                 disagrees with ours is not a collision but a different boost
+                 and is skipped, and the rest resolve toward suppressing our
+                 claim rather than duplicating one — the safe direction.
 
     `consumed` is a set of already-matched event ids, so two boosts in one batch
     can't both claim the same indexed note.
@@ -218,6 +294,7 @@ def find_match(records, info, settled_ts, consumed=None):
     consumed = consumed if consumed is not None else set()
     npub = info.get("sender_npub")
     total_sats = info.get("total_sats")
+    message = info.get("message")
 
     def _candidates():
         for r in records:
@@ -234,16 +311,33 @@ def find_match(records, info, settled_ts, consumed=None):
                 continue
             if _episode_conflict(r, info):
                 continue
-            yield r, booster
+            yield r, booster, message_agreement(message, r.get("msg"))
 
     if npub:
-        for r, booster in _candidates():
-            if booster.get("npub") == npub:
+        mine = [(r, agree) for r, booster, agree in _candidates()
+                if booster.get("npub") == npub]
+        # Prefer the donor's note that carries our text; a note that positively
+        # carries a DIFFERENT text and a different amount is one of their other
+        # boosts, not this one.
+        for r, agree in mine:
+            if agree:
+                return r, "npub+message"
+        for r, agree in mine:
+            if not (agree is False and r.get("sats") != total_sats):
                 return r, "npub"
 
     if total_sats:
-        for r, _ in _candidates():
-            if r.get("sats") == total_sats:
+        for r, _, agree in _candidates():
+            if r.get("sats") == total_sats and agree:
+                return r, "sats+message"
+
+    for r, _, agree in _candidates():
+        if agree:
+            return r, "message"
+
+    if total_sats:
+        for r, _, agree in _candidates():
+            if r.get("sats") == total_sats and agree is not False:
                 return r, "sats"
 
     return None, None
@@ -316,6 +410,7 @@ def relay_note_for(info, settled_ts, relays, query_relay, show_pubkey=SHOW_PUBKE
         # publisher hands us the hex when it has it.
         npub_hex = info.get("sender_pubkey_hex")
     total_sats = info.get("total_sats")
+    message = info.get("message")
 
     item_guid = info.get("item_guid")
 
@@ -332,22 +427,39 @@ def relay_note_for(info, settled_ts, relays, query_relay, show_pubkey=SHOW_PUBKE
             # Positively different episodes → different boosts, whoever signed them.
             if ev_item and item_guid and ev_item != item_guid:
                 continue
+            agree = message_agreement(message, ev.get("content"))
+            sats_agree = (total_sats is not None and ev_sats == total_sats)
             if npub_hex and ev.get("pubkey") == npub_hex:
                 # The donor's identity alone is not enough. On 2026-08-08 one
                 # donor boosted 1,111 sats at 21:49 and 1,000 at 21:54; their
                 # note for the first sits well inside the second's window, and
                 # matching on npub alone vetoed a claim that was real. So a note
-                # that states an amount has to state THIS one; a note with no
-                # parseable amount still vetoes, since then we cannot tell them
-                # apart and the safe direction is not to publish.
-                if ev_sats is None or total_sats is None or ev_sats == total_sats:
+                # that states an amount has to state THIS one, or carry our
+                # message; a note that positively carries a different message
+                # AND a different amount is one of their other boosts. A note
+                # with neither an amount nor a usable message still vetoes,
+                # since then we cannot tell them apart and the safe direction
+                # is not to publish.
+                if agree:
+                    return ev, f"{relay} has a note from the donor with this message ({ev['id'][:12]}...)"
+                if agree is False and not sats_agree:
+                    continue
+                if ev_sats is None or total_sats is None or sats_agree:
                     return ev, f"{relay} has a note from the donor ({ev['id'][:12]}...)"
                 continue
             has_evidence = (
                 any(t[0] == "t" and len(t) >= 2 and t[1] in _EVIDENCE_TOPIC_TAGS
                     for t in ev.get("tags", []))
                 or any(t[0] == "amount" for t in ev.get("tags", []) if t))
-            if has_evidence and total_sats and ev_sats == total_sats:
+            if not has_evidence:
+                continue
+            # Our message in a boost note is the boost, even when the amounts
+            # differ (a reconstruction a few sats off) — matching resolves
+            # toward not claiming, the safe direction.
+            if agree:
+                return ev, f"{relay} has a boost note carrying this message ({ev['id'][:12]}...)"
+            # Same sats but a positively different message: a different boost.
+            if sats_agree and agree is not False:
                 return ev, f"{relay} has a {total_sats}-sat boost note ({ev['id'][:12]}...)"
     return None, None
 

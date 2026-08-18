@@ -91,6 +91,8 @@ def node_boosts(days):
                 # Carried so the matcher can tell two same-size boosts apart by
                 # the episode they're for — see _episode_conflict.
                 "episode_number": r.get("episode_num") or None,
+                # And by what the donor wrote — see message_agreement.
+                "message":      r.get("message") or "",
                 "total_sats":   int(float(r.get("total_sats") or 0)),
                 "payment_hash": r.get("payment_hash", ""),
             })

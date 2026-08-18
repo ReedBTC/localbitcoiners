@@ -33,11 +33,13 @@ DRY_RUN = False
 # for — i.e. carry the payment-evidence tags (t=boost / amount) that make a
 # NIP-73 indexer count it? See onlyboosts_coverage for the whole design.
 #
-# While False the decision still runs and prints on every boost, and nothing
-# about the published notes changes: this is the same eyeball-it-first gate
-# WEBSITE_DRY_RUN used, and it exists so a few days of logs can prove the
-# match logic before a single irreversible note carries a claim.
-CLAIM_BOOST_TAGS = False
+# Shipped False on 2026-08-18 as an eyeball-it-first gate (the decision ran and
+# printed on every boost, nothing about the notes changed). Flipped the same
+# evening: the first live case (a PodcastGuru keysend, 21:44Z) took the right
+# path, and every boost published untagged in the meantime is one that never
+# reaches onlyboosts.social. While False, a "hold" verdict is not honoured —
+# the note ships at once and the boost is never reconsidered.
+CLAIM_BOOST_TAGS = True
 
 def load_last_seen():
     if STATE_FILE.exists():
