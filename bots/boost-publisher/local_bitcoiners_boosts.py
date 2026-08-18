@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
+import time
 import requests
 from pathlib import Path
 from datetime import datetime, timezone
@@ -9,20 +10,34 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "shared"))
 from nostr_utils import (
     load_config, publish_to_nostr, build_zap_splits_for_note,
     write_dry_run_event, follow_all, with_header_image, STANDALONE_BOOST_IMAGE,
+    npub_to_hex, BOOST_SCAN_RELAYS,
 )
+from collector_common import query_relay
 from boost_formatter import (
     build_note_from_tx, load_published_events, save_published_events,
     record_published_event, record_reply_event, make_cache, is_dry_run,
-    persist_cache, build_podcast_guid_tags,
+    persist_cache, build_podcast_guid_tags, build_boost_claim_tags,
+    resolve_item_guid,
 )
 import lnbits_source
 import boost_wall
+import onlyboosts_coverage
 
 # --- Config ---
 CREDENTIALS_FILE = Path.home() / ".config/nostr-bots/credentials.env"
 STATE_FILE       = Path(__file__).resolve().parent / "last_seen.txt"
 
 DRY_RUN = False
+
+# Should our standalone note CLAIM a boost nobody else published a Nostr note
+# for — i.e. carry the payment-evidence tags (t=boost / amount) that make a
+# NIP-73 indexer count it? See onlyboosts_coverage for the whole design.
+#
+# While False the decision still runs and prints on every boost, and nothing
+# about the published notes changes: this is the same eyeball-it-first gate
+# WEBSITE_DRY_RUN used, and it exists so a few days of logs can prove the
+# match logic before a single irreversible note carries a claim.
+CLAIM_BOOST_TAGS = False
 
 def load_last_seen():
     if STATE_FILE.exists():
@@ -84,6 +99,38 @@ def fetch_transactions(config, cutoff):
         print(f"  [backlog] paged back {len(out)} txs to reach {cutoff}")
     return out
 
+def claim_tags(decision, why, info, cache):
+    """Payment-evidence tags for this boost, or [] — and say which, either way.
+
+    Printed on every boost rather than only on a claim: the log is how we know
+    the match logic is right before CLAIM_BOOST_TAGS is ever flipped on, and
+    afterwards it is the record of why a given note does or doesn't count.
+    """
+    if decision != "claim":
+        print(f"  [claim] no — {why}")
+        return []
+    if not CLAIM_BOOST_TAGS:
+        print(f"  [claim] WOULD claim ({why}) — CLAIM_BOOST_TAGS is off, publishing untagged")
+        return []
+
+    # Last look before an irreversible publish: re-query the index (minutes have
+    # passed since the batch query) and sweep the relays for a note nobody
+    # indexed. Either one means somebody else's note already represents this
+    # boost, and ours must not.
+    # The episode is what separates two same-size boosts from one donor, so
+    # resolve it before the check rather than leaving the field empty.
+    ok, verdict = onlyboosts_coverage.verify_before_claim(
+        {**info,
+         "sender_pubkey_hex": npub_to_hex(info.get("sender_npub") or ""),
+         "item_guid": resolve_item_guid(info, cache)},
+        int(time.time()), relays=BOOST_SCAN_RELAYS, query_relay=query_relay)
+    if not ok:
+        print(f"  [claim] no — {verdict}")
+        return []
+    print(f"  [claim] yes — {why}; {verdict}")
+    return build_boost_claim_tags(info)
+
+
 def main():
     config            = load_config(CREDENTIALS_FILE)
     last_seen         = load_last_seen()
@@ -141,6 +188,20 @@ def main():
         return
 
     candidates.sort(key=lambda t: t.get("settledAt", ""))
+
+    # Which of these boosts already have somebody else's note on Nostr? One API
+    # call for the whole batch, paged back past the oldest candidate. `None`
+    # means we couldn't tell (outage) — decide() then holds rather than
+    # claiming, so an OnlyBoosts hiccup can never produce a duplicate.
+    oldest_ts = onlyboosts_coverage._ts(candidates[0].get("settledAt", ""))
+    try:
+        indexed = onlyboosts_coverage.fetch_indexed(
+            (oldest_ts or int(time.time())) - onlyboosts_coverage.QUERY_PAD_SEC)
+        print(f"  [coverage] OnlyBoosts has {len(indexed)} LB boost(s) indexed in this window\n")
+    except onlyboosts_coverage.CoverageUnavailable as e:
+        indexed = None
+        print(f"  [coverage] OnlyBoosts API unreachable ({e}) — no boost will be claimed this run\n")
+    claimed_matches = set()   # indexed ids already spoken for by an earlier boost
 
     npubs_to_follow = []  # batched after the loop into a single kind-3 update
 
@@ -201,6 +262,19 @@ def main():
                       f"rest of this batch for the next poll.")
                 break
 
+        # Claim decision. "skip" → publish the note exactly as we always have.
+        # "claim" → add the payment-evidence tags to the STANDALONE note only.
+        # "hold" → publish nothing yet; the donor's own note may still land.
+        decision, why = onlyboosts_coverage.decide(
+            info, indexed, int(time.time()), claimed_matches)
+        if decision == "hold":
+            ph = info.get("payment_hash", "")
+            if CLAIM_BOOST_TAGS:
+                print(f"[hold] {ph[:12]}... {info['total_sats']:,} sats — {why}. "
+                      f"Holding this boost and the rest of this batch for the next poll.")
+                break
+            print(f"[would hold] {ph[:12]}... — {why} (CLAIM_BOOST_TAGS off; publishing as usual)")
+
         boost_count += 1
         note             = result["note_text"]
         npub             = result["sender_npub"]
@@ -234,8 +308,17 @@ def main():
             # known) — on the STANDALONE note ONLY. The boost-board reply is
             # identical text from the same npub, so tagging it too would make
             # a GUID-aware client surface every boost twice; the reply stays
-            # discoverable through the thread instead.
-            all_tags = zap_tags + build_podcast_guid_tags(info)
+            # discoverable through the thread instead. The claim tags below are
+            # subject to the same rule for the same reason, and more sharply:
+            # they are what makes an indexer COUNT the note, so a tagged reply
+            # would double the sats credited to the boost.
+            # Passing the cache lets build_podcast_guid_tags resolve an episode
+            # guid for sources that only know an episode NUMBER (Fountain,
+            # Tardbox) — a strictly better tag, but a change to a published note,
+            # so it rides the same gate as the claim rather than landing on its
+            # own. Flag off → byte-identical to what this bot published before.
+            all_tags = zap_tags + build_podcast_guid_tags(info, cache if CLAIM_BOOST_TAGS else None)
+            all_tags += claim_tags(decision, why, info, cache)
 
             print("  Publishing standalone note...")
             # Banner image on the STANDALONE note only; the board reply below
@@ -268,7 +351,9 @@ def main():
         elif effective_dryrun and nsec:
             print("  Building zap splits...")
             zap_tags = build_zap_splits_for_note(note, nsec)
-            all_tags = zap_tags + build_podcast_guid_tags(info)
+            all_tags = (zap_tags
+                        + build_podcast_guid_tags(info, cache if CLAIM_BOOST_TAGS else None)
+                        + claim_tags(decision, why, info, cache))
             suffix   = payment_hash[:12] or None
             path, standalone_id = write_dry_run_event(
                 with_header_image(note, STANDALONE_BOOST_IMAGE), nsec, prefix="boosts", extra_tags=all_tags, suffix=suffix,

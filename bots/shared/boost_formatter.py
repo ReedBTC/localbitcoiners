@@ -29,7 +29,7 @@ from pathlib import Path
 
 _BOTS_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_BOTS_ROOT / "shared"))
-from nostr_utils import hex_to_npub, scrape_fountain_episode
+from nostr_utils import hex_to_npub, npub_to_hex, scrape_fountain_episode
 
 PUBLISHED_EVENTS_FILE = _BOTS_ROOT / "boost-publisher/published_events.json"
 
@@ -736,6 +736,33 @@ def fetch_all_kind_30078(d_value, relays=None, cache=None):
         cache["kind_30078_by_d"][d_value] = events
     return events
 
+def _receipt_share_info(receipts):
+    """What the login widget did with the donor's own kind-1 boost note.
+
+    The widget pre-signs that note BEFORE payment and stamps the outcome onto
+    the boost_receipt, so the answer is known without a relay or API lookup:
+    `share_status` is published / failed / declined / unavailable / anon, and
+    `share_note` carries the note's event id whenever one was signed.
+
+    Only "published" means a donor note exists. A receipt that predates these
+    tags returns (None, None), which sends the boost down the OnlyBoosts
+    lookup path instead — so shipping this ahead of the widget change is a
+    no-op, not a wrong answer.
+
+    Retries emit one receipt per round under the same boost_session; take the
+    newest receipt that carries a status, since a later round can only know
+    more about the share than an earlier one did.
+    """
+    status = note_id = None
+    for r in sorted(receipts, key=lambda e: e.get("created_at", 0), reverse=True):
+        tags = {t[0]: t[1] for t in r.get("tags", []) if len(t) >= 2}
+        if not status and (tags.get("share_status") or "").strip():
+            status  = tags["share_status"].strip()
+            note_id = (tags.get("share_note") or "").strip() or None
+            break
+    return status, note_id
+
+
 def _merge_receipt_outcomes(receipts, our_payment_hash):
     """Collapse every boost_receipt sharing a boost_session into one true outcome.
 
@@ -989,6 +1016,7 @@ def build_rss_item_index(cache):
             tm  = re.search(r'<title[^>]*>([^<]*)</title>', item_xml)
             num = _extract_episode_number(tm.group(1).strip()) if tm else None
             index[guid] = {
+                "guid":            guid,
                 "fountain_id":     fountain_id,
                 "guests":          guests,
                 "value_lnaddress": _parse_value_lnaddress(vb_xml),
@@ -1164,6 +1192,13 @@ def _new_info(source, payment_hash, settled_at, our_msats, total_msats, divisor)
         "boostagram":     None,
         "show_level":     False,
         "fountain_comment_pending": False,
+        # Website only: what the login widget did with the donor's own
+        # kind-1 share note, read off the kind-30078 boost_receipt. Decides
+        # whether our standalone note claims the boost — see
+        # onlyboosts_coverage.decide. None on every other source, and on
+        # website boosts whose receipt predates the tag.
+        "share_status":   None,
+        "share_note_id":  None,
         "raw_tx":         None,
     }
 
@@ -1304,6 +1339,7 @@ def _classify_website(tx, ep_num_padded, payment_hash, settled_at, our_msats, ca
     receipts = fetch_all_kind_30078(boost_session, cache=cache) if boost_session else []
     (r_intended_msats, r_paid_msats, r_uncertain_msats,
      r_legs_failed, r_sender) = _merge_receipt_outcomes(receipts, payment_hash)
+    share_status, share_note_id = _receipt_share_info(receipts)
 
     # Recover attribution for an anon (burner-signed) leg from the boost
     # receipt's claimed sender npub. When a donor's signer is unavailable (e.g.
@@ -1339,6 +1375,8 @@ def _classify_website(tx, ep_num_padded, payment_hash, settled_at, our_msats, ca
             "guests":        [],
             "app_name":      "localbitcoiners.com",
             "show_level":    True,
+            "share_status":  share_status,
+            "share_note_id": share_note_id,
             "intended_sats": round(intended_msats / 1000),
             "legs_failed":   legs_failed,
             "uncertain_sats": round(uncertain_msats / 1000),
@@ -1401,6 +1439,8 @@ def _classify_website(tx, ep_num_padded, payment_hash, settled_at, our_msats, ca
         "item_guid":      item_guid or None,
         "guests":         guests,
         "app_name":       "localbitcoiners.com",
+        "share_status":   share_status,
+        "share_note_id":  share_note_id,
         "intended_sats":  round(intended_msats / 1000),
         "legs_failed":    legs_failed,
         "uncertain_sats": round(uncertain_msats / 1000),
@@ -2007,19 +2047,93 @@ def _classify_lb_donation(tx, payment_hash, settled_at, our_msats, cache):
 # Note formatting
 # ─────────────────────────────────────────────────────────────────────────────
 
-def build_podcast_guid_tags(info):
+def resolve_item_guid(info, cache=None):
+    """The RSS <guid> of the episode a boost is for, or None.
+
+    Most sources hand us one directly (website, Castamatic, keysend
+    boostagrams). Fountain and Tardbox/BMB boosts don't: they resolve to a
+    Fountain page id or an "Ep. NNN" title, which is why their notes used to
+    carry only the feed-level pair and landed on onlyboosts.social as
+    show-level boosts with no episode. Both of those DO resolve through the
+    RSS index we already build once per run — by episode number, else by
+    Fountain page id — so the episode tag is recoverable for every source.
+
+    Needs the per-run cache to reach the index; without one it can only return
+    what the BoostInfo already carried.
+    """
+    if info.get("item_guid"):
+        return info["item_guid"]
+    if cache is None:
+        return None
+
+    index = build_rss_item_index(cache)          # cached after the first call
+    num = info.get("episode_number")
+    if num:
+        entry = (cache.get("num_to_rss_item") or {}).get(num) or {}
+        if entry.get("guid"):
+            return entry["guid"]
+
+    # episode_id is the Fountain page id for every Fountain-derived source.
+    fountain_id = info.get("episode_id")
+    if fountain_id:
+        for guid, entry in index.items():
+            if entry.get("fountain_id") == fountain_id:
+                return guid
+    return None
+
+
+def build_podcast_guid_tags(info, cache=None):
     """NIP-73 external-content identity tags for a boost note.
 
     Feed-level GUID is always present (every boost is for Local Bitcoiners);
-    the episode-level item GUID is added when the BoostInfo carries one
-    (website / Castamatic / keysend boosts). Fountain-only boosts resolve to a
-    Fountain page id rather than the RSS item GUID, so they get just the feed
-    pair. Mirrors the i/k pairs BoostMeBitch emits."""
+    the episode-level item GUID is added whenever one can be resolved — see
+    resolve_item_guid. Mirrors the i/k pairs BoostMeBitch emits."""
     tags = [["i", f"podcast:guid:{LB_FEED_GUID}"], ["k", "podcast:guid"]]
-    item_guid = info.get("item_guid")
+    item_guid = resolve_item_guid(info, cache)
     if item_guid:
         tags.append(["i", f"podcast:item:guid:{item_guid}"])
         tags.append(["k", "podcast:item:guid"])
+    return tags
+
+
+def build_boost_claim_tags(info):
+    """Payment-evidence tags that make our standalone note count AS the boost.
+
+    Published ONLY when no donor-side note exists for the payment (see
+    onlyboosts_coverage) and ONLY on the standalone note — never on the
+    boost-board reply, which is the same text from the same npub and would
+    double-count.
+
+    What each tag is for:
+      t=boost / boostagram / value4value   the topic tags NIP-73 boost
+          consumers test for. Any one of them is sufficient; all three are what
+          the website widget already emits, so a claimed note and a donor note
+          look the same to a consumer.
+      amount                                millisats, NIP-57 convention. THE
+          FULL BOOST, not our node's split — the figure the note's own 💰 line
+          shows, so text and tag can never disagree.
+      client                                who published it. Honest: the show
+          account published this note; the app the donor actually boosted from
+          is named in the note's `📱 via X` line, which is the convention
+          chadf_boostbot established and OnlyBoosts already parses into
+          `client_via`.
+      P                                     the donor's pubkey when we know it,
+          uppercase per the NIP-57 sender convention. Deliberately NOT a
+          lowercase `p`: bot boost notes have never notified donors and this
+          must not change that.
+    """
+    tags = [
+        ["t", "boost"],
+        ["t", "boostagram"],
+        ["t", "value4value"],
+        ["amount", str(int(info.get("total_sats") or 0) * 1000)],
+        ["client", "localbitcoiners.com"],
+    ]
+    # npub_to_hex returns None on a malformed npub (they arrive verbatim from
+    # donor comments), so a typo costs the attribution tag, not the claim.
+    hex_pk = npub_to_hex(info.get("sender_npub") or "")
+    if hex_pk:
+        tags.append(["P", hex_pk])
     return tags
 
 def _sender_display(info):
