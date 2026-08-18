@@ -30,6 +30,7 @@
 import { payAllLegs } from './payAllLegs.js'
 import { SITE_URL, publishSignedKindOne, publishBoostReceipt } from './boostagram.js'
 import { pushToast } from './toast.js'
+import { withTimeout } from './utils.js'
 
 const MIN_TOTAL_SATS = 1   // floor; modals enforce a higher minimum
 // How long a settled entry hangs around in the dropdown after payAllLegs
@@ -37,9 +38,28 @@ const MIN_TOTAL_SATS = 1   // floor; modals enforce a higher minimum
 // who opened the dropdown to watch the boost a beat to register the
 // outcome before the row disappears.
 const SETTLED_DISPLAY_MS = 7000
+// How long to wait on the share-note publish before giving up on knowing its
+// outcome. The receipt waits on this, so it's a bound on how late the receipt
+// can be, not on the publish itself (which runs to completion regardless).
+const SHARE_PUBLISH_TIMEOUT_MS = 10000
+// Share outcome per boost session, so a RETRY's receipt repeats the parent
+// boost's share result instead of contradicting it — a retry carries no share
+// note of its own, and a receipt claiming the donor never posted would invite
+// a second note published on their behalf. Bounded; entries are only ever read
+// by a retry of the same boost, minutes later at most.
+const shareOutcomes = new Map()   // boostSession → { noteId, status }
+const MAX_SHARE_OUTCOMES = 50
 const inFlight = new Map()   // localSessionId → { sessionId, episode, totalSats, startedAt, status, settledAt? }
 const listeners = new Set()
 let nextLocalCounter = 0
+
+function rememberShareOutcome(session, outcome) {
+  if (!session) return
+  shareOutcomes.set(session, outcome)
+  while (shareOutcomes.size > MAX_SHARE_OUTCOMES) {
+    shareOutcomes.delete(shareOutcomes.keys().next().value)
+  }
+}
 
 function notify() {
   const list = Array.from(inFlight.values())
@@ -129,6 +149,9 @@ export function submitBoost({
   wallet,           // { kind, payInvoice } — NWC client or WebLN adapter
   presigned,        // optional { boostSession, byAddress } from presignAllowlistedLegs
   signedKindOne,    // optional pre-signed kind 1 share-to-feed event
+  shareStatus = '', // share outcome to report when no note gets published:
+                    // 'declined' | 'unavailable' | 'anon'. Overwritten with
+                    // the real result whenever signedKindOne is present.
   onStatus,         // optional (legIndex, legState) — live per-leg progress
   clientInfo,       // optional { walletProvider, browser } for the receipt
 }) {
@@ -232,15 +255,54 @@ export function submitBoost({
       })
     }
 
+    // Hand the final result back to whoever's awaiting (the modal's progress
+    // view) before the share + receipt publishing below. Those are awaited
+    // now, and the donor should see their outcome the moment the legs settle
+    // rather than watching a spinner through a relay round-trip. Null when
+    // payAllLegs threw — caller treats that as all-failed, same as the toast
+    // logic above.
+    resolveSettled(result)
+
     // Publish the donor's optional kind 1 share-to-feed only if at
     // least one leg actually paid. A "Just boosted!" feed note for a
     // boost that didn't go through would be misleading. Failures here
     // are silent — the donor opted in but their relays may be flaky;
     // the boost itself already succeeded and the share is best-effort.
-    if (signedKindOne && (status === 'paid' || status === 'partial')) {
-      publishSignedKindOne(signedKindOne).catch((e) => {
-        console.warn('[boostQueue] kind 1 share publish failed', e?.message || e)
-      })
+    //
+    // Awaited rather than fired-and-forgotten because the receipt below
+    // carries the outcome: a bot reads share_status to decide whether the
+    // boost still needs a note published on the donor's behalf. A publish
+    // that outlives the timeout leaves the status off the receipt, which
+    // reads downstream as "unknown" — that costs a delayed note, where a
+    // wrong value would cost a duplicate one.
+    const sessionId = result?.boostSession || boostSession || ''
+    let share
+    if (signedKindOne) {
+      share = { noteId: signedKindOne.id, status: '' }
+      if (status === 'paid' || status === 'partial') {
+        try {
+          const r = await withTimeout(publishSignedKindOne(signedKindOne), SHARE_PUBLISH_TIMEOUT_MS)
+          share.status = r?.published ? 'published' : 'failed'
+        } catch (e) {
+          // Timed out with no ack yet: leave the status unknown. The publish
+          // itself is still running and may well land.
+          console.warn('[boostQueue] kind 1 share publish failed', e?.message || e)
+        }
+      } else {
+        // Nothing landed, so the note was deliberately never posted.
+        share.status = 'failed'
+      }
+      rememberShareOutcome(sessionId, share)
+    } else if (shareOutcomes.has(sessionId)) {
+      // Retry of a single failed leg — repeat the parent boost's share
+      // outcome rather than reporting a note that was never in play.
+      share = shareOutcomes.get(sessionId)
+    } else {
+      // No note this run (anon / declined / no signer), or a retry whose
+      // parent ran in an earlier page load — in which case shareStatus is
+      // '' and the receipt says nothing.
+      share = { noteId: '', status: shareStatus }
+      rememberShareOutcome(sessionId, share)
     }
 
     // Always publish the boost receipt — even on full failure. It's the
@@ -260,15 +322,12 @@ export function submitBoost({
         browser: clientInfo?.browser || 'unknown',
         totalMsatsRequested: reportSats * 1000,
         legs: result.legs,
+        shareNoteId: share.noteId,
+        shareStatus: share.status,
       }).catch((e) => {
         console.warn('[boostQueue] boost receipt publish failed', e?.message || e)
       })
     }
-
-    // Hand the final result back to whoever's awaiting (the modal's
-    // progress view). Null when payAllLegs threw — caller treats that
-    // as all-failed, same as the toast logic above.
-    resolveSettled(result)
   })()
 
   return { localId, settled }

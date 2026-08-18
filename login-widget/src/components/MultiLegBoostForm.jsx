@@ -36,7 +36,7 @@ import * as wallet from '../lib/wallet.js'
 import { submitBoost } from '../lib/boostQueue.js'
 import { setBoostModalProgressVisible } from '../lib/boostModalSignal.js'
 import { detectBrowser, detectWalletProvider } from '../lib/clientInfo.js'
-import { presignAllowlistedLegs } from '../lib/payAllLegs.js'
+import { presignAllowlistedLegs, newBoostSession } from '../lib/payAllLegs.js'
 import { shouldPublishMetadata } from '../lib/recipientOverrides.js'
 import BoostExpectations from './BoostExpectations.jsx'
 import BoostProgressView from './BoostProgressView.jsx'
@@ -178,6 +178,17 @@ export default function MultiLegBoostForm({
     const allowlisted = (recipients || [])
       .filter(r => r?.address && shouldPublishMetadata(r.address))
       .length
+    // One session id for the whole boost, minted HERE rather than inside
+    // payAllLegs: the donor's kind 1 share note is signed before any payment
+    // runs, and it has to carry the same boost_session as the receipt for the
+    // two to be recognizable as one boost.
+    const boostSession = newBoostSession()
+    // What the receipt reports when no note is published. The queue replaces
+    // it with the real outcome whenever a signed note exists.
+    const shareStatus = anonymous ? 'anon'
+      : !donorNpub ? 'unavailable'
+      : !(includeShare && shareToFeed) ? 'declined'
+      : 'unavailable'   // opted in; 'unavailable' only survives a signer failure
 
     let presigned = null
     let signedKindOne = null
@@ -195,6 +206,7 @@ export default function MultiLegBoostForm({
           pageUrl: SITE_URL,
           episodeMeta,
           lnurlCache,
+          boostSession,
         })
         if (cancelledRef.current) return
       }
@@ -214,6 +226,7 @@ export default function MultiLegBoostForm({
             message: trimmedMessage,
             episode: episodeMeta,
             pageUrl: SITE_URL,
+            boostSession,
           })
           signedKindOne = await signKindOneShareWithUser(template)
         } catch (e) {
@@ -243,12 +256,14 @@ export default function MultiLegBoostForm({
       episode: episodeMeta,
       splits: { recipients, totalWeight },
       totalSats,
+      boostSession,
       message: trimmedMessage,
       donorNpub: senderNpub,
       lnurlCache,
       wallet: wallet.getActiveWallet(),
       presigned,
       signedKindOne,
+      shareStatus,
       onStatus: handleLegStatus,
       clientInfo: {
         walletProvider: detectWalletProvider({ kind: walletStatus.kind, alias: walletStatus.alias }),

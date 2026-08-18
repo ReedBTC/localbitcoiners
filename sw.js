@@ -188,7 +188,15 @@
 // lb-v61: booster dot moves to bottom-right with its centre on the circle's
 // edge, matching how shipped design systems place an identity marker. Precached
 // sheet, so it needs its own bump.
-const VERSION = 'lb-v61';
+// lb-v62: the boost widget now stamps the share-note outcome onto the kind
+// 30078 receipt, tags the donor's kind 1 with the boost session, and publishes
+// that note to the boost-dense core relays as well as the donor's outbox. The
+// widget bundle is stale-while-revalidate, so a returning visitor would
+// otherwise boost once on the old code; the receipt it writes is the record a
+// bot reads to decide whether the boost still needs a note published on the
+// donor's behalf, and that decision is worth getting right on the first boost
+// rather than the second.
+const VERSION = 'lb-v62';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

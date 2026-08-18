@@ -108,6 +108,10 @@ function distributeMsats(totalMsats, recipients, totalWeight) {
 }
 
 /** Generate a UUID4 we can use for the boost_session tag. */
+export function newBoostSession() {
+  return uuid4()
+}
+
 function uuid4() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()

@@ -104,6 +104,21 @@ const BOOSTAGRAM_RELAYS = [
   'wss://relay.primal.net',
 ]
 
+// Core relay set for the donor's OWN kind 1 boost note, published alongside
+// their NDK outbox rather than in place of it. A donor whose write relays
+// aren't ones a global boost indexer scans can leave a note undiscovered for
+// up to a day; downstream that reads as "no donor note exists", which is the
+// one path that can produce a duplicate note published on their behalf. The
+// wider fanout is also what makes a donor's boost visible outside their own
+// follower graph. relay.fountain.fm carries kind 1 only, which is exactly
+// what a share note is.
+const SHARE_NOTE_RELAYS = [
+  'wss://relay.fountain.fm',
+  'wss://nos.lol',
+  'wss://relay.ditto.pub',
+  'wss://relay.mostr.pub',
+]
+
 // ─── bolt11 payment hash extractor ──────────────────────────────────────────
 // Minimal inline decoder — avoids adding a bolt11 dep.
 // Decodes the bech32 data section, skips the 35-bit timestamp, then walks
@@ -437,12 +452,16 @@ export function signDonationBoostagramWithBurner(template, burnerSk) {
  * so keeping it open costs nothing when no boost is running.
  */
 let boostagramPool = null
-export async function publishSignedBoostagram(signedEvent) {
+function getPool() {
   if (!boostagramPool) boostagramPool = new SimplePool()
+  return boostagramPool
+}
+
+export async function publishSignedBoostagram(signedEvent) {
   let published = false
   try {
     const results = await Promise.allSettled(
-      boostagramPool.publish(BOOSTAGRAM_RELAYS, signedEvent).map(p => withTimeout(p, 6000))
+      getPool().publish(BOOSTAGRAM_RELAYS, signedEvent).map(p => withTimeout(p, 6000))
     )
     published = results.some(r => r.status === 'fulfilled')
   } catch {
@@ -501,6 +520,14 @@ export async function publishDonationBoostagram({
 // mid-boost". Burner-signed so there's no post-payment signer prompt — the
 // donor npub rides as a CLAIMED `sender` tag, not cryptographic proof.
 
+// Terminal states for the donor's kind 1 share note, in receipt-tag form:
+//   published   — at least one relay ack'd it
+//   failed      — it exists (or was intended) but no relay took it
+//   declined    — a signed-in donor opted out of sharing
+//   unavailable — no signer, or the signer dropped out before signing
+//   anon        — the boost was anonymous, so there was never a note to post
+const SHARE_STATUSES = new Set(['published', 'failed', 'declined', 'unavailable', 'anon'])
+
 /**
  * Build the unsigned kind 30078 boost_receipt template.
  *
@@ -527,6 +554,8 @@ export function buildBoostReceiptTemplate({
   browser,
   totalMsatsRequested,
   legs = [],
+  shareNoteId = '',
+  shareStatus = '',
 }) {
   const safeMessage = typeof message === 'string'
     ? message.slice(0, MAX_BOOSTAGRAM_MESSAGE_CHARS)
@@ -573,7 +602,15 @@ export function buildBoostReceiptTemplate({
     ['legs_failed', String(failedCount)],
     ['legs_uncertain', String(uncertainCount)],
     ['outcome', outcome],
+    // Outcome of the donor's own kind 1 share note. The episode flow signs
+    // that note BEFORE payment, so its id is known even when the publish
+    // later fails — stamp it whenever a signature exists. An unrecognized or
+    // absent status is left off the receipt entirely rather than guessed at;
+    // downstream that reads as "unknown" and costs a delayed note, where a
+    // wrong value would cost a duplicate one.
+    ['share_note', typeof shareNoteId === 'string' ? shareNoteId : ''],
   ]
+  if (SHARE_STATUSES.has(shareStatus)) tags.push(['share_status', shareStatus])
   // One per recipient: [lud16, amount_msats, status, payment_hash("" if unpaid)].
   for (const l of legs) {
     tags.push([
@@ -637,6 +674,7 @@ export function buildEpisodeBoostShareTemplate({
   message,
   episode,        // { number, title, guid?, fountainUrl? }
   pageUrl,
+  boostSession,   // same uuid as the boost receipt's d tag
 }) {
   const epNum = episode?.number != null ? String(episode.number) : ''
   const rawTitle = (episode?.title || '').trim()
@@ -695,6 +733,10 @@ export function buildEpisodeBoostShareTemplate({
     tags.push(['i', `podcast:item:guid:${epGuid}`])
     tags.push(['k', 'podcast:item:guid'])
   }
+  // Ties this note to the boost's kind 30078 receipt (its d tag). If a note
+  // published on the donor's behalf ever coexists with this one for the same
+  // payment, this tag is the exact key the pair collapses on.
+  if (boostSession) tags.push(['boost_session', String(boostSession)])
 
   return {
     kind: 1,
@@ -721,19 +763,51 @@ export async function signKindOneShareWithUser(template) {
 }
 
 /**
- * Publish an already-signed kind 1 share note via NDK to the user's
- * outbox relays. Best-effort: returns whether at least one relay
- * ack'd. Never throws.
+ * Publish an already-signed kind 1 share note to the donor's NDK outbox
+ * relays AND to SHARE_NOTE_RELAYS, in parallel. Best-effort: resolves
+ * `published: true` as soon as ANY relay on either side acks (the other
+ * side keeps publishing in the background), and `false` only once both
+ * sides have finished without an ack. Never throws.
+ *
+ * Resolving on first ack matters because the boost receipt waits on this
+ * result: one fast relay should decide the outcome, not the slowest one.
  */
 export async function publishSignedKindOne(signedEvent) {
   if (!signedEvent?.id || !signedEvent?.sig) return { published: false }
-  const ndk = getNDK()
+  const sides = [publishToOutbox(signedEvent), publishToShareRelays(signedEvent)]
+  const published = await new Promise((resolve) => {
+    let pending = sides.length
+    for (const p of sides) {
+      p.then((ok) => {
+        if (ok) resolve(true)
+        else if (--pending === 0) resolve(false)
+      })
+    }
+  })
+  return { published }
+}
+
+// The donor's own write relays, via NDK. Their followers read here.
+async function publishToOutbox(signedEvent) {
   try {
-    const ev = new NDKEvent(ndk, signedEvent)
+    const ev = new NDKEvent(getNDK(), signedEvent)
     const ackd = await ev.publish()
-    return { published: !!(ackd && ackd.size > 0) }
+    return !!(ackd && ackd.size > 0)
   } catch {
-    return { published: false }
+    return false
+  }
+}
+
+// The boost-dense core set. Global indexers read here, so this is what
+// makes a boost note discoverable within seconds rather than within a day.
+async function publishToShareRelays(signedEvent) {
+  try {
+    const results = await Promise.allSettled(
+      getPool().publish(SHARE_NOTE_RELAYS, signedEvent).map(p => withTimeout(p, 6000))
+    )
+    return results.some(r => r.status === 'fulfilled')
+  } catch {
+    return false
   }
 }
 
@@ -741,7 +815,8 @@ export async function publishSignedKindOne(signedEvent) {
 /**
  * Optional second event published when the donor opts into "Share to feed."
  * Regular kind 1 note signed by the donor's real key, posted to their own
- * write relays so their followers see it natively.
+ * write relays so their followers see it natively, and to the core relays
+ * global boost indexers scan.
  *
  * Caller must only invoke this *after* the LUD-21 verify URL confirms the
  * payment settled — otherwise an abandoned boost would pollute the donor's
@@ -757,6 +832,7 @@ export async function publishBoostShareNote({
   message,
   pageUrl,
   amountSats,
+  boostSession,   // same uuid as the boost receipt's d tag
 }) {
   const ndk = getNDK()
 
@@ -788,6 +864,8 @@ export async function publishBoostShareNote({
   // NIP-73 external-content tags. Show-level share: feed GUID only.
   tags.push(['i', `podcast:guid:${FEED_GUID}`])
   tags.push(['k', 'podcast:guid'])
+  // Dedup key shared with the boost receipt — see buildEpisodeBoostShareTemplate.
+  if (boostSession) tags.push(['boost_session', String(boostSession)])
 
   const ev = new NDKEvent(ndk, {
     kind: 1,
@@ -797,16 +875,10 @@ export async function publishBoostShareNote({
   })
   await signWithTimeout(ev)
 
-  // Publish to the user's own write relays via NDK's default publish.
+  // Donor outbox plus the core relays, same as the pre-signed episode path.
   // Failures are non-fatal — the boost itself succeeded; the share is
   // best-effort.
-  let published = false
-  try {
-    const ackd = await ev.publish()
-    published = ackd && ackd.size > 0
-  } catch {
-    published = false
-  }
+  const { published } = await publishSignedKindOne(await ev.toNostrEvent())
 
   return { eventId: ev.id, published }
 }
