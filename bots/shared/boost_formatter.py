@@ -1077,6 +1077,9 @@ def build_rss_item_index(cache):
         cache["channel_value_all"]       = _parse_value_recipients(chan_vb_xml)
     except Exception as e:
         print(f"  [warn] RSS item index build failed: {e}")
+        # Publishers check this: with no RSS the feed gate and episode lookups
+        # run blind, and "accept on uncertainty" would misfile other shows.
+        cache["rss_index_failed"] = True
     cache["guid_to_fountain"] = index
     cache["num_to_rss_item"]  = num_index
     return index
@@ -1513,6 +1516,7 @@ def _classify_fountain_boost(tx, desc, payment_hash, settled_at, our_msats, cach
     `app_name` distinguishes the actual app."""
     parsed = parse_description(desc)
     show_level = False
+    feed_unverified = False   # feed gate couldn't positively place the episode
     if parsed:
         episode_url = parsed.get("episode_url")
         episode_id  = parsed.get("episode_id")
@@ -1550,6 +1554,7 @@ def _classify_fountain_boost(tx, desc, payment_hash, settled_at, our_msats, cach
                               f"{episode_id!r} belongs to another show — not Local Bitcoiners")
                         return None
                     if feed == "unknown":
+                        feed_unverified = True
                         print(f"  [review] Fountain boost {payment_hash[:12]}… episode "
                               f"{episode_id!r} not in LB RSS and feed unconfirmed — "
                               f"accepting; verify if unexpected")
@@ -1619,6 +1624,7 @@ def _classify_fountain_boost(tx, desc, payment_hash, settled_at, our_msats, cach
         "app_name":       "Fountain",
         "show_level":     show_level,
         "fountain_comment_pending": comment_pending,
+        "feed_unverified": feed_unverified,
         "raw_tx":         tx,
     })
     # Show-level boosts return the show id as episode_id; don't record into

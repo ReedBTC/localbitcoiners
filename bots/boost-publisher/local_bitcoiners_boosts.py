@@ -17,7 +17,7 @@ from boost_formatter import (
     build_note_from_tx, load_published_events, save_published_events,
     record_published_event, record_reply_event, make_cache, is_dry_run,
     persist_cache, build_podcast_guid_tags, build_boost_claim_tags,
-    resolve_item_guid,
+    resolve_item_guid, build_rss_item_index,
 )
 import lnbits_source
 import boost_wall
@@ -191,6 +191,18 @@ def main():
 
     candidates.sort(key=lambda t: t.get("settledAt", ""))
 
+    # Pre-flight: the classifier's feed gate and episode lookups all hang off
+    # the LB RSS. If it can't be fetched the box's network is degraded (DNS
+    # flap, 2026-08-19: two Chad & Reed boosts were published as LB because
+    # RSS + fountain.fm were both unreachable and the gate accepts on
+    # uncertainty). Publishing is irreversible, so don't classify blind —
+    # leave last_seen where it is and let the next tick retry.
+    build_rss_item_index(cache)
+    if cache.get("rss_index_failed"):
+        print("[abort] LB RSS unreachable — network degraded; publishing nothing "
+              "this run (will retry next poll)")
+        return
+
     # Which of these boosts already have somebody else's note on Nostr? One API
     # call for the whole batch, paged back past the oldest candidate. `None`
     # means we couldn't tell (outage) — decide() then holds rather than
@@ -262,6 +274,28 @@ def main():
                 print(f"[defer] fountain_boost {ph[:12]}... — donor comment not on "
                       f"Fountain yet ({int(age_sec)}s old). Holding this boost and the "
                       f"rest of this batch for the next poll.")
+                break
+
+        # Defer a Fountain boost whose episode isn't in the LB RSS AND whose
+        # fountain.fm page couldn't be read to confirm the show. The classifier
+        # accepts on uncertainty (right for sats-log, which re-runs), but here a
+        # misfiled note is irreversible — so BREAK and retry next poll, by which
+        # time the page answers 'lb' or 'other'. Bounded at 24h so a page that
+        # never loads (deleted episode) can't block the queue forever; past
+        # that it publishes with the [review] line still in the log.
+        if info["source"] == "fountain_boost" and info.get("feed_unverified"):
+            settled_iso = tx.get("settledAt", "") or ""
+            try:
+                age_sec = (datetime.now(timezone.utc)
+                           - datetime.fromisoformat(settled_iso.replace("Z", "+00:00"))
+                          ).total_seconds()
+            except Exception:
+                age_sec = 99999999
+            if age_sec < 86400:
+                ph = info.get("payment_hash", "")
+                print(f"[defer] fountain_boost {ph[:12]}... — episode not in LB RSS and "
+                      f"fountain.fm unreachable to confirm the show ({int(age_sec)}s old). "
+                      f"Holding this boost and the rest of this batch for the next poll.")
                 break
 
         # Claim decision. "skip" → publish the note exactly as we always have.

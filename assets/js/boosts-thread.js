@@ -118,6 +118,9 @@ const EXCLUDED_NOTE_IDS = new Set([
   'a1e400e578c1cd78fecd5348a533c487ca57b85723968e66cb3567b93c6f8dfd',
   '44313741181237c5a833358f261f0e1bde53f5b3e2d3d54f6e95355965a5e82d',
   '0a9bae72c5f6327bc4dfb18d85f2bc38ab66bf868529da49e3a213f39b40f282',
+  // 2026-08-19: Chad & Reed boosts misfiled as LB during a DNS outage
+  '24f53bb20d243b27d5356fa7f40955006511f4abf3ceecb797d1114a9e5bbf12',
+  '9b91a3bb306faae58873e08d86cf8cd11e04f58dee2ed44b7d1a10b12780c22a',
 ])
 
 // ── Module state ─────────────────────────────────────────────────────

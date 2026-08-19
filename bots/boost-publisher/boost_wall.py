@@ -54,6 +54,18 @@ VPS_KEY_FILE = Path.home() / ".ssh" / "relay_mynostr_ed25519"
 # have them.
 BOOST_BOARD_ROOT = "e36cb32dad0e08cfc6f1e2519f4c955a67c2a6bbc2797922626b3078eaaf3fd4"
 
+# Bot notes that should never be on the wall — mirrors EXCLUDED_NOTE_IDS in
+# assets/js/boosts-thread.js. Dropped on save so a relay-reconcile (which
+# upserts everything in the thread) can't resurrect them. Kept here rather
+# than deleted from published_events.json: that file is the dedupe gate, and
+# the payment hashes must stay there so the boosts aren't re-published.
+EXCLUDED_EVENT_IDS = {
+    # 2026-08-19 DNS flap: two Chad & Reed boosts (ep ogeiYJaW9UdBT3d1aXUd)
+    # published as LB while the feed gate ran blind.
+    "24f53bb20d243b27d5356fa7f40955006511f4abf3ceecb797d1114a9e5bbf12",  # ph 76164cf8 reply
+    "9b91a3bb306faae58873e08d86cf8cd11e04f58dee2ed44b7d1a10b12780c22a",  # ph eb26275d reply (0 relays)
+}
+
 # Payment-side fields, in the order they're written. Anything falsy is dropped
 # rather than serialized as null — a backfilled record simply doesn't have them,
 # and `"episode_id" in rec` is a cleaner test for the site than `!== null`.
@@ -144,7 +156,7 @@ def save_wall(wall, path=None):
     p = Path(path or WALL_PATH)
     p.parent.mkdir(parents=True, exist_ok=True)
     records = sorted(
-        wall.values(),
+        (r for eid, r in wall.items() if eid not in EXCLUDED_EVENT_IDS),
         key=lambda r: (-(r.get("event", {}).get("created_at") or 0),
                        r.get("event", {}).get("id") or ""),
     )
