@@ -64,6 +64,10 @@ EXCLUDED_EVENT_IDS = {
     # published as LB while the feed gate ran blind.
     "24f53bb20d243b27d5356fa7f40955006511f4abf3ceecb797d1114a9e5bbf12",  # ph 76164cf8 reply
     "9b91a3bb306faae58873e08d86cf8cd11e04f58dee2ed44b7d1a10b12780c22a",  # ph eb26275d reply (0 relays)
+    # 2026-08-22: OnlyBoosts test boost on Chad & Reed (ph b7d85935) misfiled
+    # as LB — its Tardbox page had no Show row, feed gate saw "absent".
+    "edb91c5a52cbc1fee15cd1f931f3c129c4daac7ed44efef5dcb627ffa39f9451",  # ph b7d85935 reply
+    "1272b59aae10a44e396257ca0c29177475f6ff4cccf5a5d9099a87c19ee86c17",  # ph b7d85935 standalone
 }
 
 # Payment-side fields, in the order they're written. Anything falsy is dropped

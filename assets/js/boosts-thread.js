@@ -121,6 +121,9 @@ const EXCLUDED_NOTE_IDS = new Set([
   // 2026-08-19: Chad & Reed boosts misfiled as LB during a DNS outage
   '24f53bb20d243b27d5356fa7f40955006511f4abf3ceecb797d1114a9e5bbf12',
   '9b91a3bb306faae58873e08d86cf8cd11e04f58dee2ed44b7d1a10b12780c22a',
+  // 2026-08-22: OnlyBoosts test boost on Chad & Reed misfiled as LB (its
+  // Tardbox page carried no Show row, so the feed gate saw "absent")
+  'edb91c5a52cbc1fee15cd1f931f3c129c4daac7ed44efef5dcb627ffa39f9451',
 ])
 
 // ── Module state ─────────────────────────────────────────────────────
