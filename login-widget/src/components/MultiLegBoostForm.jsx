@@ -29,9 +29,13 @@ import { isSafeUrl } from '../lib/utils.js'
 import {
   SITE_URL,
   buildEpisodeBoostShareTemplate,
+  buildShowSiteNoteTemplate,
   signKindOneShareWithUser,
   confirmInvoiceSettled,
+  SHOW_SENDER_NAME_CHARS,
 } from '../lib/boostagram.js'
+import { signKindOneWithSite } from '../lib/siteSign.js'
+import LoginButton from './LoginButton.jsx'
 import * as wallet from '../lib/wallet.js'
 import { submitBoost } from '../lib/boostQueue.js'
 import { setBoostModalProgressVisible } from '../lib/boostModalSignal.js'
@@ -59,6 +63,11 @@ export default function MultiLegBoostForm({
   // overrides it, where there is no show and the note goes to Local Bitcoiners.
   messagePlaceholder = 'Leave a note for the show + guests',
   onCancelled,
+  // Phase 2 of the OnlyBoosts port: there is no login gate in front of this
+  // form any more, so it needs a way to OFFER a login (the checkout-skin
+  // LoginButton beside the From field) and to ASK for a wallet at the press.
+  onRequestSignIn,
+  onRequestWallet,
   // Reports the in-modal boost lifecycle up to the wrapper so it can
   // guard its close button: null when idle/settled, or
   // { active: true, paid, total } while legs are still in flight.
@@ -97,11 +106,45 @@ export default function MultiLegBoostForm({
   const [anonymous, setAnonymous] = useState(false)
   const [error, setError] = useState('')
 
-  const [shareToFeed, setShareToFeed] = useState(false)
-  const canShareToFeed = !anonymous && !!donorNpub
-  useEffect(() => {
-    if (anonymous && shareToFeed) setShareToFeed(false)
-  }, [anonymous, shareToFeed])
+  /**
+   * ⚠️ ANONYMOUS AND PRIVATE ARE DIFFERENT ANSWERS TO DIFFERENT QUESTIONS
+   * (OnlyBoosts' D12, carried over whole). Anonymous is about whose name is
+   * on the boost: not the donor's npub, and optionally a name they type
+   * instead. Private is about whether a Nostr note exists at all. So an
+   * anonymous boost is STILL PUBLISHED, by the show's own key through
+   * /api/sign-boost, with no npub on it; only the checkbox reaches "no note".
+   *
+   * `usingProfile` is the one question both derivations hang off, and the two
+   * ways it can be false (pressed Anon, or signed out) behave identically.
+   *
+   *   | Boost as   | Private box | Who signs the note                         |
+   *   | Yourself   | unchecked   | the donor's npub, pre-signed at the press  |
+   *   | Anon/out   | unchecked   | the show key, after the legs settle        |
+   *   | either     | checked     | nobody                                     |
+   *
+   * Two derivations stand beside each other and neither may absorb the other:
+   * `senderNpub` is the BOOSTAGRAM's answer (the 30078 `sender`, the bots'
+   * 👤 line) and `noteRoute` is who signs the kind 1.
+   */
+  const signedIn = !!donorNpub
+  const usingProfile = signedIn && !anonymous
+  const [privateBoost, setPrivateBoost] = useState(false)
+  const [nameInput, setNameInput] = useState('')
+  const senderName = usingProfile ? '' : nameInput.trim()
+  const noteRoute = privateBoost ? 'none' : usingProfile ? 'donor' : 'bot'
+  // Kept for BoostExpectations' copy, which still speaks in these terms.
+  const shareToFeed = noteRoute !== 'none'
+  const canShareToFeed = true
+
+  /**
+   * The wallet gate is BEHIND the Boost button (OnlyBoosts' D13). The form
+   * opens without a wallet; pressing Boost with none asks for one, and the
+   * resume is the `walletStatus` effect below seeing a connection arrive —
+   * never a callback and never a pendingAction, which would re-enter the
+   * opener and mount a second modal over this one.
+   */
+  const [awaitingWallet, setAwaitingWallet] = useState(false)
+  const payStartedRef = useRef(false)
 
   const [prepareLabel, setPrepareLabel] = useState('')
 
@@ -172,13 +215,14 @@ export default function MultiLegBoostForm({
   // view. Caller is responsible for amount validation.
   async function runBoost({ recipients, totalWeight, totalSats, includeShare }) {
     if (!wallet.isReady()) {
-      setError('Wallet not connected — connect a Lightning wallet from your account menu.')
+      setError('Wallet not connected — press Boost again to connect one.')
       return
     }
     setError('')
+    payStartedRef.current = true
 
     const trimmedMessage = message.trim()
-    const senderNpub = anonymous ? '' : donorNpub
+    const senderNpub = usingProfile ? donorNpub : ''
     const allowlisted = (recipients || [])
       .filter(r => r?.address && shouldPublishMetadata(r.address))
       .length
@@ -188,11 +232,14 @@ export default function MultiLegBoostForm({
     // two to be recognizable as one boost.
     const boostSession = newBoostSession()
     // What the receipt reports when no note is published. The queue replaces
-    // it with the real outcome whenever a signed note exists.
-    const shareStatus = anonymous ? 'anon'
-      : !donorNpub ? 'unavailable'
-      : !(includeShare && shareToFeed) ? 'declined'
-      : 'unavailable'   // opted in; 'unavailable' only survives a signer failure
+    // it with the real outcome whenever a signed note exists. Anything but
+    // 'published' tells the bots no donor note is coming (onlyboosts_coverage
+    // .decide), so 'declined' on a private boost is what lets the bot's own
+    // note claim the boost, and 'failed' on a site-sign failure does the same.
+    const shareStatus = !includeShare ? ''
+      : noteRoute === 'none' ? 'declined'
+      : noteRoute === 'bot' ? 'failed'      // replaced by 'published' on success
+      : 'unavailable'   // donor route; survives only a signer failure
 
     let presigned = null
     let signedKindOne = null
@@ -217,8 +264,10 @@ export default function MultiLegBoostForm({
 
       // Share-to-feed only on the initial boost, never on a retry — the
       // donor already (maybe) posted their note; a retry of a failed leg
-      // shouldn't double-post to their feed.
-      if (includeShare && shareToFeed && canShareToFeed) {
+      // shouldn't double-post to their feed. Donor route only: the site
+      // route signs AFTER the legs settle (signNoteAfterSettle below), so
+      // the note can report what actually landed.
+      if (includeShare && noteRoute === 'donor') {
         setPrepareLabel('Approve the share post in your signer…')
         try {
           // buildEpisodeBoostShareTemplate handles missing episode
@@ -256,6 +305,30 @@ export default function MultiLegBoostForm({
     setProgressTotalSats(totalSats)
     setLegStates((recipients || []).map(() => ({ status: 'pending', msats: null })))
 
+    // The site-signed route: the show key signs the bots' standalone note for
+    // a boost with no npub on it, once at least one leg has paid. Built from
+    // the settled legs so the 💰 line is the figure that landed, never the
+    // figure intended. `/api/sign-boost` validates the exact shape and the
+    // browser publishes it; the receipt then carries share_status=published
+    // and the note id, which is what stops the bots claiming the same boost.
+    const signNoteAfterSettle = (includeShare && noteRoute === 'bot')
+      ? async (result) => {
+          const paidMsats = (result?.legs || [])
+            .filter(l => l?.status === 'paid')
+            .reduce((n, l) => n + (Number(l.msats) || 0), 0)
+          const paidSats = Math.max(1, Math.round(paidMsats / 1000))
+          const template = buildShowSiteNoteTemplate({
+            paidSats,
+            message: trimmedMessage,
+            senderName,
+            episode: episodeMeta,
+            pageUrl: SITE_URL,
+            boostSession: result?.boostSession || boostSession,
+          })
+          return signKindOneWithSite(template)
+        }
+      : null
+
     const handle = submitBoost({
       episode: episodeMeta,
       splits: { recipients, totalWeight },
@@ -267,7 +340,9 @@ export default function MultiLegBoostForm({
       wallet: wallet.getActiveWallet(),
       presigned,
       signedKindOne,
+      signNoteAfterSettle,
       shareStatus,
+      senderName,
       onStatus: handleLegStatus,
       clientInfo: {
         walletProvider: detectWalletProvider({ kind: walletStatus.kind, alias: walletStatus.alias }),
@@ -305,6 +380,16 @@ export default function MultiLegBoostForm({
       setError(`Max ${MAX_SATS.toLocaleString()} sats per boost — split a larger gift across multiple boosts.`)
       return
     }
+    if (!wallet.isReady()) {
+      // Fire and forget. It either unlocks a remembered wallet (in which case
+      // the effect below picks the boost straight back up), opens the connect
+      // modal, or reports a stalled extension in a toast. Its promise is
+      // deliberately not the resume signal: a second path into runBoost would
+      // be a second way to pay twice.
+      setAwaitingWallet(true)
+      try { await onRequestWallet?.() } catch {}
+      return
+    }
     await runBoost({
       recipients: splitsBundle.recipients,
       totalWeight: splitsBundle.totalWeight,
@@ -312,6 +397,25 @@ export default function MultiLegBoostForm({
       includeShare: true,
     })
   }
+
+  // The resume. Keyed on the wallet actually being connected rather than on
+  // whatever `onRequestWallet` reported, so a connection made in the connect
+  // modal, an at-rest unlock and a wallet connected in another tab all land
+  // the same way.
+  useEffect(() => {
+    if (!awaitingWallet || !walletStatus.connected) return
+    if (phase !== 'form' || payStartedRef.current) return
+    setAwaitingWallet(false)
+    const sats = parseInt(amount, 10)
+    if (!Number.isFinite(sats) || sats < MIN_SATS || sats > MAX_SATS) return
+    runBoost({
+      recipients: splitsBundle.recipients,
+      totalWeight: splitsBundle.totalWeight,
+      totalSats: sats,
+      includeShare: true,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [awaitingWallet, walletStatus.connected, phase])
 
   // Retry a SINGLE leg, in place — the modal stays on the done view and only
   // that row re-runs. Handles both 'failed' (confirmed not paid) and
@@ -390,7 +494,7 @@ export default function MultiLegBoostForm({
       return
     }
 
-    const senderNpub = anonymous ? '' : donorNpub
+    const senderNpub = usingProfile ? donorNpub : ''
     let presigned = null
     try {
       if (senderNpub && shouldPublishMetadata(recipient.address)) {
@@ -425,6 +529,7 @@ export default function MultiLegBoostForm({
       wallet: wallet.getActiveWallet(),
       presigned,
       signedKindOne: null,
+      senderName,
       onStatus,
       clientInfo: {
         walletProvider: detectWalletProvider({ kind: walletStatus.kind, alias: walletStatus.alias }),
@@ -438,7 +543,6 @@ export default function MultiLegBoostForm({
   }
 
   const splitsCount = splitsBundle?.recipients?.length || 0
-  const walletGone = !walletStatus.connected
 
   // Once the boost is in flight, the form is replaced by the live
   // progress view (sending → done). Done closes the modal.
@@ -453,23 +557,6 @@ export default function MultiLegBoostForm({
         onDone={cancelAndClose}
         onRetryLeg={handleRetryLeg}
       />
-    )
-  }
-
-  if (walletGone) {
-    return (
-      <div className="space-y-3 text-center py-2">
-        <p className="text-xs text-[var(--muted,#5a7488)]">
-          Lightning wallet isn't connected. Open your account menu in
-          the top-right to connect one, then come back.
-        </p>
-        <button
-          onClick={cancelAndClose}
-          className="px-4 py-2 rounded-lg bg-[var(--modal-inset,#e6f1f9)] hover:bg-[var(--border,#cfe2ee)] text-sm text-[var(--ink,#0f2733)] transition-colors"
-        >
-          Close
-        </button>
-      </div>
     )
   }
 
@@ -515,50 +602,99 @@ export default function MultiLegBoostForm({
         </p>
       </div>
 
-      <div>
-        <label className="block text-xs text-[var(--muted,#5a7488)] mb-1.5">Boost as</label>
-        <div className="flex gap-2 text-xs">
-          <button
-            onClick={() => setAnonymous(false)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-3 px-3 rounded-md border transition-colors ${
-              !anonymous
-                ? 'bg-[var(--brand-tint,rgba(0,175,240,0.12))] border-[var(--brand,#00aff0)] text-[var(--brand-dd,#0a6fa8)] font-semibold'
-                : 'bg-[var(--modal-field,#ffffff)] border-[var(--modal-line,#b9d4e6)] text-[var(--muted,#5a7488)] hover:text-[var(--ink,#0f2733)] hover:border-[var(--brand,#00aff0)]'
-            }`}
-            aria-pressed={!anonymous}
-          >
-            {profile?.image && isSafeUrl(profile.image) && (
-              <img src={profile.image} alt="" className="w-4 h-4 rounded-full object-cover" onError={e => { e.target.style.display = 'none' }} />
-            )}
-            <span className="truncate max-w-[140px]">
-              {profile?.displayName || profile?.name || 'Your npub'}
-            </span>
-          </button>
-          <button
-            onClick={() => setAnonymous(true)}
-            className={`flex-1 py-3 px-3 rounded-md border transition-colors ${
-              anonymous
-                ? 'bg-[var(--brand-tint,rgba(0,175,240,0.12))] border-[var(--brand,#00aff0)] text-[var(--brand-dd,#0a6fa8)] font-semibold'
-                : 'bg-[var(--modal-field,#ffffff)] border-[var(--modal-line,#b9d4e6)] text-[var(--muted,#5a7488)] hover:text-[var(--ink,#0f2733)] hover:border-[var(--brand,#00aff0)]'
-            }`}
-            aria-pressed={anonymous}
-          >
-            Anon
-          </button>
+      {/* ⚠️ THE IDENTITY TOGGLE EXISTS ONLY WHEN THERE IS AN IDENTITY. Signed
+          out, the "Yourself" row does not arise and the From field stands
+          alone with a login offer beside it. Vocabulary is deliberate: "From"
+          and "Log in", never anything about keys — this may be someone's
+          first contact with Nostr and they need not know that is what it is. */}
+      {signedIn && (
+        <div>
+          <label className="block text-xs text-[var(--muted,#5a7488)] mb-1.5">Boost as</label>
+          <div className="flex gap-2 text-xs">
+            <button
+              type="button"
+              onClick={() => setAnonymous(false)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-3 px-3 rounded-md border transition-colors ${
+                !anonymous
+                  ? 'bg-[var(--brand-tint,rgba(0,175,240,0.12))] border-[var(--brand,#00aff0)] text-[var(--brand-dd,#0a6fa8)] font-semibold'
+                  : 'bg-[var(--modal-field,#ffffff)] border-[var(--modal-line,#b9d4e6)] text-[var(--muted,#5a7488)] hover:text-[var(--ink,#0f2733)] hover:border-[var(--brand,#00aff0)]'
+              }`}
+              aria-pressed={!anonymous}
+            >
+              {profile?.image && isSafeUrl(profile.image) && (
+                <img src={profile.image} alt="" className="w-4 h-4 rounded-full object-cover" onError={e => { e.target.style.display = 'none' }} />
+              )}
+              <span className="truncate max-w-[140px]">
+                {profile?.displayName || profile?.name || 'Your npub'}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setAnonymous(true)}
+              className={`flex-1 py-3 px-3 rounded-md border transition-colors ${
+                anonymous
+                  ? 'bg-[var(--brand-tint,rgba(0,175,240,0.12))] border-[var(--brand,#00aff0)] text-[var(--brand-dd,#0a6fa8)] font-semibold'
+                  : 'bg-[var(--modal-field,#ffffff)] border-[var(--modal-line,#b9d4e6)] text-[var(--muted,#5a7488)] hover:text-[var(--ink,#0f2733)] hover:border-[var(--brand,#00aff0)]'
+              }`}
+              aria-pressed={anonymous}
+            >
+              Anon
+            </button>
+          </div>
+          {/* M16 honest disclosure: anon hides the donor npub but the
+              burner key signing every leg of one boost is the same key,
+              so observers can correlate "all legs of this anonymous
+              boost" by burner pubkey + boost_session UUID. Surfaced
+              here so users aren't misled by the "Anon" label. */}
+          {anonymous && (
+            <p className="mt-1.5 text-[10px] text-[var(--muted,#5a7488)] leading-snug">
+              Anon keeps your account off the boost. Observers can still
+              correlate the legs of one boost together (shared burner key +
+              session ID).
+            </p>
+          )}
         </div>
-        {/* M16 honest disclosure: anon hides the donor npub but the
-            burner key signing every leg of one boost is the same key,
-            so observers can correlate "all legs of this anonymous
-            boost" by burner pubkey + boost_session UUID. Surfaced
-            here so users aren't misled by the "Anon" label. */}
-        {anonymous && (
+      )}
+
+      {/* ⚠️ THE TWO ATTRIBUTION ROUTES ARE EXCLUSIVE AND THE FORM SHOWS IT.
+          The name field is rendered when the profile is not in use — so a
+          signed-in donor who pressed Anon gets it too — and is ABSENT rather
+          than disabled otherwise: a typed name beside a signed-in identity
+          would be a second identity claim on one note. */}
+      {!usingProfile && (
+        <div>
+          <label htmlFor="lb-boost-from" className="block text-xs text-[var(--muted,#5a7488)] mb-1.5">From</label>
+          <div className="flex items-stretch gap-2.5">
+            {/* Every attribute here is a password-manager opt-out, and
+                autoComplete="off" alone is not one. */}
+            <input
+              id="lb-boost-from"
+              type="text"
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value.slice(0, SHOW_SENDER_NAME_CHARS))}
+              maxLength={SHOW_SENDER_NAME_CHARS}
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              data-lpignore="true"
+              data-1p-ignore=""
+              data-bwignore="true"
+              data-form-type="other"
+              className="flex-1 min-w-0 bg-[var(--modal-field,#ffffff)] border border-[var(--modal-line,#b9d4e6)] rounded-lg px-3 py-2.5 text-sm text-[var(--ink,#0f2733)] focus:outline-none focus:border-[var(--brand,#00aff0)] focus:ring-2 focus:ring-[var(--brand-ring,rgba(0,175,240,0.32))]"
+              placeholder="Anon"
+            />
+            {!signedIn && onRequestSignIn && (
+              <>
+                <span className="self-center text-[10px] uppercase tracking-wider text-[var(--muted,#5a7488)] shrink-0" aria-hidden="true">or</span>
+                <LoginButton variant="checkout" onClick={onRequestSignIn} className="shrink-0" />
+              </>
+            )}
+          </div>
           <p className="mt-1.5 text-[10px] text-[var(--muted,#5a7488)] leading-snug">
-            Anon hides your npub from the boost record. Note that
-            observers can still correlate the legs of one boost
-            together (shared burner key + session ID).
+            Left blank, the boost is from “Anon”.
           </p>
-        )}
-      </div>
+        </div>
+      )}
 
       <div>
         <label className="block text-xs text-[var(--muted,#5a7488)] mb-1.5">Message (optional)</label>
@@ -581,31 +717,49 @@ export default function MultiLegBoostForm({
         />
       </div>
 
-      {canShareToFeed && (
-        <label className="flex items-start gap-2 text-xs text-[var(--muted,#5a7488)] cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={shareToFeed}
-            onChange={e => setShareToFeed(e.target.checked)}
-            className="accent-[var(--brand,#00aff0)] mt-0.5"
-          />
-          <span className="leading-snug">
-            Share to my feed
-            <span className="block text-[10px] text-[var(--muted,#5a7488)] mt-0.5">
-              {shareTagline}
-            </span>
+      {/* ⚠️ THE CHECKBOX SUPPRESSES THE NOTE AND NOTHING ELSE, so its label
+          carries its own scope: the sats and the message still cross
+          Lightning to the show, which is the half the word "private" does not
+          cover. Leaving it unchecked IS the opt-in; nothing asks again after
+          the payment. */}
+      <label className="flex items-start gap-2 text-xs text-[var(--muted,#5a7488)] cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={privateBoost}
+          onChange={e => setPrivateBoost(e.target.checked)}
+          className="accent-[var(--brand,#00aff0)] mt-0.5"
+        />
+        <span className="leading-snug">
+          Private Boost <span className="text-[var(--muted,#5a7488)]">(no Nostr note)</span>
+          <span className="block text-[10px] text-[var(--muted,#5a7488)] mt-0.5">
+            {privateBoost
+              ? 'The sats and your message still reach the show. Nothing is posted to Nostr, so this boost stays out of the boost wall and the totals.'
+              : noteRoute === 'donor'
+                ? shareTagline
+                : `Posts a note from the Local Bitcoiners account${signedIn ? ', not yours' : ''}, so this boost counts on the boost wall and in the totals.`}
           </span>
-        </label>
-      )}
+        </span>
+      </label>
 
       <BoostExpectations
         walletKind={walletStatus.kind}
-        anonymous={anonymous}
+        anonymous={!usingProfile}
         allowlistedCount={allowlistedCount}
         shareToFeed={shareToFeed}
         canShareToFeed={canShareToFeed}
         splitsCount={splitsCount}
       />
+
+      {/* `remembered` is not `connected`: a saved NWC blob or an enabled
+          extension engages on the first press, so a returning user is one
+          press from paying and the line is withheld for them entirely. */}
+      {!walletStatus.connected && (awaitingWallet || !walletStatus.remembered) && (
+        <p className="text-[10px] text-[var(--muted,#5a7488)] leading-snug text-center">
+          {awaitingWallet
+            ? 'Waiting for a wallet. Connect one and this boost sends itself.'
+            : 'No wallet connected yet. We\u2019ll ask for one when you press Boost.'}
+        </p>
+      )}
 
       {error && <p className="text-xs text-[var(--danger,#b3261e)]">{error}</p>}
 

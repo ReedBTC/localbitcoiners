@@ -93,7 +93,7 @@ const SHOW_EPISODE_META = { number: null, title: '', guid: '', kind: 'show' }
 const SHOW_PRESETS = [100, 420, 3333, 21000]
 const SHOW_SHARE_TAGLINE = 'Posts a kind 1 note to your followers — your message + a link back here.'
 
-export default function BoostModal({ user, onClose, prefillMessage = '', authorSplit = null, onSettled }) {
+export default function BoostModal({ user, onClose, prefillMessage = '', authorSplit = null, onSettled, onRequestSignIn, onRequestWallet }) {
   const { visible, requestClose } = useModalTransition(onClose)
 
   const splits = useMemo(() => splitsForAuthor(authorSplit), [authorSplit])
@@ -173,6 +173,8 @@ export default function BoostModal({ user, onClose, prefillMessage = '', authorS
               onCancelled={requestClose}
               onBoostState={setBoostState}
               onSettled={onSettled}
+              onRequestSignIn={onRequestSignIn}
+              onRequestWallet={onRequestWallet}
             />
           </div>
 

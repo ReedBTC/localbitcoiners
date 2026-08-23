@@ -352,11 +352,12 @@ function BoostApp() {
   // only the first press, before this exists.
   //
   // `openShowBoost` → `MultiLegBoostForm` is the Local Bitcoiners money path
-  // (kind-30078 receipts, boost_session, the bots' claim contract). It still
-  // signs its kind-1 before paying and so still carries a login gate; Phase 2
-  // of the OnlyBoosts port moves the wallet gate behind the press and puts the
-  // note decision in the form. `openSiteDonation` below is OnlyBoosts' one-leg
-  // tip flow, carried over with the widget and unused here.
+  // (kind-30078 receipts, boost_session, the bots' claim contract). Since
+  // phase 2 of the OnlyBoosts port it carries no login gate and no wallet
+  // gate of its own: the wallet is asked for behind the form's Boost button
+  // and the note is decided in the form. `openSiteDonation` below is
+  // OnlyBoosts' one-leg tip flow, carried over with the widget and unused
+  // here.
   return <BoostButton onOpen={() => api.openShowBoost()} />
 }
 
@@ -374,6 +375,8 @@ function ShowBoostHost() {
       user={user || null}
       prefillMessage={state.prefillMessage || ''}
       authorSplit={state.authorSplit || null}
+      onRequestSignIn={() => api.requestLogin()}
+      onRequestWallet={() => api.requestWalletForBoost()}
       onClose={() => setShowBoostState(null)}
       onSettled={(r) => {
         // Let the community-status chip (community-status.js) know this npub
@@ -505,6 +508,8 @@ function EpisodeBoostHost() {
   return createPortal(
     <div className="lb-w"><EpisodeBoostModal
       user={user || null}
+      onRequestSignIn={() => api.requestLogin()}
+      onRequestWallet={() => api.requestWalletForBoost()}
       onUserChange={(u) => { abortRestore(); setUser(u) }}
       onClose={() => setEpisodeBoostState(null)}
       episode={state.episode}
@@ -912,41 +917,35 @@ const api = {
       : null
     const reopen = { prefillMessage, authorSplit }
 
-    // Gate 1: signed in?
-    if (!currentUser || currentUser === undefined) {
-      setPendingAction(() => api.openShowBoost(reopen))
-      api.requestLogin()
-      return
-    }
-
-    // Gate 1.5: real user (not a stub)?
-    if (isStubUser(currentUser)) {
+    // ⚠️ THERE IS NO LOGIN GATE ON THIS PATH ANY MORE (phase 2 of the
+    // OnlyBoosts port). A boost is a payment, and a payment needs no Nostr
+    // identity: a signed-out booster types a name or leaves it blank, and the
+    // show key signs the note for them through /api/sign-boost. The identity
+    // gates below are conditional on there BEING an identity, and each still
+    // earns its place for a signed-in user: the stub can't unlock the
+    // encrypted NWC blob, and a signer that has switched accounts would sign
+    // a receipt claiming the wrong pubkey. They are skipped, not weakened.
+    if (currentUser === undefined) {
+      // Restore in flight. Wait rather than treating a returning user as
+      // signed out — their remembered wallet is one tick away.
       setPendingAction(() => api.openShowBoost(reopen))
       ensureRealRestore()
       return
     }
-
-    // Gate 1.75: signer-account match.
-    if (!await ensureSignerVerified()) return
-
-    // Gate 2: wallet connected? Try the at-rest restore (NWC blob or
-    // per-pubkey WebLN flag); if neither lands, route through the
-    // connect modal where the user picks a wallet explicitly.
-    if (!wallet.isReady()) {
-      wallet.ensureReady(currentUser)
-        .then((ok) => {
-          if (ok) {
-            api.openShowBoost(reopen)
-          } else {
-            handleWalletGateFailure(() => api.openShowBoost(reopen))
-          }
-        })
-        .catch(() => {
-          handleWalletGateFailure(() => api.openShowBoost(reopen))
-        })
-      return
+    if (currentUser) {
+      if (isStubUser(currentUser)) {
+        setPendingAction(() => api.openShowBoost(reopen))
+        ensureRealRestore()
+        return
+      }
+      if (!await ensureSignerVerified()) return
     }
 
+    // ⚠️ AND NO WALLET GATE HERE EITHER. It lives behind the form's own
+    // Boost button (`api.requestWalletForBoost`), where the connect modal
+    // arrives at the moment its purpose is obvious; the form resumes off its
+    // own `wallet.onChange` subscription, never through here, because
+    // re-entering this method with the modal open would mount a second one.
     setShowBoostState({ prefillMessage, authorSplit })
   },
 
@@ -969,52 +968,23 @@ const api = {
     }
     const args = { episode, splits }
 
-    // Gate 1: signed in?
-    if (!currentUser || currentUser === undefined) {
-      setPendingAction(() => api.openEpisodeBoost(args))
-      api.requestLogin()
-      return
-    }
-
-    // Gate 1.5: signed in but only as a stub — wait for real restore
-    // to land before reaching the NWC gate, since unlocking the NWC
-    // blob needs the real signer. ensureRealRestore covers the case
-    // where the ambient page-load restore quietly failed.
-    if (isStubUser(currentUser)) {
+    // No login gate and no wallet gate; see openShowBoost for the reasoning.
+    // The identity gates run only when there is an identity.
+    if (currentUser === undefined) {
       setPendingAction(() => api.openEpisodeBoost(args))
       ensureRealRestore()
       return
     }
-
-    // Gate 1.75: signer-account match. Boostagram payloads embed the
-    // sender's pubkey from currentUser; if the extension's active
-    // account changed under us, we'd publish a payload claiming
-    // currentUser.pubkey while the signature came from a different
-    // key. Force re-auth before that can happen. No-op after first ok.
-    if (!await ensureSignerVerified()) return
-
-    // Gate 2: wallet connected?
-    if (!wallet.isReady()) {
-      // Try to restore from at-rest state (NWC encrypted blob, or
-      // per-pubkey WebLN flag + still-installed extension). If that
-      // succeeds, fall straight through. Otherwise open the connect
-      // modal — auto-engage was removed, see wallet.ensureReady.
-      wallet.ensureReady(currentUser)
-        .then((ok) => {
-          if (ok) {
-            // Re-call openEpisodeBoost — Gate 2 will pass now.
-            api.openEpisodeBoost(args)
-          } else {
-            handleWalletGateFailure(() => api.openEpisodeBoost(args))
-          }
-        })
-        .catch(() => {
-          handleWalletGateFailure(() => api.openEpisodeBoost(args))
-        })
-      return
+    if (currentUser) {
+      if (isStubUser(currentUser)) {
+        setPendingAction(() => api.openEpisodeBoost(args))
+        ensureRealRestore()
+        return
+      }
+      if (!await ensureSignerVerified()) return
     }
 
-    // Both gates pass — open the form. Apply LB's per-host substitutions
+    // Open the form. Apply LB's per-host substitutions
     // before the modal sees the recipient list. The episode number selects
     // the per-episode override layer (Ep015 reroutes the Fountain leg to
     // the Samourai defense address rather than to aquafox30).

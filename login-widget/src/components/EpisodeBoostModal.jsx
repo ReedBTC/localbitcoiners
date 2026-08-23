@@ -28,6 +28,8 @@ const EPISODE_SHARE_TAGLINE = 'Posts a kind 1 note to your followers — the epi
 export default function EpisodeBoostModal({
   user,
   onClose,
+  onRequestSignIn,
+  onRequestWallet,
   episode,        // { number, title, guid }
   splitsBundle,   // { recipients, totalWeight, source }
 }) {
@@ -136,9 +138,11 @@ export default function EpisodeBoostModal({
                 subtitle={episode?.title || null}
                 onCancelled={requestClose}
                 onBoostState={setBoostState}
+                onRequestSignIn={onRequestSignIn}
+                onRequestWallet={onRequestWallet}
               />
             ) : (
-              <p className="text-sm text-neutral-400">Preparing recipients…</p>
+              <p className="text-sm text-[var(--muted,#5a7488)]">Preparing recipients…</p>
             )}
           </div>
 

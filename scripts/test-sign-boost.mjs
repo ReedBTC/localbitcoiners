@@ -11,10 +11,11 @@
  * Run: node scripts/test-sign-boost.mjs
  */
 import assert from 'node:assert/strict'
-import { validateBoostTemplate, validateDonationTemplate, validateTemplate, secretKeyFrom, overRateLimit, onRequestPost } from '../functions/api/sign-boost.js'
+import { validateBoostTemplate, validateDonationTemplate, validateShowBoostTemplate, validateTemplate, secretKeyFrom, overRateLimit, onRequestPost } from '../functions/api/sign-boost.js'
 import { verifyEvent, getPublicKey, nip19 } from '../functions/_shared/nostr-sign.js'
 import { buildExternalNoteTemplate, buildDonationNoteTemplate, donationHeadline, sanitizeSenderName, MAX_SENDER_NAME_CHARS } from '../login-widget/src/lib/externalBoostagram.js'
 import { SITE_SIGN_MAX_SATS } from '../login-widget/src/lib/siteSign.js'
+import { buildShowSiteNoteTemplate, SHOW_NOTE_HEADLINE, sanitizeShowSender, SHOW_SENDER_NAME_CHARS } from '../login-widget/src/lib/boostagram.js'
 import { BOOST_BANNER_URL, DONATION_BANNER_URL, DONATION_URL } from '../login-widget/src/lib/externalBoostagram.js'
 
 let passed = 0
@@ -451,6 +452,91 @@ await ok('a donation carries the typed name as prose and never as a tag', () => 
   assert.match(t.content, /^👤 From Reed$/m)
   assert.equal(t.tags.some((tag) => tag[0] === 'p'), false)
   assert.equal(t.tags.some((tag) => tag.includes('Reed')), false)
+})
+
+
+// ── The show-boost family ────────────────────────────────────────────────────
+//
+// ⚠️ FED FROM THE SHIPPED BUILDER, same rule as the other two: a tag added to
+// `buildShowSiteNoteTemplate` without being added to SHOW_ALLOWED_TAGS fails
+// here rather than as every site-signed show note silently refused.
+console.log('\nThe show-boost family')
+const SHOW_SESSION = '123e4567-e89b-42d3-a456-426614174000'
+function showTemplate(over = {}) {
+  return buildShowSiteNoteTemplate({
+    paidSats: 3333,
+    message: 'great episode',
+    senderName: 'Smoke Tester',
+    episode: { number: 24, title: 'Ep. 024 | Something', guid: 'abc-123' },
+    pageUrl: 'https://localbitcoiners.com',
+    boostSession: SHOW_SESSION,
+    ...over,
+  })
+}
+function showRejects(label, template, expected) {
+  let message = null
+  try { validateShowBoostTemplate(template) } catch (e) { message = e.message }
+  assert.notEqual(message, null, `${label}: expected a rejection, got none`)
+  if (expected) assert.match(message, expected, `${label}: wrong reason (${message})`)
+  passed++
+  console.log(`  ✓ ${label} — ${message}`)
+}
+await ok('the shipped show template validates, and the dispatcher routes it', () => {
+  const t = validateShowBoostTemplate(showTemplate())
+  assert.equal(t.content, showTemplate().content)
+  assert.equal(validateTemplate(showTemplate()).content, t.content)
+})
+await ok('it is the bots\' standalone note, line for line', () => {
+  const lines = showTemplate().content.split('\n')
+  assert.equal(lines[0], SHOW_NOTE_HEADLINE)
+  assert.equal(lines[1], '💰 3,333 sats 📱 via localbitcoiners.com')
+  assert.equal(lines[2], '👤 Smoke Tester')
+  assert.equal(lines[3], '💬 great episode')
+  assert.equal(lines[4], '🎙️ Ep. 024 | Something')
+  assert.equal(lines[5], '🔗 https://localbitcoiners.com/ep024')
+  assert.equal(lines[6], '')
+  assert.equal(lines[7], '#LocalBitcoiners')
+})
+await ok('a blank name is "Anon", the bots\' website convention, and a show boost links the site', () => {
+  const t = showTemplate({ senderName: '', episode: { number: null, title: '', guid: '' } })
+  const lines = t.content.split('\n')
+  assert.equal(lines[2], '👤 Anon')
+  assert.equal(lines[3], '💬 great episode')
+  assert.equal(lines[4], '🔗 https://localbitcoiners.com')
+  assert.equal(t.tags.some((x) => x[0] === 'i' && x[1].startsWith('podcast:item:guid:')), false)
+  validateShowBoostTemplate(t)
+})
+await ok('no p, no P, no e — ever', () => {
+  const t = showTemplate()
+  assert.equal(t.tags.some((x) => ['p', 'P', 'e'].includes(x[0])), false)
+  showRejects('a P tag is refused', { ...t, tags: [...t.tags, ['P', 'a'.repeat(64)]] }, /unsupported tag/)
+  showRejects('a p tag is refused', { ...t, tags: [...t.tags, ['p', 'a'.repeat(64)]] }, /unsupported tag/)
+})
+await ok('the 💰 line and the amount tag must agree', () => {
+  const t = showTemplate()
+  const tags = t.tags.map((x) => x[0] === 'amount' ? ['amount', '4000000'] : x)
+  showRejects('a tag that disagrees with the line', { ...t, tags }, /invalid amount/)
+})
+showRejects('nothing may precede the headline', { ...showTemplate(), content: 'hello\n' + showTemplate().content }, /not a show boost/)
+showRejects('a foreign feed guid is refused', (() => { const t = showTemplate(); return { ...t, tags: t.tags.map((x) => x[0] === 'i' && x[1].startsWith('podcast:guid:') ? ['i', 'podcast:guid:ffffffff-0000-0000-0000-000000000000'] : x) } })(), /not a show boost/)
+showRejects('an r off this site is refused', (() => { const t = showTemplate(); return { ...t, tags: t.tags.map((x) => x[0] === 'r' ? ['r', 'https://example.com/x'] : x) } })(), /unsupported url/)
+showRejects('a non-uuid boost_session is refused', (() => { const t = showTemplate(); return { ...t, tags: t.tags.map((x) => x[0] === 'boost_session' ? ['boost_session', 'nope'] : x) } })(), /invalid tags/)
+showRejects('the cap holds here too', showTemplate({ paidSats: SITE_SIGN_MAX_SATS + 1 }), /invalid amount/)
+await ok('the typed name is bounded and cannot break the line structure', () => {
+  const t = showTemplate({ senderName: 'a\nb📱c' + 'x'.repeat(100) })
+  const line = t.content.split('\n')[2]
+  assert.equal(line.startsWith('👤 a bc'), true)
+  assert.equal(line.length <= 3 + SHOW_SENDER_NAME_CHARS, true)
+  assert.equal(sanitizeShowSender('\u0000x'), 'x')
+  validateShowBoostTemplate(t)
+})
+await ok('the oracle signs a show template end to end', async () => {
+  const res = await post(showTemplate())
+  assert.equal(res.status, 200)
+  const { event } = await res.json()
+  assert.equal(verifyEvent(event), true)
+  assert.equal(event.pubkey, getPublicKey(SK))
+  assert.equal(event.content, showTemplate().content)
 })
 
 console.log(`\n${passed} assertions passed.\n`)

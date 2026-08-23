@@ -192,6 +192,31 @@ const MAX_AMOUNT_MSAT = 5_000_000_000   // 5M sats, matching the modal's MAX_SAT
 // something else would put a false publisher on a note we signed.
 const CLIENT_TAG = 'localbitcoiners.com'
 
+// ── The show-boost shape ─────────────────────────────────────────────────────
+//
+// A THIRD FAMILY, for boosts to Local Bitcoiners itself (the show and its
+// episodes) from a booster with no npub on the boost: signed out, or signed in
+// and pressed Anon. ⚠️ IT IS THE BOTS' STANDALONE NOTE, LINE FOR LINE
+// (`bots/shared/boost_formatter.py#format_note_from_info`), because the show
+// key already publishes one of those for every boost on the node and a note the
+// site signs must be indistinguishable from one the bot would have written.
+//
+// ⚠️ RESTATED FROM `buildShowSiteNoteTemplate` IN
+// `login-widget/src/lib/boostagram.js`; `scripts/test-sign-boost.mjs` feeds
+// this validator from that builder, so a drift fails there.
+const SHOW_NOTE_HEADLINE = '⚡ New boost on Local Bitcoiners!'
+// The whole line, and the figure read back out of it so text and the `amount`
+// tag can be held equal: a note whose 💰 line and tag disagree means different
+// amounts to a reader and to an indexer, the one thing a boost note cannot do.
+const SHOW_AMOUNT_LINE_RE = /^💰 ([0-9](?:[0-9,]{0,14})) sats 📱 via localbitcoiners\.com$/
+// `boost_session` is the key the bots collapse a boost's receipt and its note
+// on (uuid4 from payAllLegs#newBoostSession). The others are the claim tags
+// `build_boost_claim_tags` emits plus the NIP-73 pair. No `p`, no `P`.
+const SHOW_ALLOWED_TAGS = new Set(['i', 'k', 'r', 't', 'client', 'amount', 'boost_session'])
+const SHOW_FEED_GUID = '56fbb1aa-da79-5e4b-bebc-3b934ab8914c'
+const SHOW_SITE_ORIGIN = 'https://localbitcoiners.com'
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 function bad(message, status = 400) {
   return new Response(JSON.stringify({ error: message }), {
     status,
@@ -361,6 +386,66 @@ export function validateDonationTemplate(body) {
 }
 
 /**
+ * A SHOW BOOST note: sats to Local Bitcoiners' own value block, signed by the
+ * show key for a booster who has no npub on the boost.
+ *
+ * ⚠️ STRICTER THAN THE EXTERNAL FAMILY ON EVERY AXIS IT SHARES, because this
+ * is the show speaking in its own voice about money it received. The headline
+ * is matched whole; the 💰 line is matched whole and its figure must equal
+ * the `amount` tag; the `i` feed guid must be the show's own; every `r` must
+ * point at this site; and `boost_session` must be a uuid. A donor's typed
+ * name and message are the only free text, and they are bounded by position:
+ * nothing may precede the headline.
+ */
+export function validateShowBoostTemplate(body) {
+  if (!body || typeof body !== 'object') throw new Error('bad template')
+  if (body.kind !== 1) throw new Error('only kind 1 notes may be signed')
+  if (typeof body.content !== 'string' || body.content.length > MAX_CONTENT) {
+    throw new Error('invalid content')
+  }
+  const lines = body.content.split('\n')
+  if (lines[0] !== SHOW_NOTE_HEADLINE) throw new Error('not a show boost note')
+  const m = SHOW_AMOUNT_LINE_RE.exec(lines[1] || '')
+  if (!m) throw new Error('not a show boost note')
+  const lineSats = Number(m[1].replace(/,/g, ''))
+  if (!Number.isInteger(lineSats) || lineSats <= 0 || lineSats * 1000 > MAX_AMOUNT_MSAT) {
+    throw new Error('invalid amount')
+  }
+  if (!/^👤 \S/.test(lines[2] || '')) throw new Error('not a show boost note')
+
+  const tags = checkTagShape(body.tags, SHOW_ALLOWED_TAGS)
+  const hasTopic = (v) => tags.some((tag) => tag[0] === 't' && tag[1] === v)
+  if (!hasTopic('boostagram') || !hasTopic('value4value') || !hasTopic('boost')) {
+    throw new Error('not a show boost note')
+  }
+  if (!tags.some((tag) => tag[0] === 'i' && tag[1] === `podcast:guid:${SHOW_FEED_GUID}`)) {
+    throw new Error('not a show boost note')
+  }
+  // Item guids are opaque strings from the RSS; bound them by shape only. A
+  // fabricated one files the boost under an episode that does not exist,
+  // which the bots' audit surfaces and no reader is harmed by.
+  for (const tag of tags) {
+    if (tag[0] === 'i' && !/^podcast:(guid|item:guid):[^\s]{1,200}$/.test(tag[1] || '')) throw new Error('invalid tags')
+    if (tag[0] === 'k' && tag[1] !== 'podcast:guid' && tag[1] !== 'podcast:item:guid') throw new Error('invalid tags')
+    if (tag[0] === 'r') {
+      if (!isSafeUrl(tag[1] || '')) throw new Error('unsupported url')
+      if (new URL(tag[1]).origin !== SHOW_SITE_ORIGIN) throw new Error('unsupported url')
+    }
+    if (tag[0] === 'client' && tag[1] !== CLIENT_TAG) throw new Error('unsupported client')
+    if (tag[0] === 'boost_session' && !UUID_RE.test(tag[1] || '')) throw new Error('invalid tags')
+  }
+
+  const amounts = tags.filter((tag) => tag[0] === 'amount')
+  if (amounts.length !== 1) throw new Error('invalid amount')
+  const raw = amounts[0][1]
+  if (typeof raw !== 'string' || !/^[0-9]{1,15}$/.test(raw)) throw new Error('invalid amount')
+  if (Number(raw) !== lineSats * 1000) throw new Error('invalid amount')
+
+  const createdAt = checkCreatedAt(body.created_at)
+  return { kind: 1, created_at: createdAt, tags, content: body.content }
+}
+
+/**
  * Which family a submitted template belongs to, decided by its opening line and
  * nothing else.
  *
@@ -372,9 +457,9 @@ export function validateDonationTemplate(body) {
  */
 export function validateTemplate(body) {
   const content = body && typeof body.content === 'string' ? body.content : ''
-  return content.startsWith(DONATION_BANNER_URL)
-    ? validateDonationTemplate(body)
-    : validateBoostTemplate(body)
+  if (content.startsWith(DONATION_BANNER_URL)) return validateDonationTemplate(body)
+  if (content.startsWith(SHOW_NOTE_HEADLINE)) return validateShowBoostTemplate(body)
+  return validateBoostTemplate(body)
 }
 
 /** nsec or 64-char hex, to a 32-byte key. Returns null on anything else, which

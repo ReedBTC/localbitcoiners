@@ -738,6 +738,8 @@ export function buildBoostReceiptTemplate({
   legs = [],
   shareNoteId = '',
   shareStatus = '',
+  senderName = '',  // typed display name when no npub is on the boost (Anon /
+                    // signed out). Prose for the bots' 👤 line, never identity.
 }) {
   const safeMessage = typeof message === 'string'
     ? message.slice(0, MAX_BOOSTAGRAM_MESSAGE_CHARS)
@@ -768,6 +770,7 @@ export function buildBoostReceiptTemplate({
     ['type', 'boost_receipt'],
     ['boost_session', boostSession],
     ['sender', donorNpub || ''],
+    ['sender_name', donorNpub ? '' : sanitizeShowSender(senderName)],
     ['wallet', walletKind || ''],
     ['wallet_provider', walletProvider || 'unknown'],
     ['browser', browser || 'unknown'],
@@ -851,6 +854,103 @@ const MAX_FOUNTAIN_URL_LEN = 256
  * backfilled a few days after a fresh episode publishes; when absent,
  * the line is omitted entirely rather than guessed at.
  */
+/**
+ * The kind 1 a boost gets when THE SHOW signs it: a signed-out booster, or a
+ * signed-in one who pressed Anon, left Private Boost unchecked, and so asked
+ * the site to post for them. Signed by `/api/sign-boost` under the show key
+ * (not a bot npub; Reed's call 2026-08-23) and published from the browser.
+ *
+ * ⚠️ THIS IS THE BOTS' STANDALONE NOTE, LINE FOR LINE. The show npub already
+ * publishes one of these for every boost that lands on the node
+ * (`bots/shared/boost_formatter.py#format_note_from_info`), so a note the site
+ * signs must be indistinguishable from one the bot would have written: same
+ * headline, same 💰 / 👤 / 💬 / 🎙️ / 🔗 lines, same tags as
+ * `build_boost_claim_tags`. Change one and change the other.
+ *
+ * ⚠️ THE TYPED NAME IS PROSE AND NOTHING ELSE. It becomes the 👤 line and
+ * never a `p`, an uppercase `P` or any author claim: nothing can verify that
+ * the person named authorised a note signed by a key they do not hold. A
+ * signed-in donor who pressed Anon gets the same treatment — Anon means no
+ * pubkey on the note, not a pubkey on a note somebody else signed.
+ *
+ * ⚠️ NO `p` TAG, where the donor template carries one. The donor's note
+ * mentions the show; this note IS the show, and the oracle refuses `p`
+ * outright (a mention blast from an identity carrying our NIP-05 is the abuse
+ * it exists to prevent).
+ *
+ * `functions/api/sign-boost.js#validateShowBoostTemplate` restates the
+ * headline, the 💰 line and the tag allowlist; `scripts/test-sign-boost.mjs`
+ * feeds it from this builder so a drift fails there.
+ */
+export const SHOW_NOTE_HEADLINE = '⚡ New boost on Local Bitcoiners!'
+export const SHOW_NOTE_MAX_MESSAGE = 1500
+
+export function buildShowSiteNoteTemplate({
+  paidSats,
+  message,
+  senderName,     // typed name, or '' → "Anon", the bots' website convention
+  episode,        // { number, title, guid?, fountainUrl? } — same as the donor template
+  pageUrl,
+  boostSession,
+}) {
+  const sats = Math.max(0, Math.round(Number(paidSats) || 0))
+  const rawTitle = (episode?.title || '').trim()
+  const title = rawTitle.length > MAX_TITLE_LEN
+    ? rawTitle.slice(0, MAX_TITLE_LEN - 1) + '…'
+    : rawTitle
+  const from = sanitizeShowSender(senderName) || 'Anon'
+  const msg = String(message || '').replace(/[\u0000-\u0008\u000b-\u001f\u007f]+/g, ' ').trim().slice(0, SHOW_NOTE_MAX_MESSAGE)
+  const epNum = episode?.number != null ? String(episode.number) : ''
+  const episodeUrl = epNum ? `${SITE_URL}/ep${epNum.padStart(3, '0')}` : pageUrl
+
+  const lines = [
+    SHOW_NOTE_HEADLINE,
+    `💰 ${sats.toLocaleString('en-US')} sats 📱 via localbitcoiners.com`,
+    `👤 ${from}`,
+  ]
+  if (msg) lines.push(`💬 ${msg}`)
+  if (title) lines.push(`🎙️ ${title}`)
+  lines.push(`🔗 ${episodeUrl}`)
+  lines.push('')
+  lines.push('#LocalBitcoiners')
+
+  const tags = [
+    ['t', 'localbitcoiners'],
+    ['t', 'boost'],
+    ['t', 'podcast'],
+    ['t', 'boostagram'],
+    ['t', 'value4value'],
+    ['r', episodeUrl],
+    ['client', 'localbitcoiners.com'],
+    ['amount', String(sats * 1000)],
+    ['i', `podcast:guid:${FEED_GUID}`],
+    ['k', 'podcast:guid'],
+  ]
+  const epGuid = (episode?.guid || '').trim()
+  if (epGuid) {
+    tags.push(['i', `podcast:item:guid:${epGuid}`])
+    tags.push(['k', 'podcast:item:guid'])
+  }
+  if (boostSession) tags.push(['boost_session', String(boostSession)])
+
+  return { kind: 1, created_at: Math.floor(Date.now() / 1000), content: lines.join('\n'), tags }
+}
+
+/** Same bounds as `sanitizeSenderName` in externalBoostagram.js: no control
+ *  characters (the body is read line by line), no 📱 (the `via` line is what
+ *  `clients.py#_VIA_RE` parses), 40 characters. Restated rather than imported
+ *  so this module keeps no dependency on the external-boost one. */
+export const SHOW_SENDER_NAME_CHARS = 40
+export function sanitizeShowSender(value) {
+  return String(value || '')
+    .replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, ' ')
+    .replace(/\u{1F4F1}/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, SHOW_SENDER_NAME_CHARS)
+    .trim()
+}
+
 export function buildEpisodeBoostShareTemplate({
   amountSats,
   message,

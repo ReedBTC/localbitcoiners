@@ -436,4 +436,35 @@ console.log('\nThe themed classes emit real CSS:')
   ok('the nav Boost button opens the show-boost flow')
 }
 
+
+// ⚠️ PHASE 2: THE SHOW/EPISODE PATH HAS NO LOGIN GATE AND NO WALLET GATE IN
+// THE OPENER. A bare `api.requestLogin()` inside either opener is the old
+// login wall coming back; a `wallet.ensureReady` there is the wallet gate in
+// front of the form again. Both belong behind the form's own Boost button.
+{
+  const src = readFileSync(new URL('../login-widget/src/index.jsx', import.meta.url), 'utf8')
+  for (const name of ['openShowBoost', 'openEpisodeBoost']) {
+    const m = new RegExp(`async ${name}\\([^)]*\\)\\s*\\{([\\s\\S]*?)\\n  \\},`).exec(src)
+    assert.notEqual(m, null, `${name} not found`)
+    assert.equal(/api\.requestLogin\(\)/.test(m[1]), false, `${name} calls api.requestLogin() — the login wall is back`)
+    assert.equal(/wallet\.ensureReady\(/.test(m[1]), false, `${name} runs the wallet gate before the form mounts`)
+    assert.match(m[1], /ensureSignerVerified/, `${name} dropped the signer-match gate for a signed-in user`)
+  }
+  ok('openShowBoost and openEpisodeBoost carry no login or wallet gate')
+
+  const form = readFileSync(new URL('../login-widget/src/components/MultiLegBoostForm.jsx', import.meta.url), 'utf8')
+  assert.match(form, /signKindOneWithSite/, 'the form has no site-signed route')
+  assert.match(form, /buildShowSiteNoteTemplate/, 'the site-signed route does not use the show template')
+  assert.match(form, /signNoteAfterSettle/, 'the site-signed note is not deferred to settlement')
+  assert.match(form, /onRequestWallet\?\.\(\)/, 'the form never asks for a wallet')
+  assert.match(form, /Private Boost/, 'the Private Boost control is missing')
+  assert.equal(/Share to my feed/.test(form), false, 'the old opt-in share checkbox is still there')
+  assert.equal(/walletGone/.test(form), false, 'the "wallet not connected" dead-end screen is back')
+  // A retry never re-signs a note: the parent boost already (maybe) posted one.
+  const retry = /async function handleRetryLeg[\s\S]*?\n  \}\n/.exec(form)
+  assert.notEqual(retry, null)
+  assert.equal(/signNoteAfterSettle|signedKindOne: [^n]/.test(retry[0]), false, 'a retry would publish a second note')
+  ok('MultiLegBoostForm carries the four-outcome form and the site-signed route')
+}
+
 console.log(`\n${passed} assertions passed.\n`)
