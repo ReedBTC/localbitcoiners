@@ -207,7 +207,7 @@ function LegRow({ recipient, leg, onRepay, onCheck, checking, locked }) {
   // in flight.
   const showError = !checking && (status === STATUS.FAILED || status === STATUS.UNCERTAIN) && !!leg?.error
   const spinner = (
-    <svg className="animate-spin w-3.5 h-3.5 text-[var(--brand-d,#068ace)]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg className="animate-spin w-3.5 h-3.5 text-[var(--brand-d,#d97b0e)]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z" />
     </svg>
@@ -216,10 +216,10 @@ function LegRow({ recipient, leg, onRepay, onCheck, checking, locked }) {
   // near-white field, which is invisible — so a queued recipient rendered as a
   // name floating in space with a gap where the others have a tick. Filled and
   // ringed, it reads as "waiting its turn", which is what it is.
-  let icon = <span className="inline-block w-3 h-3 rounded-full bg-[var(--modal-inset,#e6f1f9)] ring-1 ring-[var(--modal-line,#b9d4e6)]" aria-hidden="true" />
-  if (status === STATUS.PAID) icon = <span className="text-[var(--ok,#0b7a4b)]" aria-hidden="true">✓</span>
+  let icon = <span className="inline-block w-3 h-3 rounded-full bg-[var(--modal-inset,#f1e8d2)] ring-1 ring-[var(--modal-line,#d4c4a0)]" aria-hidden="true" />
+  if (status === STATUS.PAID) icon = <span className="text-[var(--ok,#2f7a3a)]" aria-hidden="true">✓</span>
   else if (status === STATUS.FAILED) icon = <span className="text-[var(--danger,#b3261e)]" aria-hidden="true">✕</span>
-  else if (status === STATUS.UNCERTAIN) icon = checking ? spinner : <span className="text-[var(--warn,#b45309)]" aria-hidden="true">!</span>
+  else if (status === STATUS.UNCERTAIN) icon = checking ? spinner : <span className="text-[var(--warn,#7a5c00)]" aria-hidden="true">!</span>
   else if (status === WORKING) icon = spinner
 
   // One button slot. `locked` keeps it on screen but inert once the note has
@@ -229,12 +229,12 @@ function LegRow({ recipient, leg, onRepay, onCheck, checking, locked }) {
   if (checking) {
     // Orange, not amber: this is the working tone the sending phase uses, not
     // the warning tone a shortfall uses.
-    action = <span className="shrink-0 text-[11px] px-2 py-0.5 text-[var(--brand-d,#068ace)]">Checking…</span>
+    action = <span className="shrink-0 text-[11px] px-2 py-0.5 text-[var(--brand-d,#d97b0e)]">Checking…</span>
   } else if (repayable || checkable) {
     action = (
       <button onClick={locked ? undefined : (repayable ? onRepay : onCheck)} disabled={locked}
         title={locked ? 'Your note is already published, so a change here couldn’t be reflected in it.' : undefined}
-        className="shrink-0 text-[11px] px-2 py-0.5 rounded-lg border border-[var(--modal-line,#b9d4e6)] text-[var(--ink,#0f2733)] hover:border-[var(--brand,#00aff0)] hover:text-[var(--brand-dd,#0a6fa8)] disabled:opacity-40 disabled:hover:border-[var(--modal-line,#b9d4e6)] disabled:hover:text-[var(--muted,#5a7488)] disabled:cursor-not-allowed transition-colors">
+        className="shrink-0 text-[11px] px-2 py-0.5 rounded-lg border border-[var(--modal-line,#d4c4a0)] text-[var(--ink,#2d2010)] hover:border-[var(--brand,#f7931a)] hover:text-[var(--brand-dd,#a85500)] disabled:opacity-40 disabled:hover:border-[var(--modal-line,#d4c4a0)] disabled:hover:text-[var(--muted,#6b5a3e)] disabled:cursor-not-allowed transition-colors">
         {repayable ? 'Retry' : 'Check again'}
       </button>
     )
@@ -247,11 +247,11 @@ function LegRow({ recipient, leg, onRepay, onCheck, checking, locked }) {
     <li className="py-2.5 text-xs">
       <div className="flex items-center gap-2.5">
         <span className="w-4 flex justify-center shrink-0">{icon}</span>
-        <span className={`flex-1 min-w-0 truncate ${idle ? 'text-[var(--muted,#5a7488)]' : 'text-[var(--ink,#0f2733)] font-medium'}`}>
+        <span className={`flex-1 min-w-0 truncate ${idle ? 'text-[var(--muted,#6b5a3e)]' : 'text-[var(--ink,#2d2010)] font-medium'}`}>
           {recipient?.name || recipient?.address || 'Recipient'}
         </span>
         {sats != null && (
-          <span className={`shrink-0 tabular-nums ${status === STATUS.PAID ? 'text-[var(--ink,#0f2733)] font-semibold' : 'text-[var(--muted,#5a7488)]'}`}>
+          <span className={`shrink-0 tabular-nums ${status === STATUS.PAID ? 'text-[var(--ink,#2d2010)] font-semibold' : 'text-[var(--muted,#6b5a3e)]'}`}>
             {fmtSats(sats)} sats
           </span>
         )}
@@ -261,7 +261,7 @@ function LegRow({ recipient, leg, onRepay, onCheck, checking, locked }) {
           account of why a leg didn't land, and on a leg with no button
           it is the entire response the row has to give. */}
       {showError && (
-        <p className={`mt-1 ml-6 text-[11px] leading-snug ${status === STATUS.UNCERTAIN ? 'text-[var(--warn,#b45309)]' : 'text-[var(--danger,#b3261e)]'}`}>
+        <p className={`mt-1 ml-6 text-[11px] leading-snug ${status === STATUS.UNCERTAIN ? 'text-[var(--warn,#7a5c00)]' : 'text-[var(--danger,#b3261e)]'}`}>
           {leg.error}
         </p>
       )}
@@ -997,18 +997,18 @@ export default function ExternalBoostModal({ user, onClose, onRequestSignIn, onR
 
   return (
     <>
-      <div className={`fixed inset-0 bg-[var(--scrim,rgba(11,58,82,0.55))] z-[70] transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`} aria-hidden="true" />
+      <div className={`fixed inset-0 bg-[var(--scrim,rgba(45,32,16,0.62))] z-[70] transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`} aria-hidden="true" />
       <div className="fixed inset-0 z-[71] flex items-center justify-center p-3 sm:p-4 overflow-hidden" role="dialog" aria-label={headerTitle}>
-        <div className={`relative bg-[var(--modal-bg,#f4fafd)] border border-[var(--modal-line,#b9d4e6)] rounded-lg w-full max-w-lg max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col shadow-[0_24px_60px_-12px_rgba(11,58,82,0.28),0_0_0_1px_rgba(11,58,82,0.06)] transition-[opacity,transform] duration-200 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
-          <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-[var(--modal-line,#b9d4e6)] shrink-0">
-            <h2 className="text-base font-semibold text-[var(--ink,#0f2733)] font-[family-name:var(--font-display,'Playfair_Display',Georgia,serif)]">{headerTitle}</h2>
-            <button onClick={guardedClose} className="text-[var(--muted,#5a7488)] hover:text-[var(--ink,#0f2733)] transition-colors text-lg leading-none" aria-label="Close">✕</button>
+        <div className={`relative bg-[var(--modal-bg,#fbf6ea)] border border-[var(--modal-line,#d4c4a0)] rounded-lg w-full max-w-lg max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col shadow-[0_24px_60px_-12px_rgba(11,58,82,0.28),0_0_0_1px_rgba(11,58,82,0.06)] transition-[opacity,transform] duration-200 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+          <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-[var(--modal-line,#d4c4a0)] shrink-0">
+            <h2 className="text-base font-semibold text-[var(--ink,#2d2010)] font-[family-name:var(--font-display,'Playfair_Display',Georgia,serif)]">{headerTitle}</h2>
+            <button onClick={guardedClose} className="text-[var(--muted,#6b5a3e)] hover:text-[var(--ink,#2d2010)] transition-colors text-lg leading-none" aria-label="Close">✕</button>
           </div>
 
           <div className="px-4 sm:px-6 py-5 space-y-4 flex-1 min-h-0 overflow-y-auto">
             {copy.subject && (
-              <div className="text-xs text-[var(--muted,#5a7488)] leading-snug">
-                <span className="font-semibold text-[var(--ink,#0f2733)]">{copy.subject}</span>
+              <div className="text-xs text-[var(--muted,#6b5a3e)] leading-snug">
+                <span className="font-semibold text-[var(--ink,#2d2010)]">{copy.subject}</span>
                 {!donation && episode?.episodeTitle && <span className="block italic mt-0.5">"{episode.episodeTitle}"</span>}
                 {copy.subjectNote && <span className="block mt-0.5">{copy.subjectNote}</span>}
               </div>
@@ -1016,15 +1016,15 @@ export default function ExternalBoostModal({ user, onClose, onRequestSignIn, onR
 
             {!hasValue && (
               <div className="space-y-3 text-center py-2">
-                <p className="text-sm text-[var(--muted,#5a7488)]">{donation ? "Local Bitcoiners' own Lightning address isn't configured, so there's nothing to donate to." : "This episode doesn't have a Podcasting 2.0 value block, so there's no split to boost to."}</p>
-                <button onClick={requestClose} className="px-4 py-2 rounded-lg bg-[var(--modal-inset,#e6f1f9)] hover:bg-[var(--border,#cfe2ee)] text-sm text-[var(--ink,#0f2733)] transition-colors">Close</button>
+                <p className="text-sm text-[var(--muted,#6b5a3e)]">{donation ? "Local Bitcoiners' own Lightning address isn't configured, so there's nothing to donate to." : "This episode doesn't have a Podcasting 2.0 value block, so there's no split to boost to."}</p>
+                <button onClick={requestClose} className="px-4 py-2 rounded-lg bg-[var(--modal-inset,#f1e8d2)] hover:bg-[var(--border,#d4c4a0)] text-sm text-[var(--ink,#2d2010)] transition-colors">Close</button>
               </div>
             )}
 
             {hasValue && phase === 'form' && (
               <>
                 <div>
-                  <label htmlFor="ob-boost-amount" className="block text-xs font-medium text-[var(--muted,#5a7488)] mb-1.5">Amount (sats)</label>
+                  <label htmlFor="ob-boost-amount" className="block text-xs font-medium text-[var(--muted,#6b5a3e)] mb-1.5">Amount (sats)</label>
                   {/* The presets come first because they are the fast path and
                       the field is the fallback, not the other way round. A
                       pressed preset stays lit, so the row doubles as the
@@ -1049,7 +1049,7 @@ export default function ExternalBoostModal({ user, onClose, onRequestSignIn, onR
                                so it would say "more of the same" rather than
                                "this one". Any new filled control in this widget
                                is the same trap. */
-                            ? 'bg-[var(--brand-dd,#0a6fa8)] border-[var(--brand-dd,#0a6fa8)] text-white shadow-[0_1px_0_rgba(11,58,82,0.10)]'
+                            ? 'bg-[var(--brand-dd,#a85500)] border-[var(--brand-dd,#a85500)] text-white shadow-[0_1px_0_rgba(11,58,82,0.10)]'
                             /* ⚠️ Tinted, not white. Unset they were a white
                                button on a near-white panel with a hairline
                                border, which is the same thing as no button.
@@ -1058,7 +1058,7 @@ export default function ExternalBoostModal({ user, onClose, onRequestSignIn, onR
                             /* The hover carried the identical fault: it swapped
                                to white on --brand, so the label thinned out at
                                the moment the pointer was on it. */
-                            : 'bg-[var(--brand-tint,rgba(0,175,240,0.12))] border-[rgba(0,175,240,0.45)] text-[var(--brand-dd,#0a6fa8)] hover:bg-[var(--brand-dd,#0a6fa8)] hover:border-[var(--brand-dd,#0a6fa8)] hover:text-white'}`}>
+                            : 'bg-[var(--brand-tint,rgba(247,147,26,0.14))] border-[rgba(0,175,240,0.45)] text-[var(--brand-dd,#a85500)] hover:bg-[var(--brand-dd,#a85500)] hover:border-[var(--brand-dd,#a85500)] hover:text-white'}`}>
                           {n.toLocaleString()}
                         </button>
                       )
@@ -1066,21 +1066,21 @@ export default function ExternalBoostModal({ user, onClose, onRequestSignIn, onR
                   </div>
                   <input id="ob-boost-amount" type="number" inputMode="numeric" min={MIN_SATS} max={MAX_SATS}
                     value={amount} onChange={(e) => setAmount(e.target.value)}
-                    className="w-full bg-[var(--modal-field,#ffffff)] border border-[var(--modal-line,#b9d4e6)] rounded-lg px-3 py-2.5 text-sm text-[var(--ink,#0f2733)] focus:outline-none focus:border-[var(--brand,#00aff0)] focus:ring-2 focus:ring-[var(--brand-ring,rgba(0,175,240,0.32))]"
+                    className="w-full bg-[var(--modal-field,#fffdf7)] border border-[var(--modal-line,#d4c4a0)] rounded-lg px-3 py-2.5 text-sm text-[var(--ink,#2d2010)] focus:outline-none focus:border-[var(--brand,#f7931a)] focus:ring-2 focus:ring-[var(--brand-ring,rgba(247,147,26,0.35))]"
                     placeholder="Or type any amount" />
                 </div>
 
                 {signedIn && (
                 <div>
-                  <label className="block text-xs text-[var(--muted,#5a7488)] mb-1.5">Boost as</label>
+                  <label className="block text-xs text-[var(--muted,#6b5a3e)] mb-1.5">Boost as</label>
                   <div className="flex gap-2 text-xs">
                     <button onClick={() => setAnonymous(false)} aria-pressed={!anonymous}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-3 px-3 rounded-md border transition-colors ${!anonymous ? 'bg-[var(--brand-tint,rgba(0,175,240,0.12))] border-[var(--brand,#00aff0)] text-[var(--brand-dd,#0a6fa8)] font-semibold' : 'bg-[var(--modal-field,#ffffff)] border-[var(--modal-line,#b9d4e6)] text-[var(--muted,#5a7488)] hover:text-[var(--ink,#0f2733)] hover:border-[var(--brand,#00aff0)]'}`}>
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-3 px-3 rounded-md border transition-colors ${!anonymous ? 'bg-[var(--brand-tint,rgba(247,147,26,0.14))] border-[var(--brand,#f7931a)] text-[var(--brand-dd,#a85500)] font-semibold' : 'bg-[var(--modal-field,#fffdf7)] border-[var(--modal-line,#d4c4a0)] text-[var(--muted,#6b5a3e)] hover:text-[var(--ink,#2d2010)] hover:border-[var(--brand,#f7931a)]'}`}>
                       {profile?.image && isSafeUrl(profile.image) && <img src={profile.image} alt="" className="w-4 h-4 rounded-full object-cover" onError={(e) => { e.target.style.display = 'none' }} />}
                       <span className="truncate max-w-[140px]">{profile?.displayName || profile?.name || 'Your npub'}</span>
                     </button>
                     <button onClick={() => setAnonymous(true)} aria-pressed={anonymous}
-                      className={`flex-1 py-3 px-3 rounded-md border transition-colors ${anonymous ? 'bg-[var(--brand-tint,rgba(0,175,240,0.12))] border-[var(--brand,#00aff0)] text-[var(--brand-dd,#0a6fa8)] font-semibold' : 'bg-[var(--modal-field,#ffffff)] border-[var(--modal-line,#b9d4e6)] text-[var(--muted,#5a7488)] hover:text-[var(--ink,#0f2733)] hover:border-[var(--brand,#00aff0)]'}`}>Anon</button>
+                      className={`flex-1 py-3 px-3 rounded-md border transition-colors ${anonymous ? 'bg-[var(--brand-tint,rgba(247,147,26,0.14))] border-[var(--brand,#f7931a)] text-[var(--brand-dd,#a85500)] font-semibold' : 'bg-[var(--modal-field,#fffdf7)] border-[var(--modal-line,#d4c4a0)] text-[var(--muted,#6b5a3e)] hover:text-[var(--ink,#2d2010)] hover:border-[var(--brand,#f7931a)]'}`}>Anon</button>
                   </div>
                 </div>
                 )}
@@ -1103,7 +1103,7 @@ export default function ExternalBoostModal({ user, onClose, onRequestSignIn, onR
                     with Nostr and they need not know that is what it is. */}
                 {!usingProfile && (
                   <div>
-                    <label htmlFor="ob-boost-from" className="block text-xs font-medium text-[var(--muted,#5a7488)] mb-1.5">From</label>
+                    <label htmlFor="ob-boost-from" className="block text-xs font-medium text-[var(--muted,#6b5a3e)] mb-1.5">From</label>
                     {/* ⚠️ ONE LINE, BECAUSE THEY ARE ONE CHOICE. A full-width
                         divider above the button read as a section break, which
                         made the two halves look like unrelated things — the
@@ -1131,16 +1131,16 @@ export default function ExternalBoostModal({ user, onClose, onRequestSignIn, onR
                       data-1p-ignore=""
                       data-bwignore="true"
                       data-form-type="other"
-                      className="flex-1 min-w-0 bg-[var(--modal-field,#ffffff)] border border-[var(--modal-line,#b9d4e6)] rounded-lg px-3 py-2.5 text-sm text-[var(--ink,#0f2733)] focus:outline-none focus:border-[var(--brand,#00aff0)] focus:ring-2 focus:ring-[var(--brand-ring,rgba(0,175,240,0.32))]"
+                      className="flex-1 min-w-0 bg-[var(--modal-field,#fffdf7)] border border-[var(--modal-line,#d4c4a0)] rounded-lg px-3 py-2.5 text-sm text-[var(--ink,#2d2010)] focus:outline-none focus:border-[var(--brand,#f7931a)] focus:ring-2 focus:ring-[var(--brand-ring,rgba(247,147,26,0.35))]"
                       placeholder={DEFAULT_SENDER_NAME} />
                       {!signedIn && onRequestSignIn && (
                         <>
-                          <span className="self-center text-[10px] uppercase tracking-wider text-[var(--muted,#5a7488)] shrink-0" aria-hidden="true">or</span>
+                          <span className="self-center text-[10px] uppercase tracking-wider text-[var(--muted,#6b5a3e)] shrink-0" aria-hidden="true">or</span>
                           <LoginButton variant="checkout" onClick={onRequestSignIn} className="shrink-0" />
                         </>
                       )}
                     </div>
-                    <p className="mt-1.5 text-[10px] text-[var(--muted,#5a7488)] leading-snug">
+                    <p className="mt-1.5 text-[10px] text-[var(--muted,#6b5a3e)] leading-snug">
                       Left blank, boosts are sent as “{DEFAULT_SENDER_NAME}”.
                     </p>
 
@@ -1148,11 +1148,11 @@ export default function ExternalBoostModal({ user, onClose, onRequestSignIn, onR
                 )}
 
                 <div>
-                  <label className="block text-xs text-[var(--muted,#5a7488)] mb-1.5">Message (optional)</label>
+                  <label className="block text-xs text-[var(--muted,#6b5a3e)] mb-1.5">Message (optional)</label>
                   <textarea value={message} onChange={(e) => setMessage(e.target.value.slice(0, MAX_MESSAGE_CHARS))} rows={3} maxLength={MAX_MESSAGE_CHARS}
-                    className="w-full bg-[var(--modal-field,#ffffff)] border border-[var(--modal-line,#b9d4e6)] rounded-lg px-3 py-2 text-sm text-[var(--ink,#0f2733)] focus:outline-none focus:border-[var(--brand,#00aff0)] focus:ring-2 focus:ring-[var(--brand-ring,rgba(0,175,240,0.32))] resize-none leading-relaxed"
+                    className="w-full bg-[var(--modal-field,#fffdf7)] border border-[var(--modal-line,#d4c4a0)] rounded-lg px-3 py-2 text-sm text-[var(--ink,#2d2010)] focus:outline-none focus:border-[var(--brand,#f7931a)] focus:ring-2 focus:ring-[var(--brand-ring,rgba(247,147,26,0.35))] resize-none leading-relaxed"
                     placeholder="Say something to the show (rides along with the boost)" />
-                  <p className="mt-1 text-[10px] text-[var(--muted,#5a7488)] text-right">{message.length}/{MAX_MESSAGE_CHARS}</p>
+                  <p className="mt-1 text-[10px] text-[var(--muted,#6b5a3e)] text-right">{message.length}/{MAX_MESSAGE_CHARS}</p>
                 </div>
 
                 {/* ⚠️ THE LABEL CARRIES ITS OWN SCOPE, and a bare "Boost
@@ -1166,25 +1166,25 @@ export default function ExternalBoostModal({ user, onClose, onRequestSignIn, onR
                     name is on the boost; private is about whether a note
                     exists. This is the only control that reaches 'none', which
                     is what lets an anonymous booster still count. */}
-                <label className={`flex items-start gap-2.5 rounded-md border px-3 py-2.5 cursor-pointer transition-colors ${noNote ? 'border-[var(--modal-line,#b9d4e6)] bg-[var(--modal-inset,#e6f1f9)]' : 'border-[var(--modal-line,#b9d4e6)] bg-[var(--modal-field,#ffffff)] hover:border-[var(--brand,#00aff0)]'}`}>
+                <label className={`flex items-start gap-2.5 rounded-md border px-3 py-2.5 cursor-pointer transition-colors ${noNote ? 'border-[var(--modal-line,#d4c4a0)] bg-[var(--modal-inset,#f1e8d2)]' : 'border-[var(--modal-line,#d4c4a0)] bg-[var(--modal-field,#fffdf7)] hover:border-[var(--brand,#f7931a)]'}`}>
                   <input
                     type="checkbox"
                     checked={noNote}
                     onChange={(e) => setNoNote(e.target.checked)}
-                    className="mt-0.5 w-3.5 h-3.5 shrink-0 accent-[var(--brand,#00aff0)]" />
+                    className="mt-0.5 w-3.5 h-3.5 shrink-0 accent-[var(--brand,#f7931a)]" />
                   <span className="min-w-0">
-                    <span className="block text-xs font-medium text-[var(--ink,#0f2733)] leading-snug">Private Boost</span>
+                    <span className="block text-xs font-medium text-[var(--ink,#2d2010)] leading-snug">Private Boost</span>
                     {/* One line, and no explanation of the unticked case.
                         The default IS the unticked case, so describing it here
                         was explaining the absence of a choice. */}
-                    <span className="block text-[10px] text-[var(--muted,#5a7488)] leading-snug mt-0.5">Do not share to nostr.</span>
+                    <span className="block text-[10px] text-[var(--muted,#6b5a3e)] leading-snug mt-0.5">Do not share to nostr.</span>
                   </span>
                 </label>
 
                 {error && <p className="text-xs text-[var(--danger,#b3261e)]">{error}</p>}
 
                 <button onClick={handleBoost}
-                  className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-lg bg-[var(--brand-dd,#0a6fa8)] hover:bg-[var(--brand-ddd,#095e90)] text-sm font-medium text-white transition-colors">
+                  className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-lg bg-[var(--brand-dd,#a85500)] hover:bg-[var(--brand-ddd,#8a4500)] text-sm font-medium text-white transition-colors">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M14.615 1.595a.75.75 0 0 1 .359.852L12.982 9.75h7.268a.75.75 0 0 1 .548 1.262l-10.5 11.25a.75.75 0 0 1-1.272-.71l1.992-7.302H3.75a.75.75 0 0 1-.548-1.262l10.5-11.25a.75.75 0 0 1 .913-.143Z" clipRule="evenodd"/></svg>
                   Boost episode
                 </button>
@@ -1205,7 +1205,7 @@ export default function ExternalBoostModal({ user, onClose, onRequestSignIn, onR
                     none. They are one press from paying, so the honest thing is
                     to say nothing at all. */}
                 {!walletStatus.connected && (awaitingWallet || !walletStatus.remembered) && (
-                  <p className="text-[10px] text-[var(--muted,#5a7488)] leading-snug text-center">
+                  <p className="text-[10px] text-[var(--muted,#6b5a3e)] leading-snug text-center">
                     {awaitingWallet
                       ? 'Waiting for a wallet. Connect one and this boost sends itself.'
                       : 'No wallet connected yet. We\u2019ll ask for one when you press Boost.'}
@@ -1217,9 +1217,9 @@ export default function ExternalBoostModal({ user, onClose, onRequestSignIn, onR
             {hasValue && phase !== 'form' && (
               <div className="flex flex-col gap-3 min-h-[280px]">
                 {phase === 'sending' && (
-                  <div className="rounded-lg bg-[var(--brand-tint,rgba(0,175,240,0.12))] border border-[var(--brand,#00aff0)] px-3 py-2.5">
-                    <p className="text-sm font-semibold text-[var(--brand-dd,#0a6fa8)]">Sending your boost</p>
-                    <p className="text-[11px] text-[var(--muted,#5a7488)] mt-0.5">Keep this window open.</p>
+                  <div className="rounded-lg bg-[var(--brand-tint,rgba(247,147,26,0.14))] border border-[var(--brand,#f7931a)] px-3 py-2.5">
+                    <p className="text-sm font-semibold text-[var(--brand-dd,#a85500)]">Sending your boost</p>
+                    <p className="text-[11px] text-[var(--muted,#6b5a3e)] mt-0.5">Keep this window open.</p>
                   </div>
                 )}
                 {/* Silent on a normal leg; see PAY_STAGES. It sits under the
@@ -1227,11 +1227,11 @@ export default function ExternalBoostModal({ user, onClose, onRequestSignIn, onR
                     carries the spinner that says WHICH leg, and one moving
                     line beats the same sentence repeated per row. */}
                 {payNote && (
-                  <p className="text-[11px] text-[var(--muted,#5a7488)] leading-snug">{payNote}</p>
+                  <p className="text-[11px] text-[var(--muted,#6b5a3e)] leading-snug">{payNote}</p>
                 )}
-                {allPaid && <p className="text-base font-semibold text-[var(--ok,#0b7a4b)]">⚡ Boost delivered!</p>}
+                {allPaid && <p className="text-base font-semibold text-[var(--ok,#2f7a3a)]">⚡ Boost delivered!</p>}
                 {phase === 'done' && !allPaid && (
-                  <p className={`text-sm font-semibold ${stillChecking ? 'text-[var(--brand-d,#068ace)]' : 'text-[var(--warn,#b45309)]'}`}>
+                  <p className={`text-sm font-semibold ${stillChecking ? 'text-[var(--brand-d,#d97b0e)]' : 'text-[var(--warn,#7a5c00)]'}`}>
                     {summaryLine}
                   </p>
                 )}
@@ -1242,7 +1242,7 @@ export default function ExternalBoostModal({ user, onClose, onRequestSignIn, onR
                     ninety seconds while their sats move. A filled, bordered,
                     rounded container is what says "these four things belong
                     together and something is happening to them". */}
-                <ul className="flex-1 min-h-0 overflow-y-auto rounded-lg border border-[var(--modal-line,#b9d4e6)] bg-[var(--modal-field,#ffffff)] px-3 divide-y divide-[var(--modal-line,#b9d4e6)]">
+                <ul className="flex-1 min-h-0 overflow-y-auto rounded-lg border border-[var(--modal-line,#d4c4a0)] bg-[var(--modal-field,#fffdf7)] px-3 divide-y divide-[var(--modal-line,#d4c4a0)]">
                   {visibleLegs.map(({ r, leg }) => {
                     const realIndex = recipients.indexOf(r)
                     return <LegRow key={`${r.address}-${realIndex}`} recipient={r} leg={leg}
@@ -1264,20 +1264,20 @@ export default function ExternalBoostModal({ user, onClose, onRequestSignIn, onR
                     only one who can share: an anonymous booster is watching
                     the same spinner and is owed the same account of it. */}
                 {phase === 'done' && stillChecking && (
-                  <p className="text-[11px] text-[var(--muted,#5a7488)] leading-snug">
+                  <p className="text-[11px] text-[var(--muted,#6b5a3e)] leading-snug">
                     {checkStageText(checkSeconds)}
                     {noteRoute !== 'none' && ' The Nostr note waits for this, so it reports what actually landed.'}
                   </p>
                 )}
                 {phase === 'done' && noteRoute !== 'none' && paidSats > 0 && !stillChecking && (
-                  <div className="rounded-md border border-[var(--modal-line,#b9d4e6)] bg-[var(--modal-field,#ffffff)] p-3 space-y-2">
+                  <div className="rounded-md border border-[var(--modal-line,#d4c4a0)] bg-[var(--modal-field,#fffdf7)] p-3 space-y-2">
                     {shareState === 'shared' ? (
-                      <p className="text-xs text-[var(--ok,#0b7a4b)] leading-snug">
+                      <p className="text-xs text-[var(--ok,#2f7a3a)] leading-snug">
                         {noteRoute === 'bot'
                           ? `\u2713 Posted to Nostr by Local Bitcoiners${paidCount < activeCount ? ` (${fmtSats(paidSats)} sats, ${paidCount} of ${activeCount} splits)` : ''}.`
                           : `\u2713 Posted to your feed${paidCount < activeCount ? ` (${fmtSats(paidSats)} sats, ${paidCount} of ${activeCount} splits)` : ''}.`}
                         {noteRoute === 'bot' && (
-                          <span className="block text-[10px] text-[var(--muted,#5a7488)] mt-1">
+                          <span className="block text-[10px] text-[var(--muted,#6b5a3e)] mt-1">
                             Your boost is on Nostr, where OnlyBoosts and this site's feeds can find it.
                             {signedIn
                               ? ' It went out under the Local Bitcoiners show account, so your own account is not on it.'
@@ -1292,18 +1292,18 @@ export default function ExternalBoostModal({ user, onClose, onRequestSignIn, onR
                          no obvious cause; a donor who does not know to go and
                          approve it will simply watch this time out. The bot
                          route has nothing to approve and says so. */
-                      <p className="text-xs text-[var(--ink,#0f2733)] leading-snug">
+                      <p className="text-xs text-[var(--ink,#2d2010)] leading-snug">
                         {noteRoute === 'bot'
                           ? 'Posting your boost to Nostr…'
                           : 'Approve this in your signer to post it to Nostr…'}
                       </p>
                     ) : (
                       <>
-                        <p className="text-xs text-[var(--ink,#0f2733)] leading-snug">
+                        <p className="text-xs text-[var(--ink,#2d2010)] leading-snug">
                           {shareState === 'error'
                             ? 'The note didn’t post'
                             : (donation ? 'Post this donation to Nostr?' : 'Post this boost to Nostr?')}
-                          <span className="block text-[10px] text-[var(--muted,#5a7488)] mt-1">
+                          <span className="block text-[10px] text-[var(--muted,#6b5a3e)] mt-1">
                             {/* ⚠️ A DONATION'S NOTE MAKES THE OPPOSITE PROMISE
                                 TO A BOOST'S, so it cannot share the boost copy.
                                 A boost note is what puts a boost in the feeds
@@ -1328,7 +1328,7 @@ export default function ExternalBoostModal({ user, onClose, onRequestSignIn, onR
                             random, which is the whole reason the press was
                             removed from the clean case. */}
                         {shareState !== 'error' && (
-                          <p className="text-[10px] text-[var(--warn,#b45309)] leading-snug">
+                          <p className="text-[10px] text-[var(--warn,#7a5c00)] leading-snug">
                             Waiting on you because not every split landed. Retry what you can first;
                             the note reports whatever has settled when you press.
                           </p>
@@ -1337,10 +1337,10 @@ export default function ExternalBoostModal({ user, onClose, onRequestSignIn, onR
                             signed. On a partial the number is not the one the
                             donor typed, and finding that out by reading their
                             own published note is the wrong order. */}
-                        <p className="text-[10px] text-[var(--muted,#5a7488)] leading-snug">
-                          The note will say <span className="tabular-nums text-[var(--muted,#5a7488)]">{fmtSats(paidSats)} sats</span>
-                          {paidCount < activeCount && <> and <span className="text-[var(--muted,#5a7488)]">{paidCount} of {activeCount} splits paid</span></>}
-                          {noteRoute === 'bot' && <>, from <span className="text-[var(--muted,#5a7488)]">{typedName || DEFAULT_SENDER_NAME}</span></>}.
+                        <p className="text-[10px] text-[var(--muted,#6b5a3e)] leading-snug">
+                          The note will say <span className="tabular-nums text-[var(--muted,#6b5a3e)]">{fmtSats(paidSats)} sats</span>
+                          {paidCount < activeCount && <> and <span className="text-[var(--muted,#6b5a3e)]">{paidCount} of {activeCount} splits paid</span></>}
+                          {noteRoute === 'bot' && <>, from <span className="text-[var(--muted,#6b5a3e)]">{typedName || DEFAULT_SENDER_NAME}</span></>}.
                         </p>
                         {/* ⚠️ A FAILED SIGN IS NOT A FAILED BOOST, and the copy
                             has to say so or a donor reads it as their sats
@@ -1351,7 +1351,7 @@ export default function ExternalBoostModal({ user, onClose, onRequestSignIn, onR
                           <p className="text-[11px] text-[var(--danger,#b3261e)] leading-snug">{shareError}</p>
                         )}
                         <button onClick={handleShare} disabled={shareState === 'signing'}
-                          className="w-full py-2 rounded-lg bg-[var(--brand-dd,#0a6fa8)] hover:bg-[var(--brand-ddd,#095e90)] disabled:bg-[var(--modal-inset,#e6f1f9)] disabled:text-[var(--muted,#5a7488)] text-xs font-medium text-white transition-colors">
+                          className="w-full py-2 rounded-lg bg-[var(--brand-dd,#a85500)] hover:bg-[var(--brand-ddd,#8a4500)] disabled:bg-[var(--modal-inset,#f1e8d2)] disabled:text-[var(--muted,#6b5a3e)] text-xs font-medium text-white transition-colors">
                           {shareState === 'error' ? 'Try posting again' : 'Post to Nostr'}
                         </button>
                       </>
@@ -1364,13 +1364,13 @@ export default function ExternalBoostModal({ user, onClose, onRequestSignIn, onR
                     boost ends on is identical to the screen a broken one would
                     end on. */}
                 {phase === 'done' && noteRoute === 'none' && paidSats > 0 && !stillChecking && (
-                  <p className="text-[11px] text-[var(--muted,#5a7488)] leading-snug">
+                  <p className="text-[11px] text-[var(--muted,#6b5a3e)] leading-snug">
                     Nothing was posted to Nostr, as you asked. Your sats and your message reached
                     the show, and this boost stays out of the boost feeds and totals.
                   </p>
                 )}
                 {phase === 'done' && (
-                  <button onClick={requestClose} className="mt-1 w-full py-2.5 rounded-lg bg-[var(--modal-inset,#e6f1f9)] hover:bg-[var(--border,#cfe2ee)] text-sm text-[var(--ink,#0f2733)] transition-colors">Done</button>
+                  <button onClick={requestClose} className="mt-1 w-full py-2.5 rounded-lg bg-[var(--modal-inset,#f1e8d2)] hover:bg-[var(--border,#d4c4a0)] text-sm text-[var(--ink,#2d2010)] transition-colors">Done</button>
                 )}
               </div>
             )}

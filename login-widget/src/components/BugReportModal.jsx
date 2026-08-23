@@ -155,23 +155,23 @@ export default function BugReportModal({ user, onClose }) {
 
   return (
     <>
-      <div className="fixed inset-0 bg-[var(--scrim,rgba(11,58,82,0.55))] z-[70]" aria-hidden="true" />
+      <div className="fixed inset-0 bg-[var(--scrim,rgba(45,32,16,0.62))] z-[70]" aria-hidden="true" />
       <div
         className="fixed inset-0 z-[71] flex items-center justify-center p-4 sm:p-6"
         role="dialog"
         aria-label="Report a bug"
       >
         <div
-          className="bg-[var(--modal-bg,#f4fafd)] border border-[var(--modal-line,#b9d4e6)] rounded-lg w-full max-w-lg flex flex-col max-h-[90vh] shadow-[0_24px_60px_-12px_rgba(11,58,82,0.28)]"
+          className="bg-[var(--modal-bg,#fbf6ea)] border border-[var(--modal-line,#d4c4a0)] rounded-lg w-full max-w-lg flex flex-col max-h-[90vh] shadow-[0_24px_60px_-12px_rgba(11,58,82,0.28)]"
           onDragOver={e => e.preventDefault()}
           onDrop={onDrop}
         >
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--modal-line,#b9d4e6)] shrink-0">
-            <h2 className="text-base font-semibold text-[var(--ink,#0f2733)] font-[family-name:var(--font-display,'Playfair_Display',Georgia,serif)]">🐛 Report a bug</h2>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--modal-line,#d4c4a0)] shrink-0">
+            <h2 className="text-base font-semibold text-[var(--ink,#2d2010)] font-[family-name:var(--font-display,'Playfair_Display',Georgia,serif)]">🐛 Report a bug</h2>
             <button
               onClick={onClose}
               disabled={submitting}
-              className="text-[var(--muted,#5a7488)] hover:text-[var(--ink,#0f2733)] transition-colors text-lg leading-none disabled:opacity-30"
+              className="text-[var(--muted,#6b5a3e)] hover:text-[var(--ink,#2d2010)] transition-colors text-lg leading-none disabled:opacity-30"
               aria-label="Close"
             >
               ✕
@@ -181,21 +181,21 @@ export default function BugReportModal({ user, onClose }) {
           {done ? (
             <div className="px-4 py-8 text-center space-y-4">
               <div className="text-3xl">✅</div>
-              <p className="text-sm text-[var(--ink,#0f2733)] font-medium">Report sent.</p>
-              <p className="text-xs text-[var(--muted,#5a7488)] leading-snug">
+              <p className="text-sm text-[var(--ink,#2d2010)] font-medium">Report sent.</p>
+              <p className="text-xs text-[var(--muted,#6b5a3e)] leading-snug">
                 Thanks for reporting! It'll be turned into a GitHub issue shortly. If we need
                 clarification we'll DM the npub you signed with.
               </p>
               <button
                 onClick={onClose}
-                className="px-4 py-2 rounded-lg bg-[var(--modal-field,#ffffff)] hover:bg-[var(--modal-inset,#e6f1f9)] text-sm text-[var(--ink,#0f2733)] transition-colors"
+                className="px-4 py-2 rounded-lg bg-[var(--modal-field,#fffdf7)] hover:bg-[var(--modal-inset,#f1e8d2)] text-sm text-[var(--ink,#2d2010)] transition-colors"
               >
                 Done
               </button>
             </div>
           ) : (
             <div className="flex flex-col flex-1 min-h-0">
-              <div className="px-4 pt-3 pb-2 text-[11px] text-[var(--muted,#5a7488)] leading-snug shrink-0 space-y-1">
+              <div className="px-4 pt-3 pb-2 text-[11px] text-[var(--muted,#6b5a3e)] leading-snug shrink-0 space-y-1">
                 <p>
                   Drag, paste, or click to attach a screenshot. Edit anything below before sending — page URL,
                   browser, screen size, timezone, and build mode are auto-included.
@@ -206,8 +206,8 @@ export default function BugReportModal({ user, onClose }) {
               </div>
 
               {isLoggedIn ? (
-                <div className="px-4 pb-2 text-[11px] text-[var(--muted,#5a7488)] shrink-0">
-                  Reporting as <code className="text-[var(--ink,#0f2733)]">{shortNpub(user.npub)}</code>
+                <div className="px-4 pb-2 text-[11px] text-[var(--muted,#6b5a3e)] shrink-0">
+                  Reporting as <code className="text-[var(--ink,#2d2010)]">{shortNpub(user.npub)}</code>
                 </div>
               ) : (
                 <div className="px-4 pb-2 shrink-0">
@@ -218,7 +218,7 @@ export default function BugReportModal({ user, onClose }) {
                     placeholder="Your npub (optional — so we can follow up)"
                     spellCheck={false}
                     autoComplete="off"
-                    className="w-full bg-[var(--modal-field,#ffffff)] border border-[var(--modal-line,#b9d4e6)] rounded-lg px-3 py-1.5 text-xs text-[var(--ink,#0f2733)] font-mono focus:outline-none focus:border-[var(--brand,#00aff0)] focus:ring-2 focus:ring-[var(--brand-ring,rgba(0,175,240,0.32))] placeholder:text-[var(--muted,#5a7488)]"
+                    className="w-full bg-[var(--modal-field,#fffdf7)] border border-[var(--modal-line,#d4c4a0)] rounded-lg px-3 py-1.5 text-xs text-[var(--ink,#2d2010)] font-mono focus:outline-none focus:border-[var(--brand,#f7931a)] focus:ring-2 focus:ring-[var(--brand-ring,rgba(247,147,26,0.35))] placeholder:text-[var(--muted,#6b5a3e)]"
                   />
                 </div>
               )}
@@ -231,13 +231,13 @@ export default function BugReportModal({ user, onClose }) {
                   onPaste={onPaste}
                   rows={14}
                   spellCheck
-                  className="w-full bg-[var(--modal-field,#ffffff)] border border-[var(--modal-line,#b9d4e6)] rounded-lg px-3 py-2 text-xs text-[var(--ink,#0f2733)] font-mono resize-y focus:outline-none focus:border-[var(--brand,#00aff0)] focus:ring-2 focus:ring-[var(--brand-ring,rgba(0,175,240,0.32))]"
+                  className="w-full bg-[var(--modal-field,#fffdf7)] border border-[var(--modal-line,#d4c4a0)] rounded-lg px-3 py-2 text-xs text-[var(--ink,#2d2010)] font-mono resize-y focus:outline-none focus:border-[var(--brand,#f7931a)] focus:ring-2 focus:ring-[var(--brand-ring,rgba(247,147,26,0.35))]"
                   placeholder="Describe the bug…"
                 />
               </div>
 
-              <div className="px-4 py-3 border-t border-[var(--modal-line,#b9d4e6)] shrink-0 flex items-center gap-2 flex-wrap">
-                <label className={`text-xs px-2.5 py-1.5 rounded-lg border border-[var(--modal-line,#b9d4e6)] text-[var(--ink,#0f2733)] hover:bg-[var(--modal-inset,#e6f1f9)] cursor-pointer transition-colors ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+              <div className="px-4 py-3 border-t border-[var(--modal-line,#d4c4a0)] shrink-0 flex items-center gap-2 flex-wrap">
+                <label className={`text-xs px-2.5 py-1.5 rounded-lg border border-[var(--modal-line,#d4c4a0)] text-[var(--ink,#2d2010)] hover:bg-[var(--modal-inset,#f1e8d2)] cursor-pointer transition-colors ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
                   {uploading ? 'Uploading…' : '📎 Attach image'}
                   <input
                     type="file"
@@ -259,7 +259,7 @@ export default function BugReportModal({ user, onClose }) {
                 <button
                   onClick={handleSubmit}
                   disabled={submitting}
-                  className="px-4 py-1.5 rounded-lg bg-[var(--brand-dd,#0a6fa8)] hover:bg-[var(--brand-ddd,#095e90)] disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium text-white transition-colors order-2 sm:order-3"
+                  className="px-4 py-1.5 rounded-lg bg-[var(--brand-dd,#a85500)] hover:bg-[var(--brand-ddd,#8a4500)] disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium text-white transition-colors order-2 sm:order-3"
                 >
                   {submitting ? 'Sending…' : 'Send report'}
                 </button>

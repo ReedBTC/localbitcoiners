@@ -73,7 +73,7 @@
  * ⚠️ THE INNER `:where()` IS THE SAME LESSON AS THE OUTER ONE, AND LEAVING IT
  * OFF COST A DAY. An ATTRIBUTE selector carries CLASS weight, so
  * `:where(.lb-w) [type='button']` is (0,1,0) — dead level with
- * `.bg-[var(--brand-dd,#0a6fa8)]` — and this block is emitted AFTER
+ * `.bg-[var(--brand-dd,#a85500)]` — and this block is emitted AFTER
  * `@tailwind utilities`, so the tie broke in the reset's favour and
  * `background-color: transparent` won.
  *

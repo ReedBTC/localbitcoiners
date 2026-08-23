@@ -90,7 +90,7 @@ function splitsForAuthor(authorSplit) {
 // signal the bot needs (paired with the "LocalBitcoinersShow" LNURL
 // comment from formatEpisodeComment(null)).
 const SHOW_EPISODE_META = { number: null, title: '', guid: '', kind: 'show' }
-const SHOW_PRESETS = [100, 420, 3333, 21000]
+const SHOW_PRESETS = [420, 2100, 3333, 6969]
 const SHOW_SHARE_TAGLINE = 'Posts a kind 1 note to your followers — your message + a link back here.'
 
 export default function BoostModal({ user, onClose, prefillMessage = '', authorSplit = null, onSettled, onRequestSignIn, onRequestWallet }) {
@@ -121,7 +121,7 @@ export default function BoostModal({ user, onClose, prefillMessage = '', authorS
   return (
     <>
       <div
-        className={`fixed inset-0 bg-[var(--scrim,rgba(11,58,82,0.55))] z-[70] transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}
+        className={`fixed inset-0 bg-[var(--scrim,rgba(45,32,16,0.62))] z-[70] transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}
         aria-hidden="true"
       />
 
@@ -130,12 +130,12 @@ export default function BoostModal({ user, onClose, prefillMessage = '', authorS
         role="dialog"
         aria-label="Boost the Show"
       >
-        <div className={`relative bg-[var(--modal-bg,#f4fafd)] border border-[var(--modal-line,#b9d4e6)] rounded-lg w-full max-w-lg max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col shadow-[0_24px_60px_-12px_rgba(11,58,82,0.28),0_0_0_1px_rgba(11,58,82,0.06)] transition-[opacity,transform] duration-200 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
-          <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-[var(--modal-line,#b9d4e6)] shrink-0">
-            <h2 className="text-base font-semibold text-[var(--ink,#0f2733)] font-[family-name:var(--font-display,'Playfair_Display',Georgia,serif)]">⚡ Boost the Show</h2>
+        <div className={`relative bg-[var(--modal-bg,#fbf6ea)] border border-[var(--modal-line,#d4c4a0)] rounded-lg w-full max-w-lg max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col shadow-[0_24px_60px_-12px_rgba(11,58,82,0.28),0_0_0_1px_rgba(11,58,82,0.06)] transition-[opacity,transform] duration-200 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+          <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-[var(--modal-line,#d4c4a0)] shrink-0">
+            <h2 className="text-base font-semibold text-[var(--ink,#2d2010)] font-[family-name:var(--font-display,'Playfair_Display',Georgia,serif)]">⚡ Boost the Show</h2>
             <button
               onClick={guardedClose}
-              className="text-[var(--muted,#5a7488)] hover:text-[var(--ink,#0f2733)] transition-colors text-lg leading-none"
+              className="text-[var(--muted,#6b5a3e)] hover:text-[var(--ink,#2d2010)] transition-colors text-lg leading-none"
               aria-label="Close"
             >
               ✕

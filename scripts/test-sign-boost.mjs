@@ -497,10 +497,10 @@ await ok('it is the bots\' standalone note, line for line', () => {
   assert.equal(lines[6], '')
   assert.equal(lines[7], '#LocalBitcoiners')
 })
-await ok('a blank name is "Anon", the bots\' website convention, and a show boost links the site', () => {
+await ok('a blank name is "A Local Bitcoiner", and a show boost links the site', () => {
   const t = showTemplate({ senderName: '', episode: { number: null, title: '', guid: '' } })
   const lines = t.content.split('\n')
-  assert.equal(lines[2], '👤 Anon')
+  assert.equal(lines[2], '👤 A Local Bitcoiner')
   assert.equal(lines[3], '💬 great episode')
   assert.equal(lines[4], '🔗 https://localbitcoiners.com')
   assert.equal(t.tags.some((x) => x[0] === 'i' && x[1].startsWith('podcast:item:guid:')), false)

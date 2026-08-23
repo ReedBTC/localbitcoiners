@@ -888,7 +888,7 @@ export const SHOW_NOTE_MAX_MESSAGE = 1500
 export function buildShowSiteNoteTemplate({
   paidSats,
   message,
-  senderName,     // typed name, or '' → "Anon", the bots' website convention
+  senderName,     // typed name, or '' → the form's DEFAULT_SENDER_NAME
   episode,        // { number, title, guid?, fountainUrl? } — same as the donor template
   pageUrl,
   boostSession,
@@ -898,7 +898,7 @@ export function buildShowSiteNoteTemplate({
   const title = rawTitle.length > MAX_TITLE_LEN
     ? rawTitle.slice(0, MAX_TITLE_LEN - 1) + '…'
     : rawTitle
-  const from = sanitizeShowSender(senderName) || 'Anon'
+  const from = sanitizeShowSender(senderName) || 'A Local Bitcoiner'
   const msg = String(message || '').replace(/[\u0000-\u0008\u000b-\u001f\u007f]+/g, ' ').trim().slice(0, SHOW_NOTE_MAX_MESSAGE)
   const epNum = episode?.number != null ? String(episode.number) : ''
   const episodeUrl = epNum ? `${SITE_URL}/ep${epNum.padStart(3, '0')}` : pageUrl

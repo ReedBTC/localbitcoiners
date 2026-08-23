@@ -617,6 +617,7 @@ function renderEpisodePage(ep) {
   <link rel="stylesheet" href="/assets/css/boost-actions.css" />
   <link rel="stylesheet" href="/assets/css/episode.css" />
   <link rel="stylesheet" href="/assets/css/nav.css" />
+  <link rel="stylesheet" href="/assets/css/theme.css" />
   <link rel="stylesheet" href="/assets/css/footer.css" />
 </head>
 <body>

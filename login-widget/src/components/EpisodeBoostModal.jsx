@@ -132,6 +132,7 @@ export default function EpisodeBoostModal({
                 user={user}
                 splitsBundle={resolvedBundle}
                 episodeMeta={episode}
+                presets={[420, 2100, 3333, 6969]}
                 shareTagline={EPISODE_SHARE_TAGLINE}
                 buttonLabel="Boost Episode"
                 lnurlCache={lnurlCache}
@@ -142,7 +143,7 @@ export default function EpisodeBoostModal({
                 onRequestWallet={onRequestWallet}
               />
             ) : (
-              <p className="text-sm text-[var(--muted,#5a7488)]">Preparing recipients…</p>
+              <p className="text-sm text-[var(--muted,#6b5a3e)]">Preparing recipients…</p>
             )}
           </div>
 

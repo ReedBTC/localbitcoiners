@@ -27,19 +27,19 @@ export default function ToastHost() {
       {list.map(t => (
         <div
           key={t.id}
-          className={`pointer-events-auto rounded-lg shadow-[0_24px_60px_-12px_rgba(11,58,82,0.28),0_0_0_1px_rgba(11,58,82,0.06)] px-4 py-3 flex items-start gap-3 text-sm text-[var(--ink,#0f2733)] ${
+          className={`pointer-events-auto rounded-lg shadow-[0_24px_60px_-12px_rgba(11,58,82,0.28),0_0_0_1px_rgba(11,58,82,0.06)] px-4 py-3 flex items-start gap-3 text-sm text-[var(--ink,#2d2010)] ${
             t.kind === 'error'
-              ? 'bg-[var(--modal-bg,#f4fafd)] border border-[var(--danger,#b3261e)]'
+              ? 'bg-[var(--modal-bg,#fbf6ea)] border border-[var(--danger,#b3261e)]'
               : t.kind === 'success'
-              ? 'bg-[var(--modal-bg,#f4fafd)] border border-[var(--ok,#0b7a4b)]'
-              : 'bg-[var(--modal-bg,#f4fafd)] border border-[var(--modal-line,#b9d4e6)]'
+              ? 'bg-[var(--modal-bg,#fbf6ea)] border border-[var(--ok,#2f7a3a)]'
+              : 'bg-[var(--modal-bg,#fbf6ea)] border border-[var(--modal-line,#d4c4a0)]'
           }`}
         >
           <span className="flex-1 leading-snug">{t.message}</span>
           <button
             type="button"
             onClick={() => dismissToast(t.id)}
-            className="text-[var(--muted,#5a7488)] hover:text-[var(--ink,#0f2733)] transition-colors text-base leading-none flex-shrink-0"
+            className="text-[var(--muted,#6b5a3e)] hover:text-[var(--ink,#2d2010)] transition-colors text-base leading-none flex-shrink-0"
             aria-label="Dismiss notification"
           >
             ✕

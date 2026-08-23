@@ -95,7 +95,7 @@ export default function IdentityDropdown({
       ref={menuRef}
       role="menu"
       aria-label="Account menu"
-      className="fixed z-[120] bg-[var(--modal-bg,#f4fafd)] border border-[var(--modal-line,#b9d4e6)] rounded-lg shadow-[0_24px_60px_-12px_rgba(11,58,82,0.28),0_0_0_1px_rgba(11,58,82,0.06)] text-sm text-[var(--ink,#0f2733)] overflow-hidden"
+      className="fixed z-[120] bg-[var(--modal-bg,#fbf6ea)] border border-[var(--modal-line,#d4c4a0)] rounded-lg shadow-[0_24px_60px_-12px_rgba(11,58,82,0.28),0_0_0_1px_rgba(11,58,82,0.06)] text-sm text-[var(--ink,#2d2010)] overflow-hidden"
       style={{
         top: `${position.top}px`,
         left: `${position.left}px`,
@@ -104,8 +104,8 @@ export default function IdentityDropdown({
     >
       {/* User pill */}
       {signedOut ? (
-        <div className="px-4 py-3 border-b border-[var(--modal-line,#b9d4e6)]">
-          <p className="font-semibold text-[var(--ink,#0f2733)]">Not logged in</p>
+        <div className="px-4 py-3 border-b border-[var(--modal-line,#d4c4a0)]">
+          <p className="font-semibold text-[var(--ink,#2d2010)]">Not logged in</p>
           {/* ⚠️ THIS SAID "none of them post to Nostr" AND PHASE 2 MADE THAT
               FALSE. A signed-out boost with the Private Boost box left
               unchecked is published under the show's own account —
@@ -113,24 +113,24 @@ export default function IdentityDropdown({
               in the feeds and the totals. The old line told a visitor their
               boost left no public record, which is the one claim about their
               own data they must not be misled on. */}
-          <p className="text-[11px] text-[var(--muted,#5a7488)] leading-snug mt-0.5">
+          <p className="text-[11px] text-[var(--muted,#6b5a3e)] leading-snug mt-0.5">
             Boosts you send carry no account. Local Bitcoiners posts them for you
             unless you mark one private.
           </p>
         </div>
       ) : (
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--modal-line,#b9d4e6)]">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--modal-line,#d4c4a0)]">
           <AvatarPill profile={profile} npub={npub} size={36} />
           <div className="min-w-0 flex-1">
-            <p className="font-semibold text-[var(--ink,#0f2733)] truncate">{displayName}</p>
-            <p className="text-[11px] text-[var(--muted,#5a7488)] font-mono truncate">{truncatedNpub}</p>
+            <p className="font-semibold text-[var(--ink,#2d2010)] truncate">{displayName}</p>
+            <p className="text-[11px] text-[var(--muted,#6b5a3e)] font-mono truncate">{truncatedNpub}</p>
           </div>
         </div>
       )}
 
       {/* Wallet section */}
-      <div className="px-4 py-3 border-b border-[var(--modal-line,#b9d4e6)] space-y-2">
-        <p className="text-[11px] text-[var(--muted,#5a7488)] uppercase tracking-wide">⚡ Lightning Wallet</p>
+      <div className="px-4 py-3 border-b border-[var(--modal-line,#d4c4a0)] space-y-2">
+        <p className="text-[11px] text-[var(--muted,#6b5a3e)] uppercase tracking-wide">⚡ Lightning Wallet</p>
         {/* `remembered` = a browser extension this user already enabled here,
             still installed, not yet engaged this page load (we no longer prod
             it before the user asks — see wallet.prewarm). It engages on the
@@ -138,8 +138,8 @@ export default function IdentityDropdown({
             user re-connect something they never disconnected. */}
         {walletStatus.connected || walletStatus.remembered ? (
           <>
-            <p className="text-xs text-[var(--ink,#0f2733)] truncate">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--ok,#0b7a4b)] mr-1.5 align-middle" />
+            <p className="text-xs text-[var(--ink,#2d2010)] truncate">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--ok,#2f7a3a)] mr-1.5 align-middle" />
               {walletKindLabel(walletStatus)}
             </p>
             {/* Said once, here, where the user can act on it. A saved
@@ -151,7 +151,7 @@ export default function IdentityDropdown({
                 hold — so the second string is not a copy of the first with
                 the sign-in cut off; it names a different next step. */}
             {walletStatus.sessionOnly && (
-              <p className="text-[11px] text-[var(--warn,#b45309)] leading-snug">
+              <p className="text-[11px] text-[var(--warn,#7a5c00)] leading-snug">
                 {signedOut
                   ? 'This tab only — log in to save it.'
                   : 'This tab only — reconnect now to save it to your account.'}
@@ -168,7 +168,7 @@ export default function IdentityDropdown({
                 type="button"
                 role="menuitem"
                 onClick={() => { onClose(); onConnectWallet() }}
-                className="w-full px-3 py-2 rounded-lg bg-[var(--brand-dd,#0a6fa8)] hover:bg-[var(--brand-ddd,#095e90)] text-xs font-medium text-white transition-colors"
+                className="w-full px-3 py-2 rounded-lg bg-[var(--brand-dd,#a85500)] hover:bg-[var(--brand-ddd,#8a4500)] text-xs font-medium text-white transition-colors"
               >
                 Reconnect to save it
               </button>
@@ -177,19 +177,19 @@ export default function IdentityDropdown({
               type="button"
               role="menuitem"
               onClick={() => { onClose(); onDisconnectWallet() }}
-              className="w-full px-3 py-2 rounded-lg border border-[var(--modal-line,#b9d4e6)] bg-transparent text-xs font-medium text-[var(--ink,#0f2733)] hover:bg-[rgba(179,38,30,0.08)] hover:border-[var(--danger,#b3261e)] hover:text-[var(--danger,#b3261e)] transition-colors"
+              className="w-full px-3 py-2 rounded-lg border border-[var(--modal-line,#d4c4a0)] bg-transparent text-xs font-medium text-[var(--ink,#2d2010)] hover:bg-[rgba(179,38,30,0.08)] hover:border-[var(--danger,#b3261e)] hover:text-[var(--danger,#b3261e)] transition-colors"
             >
               Disconnect wallet
             </button>
           </>
         ) : (
           <>
-            <p className="text-xs text-[var(--muted,#5a7488)]">Not connected</p>
+            <p className="text-xs text-[var(--muted,#6b5a3e)]">Not connected</p>
             <button
               type="button"
               role="menuitem"
               onClick={() => { onClose(); onConnectWallet() }}
-              className="w-full px-3 py-2 rounded-lg bg-[var(--brand-dd,#0a6fa8)] hover:bg-[var(--brand-ddd,#095e90)] text-xs font-medium text-white transition-colors"
+              className="w-full px-3 py-2 rounded-lg bg-[var(--brand-dd,#a85500)] hover:bg-[var(--brand-ddd,#8a4500)] text-xs font-medium text-white transition-colors"
             >
               Connect Lightning Wallet
             </button>
@@ -204,8 +204,8 @@ export default function IdentityDropdown({
           that window — the casual user has the same opacity
           Podcasting 2.0 ships with: click and trust. */}
       {pending.length > 0 && (
-        <div className="px-4 py-3 border-b border-[var(--modal-line,#b9d4e6)] space-y-2">
-          <p className="text-[11px] text-[var(--muted,#5a7488)] uppercase tracking-wide">In Progress</p>
+        <div className="px-4 py-3 border-b border-[var(--modal-line,#d4c4a0)] space-y-2">
+          <p className="text-[11px] text-[var(--muted,#6b5a3e)] uppercase tracking-wide">In Progress</p>
           <ul className="space-y-1.5">
             {pending.map((p) => {
               // `kind: 'show'` is set by BoostModal so a site-wide
@@ -220,7 +220,7 @@ export default function IdentityDropdown({
               return (
                 <li key={p.sessionId} className="text-xs">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[var(--ink,#0f2733)] truncate">
+                    <span className="text-[var(--ink,#2d2010)] truncate">
                       {epLabel} · {p.totalSats.toLocaleString()} sats
                     </span>
                     <BoostStatusBadge status={p.status} />
@@ -252,7 +252,7 @@ export default function IdentityDropdown({
             className="w-full"
             onClick={() => { onClose(); onSignIn?.() }}
           />
-          <p className="mt-2 text-[11px] text-[var(--muted,#5a7488)] leading-snug">
+          <p className="mt-2 text-[11px] text-[var(--muted,#6b5a3e)] leading-snug">
             Logging in posts your boosts under your own name, and a wallet you
             connect after that is remembered.
           </p>
@@ -263,7 +263,7 @@ export default function IdentityDropdown({
           type="button"
           role="menuitem"
           onClick={() => { onClose(); onSignOut() }}
-          className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-[var(--modal-line,#b9d4e6)] bg-transparent text-xs font-medium text-[var(--ink,#0f2733)] hover:bg-[rgba(179,38,30,0.08)] hover:border-[var(--danger,#b3261e)] hover:text-[var(--danger,#b3261e)] transition-colors"
+          className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-[var(--modal-line,#d4c4a0)] bg-transparent text-xs font-medium text-[var(--ink,#2d2010)] hover:bg-[rgba(179,38,30,0.08)] hover:border-[var(--danger,#b3261e)] hover:text-[var(--danger,#b3261e)] transition-colors"
         >
           <svg
             width="13"
@@ -329,15 +329,15 @@ function BoostStatusBadge({ status }) {
   // above.
   if (status === 'in-flight') {
     return (
-      <span className="text-[var(--brand-d,#068ace)] text-[10px] flex-shrink-0 inline-flex items-center gap-1">
-        <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--brand,#00aff0)] animate-pulse" aria-hidden="true" />
+      <span className="text-[var(--brand-d,#d97b0e)] text-[10px] flex-shrink-0 inline-flex items-center gap-1">
+        <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--brand,#f7931a)] animate-pulse" aria-hidden="true" />
         Sending…
       </span>
     )
   }
   if (status === 'paid') {
     return (
-      <span className="text-[var(--ok,#0b7a4b)] text-[10px] flex-shrink-0 inline-flex items-center gap-1">
+      <span className="text-[var(--ok,#2f7a3a)] text-[10px] flex-shrink-0 inline-flex items-center gap-1">
         <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M3 8.5l3.5 3.5L13 5" />
         </svg>
@@ -347,8 +347,8 @@ function BoostStatusBadge({ status }) {
   }
   if (status === 'partial') {
     return (
-      <span className="text-[var(--warn,#b45309)] text-[10px] flex-shrink-0 inline-flex items-center gap-1">
-        <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--warn,#b45309)]" aria-hidden="true" />
+      <span className="text-[var(--warn,#7a5c00)] text-[10px] flex-shrink-0 inline-flex items-center gap-1">
+        <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--warn,#7a5c00)]" aria-hidden="true" />
         Partial
       </span>
     )

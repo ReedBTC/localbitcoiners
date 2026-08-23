@@ -1,52 +1,58 @@
 /* Local Bitcoiners — design tokens read by the login/boost widget.
  *
- * ⚠️ PHASE 3 OF THE ONLYBOOSTS PORT HAS NOT RUN YET. Every value below is
- * OnlyBoosts' light/cyan palette, carried over with the widget so that the
- * fallback-mirror rule (scripts/test-boost-modal-render.mjs) is enforced
- * from the first commit. Phase 3 re-picks these for the Local Bitcoiners
- * dark/orange look and re-mirrors every var() fallback in login-widget/src
- * to match; until then the widget renders in OnlyBoosts' colours.
- *
  * The widget mounts into this document through a portal and reads these
- * directly (Tailwind runs with preflight off). Every var() in the widget
- * carries a literal fallback equal to the value here, because assets/widgets/
- * files are never rewritten on a version bump and a browser can hold a stale
- * copy of this file against a fresh widget: an undefined custom property makes
- * the whole declaration invalid and the modal renders transparent.
- * The test fails if a fallback drifts from its token. Edit both together.
+ * directly (Tailwind runs there with preflight off), so the modals wear the
+ * site's own palette: cream panels, dark-brown ink, bitcoin orange for the
+ * brand. The page-level :root in each HTML file already defines --cream,
+ * --navy, --orange, --text, --muted, --border and --white; this file adds
+ * the widget-only tokens and restates the shared ones so a page that
+ * forgets the inline block still renders the modals correctly.
+ *
+ * ⚠️ EVERY var() IN login-widget/src CARRIES A LITERAL FALLBACK EQUAL TO THE
+ * VALUE HERE, and scripts/test-boost-modal-render.mjs fails if one drifts.
+ * assets/widgets/ files are never rewritten on a version bump, so a browser
+ * can hold a stale copy of this file against a fresh widget; an undefined
+ * custom property makes the whole declaration invalid and the modal renders
+ * transparent. Edit a value here and re-mirror the fallbacks in one commit.
+ *
+ * ⚠️ --warn (UNCERTAIN) AND --danger (FAILED) MUST DIFFER IN HUE, not just
+ * value: the double-pay guard rests on a donor telling them apart at a
+ * glance, one may be re-paid and the other never. With an orange brand,
+ * --warn is a dark mustard rather than an amber so it does not read as a
+ * brand-coloured "in progress" state either.
  */
 :root {
-  --brand:     #00aff0;
-  --brand-d:   #068ace;
-  --brand-dd:  #0a6fa8;
-  --brand-ddd: #095e90;
+  --brand:     #f7931a;   /* bitcoin orange: borders, rings, accents        */
+  --brand-d:   #d97b0e;   /* link-weight orange on cream (≥4.5:1 as text)    */
+  --brand-dd:  #a85500;   /* filled buttons; white text passes 4.5:1         */
+  --brand-ddd: #8a4500;   /* filled buttons, hover                           */
 
-  --cream:   #eef6fb;
-  --cream-d: #e2eef7;
-  --navy:    #0b3a52;
-  --orange:  #00aff0;
-  --text:    #0f2733;
-  --muted:   #5a7488;
-  --border:  #cfe2ee;
-  --white:   #ffffff;
-  --ink:     #0f2733;
-  --surface: #ffffff;
+  --cream:   #f5eedc;
+  --cream-d: #ede3c8;
+  --navy:    #3a3125;
+  --orange:  #f7931a;
+  --text:    #2d2010;
+  --muted:   #6b5a3e;
+  --border:  #d4c4a0;
+  --white:   #fffdf7;
+  --ink:     #2d2010;
+  --surface: #fffdf7;
 
   --font-display: 'Playfair Display', Georgia, serif;
   --font-body:    'Source Serif 4', Georgia, serif;
 
-  /* Modal surfaces: panel, fields sunk into it, boxes raised off it. */
-  --modal-bg:    #f4fafd;
-  --modal-line:  #b9d4e6;
-  --modal-field: #ffffff;
-  --modal-inset: #e6f1f9;
+  /* Modal surfaces: panel, fields sunk into it, boxes raised off it. The
+     panel is not pure white on purpose: a full-bleed white slab over a dimmed
+     page is glare; the fields are the white, which is where you type. */
+  --modal-bg:    #fbf6ea;
+  --modal-line:  #d4c4a0;
+  --modal-field: #fffdf7;
+  --modal-inset: #f1e8d2;
 
-  --brand-tint: rgba(0, 175, 240, 0.12);
-  --brand-ring: rgba(0, 175, 240, 0.32);
-  /* UNCERTAIN (amber) and FAILED (red) must differ in hue, not just value:
-     the double-pay guard rests on a donor telling them apart at a glance. */
-  --ok:     #0b7a4b;
-  --warn:   #b45309;
+  --brand-tint: rgba(247, 147, 26, 0.14);
+  --brand-ring: rgba(247, 147, 26, 0.35);
+  --ok:     #2f7a3a;
+  --warn:   #7a5c00;
   --danger: #b3261e;
-  --scrim:  rgba(11, 58, 82, 0.55);
+  --scrim:  rgba(45, 32, 16, 0.62);
 }

@@ -196,7 +196,7 @@
 // bot reads to decide whether the boost still needs a note published on the
 // donor's behalf, and that decision is worth getting right on the first boost
 // rather than the second.
-const VERSION = 'lb-v64';
+const VERSION = 'lb-v65';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
@@ -221,6 +221,7 @@ const PRECACHE_URLS = [
   '/assets/favicon.png',
   '/assets/LocalBitcoiners_banner.png',
   '/assets/css/nav.css',
+  '/assets/css/theme.css',
   '/assets/css/footer.css',
   '/assets/css/episode.css',
   '/assets/css/boosts-thread.css',

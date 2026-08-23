@@ -47,6 +47,7 @@ import BoostProgressView from './BoostProgressView.jsx'
 
 const MIN_SATS = 100
 const MAX_SATS = 5_000_000
+export const DEFAULT_SENDER_NAME = 'A Local Bitcoiner'
 
 export default function MultiLegBoostForm({
   user,
@@ -95,7 +96,10 @@ export default function MultiLegBoostForm({
   const [walletStatus, setWalletStatus] = useState(() => wallet.getStatus())
   useEffect(() => wallet.onChange(setWalletStatus), [])
 
-  const [amount, setAmount] = useState(presets ? String(presets[1] ?? presets[0]) : '1000')
+  // Ships EMPTY, with the presets beside it (OnlyBoosts' call, carried over):
+  // a prefilled 1000 is a number nobody chose and a donor in a hurry sends it
+  // by accident.
+  const [amount, setAmount] = useState('')
   // `defaultMessage` is used by the /newevent composer to prefill an
   // announcement boostagram. Re-seeded if the prop changes (e.g. the
   // host opens a new boost session with different prefill text).
@@ -130,7 +134,11 @@ export default function MultiLegBoostForm({
   const usingProfile = signedIn && !anonymous
   const [privateBoost, setPrivateBoost] = useState(false)
   const [nameInput, setNameInput] = useState('')
-  const senderName = usingProfile ? '' : nameInput.trim()
+  // ⚠️ A BLANK "From" IS REPLACED, NOT OMITTED. It fills the receipt's
+  // sender_name and the site-signed note's 👤 line, so a boost with nobody's
+  // name on it presents as one consistent thing everywhere it lands, and it
+  // names the audience rather than a person, so it discloses nothing.
+  const senderName = usingProfile ? '' : (nameInput.trim() || DEFAULT_SENDER_NAME)
   const noteRoute = privateBoost ? 'none' : usingProfile ? 'donor' : 'bot'
   // Kept for BoostExpectations' copy, which still speaks in these terms.
   const shareToFeed = noteRoute !== 'none'
@@ -563,13 +571,13 @@ export default function MultiLegBoostForm({
   return (
     <>
       {subtitle && (
-        <p className="text-xs text-[var(--muted,#5a7488)] italic leading-snug">
+        <p className="text-xs text-[var(--muted,#6b5a3e)] italic leading-snug">
           "{subtitle}"
         </p>
       )}
 
       <div>
-        <label className="block text-xs text-[var(--muted,#5a7488)] mb-1.5">Amount (sats)</label>
+        <label className="block text-xs text-[var(--muted,#6b5a3e)] mb-1.5">Amount (sats)</label>
         {presets && presets.length > 0 && (
           <div className="flex gap-1.5 mb-2">
             {presets.map(p => (
@@ -578,8 +586,8 @@ export default function MultiLegBoostForm({
                 onClick={() => setAmount(String(p))}
                 className={`flex-1 text-xs py-2 rounded-lg border transition-colors ${
                   amount === String(p)
-                    ? 'border-[var(--brand,#00aff0)] text-[var(--brand-d,#068ace)] bg-[var(--brand-tint,rgba(0,175,240,0.12))]'
-                    : 'border-[var(--modal-line,#b9d4e6)] text-[var(--muted,#5a7488)] hover:border-[var(--brand,#00aff0)] hover:text-[var(--ink,#0f2733)]'
+                    ? 'border-[var(--brand,#f7931a)] text-[var(--brand-d,#d97b0e)] bg-[var(--brand-tint,rgba(247,147,26,0.14))]'
+                    : 'border-[var(--modal-line,#d4c4a0)] text-[var(--muted,#6b5a3e)] hover:border-[var(--brand,#f7931a)] hover:text-[var(--ink,#2d2010)]'
                 }`}
               >
                 {p.toLocaleString()}
@@ -593,10 +601,10 @@ export default function MultiLegBoostForm({
           max={MAX_SATS}
           value={amount}
           onChange={e => setAmount(e.target.value)}
-          className="w-full bg-[var(--modal-field,#ffffff)] border border-[var(--modal-line,#b9d4e6)] rounded-lg px-3 py-2 text-sm text-[var(--ink,#0f2733)] focus:outline-none focus:border-[var(--brand,#00aff0)] focus:ring-2 focus:ring-[var(--brand-ring,rgba(0,175,240,0.32))]"
+          className="w-full bg-[var(--modal-field,#fffdf7)] border border-[var(--modal-line,#d4c4a0)] rounded-lg px-3 py-2 text-sm text-[var(--ink,#2d2010)] focus:outline-none focus:border-[var(--brand,#f7931a)] focus:ring-2 focus:ring-[var(--brand-ring,rgba(247,147,26,0.35))]"
           placeholder={presets ? 'Custom amount' : `${MIN_SATS} minimum`}
         />
-        <p className="mt-1 text-[10px] text-[var(--muted,#5a7488)]">
+        <p className="mt-1 text-[10px] text-[var(--muted,#6b5a3e)]">
           {MIN_SATS} sat minimum (covers splits + fees).
           Splits across {splitsCount} {splitsCount === 1 ? 'recipient' : 'recipients'}.
         </p>
@@ -609,15 +617,15 @@ export default function MultiLegBoostForm({
           first contact with Nostr and they need not know that is what it is. */}
       {signedIn && (
         <div>
-          <label className="block text-xs text-[var(--muted,#5a7488)] mb-1.5">Boost as</label>
+          <label className="block text-xs text-[var(--muted,#6b5a3e)] mb-1.5">Boost as</label>
           <div className="flex gap-2 text-xs">
             <button
               type="button"
               onClick={() => setAnonymous(false)}
               className={`flex-1 flex items-center justify-center gap-1.5 py-3 px-3 rounded-md border transition-colors ${
                 !anonymous
-                  ? 'bg-[var(--brand-tint,rgba(0,175,240,0.12))] border-[var(--brand,#00aff0)] text-[var(--brand-dd,#0a6fa8)] font-semibold'
-                  : 'bg-[var(--modal-field,#ffffff)] border-[var(--modal-line,#b9d4e6)] text-[var(--muted,#5a7488)] hover:text-[var(--ink,#0f2733)] hover:border-[var(--brand,#00aff0)]'
+                  ? 'bg-[var(--brand-tint,rgba(247,147,26,0.14))] border-[var(--brand,#f7931a)] text-[var(--brand-dd,#a85500)] font-semibold'
+                  : 'bg-[var(--modal-field,#fffdf7)] border-[var(--modal-line,#d4c4a0)] text-[var(--muted,#6b5a3e)] hover:text-[var(--ink,#2d2010)] hover:border-[var(--brand,#f7931a)]'
               }`}
               aria-pressed={!anonymous}
             >
@@ -633,8 +641,8 @@ export default function MultiLegBoostForm({
               onClick={() => setAnonymous(true)}
               className={`flex-1 py-3 px-3 rounded-md border transition-colors ${
                 anonymous
-                  ? 'bg-[var(--brand-tint,rgba(0,175,240,0.12))] border-[var(--brand,#00aff0)] text-[var(--brand-dd,#0a6fa8)] font-semibold'
-                  : 'bg-[var(--modal-field,#ffffff)] border-[var(--modal-line,#b9d4e6)] text-[var(--muted,#5a7488)] hover:text-[var(--ink,#0f2733)] hover:border-[var(--brand,#00aff0)]'
+                  ? 'bg-[var(--brand-tint,rgba(247,147,26,0.14))] border-[var(--brand,#f7931a)] text-[var(--brand-dd,#a85500)] font-semibold'
+                  : 'bg-[var(--modal-field,#fffdf7)] border-[var(--modal-line,#d4c4a0)] text-[var(--muted,#6b5a3e)] hover:text-[var(--ink,#2d2010)] hover:border-[var(--brand,#f7931a)]'
               }`}
               aria-pressed={anonymous}
             >
@@ -647,7 +655,7 @@ export default function MultiLegBoostForm({
               boost" by burner pubkey + boost_session UUID. Surfaced
               here so users aren't misled by the "Anon" label. */}
           {anonymous && (
-            <p className="mt-1.5 text-[10px] text-[var(--muted,#5a7488)] leading-snug">
+            <p className="mt-1.5 text-[10px] text-[var(--muted,#6b5a3e)] leading-snug">
               Anon keeps your account off the boost. Observers can still
               correlate the legs of one boost together (shared burner key +
               session ID).
@@ -663,7 +671,7 @@ export default function MultiLegBoostForm({
           would be a second identity claim on one note. */}
       {!usingProfile && (
         <div>
-          <label htmlFor="lb-boost-from" className="block text-xs text-[var(--muted,#5a7488)] mb-1.5">From</label>
+          <label htmlFor="lb-boost-from" className="block text-xs text-[var(--muted,#6b5a3e)] mb-1.5">From</label>
           <div className="flex items-stretch gap-2.5">
             {/* Every attribute here is a password-manager opt-out, and
                 autoComplete="off" alone is not one. */}
@@ -680,24 +688,24 @@ export default function MultiLegBoostForm({
               data-1p-ignore=""
               data-bwignore="true"
               data-form-type="other"
-              className="flex-1 min-w-0 bg-[var(--modal-field,#ffffff)] border border-[var(--modal-line,#b9d4e6)] rounded-lg px-3 py-2.5 text-sm text-[var(--ink,#0f2733)] focus:outline-none focus:border-[var(--brand,#00aff0)] focus:ring-2 focus:ring-[var(--brand-ring,rgba(0,175,240,0.32))]"
-              placeholder="Anon"
+              className="flex-1 min-w-0 bg-[var(--modal-field,#fffdf7)] border border-[var(--modal-line,#d4c4a0)] rounded-lg px-3 py-2.5 text-sm text-[var(--ink,#2d2010)] focus:outline-none focus:border-[var(--brand,#f7931a)] focus:ring-2 focus:ring-[var(--brand-ring,rgba(247,147,26,0.35))]"
+              placeholder={DEFAULT_SENDER_NAME}
             />
             {!signedIn && onRequestSignIn && (
               <>
-                <span className="self-center text-[10px] uppercase tracking-wider text-[var(--muted,#5a7488)] shrink-0" aria-hidden="true">or</span>
+                <span className="self-center text-[10px] uppercase tracking-wider text-[var(--muted,#6b5a3e)] shrink-0" aria-hidden="true">or</span>
                 <LoginButton variant="checkout" onClick={onRequestSignIn} className="shrink-0" />
               </>
             )}
           </div>
-          <p className="mt-1.5 text-[10px] text-[var(--muted,#5a7488)] leading-snug">
-            Left blank, the boost is from “Anon”.
+          <p className="mt-1.5 text-[10px] text-[var(--muted,#6b5a3e)] leading-snug">
+            Left blank, boosts are sent as “{DEFAULT_SENDER_NAME}”.
           </p>
         </div>
       )}
 
       <div>
-        <label className="block text-xs text-[var(--muted,#5a7488)] mb-1.5">Message (optional)</label>
+        <label className="block text-xs text-[var(--muted,#6b5a3e)] mb-1.5">Message (optional)</label>
         <textarea
           value={message}
           onChange={(e) => {
@@ -712,7 +720,7 @@ export default function MultiLegBoostForm({
           }}
           rows={4}
           maxLength={10000}
-          className="w-full bg-[var(--modal-field,#ffffff)] border border-[var(--modal-line,#b9d4e6)] rounded-lg px-3 py-2 text-sm text-[var(--ink,#0f2733)] focus:outline-none focus:border-[var(--brand,#00aff0)] focus:ring-2 focus:ring-[var(--brand-ring,rgba(0,175,240,0.32))] resize-none max-h-40 overflow-y-auto leading-relaxed"
+          className="w-full bg-[var(--modal-field,#fffdf7)] border border-[var(--modal-line,#d4c4a0)] rounded-lg px-3 py-2 text-sm text-[var(--ink,#2d2010)] focus:outline-none focus:border-[var(--brand,#f7931a)] focus:ring-2 focus:ring-[var(--brand-ring,rgba(247,147,26,0.35))] resize-none max-h-40 overflow-y-auto leading-relaxed"
           placeholder={messagePlaceholder}
         />
       </div>
@@ -722,22 +730,19 @@ export default function MultiLegBoostForm({
           Lightning to the show, which is the half the word "private" does not
           cover. Leaving it unchecked IS the opt-in; nothing asks again after
           the payment. */}
-      <label className="flex items-start gap-2 text-xs text-[var(--muted,#5a7488)] cursor-pointer select-none">
+      <label className="flex items-start gap-2 cursor-pointer select-none">
         <input
           type="checkbox"
           checked={privateBoost}
           onChange={e => setPrivateBoost(e.target.checked)}
-          className="accent-[var(--brand,#00aff0)] mt-0.5"
+          className="mt-0.5 w-3.5 h-3.5 shrink-0 accent-[var(--brand,#f7931a)]"
         />
-        <span className="leading-snug">
-          Private Boost <span className="text-[var(--muted,#5a7488)]">(no Nostr note)</span>
-          <span className="block text-[10px] text-[var(--muted,#5a7488)] mt-0.5">
-            {privateBoost
-              ? 'The sats and your message still reach the show. Nothing is posted to Nostr, so this boost stays out of the boost wall and the totals.'
-              : noteRoute === 'donor'
-                ? shareTagline
-                : `Posts a note from the Local Bitcoiners account${signedIn ? ', not yours' : ''}, so this boost counts on the boost wall and in the totals.`}
-          </span>
+        <span className="min-w-0">
+          <span className="block text-xs font-medium text-[var(--ink,#2d2010)] leading-snug">Private Boost</span>
+          {/* One line, and no explanation of the unticked case: the default IS
+              the unticked case, so describing it would be explaining the
+              absence of a choice. */}
+          <span className="block text-[10px] text-[var(--muted,#6b5a3e)] leading-snug mt-0.5">Do not share to nostr.</span>
         </span>
       </label>
 
@@ -754,7 +759,7 @@ export default function MultiLegBoostForm({
           extension engages on the first press, so a returning user is one
           press from paying and the line is withheld for them entirely. */}
       {!walletStatus.connected && (awaitingWallet || !walletStatus.remembered) && (
-        <p className="text-[10px] text-[var(--muted,#5a7488)] leading-snug text-center">
+        <p className="text-[10px] text-[var(--muted,#6b5a3e)] leading-snug text-center">
           {awaitingWallet
             ? 'Waiting for a wallet. Connect one and this boost sends itself.'
             : 'No wallet connected yet. We\u2019ll ask for one when you press Boost.'}
@@ -764,8 +769,8 @@ export default function MultiLegBoostForm({
       {error && <p className="text-xs text-[var(--danger,#b3261e)]">{error}</p>}
 
       {prepareLabel && (
-        <p className="text-xs text-[var(--brand-d,#068ace)] flex items-center gap-1.5">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--brand,#00aff0)] animate-pulse" aria-hidden="true" />
+        <p className="text-xs text-[var(--brand-d,#d97b0e)] flex items-center gap-1.5">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--brand,#f7931a)] animate-pulse" aria-hidden="true" />
           {prepareLabel}
         </p>
       )}
@@ -773,7 +778,7 @@ export default function MultiLegBoostForm({
       <button
         onClick={handleBoost}
         disabled={!!prepareLabel}
-        className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-lg bg-[var(--brand-dd,#0a6fa8)] hover:bg-[var(--brand-ddd,#095e90)] disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium text-white transition-colors"
+        className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-lg bg-[var(--brand-dd,#a85500)] hover:bg-[var(--brand-ddd,#8a4500)] disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium text-white transition-colors"
       >
         <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path fillRule="evenodd" d="M14.615 1.595a.75.75 0 0 1 .359.852L12.982 9.75h7.268a.75.75 0 0 1 .548 1.262l-10.5 11.25a.75.75 0 0 1-1.272-.71l1.992-7.302H3.75a.75.75 0 0 1-.548-1.262l10.5-11.25a.75.75 0 0 1 .913-.143Z" clipRule="evenodd"/>

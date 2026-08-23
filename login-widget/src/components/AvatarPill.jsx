@@ -63,7 +63,7 @@ export default function AvatarPill({
       )}
       {walletDot && (
         <span
-          className="absolute bg-[var(--ok,#0b7a4b)] border-2 border-[var(--surface,#ffffff)] rounded-full"
+          className="absolute bg-[var(--ok,#2f7a3a)] border-2 border-[var(--surface,#fffdf7)] rounded-full"
           style={{
             width: `${dotSize}px`,
             height: `${dotSize}px`,
