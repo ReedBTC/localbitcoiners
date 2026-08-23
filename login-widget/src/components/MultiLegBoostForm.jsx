@@ -675,11 +675,19 @@ export default function MultiLegBoostForm({
           <div className="flex items-stretch gap-2.5">
             {/* Every attribute here is a password-manager opt-out, and
                 autoComplete="off" alone is not one. */}
-            <input
+            {/* ⚠️ A TEXTAREA, NOT AN INPUT, AND THAT IS THE WHOLE FIX. This
+                field sits beside a button that says "Log in", which is exactly
+                the shape a password manager reads as a username box, and
+                LastPass kept offering to fill it through every opt-out
+                attribute (autoComplete="off", data-lpignore, data-1p-ignore).
+                Managers never attach to a textarea. rows=1, no resize, Enter
+                swallowed and newlines stripped, so it behaves as one line. */}
+            <textarea
               id="lb-boost-from"
-              type="text"
+              rows={1}
               value={nameInput}
-              onChange={(e) => setNameInput(e.target.value.slice(0, SHOW_SENDER_NAME_CHARS))}
+              onChange={(e) => setNameInput(e.target.value.replace(/[\r\n]+/g, ' ').slice(0, SHOW_SENDER_NAME_CHARS))}
+              onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }}
               maxLength={SHOW_SENDER_NAME_CHARS}
               autoComplete="off"
               autoCorrect="off"
@@ -688,7 +696,7 @@ export default function MultiLegBoostForm({
               data-1p-ignore=""
               data-bwignore="true"
               data-form-type="other"
-              className="flex-1 min-w-0 bg-[var(--modal-field,#fffdf7)] border border-[var(--modal-line,#d4c4a0)] rounded-lg px-3 py-2.5 text-sm text-[var(--ink,#2d2010)] focus:outline-none focus:border-[var(--brand,#f7931a)] focus:ring-2 focus:ring-[var(--brand-ring,rgba(247,147,26,0.35))]"
+              className="flex-1 min-w-0 bg-[var(--modal-field,#fffdf7)] border border-[var(--modal-line,#d4c4a0)] rounded-lg px-3 py-2.5 text-sm text-[var(--ink,#2d2010)] leading-tight resize-none overflow-hidden whitespace-nowrap focus:outline-none focus:border-[var(--brand,#f7931a)] focus:ring-2 focus:ring-[var(--brand-ring,rgba(247,147,26,0.35))]"
               placeholder={DEFAULT_SENDER_NAME}
             />
             {!signedIn && onRequestSignIn && (
