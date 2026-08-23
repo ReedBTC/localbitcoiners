@@ -55,6 +55,10 @@ function keyFor(pubkey) {
 
 let activeAlias = null
 let isActive = false
+// True when this extension was enabled with no Nostr identity behind it.
+// Nothing was written to localStorage, so the connection dies with the
+// page — see the session-only note on enable().
+let activeSessionOnly = false
 
 const listeners = new Set()
 function notify() {
@@ -86,6 +90,7 @@ export function getStatus() {
   return {
     connected: isActive,
     alias: activeAlias,
+    sessionOnly: isActive ? activeSessionOnly : false,
   }
 }
 
@@ -114,6 +119,15 @@ function setStoredFlag(on, pubkey) {
  * regress the cross-user leak the per-pubkey rewrite was meant to
  * fix, so this throws rather than silently writing nothing.
  *
+ * `sessionOnly: true` is the one way to enable without a pubkey: a
+ * visitor with no Nostr identity at all. Nothing is stored, so the
+ * per-pubkey scoping the header describes has nothing to scope and
+ * nothing to leak — the connection lives in this page's memory and
+ * dies with it. The flag is EXPLICIT rather than inferred from a
+ * missing pubkey, so a caller that simply loses the pubkey still
+ * throws instead of silently downgrading a signed-in user's wallet
+ * to one that won't survive a reload.
+ *
  * Single-flight: extensions serve every request from a page through one
  * pipe, so a second enable() issued while the first is still outstanding
  * doesn't race it — it queues behind it. If the first one is wedged (an
@@ -128,8 +142,8 @@ function setStoredFlag(on, pubkey) {
  */
 let inFlight = null   // { pubkey, promise } — see single-flight note above
 
-export async function enable({ pubkey, timeoutMs = 15000 } = {}) {
-  if (!pubkey) {
+export async function enable({ pubkey, sessionOnly = false, timeoutMs = 15000 } = {}) {
+  if (!pubkey && !sessionOnly) {
     throw new Error('Sign in before connecting your browser extension.')
   }
   if (!isAvailable()) {
@@ -138,8 +152,12 @@ export async function enable({ pubkey, timeoutMs = 15000 } = {}) {
   // Same user, call already outstanding → hand back the in-flight one.
   // A different pubkey can't share the result (the flag is per-pubkey),
   // so let that one settle first rather than piling on the extension.
+  // Session-only calls share one key of their own: there is no pubkey to
+  // compare and no per-pubkey flag to write, so two of them are genuinely
+  // the same request.
+  const flightKey = pubkey || '@session'
   if (inFlight) {
-    if (inFlight.pubkey === pubkey) return inFlight.promise
+    if (inFlight.pubkey === flightKey) return inFlight.promise
     await inFlight.promise.catch(() => {})
   }
   const promise = (async () => {
@@ -162,11 +180,12 @@ export async function enable({ pubkey, timeoutMs = 15000 } = {}) {
     } catch {}
     isActive = true
     activeAlias = alias
+    activeSessionOnly = !pubkey
     setStoredFlag(true, pubkey)
     notify()
     return { alias }
   })()
-  inFlight = { pubkey, promise }
+  inFlight = { pubkey: flightKey, promise }
   try {
     return await promise
   } finally {
@@ -222,6 +241,7 @@ export async function payInvoice({ invoice, timeoutMs = 90000 }) {
 export function disconnect(pubkey) {
   isActive = false
   activeAlias = null
+  activeSessionOnly = false
   setStoredFlag(false, pubkey)
   notify()
 }
@@ -232,5 +252,6 @@ export function disconnect(pubkey) {
 export function lockOnLogout() {
   isActive = false
   activeAlias = null
+  activeSessionOnly = false
   notify()
 }

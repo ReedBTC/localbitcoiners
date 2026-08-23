@@ -235,14 +235,14 @@ export default function EventComposer({
     return (
       <div className="lb-card">
         <h2 className="lb-card-heading" style={{ marginBottom: '0.5rem' }}>Meetup posted</h2>
-        <p style={{ color: 'var(--muted)', marginBottom: '1rem' }}>
+        <p style={{ color: 'var(--muted,#5a7488)', marginBottom: '1rem' }}>
           Your meetup is live on Nostr. Anyone with a Nostr client can find and RSVP to it.
         </p>
         <div className="lb-inset" style={{ marginBottom: '1rem' }}>
-          <div style={{ fontSize: '0.72rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.3rem' }}>
+          <div style={{ fontSize: '0.72rem', color: 'var(--muted,#5a7488)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.3rem' }}>
             Event address (naddr)
           </div>
-          <code style={{ fontSize: '0.78rem', color: 'var(--text)', wordBreak: 'break-all', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
+          <code style={{ fontSize: '0.78rem', color: 'var(--text,#0f2733)', wordBreak: 'break-all', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
             {published.naddr}
           </code>
         </div>
@@ -354,7 +354,7 @@ export default function EventComposer({
         )}
         <div>
           <label className="lb-label">
-            End date <span style={{ color: 'var(--muted)', textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>(optional)</span>
+            End date <span style={{ color: 'var(--muted,#5a7488)', textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>(optional)</span>
           </label>
           <input
             type="date"
@@ -367,7 +367,7 @@ export default function EventComposer({
         {!form.allDay && (
           <div>
             <label className="lb-label">
-              End time <span style={{ color: 'var(--muted)', textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>(optional)</span>
+              End time <span style={{ color: 'var(--muted,#5a7488)', textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>(optional)</span>
             </label>
             <input
               type="time"
@@ -415,7 +415,7 @@ export default function EventComposer({
       {/* Image */}
       <div>
         <label className="lb-label">
-          Image <span style={{ color: 'var(--muted)', textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>(optional)</span>
+          Image <span style={{ color: 'var(--muted,#5a7488)', textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>(optional)</span>
         </label>
         <div className="space-y-2">
           <input
@@ -432,7 +432,7 @@ export default function EventComposer({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={imageUploading}
-              style={{ color: 'var(--orange)', fontSize: '0.85rem', fontWeight: 600, background: 'none', border: 'none', cursor: imageUploading ? 'not-allowed' : 'pointer', opacity: imageUploading ? 0.5 : 1, padding: 0 }}
+              style={{ color: 'var(--orange,#00aff0)', fontSize: '0.85rem', fontWeight: 600, background: 'none', border: 'none', cursor: imageUploading ? 'not-allowed' : 'pointer', opacity: imageUploading ? 0.5 : 1, padding: 0 }}
             >
               {imageUploading ? 'Uploading…' : 'Upload from device (Blossom)'}
             </button>
@@ -450,7 +450,7 @@ export default function EventComposer({
           </div>
           {imageError && <p style={{ color: '#b53b06', fontSize: '0.8rem', margin: 0 }}>{imageError}</p>}
           {form.image && isSafeUrl(form.image) && (
-            <img src={form.image} alt="" style={{ maxHeight: '10rem', borderRadius: '6px', border: '1px solid var(--border)' }} />
+            <img src={form.image} alt="" style={{ maxHeight: '10rem', borderRadius: '6px', border: '1px solid var(--border,#cfe2ee)' }} />
           )}
         </div>
       </div>
@@ -458,7 +458,7 @@ export default function EventComposer({
       {/* Hashtags */}
       <div>
         <label className="lb-label">
-          Hashtags <span style={{ color: 'var(--muted)', textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>(space or comma separated)</span>
+          Hashtags <span style={{ color: 'var(--muted,#5a7488)', textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>(space or comma separated)</span>
         </label>
         <input
           type="search"
@@ -471,7 +471,7 @@ export default function EventComposer({
       </div>
 
       {/* Share-to-Nostr checkbox + editable textarea */}
-      <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.1rem' }} className="space-y-3">
+      <div style={{ borderTop: '1px solid var(--border,#cfe2ee)', paddingTop: '1.1rem' }} className="space-y-3">
         <label className="lb-check-row">
           <input
             type="checkbox"

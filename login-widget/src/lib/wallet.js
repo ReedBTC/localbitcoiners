@@ -23,6 +23,13 @@
  *     user signing in on the same browser sees the bit as unset and
  *     does not silently inherit the prior user's wallet.
  *
+ * ⚠️ A WALLET CONNECTED WITH NO NOSTR LOGIN IS SESSION-ONLY, and that is
+ * structural rather than a limitation waiting to be lifted: both at-rest
+ * schemes above are keyed to an identity, and there isn't one. So the
+ * connection lives in memory and dies with the page. `getStatus()`
+ * reports it as `sessionOnly` so the UI can say so before the user finds
+ * out by reloading.
+ *
  * On logout we soft-lock both (drop in-memory live clients) but leave
  * persisted state at rest, so the same user signing back in resumes
  * where they left off.
@@ -91,8 +98,13 @@ export function onChange(fn) {
 
 /**
  * Snapshot of the active wallet:
- *   { connected: true,  kind: 'nwc'|'webln', alias?, ownerNpub? }
+ *   { connected: true,  kind: 'nwc'|'webln', alias?, ownerNpub?, sessionOnly }
  *   { connected: false, kind: null, remembered, hasStoredBlob, ownerNpub? }
+ *
+ * `sessionOnly` is true when the connection was made with no Nostr
+ * identity behind it, so nothing was persisted and it dies with the
+ * page. Never true on a disconnected snapshot: there is no such thing
+ * as a remembered session wallet.
  *
  * Connected NWC takes precedence over connected WebLN per the
  * selection rule above.
@@ -113,6 +125,7 @@ export function getStatus() {
       kind: 'nwc',
       alias: s.alias || null,
       ownerNpub: s.ownerNpub || null,
+      sessionOnly: !!s.sessionOnly,
     }
   }
   if (webln.isReady()) {
@@ -121,6 +134,7 @@ export function getStatus() {
       connected: true,
       kind: 'webln',
       alias: s.alias || null,
+      sessionOnly: !!s.sessionOnly,
     }
   }
   const nwcSnap = nwc.getStatus()
@@ -138,6 +152,7 @@ export function getStatus() {
     rememberedKind: weblnRemembered ? 'webln' : (nwcRemembered ? 'nwc' : 'webln'),
     hasStoredBlob: !!nwcSnap.hasStoredBlob,
     ownerNpub: nwcSnap.ownerNpub || null,
+    sessionOnly: false,
   }
 }
 
@@ -176,26 +191,38 @@ export function getActiveWallet() {
 /** Paste-NWC connect path. On success, wipes any existing WebLN state
  *  for this user so they have exactly one wallet at a time — otherwise
  *  the selection rule (NWC over WebLN) would silently demote a
- *  working WebLN connection without telling them. Rejection bubbles. */
+ *  working WebLN connection without telling them. Rejection bubbles.
+ *
+ *  `currentUser` may be null: nwc.connect then takes its session-only
+ *  path. `hasStoredFlag(null)` is false by contract, so a signed-out
+ *  connect clears only the live extension, never another account's
+ *  stored flag. */
 export async function connectNwc(uri, currentUser) {
+  const pubkey = currentUser?.pubkey || null
   const result = await nwc.connect(uri, currentUser)
-  if (webln.isReady() || webln.hasStoredFlag(currentUser?.pubkey)) {
-    webln.disconnect(currentUser?.pubkey)
+  if (webln.isReady() || webln.hasStoredFlag(pubkey)) {
+    webln.disconnect(pubkey)
   }
   return result
 }
 
-/** WebLN enable path. Requires `currentUser` so the at-rest flag can
- *  be written under the right per-pubkey scope (see webln.js header
- *  for the shared-browser-leak rationale). On success, wipes any
- *  existing NWC state for the same one-wallet-at-a-time reason.
- *  Rejection bubbles. */
+/** WebLN enable path. `currentUser` scopes the at-rest flag to the right
+ *  pubkey (see webln.js header for the shared-browser-leak rationale);
+ *  with no user the enable is session-only and writes nothing. On
+ *  success, wipes any existing NWC state for the same one-wallet-at-a-
+ *  time reason. Rejection bubbles.
+ *
+ *  ⚠️ The signed-out branch clears only a LIVE nwc client, never the
+ *  stored blob. That blob belongs to an account that is not signed in,
+ *  and a visitor picking a wallet for themselves must not delete it. */
 export async function connectWebln(currentUser) {
-  if (!currentUser?.pubkey) {
-    throw new Error('Sign in before connecting your browser extension.')
-  }
-  const result = await webln.enable({ pubkey: currentUser.pubkey })
-  if (nwc.isReady() || nwc.getStatus().hasStoredBlob) {
+  const pubkey = currentUser?.pubkey || null
+  const result = await webln.enable(
+    pubkey ? { pubkey } : { pubkey: null, sessionOnly: true },
+  )
+  if (pubkey) {
+    if (nwc.isReady() || nwc.getStatus().hasStoredBlob) nwc.disconnect()
+  } else if (nwc.isReady()) {
     nwc.disconnect()
   }
   return result

@@ -1,0 +1,52 @@
+/* Local Bitcoiners — design tokens read by the login/boost widget.
+ *
+ * ⚠️ PHASE 3 OF THE ONLYBOOSTS PORT HAS NOT RUN YET. Every value below is
+ * OnlyBoosts' light/cyan palette, carried over with the widget so that the
+ * fallback-mirror rule (scripts/test-boost-modal-render.mjs) is enforced
+ * from the first commit. Phase 3 re-picks these for the Local Bitcoiners
+ * dark/orange look and re-mirrors every var() fallback in login-widget/src
+ * to match; until then the widget renders in OnlyBoosts' colours.
+ *
+ * The widget mounts into this document through a portal and reads these
+ * directly (Tailwind runs with preflight off). Every var() in the widget
+ * carries a literal fallback equal to the value here, because assets/widgets/
+ * files are never rewritten on a version bump and a browser can hold a stale
+ * copy of this file against a fresh widget: an undefined custom property makes
+ * the whole declaration invalid and the modal renders transparent.
+ * The test fails if a fallback drifts from its token. Edit both together.
+ */
+:root {
+  --brand:     #00aff0;
+  --brand-d:   #068ace;
+  --brand-dd:  #0a6fa8;
+  --brand-ddd: #095e90;
+
+  --cream:   #eef6fb;
+  --cream-d: #e2eef7;
+  --navy:    #0b3a52;
+  --orange:  #00aff0;
+  --text:    #0f2733;
+  --muted:   #5a7488;
+  --border:  #cfe2ee;
+  --white:   #ffffff;
+  --ink:     #0f2733;
+  --surface: #ffffff;
+
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body:    'Source Serif 4', Georgia, serif;
+
+  /* Modal surfaces: panel, fields sunk into it, boxes raised off it. */
+  --modal-bg:    #f4fafd;
+  --modal-line:  #b9d4e6;
+  --modal-field: #ffffff;
+  --modal-inset: #e6f1f9;
+
+  --brand-tint: rgba(0, 175, 240, 0.12);
+  --brand-ring: rgba(0, 175, 240, 0.32);
+  /* UNCERTAIN (amber) and FAILED (red) must differ in hue, not just value:
+     the double-pay guard rests on a donor telling them apart at a glance. */
+  --ok:     #0b7a4b;
+  --warn:   #b45309;
+  --danger: #b3261e;
+  --scrim:  rgba(11, 58, 82, 0.55);
+}

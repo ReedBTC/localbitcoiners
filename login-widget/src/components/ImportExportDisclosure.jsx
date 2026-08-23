@@ -69,7 +69,7 @@ export default function ImportExportDisclosure({
       </summary>
 
       <div style={{ padding: '0.4rem 0.85rem 0.85rem' }} className="space-y-2">
-        <p style={{ fontSize: '0.78rem', lineHeight: 1.45, color: 'var(--muted)', margin: 0 }}>
+        <p style={{ fontSize: '0.78rem', lineHeight: 1.45, color: 'var(--muted,#5a7488)', margin: 0 }}>
           {description}
         </p>
 
@@ -126,7 +126,7 @@ export default function ImportExportDisclosure({
                   <div style={{
                     position: 'absolute', right: 0, marginTop: '0.25rem', zIndex: 20,
                     minWidth: '10rem', borderRadius: '6px',
-                    border: '1px solid var(--border)', background: 'var(--white)',
+                    border: '1px solid var(--border,#cfe2ee)', background: 'var(--white,#ffffff)',
                     boxShadow: '0 8px 24px rgba(30, 58, 95, 0.12)', padding: '0.25rem 0',
                   }}>
                     {exportMenuItems.map((item, i) => (
@@ -138,11 +138,11 @@ export default function ImportExportDisclosure({
                         style={{
                           display: 'block', width: '100%', textAlign: 'left',
                           padding: '0.4rem 0.85rem', fontSize: '0.82rem',
-                          color: item.disabled ? 'var(--muted)' : 'var(--text)',
+                          color: item.disabled ? 'var(--muted,#5a7488)' : 'var(--text,#0f2733)',
                           background: 'transparent', border: 'none',
                           cursor: item.disabled ? 'not-allowed' : 'pointer',
                         }}
-                        onMouseEnter={e => { if (!item.disabled) e.currentTarget.style.background = 'var(--cream)' }}
+                        onMouseEnter={e => { if (!item.disabled) e.currentTarget.style.background = 'var(--cream,#eef6fb)' }}
                         onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
                       >
                         {item.label}

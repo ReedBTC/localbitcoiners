@@ -58,7 +58,7 @@ export default function MyMeetupsModal({ user, onClose, onBoostMeetup, onRequest
         {events === null && <LoadingRows />}
         {error && <div className="lb-error">{error}</div>}
         {events && events.length === 0 && !error && (
-          <p style={{ color: 'var(--muted)', fontSize: '0.9rem', fontStyle: 'italic', margin: 0 }}>
+          <p style={{ color: 'var(--muted,#5a7488)', fontSize: '0.9rem', fontStyle: 'italic', margin: 0 }}>
             You haven’t published a meetup yet. Use “Create” to publish one.
           </p>
         )}
@@ -110,7 +110,7 @@ export default function MyMeetupsModal({ user, onClose, onBoostMeetup, onRequest
         {error && <div className="lb-error">{error}</div>}
 
         {events && events.length === 0 && !error && (
-          <p style={{ color: 'var(--muted)', fontSize: '0.92rem', fontStyle: 'italic' }}>
+          <p style={{ color: 'var(--muted,#5a7488)', fontSize: '0.92rem', fontStyle: 'italic' }}>
             You haven’t published a meetup yet. Use “Create new” to publish one, or paste an naddr if it lives under a different npub.
           </p>
         )}
@@ -146,7 +146,7 @@ function Group({ label, faded, children }) {
     <div style={{ marginTop: '0.5rem', opacity: faded ? 0.85 : 1 }}>
       <div style={{
         fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em',
-        color: 'var(--muted)', fontWeight: 600,
+        color: 'var(--muted,#5a7488)', fontWeight: 600,
         margin: '0.85rem 0 0.5rem',
       }}>
         {label}

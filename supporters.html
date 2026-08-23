@@ -725,7 +725,7 @@
   function renderIdentitySignIn() {
     if (!identitySlot) return;
     identitySlot.innerHTML =
-      '<button type="button" class="lb-identity-placeholder" aria-label="Sign in with Nostr">Sign in</button>';
+      '<button type="button" class="lb-identity-placeholder" aria-label="Log in to Local Bitcoiners"><img src="/assets/favicon.png" alt="" aria-hidden="true" width="18" height="18">Log in</button>';
     const btn = identitySlot.querySelector('button');
     btn.addEventListener('click', async () => {
       btn.disabled = true;

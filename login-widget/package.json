@@ -4,9 +4,10 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "build": "vite build && vite build --config vite.nostr-tools.config.js",
+    "build": "vite build && vite build --config vite.nostr-tools.config.js && vite build --config vite.nostr-sign.config.js",
     "build:widget": "vite build",
     "build:nostr-tools": "vite build --config vite.nostr-tools.config.js",
+    "build:nostr-sign": "vite build --config vite.nostr-sign.config.js",
     "dev": "vite"
   },
   "dependencies": {

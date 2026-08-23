@@ -291,7 +291,7 @@ export default function SearchMeetupsModal({ onClose, onBoostMeetup, embedded = 
         />
 
         {phase === 'idle' && (
-          <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginTop: '0.85rem' }}>
+          <p style={{ color: 'var(--muted,#5a7488)', fontSize: '0.85rem', marginTop: '0.85rem' }}>
             Start typing to find an organizer, or paste the event address (naddr1…).
           </p>
         )}
@@ -312,7 +312,7 @@ export default function SearchMeetupsModal({ onClose, onBoostMeetup, embedded = 
           <div style={{ marginTop: '0.85rem' }}>
             <div style={{
               fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em',
-              color: 'var(--muted)', fontWeight: 600, marginBottom: '0.5rem',
+              color: 'var(--muted,#5a7488)', fontWeight: 600, marginBottom: '0.5rem',
             }}>
               Pick an account
             </div>
@@ -325,7 +325,7 @@ export default function SearchMeetupsModal({ onClose, onBoostMeetup, embedded = 
               >
                 {a.picture
                   ? <img src={a.picture} alt="" loading="lazy" />
-                  : <div className="lb-author-pick" style={{ padding: 0, width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--cream-d)' }} />}
+                  : <div className="lb-author-pick" style={{ padding: 0, width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--border,#cfe2ee)', background: 'var(--cream-d,#e2eef7)' }} />}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="lb-author-pick-name">{a.name || a.pubkey.slice(0, 12) + '…'}</div>
                   {a.followers != null && (
@@ -344,7 +344,7 @@ export default function SearchMeetupsModal({ onClose, onBoostMeetup, embedded = 
                 type="button"
                 onClick={backToAuthors}
                 style={{
-                  background: 'none', border: 'none', color: 'var(--navy)',
+                  background: 'none', border: 'none', color: 'var(--navy,#0b3a52)',
                   cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600,
                   padding: 0, marginBottom: '0.5rem', textDecoration: 'underline',
                 }}
@@ -354,7 +354,7 @@ export default function SearchMeetupsModal({ onClose, onBoostMeetup, embedded = 
             )}
             <div style={{
               fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em',
-              color: 'var(--muted)', fontWeight: 600, marginBottom: '0.5rem',
+              color: 'var(--muted,#5a7488)', fontWeight: 600, marginBottom: '0.5rem',
             }}>
               {events.length === 1 ? '1 meetup' : `${events.length} meetups`}
             </div>

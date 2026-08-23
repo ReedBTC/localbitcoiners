@@ -120,14 +120,14 @@ export default function BoostExistingEvent({
           className="lb-input"
           style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: '0.78rem' }}
         />
-        <p style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: '0.35rem' }}>
+        <p style={{ fontSize: '0.78rem', color: 'var(--muted,#5a7488)', marginTop: '0.35rem' }}>
           External URLs <strong>won’t appear in the listings</strong> on this page (those are
           reserved for NIP-52 calendar events) — but the boost still goes through.
         </p>
       </div>
       <div>
         <label className="lb-label">
-          Boost message <span style={{ color: 'var(--muted)', textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>(editable)</span>
+          Boost message <span style={{ color: 'var(--muted,#5a7488)', textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>(editable)</span>
         </label>
         <textarea
           value={message}
@@ -136,7 +136,7 @@ export default function BoostExistingEvent({
           style={{ minHeight: '90px', resize: 'vertical', lineHeight: 1.55 }}
           {...NO_AUTOFILL}
         />
-        <p style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: '0.35rem' }}>
+        <p style={{ fontSize: '0.78rem', color: 'var(--muted,#5a7488)', marginTop: '0.35rem' }}>
           Your naddr or URL will be included with your boost message
         </p>
       </div>

@@ -7,6 +7,7 @@ import BoostButton from './components/BoostButton.jsx'
 import LoginModal from './components/LoginModal.jsx'
 import EpisodeBoostModal from './components/EpisodeBoostModal.jsx'
 import ExternalBoostModal from './components/ExternalBoostModal.jsx'
+import ModalErrorBoundary from './components/ModalErrorBoundary.jsx'
 import BoostModal from './components/BoostModal.jsx'
 import IdentityWidget from './components/IdentityWidget.jsx'
 import WalletConnectModal from './components/WalletConnectModal.jsx'
@@ -25,7 +26,7 @@ import {
 import { markStubUser, isStubUser } from './lib/stubUser.js'
 import { getNDK, resetNDK, connectAndWait, signWithTimeout } from './lib/ndk.js'
 import * as wallet from './lib/wallet.js'
-import { bolt11PaymentHash, confirmInvoiceSettled } from './lib/boostagram.js'
+import { bolt11PaymentHash, confirmInvoiceSettled, RECIPIENT_LUD16 } from './lib/boostagram.js'
 import { isCleanPaymentDecline } from './lib/utils.js'
 import { applyRecipientOverrides } from './lib/recipientOverrides.js'
 import { pushToast } from './lib/toast.js'
@@ -95,6 +96,11 @@ let currentUser = initialUser()
 // background restore finishes.
 wallet.setUserContext(currentUser || null)
 
+// Last pubkey broadcast on `lb:session-change` (see setUser). Seeded from
+// the restored session so a stub→real upgrade on page boot isn't announced
+// as a login — the identity didn't change, only the profile filled in.
+let lastBroadcastPubkey = (currentUser && currentUser.pubkey) || null
+
 function setUser(u) {
   // Coerce any falsy non-undefined value to null so consumers can
   // discriminate "restoring" (undefined) from "logged out" (null).
@@ -119,6 +125,24 @@ function setUser(u) {
     })
   } else if (u === null) {
     clearProfile()
+  }
+  // Tell the non-React half of the site that the identity changed. The
+  // Follows feeds (assets/js/feeds.js) are scoped to the signed-in npub
+  // and render long before the bundle loads, so this event is their only
+  // way to learn about a sign-in that happens after they've painted —
+  // otherwise "Sign in to see this feed" survives the login until reload.
+  //
+  // Fires on identity changes only. setUser also runs for profile
+  // refreshes and stub→real restores, which don't invalidate a feed;
+  // `undefined` means "restoring" and isn't an identity at all.
+  if (currentUser !== undefined) {
+    const pk = (currentUser && currentUser.pubkey) || null
+    if (pk !== lastBroadcastPubkey) {
+      lastBroadcastPubkey = pk
+      try {
+        window.dispatchEvent(new CustomEvent('lb:session-change', { detail: { pubkey: pk } }))
+      } catch {}
+    }
   }
 }
 
@@ -322,9 +346,17 @@ function setShowBoostState(v) {
 }
 
 function BoostApp() {
-  // Route through the gated api wrapper rather than flipping the
-  // signal directly, so the show-boost flow honours the same
-  // login → wallet gates the episode-boost flow does.
+  // ⚠️ THIS IS THE NAV'S BOOST BUTTON, AND IT IS THE ONE THAT ACTUALLY RUNS.
+  // React mounts over `#lb-boost-slot` as soon as the bundle lands, replacing
+  // the static placeholder — so `nav-widget-boot.js`'s click handler governs
+  // only the first press, before this exists.
+  //
+  // `openShowBoost` → `MultiLegBoostForm` is the Local Bitcoiners money path
+  // (kind-30078 receipts, boost_session, the bots' claim contract). It still
+  // signs its kind-1 before paying and so still carries a login gate; Phase 2
+  // of the OnlyBoosts port moves the wallet gate behind the press and puts the
+  // note decision in the form. `openSiteDonation` below is OnlyBoosts' one-leg
+  // tip flow, carried over with the widget and unused here.
   return <BoostButton onOpen={() => api.openShowBoost()} />
 }
 
@@ -338,7 +370,7 @@ function ShowBoostHost() {
   }, [])
   if (!state) return null
   return createPortal(
-    <BoostModal
+    <div className="lb-w"><BoostModal
       user={user || null}
       prefillMessage={state.prefillMessage || ''}
       authorSplit={state.authorSplit || null}
@@ -351,7 +383,7 @@ function ShowBoostHost() {
           window.dispatchEvent(new CustomEvent('lb:show-boost-settled', { detail: r }))
         } catch {}
       }}
-    />,
+    /></div>,
     document.body,
   )
 }
@@ -375,7 +407,7 @@ function LoginPromptHost() {
   }, [])
   if (!open) return null
   return createPortal(
-    <LoginModal
+    <div className="lb-w"><LoginModal
       onLogin={(u) => {
         abortRestore()
         // Fresh login — pubkey came from the signer itself, so we can
@@ -397,9 +429,16 @@ function LoginPromptHost() {
         setLoginOpen(false)
         // User dismissed the login modal — abandon any pending action
         // so they're not surprised by a modal opening minutes later.
-        cancelPendingAction()
+        //
+        // ⚠️ Unless the wallet-connect modal is still open behind us.
+        // Its "Sign in with Nostr first" link opens this modal over a
+        // flow the user is in the middle of, and a boost queued at the
+        // wallet gate has to survive them backing out of the login —
+        // otherwise connecting the wallet completes a gate with nothing
+        // left to run, and the boost they clicked never opens.
+        if (!walletConnectIsOpen) cancelPendingAction()
       }}
-    />,
+    /></div>,
     document.body,
   )
 }
@@ -424,8 +463,9 @@ function WalletConnectHost() {
   }, [])
   if (!open) return null
   return createPortal(
-    <WalletConnectModal
+    <div className="lb-w"><WalletConnectModal
       user={user || null}
+      onRequestSignIn={() => api.requestLogin()}
       onConnected={() => {
         // NWC successfully connected. Run any pending action that was
         // gated on having a wallet (e.g. an episode boost the user
@@ -438,7 +478,7 @@ function WalletConnectHost() {
         // queued action so a stray click later doesn't surprise them.
         cancelPendingAction()
       }}
-    />,
+    /></div>,
     document.body,
   )
 }
@@ -463,13 +503,13 @@ function EpisodeBoostHost() {
   }, [])
   if (!state) return null
   return createPortal(
-    <EpisodeBoostModal
+    <div className="lb-w"><EpisodeBoostModal
       user={user || null}
       onUserChange={(u) => { abortRestore(); setUser(u) }}
       onClose={() => setEpisodeBoostState(null)}
       episode={state.episode}
       splitsBundle={state.splits}
-    />,
+    /></div>,
     document.body,
   )
 }
@@ -495,13 +535,24 @@ function ExternalBoostHost() {
     return () => { externalBoostListeners.delete(fn) }
   }, [])
   if (!state) return null
+  // ⚠️ THE BOUNDARY IS NOT DECORATION — SEE ITS OWN HEADER. A render error in
+  // this modal used to unmount this whole root, which meant the modal vanished
+  // mid-payment AND the page's Boost button stopped working until a reload,
+  // because nothing was left here to answer the next open. Of every modal in
+  // this widget this is the one where that matters most: it is the only one a
+  // payment is running underneath.
   return createPortal(
-    <ExternalBoostModal
-      user={user || null}
-      onClose={() => setExternalBoostState(null)}
-      episode={state.episode}
-      recipientsBundle={state.recipientsBundle}
-    />,
+    <div className="lb-w"><ModalErrorBoundary label="ExternalBoostModal" onClose={() => setExternalBoostState(null)}>
+      <ExternalBoostModal
+        user={user || null}
+        onRequestSignIn={() => api.requestLogin()}
+        onRequestWallet={() => api.requestWalletForBoost()}
+        onClose={() => setExternalBoostState(null)}
+        episode={state.episode}
+        recipientsBundle={state.recipientsBundle}
+        donation={!!state.donation}
+      />
+    </ModalErrorBoundary></div>,
     document.body,
   )
 }
@@ -577,7 +628,8 @@ function MeetupModalHost() {
   }
 
   if (!body) return null
-  return createPortal(body, document.body)
+  return createPortal(
+    <div className="lb-w">{body}</div>, document.body)
 }
 
 // ── Bug-report modal host ────────────────────────────────────────────────
@@ -601,7 +653,7 @@ function BugReportHost() {
   }, [])
   if (!state) return null
   return createPortal(
-    <BugReportModal user={realUser} onClose={() => setBugReportState(null)} />,
+    <div className="lb-w"><BugReportModal user={realUser} onClose={() => setBugReportState(null)} /></div>,
     document.body,
   )
 }
@@ -683,6 +735,10 @@ const api = {
     function makeHost(id) {
       const el = document.createElement('div')
       el.id = id
+      // ⚠️ THE SCOPE FOR THE WIDGET'S OWN CSS RESET. See `.lb-w` in
+      // styles.css: without it every button and input in this bundle wears
+      // the browser's native chrome.
+      el.className = 'lb-w'
       el.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;'
       document.body.appendChild(el)
       return el
@@ -758,13 +814,31 @@ const api = {
     setLoginOpen(true)
   },
 
-  /** Open the wallet-connect modal. No-op if not signed in (the
-   *  identity dropdown should hide the option in that case). */
+  /**
+   * Open the wallet-connect modal.
+   *
+   * ⚠️ NOT LOGIN-GATED. A visitor with no Nostr identity can connect a
+   * wallet and boost with it; the connection is session-only, because
+   * the at-rest scheme encrypts the NWC URI to the user's own signer and
+   * there isn't one (see the header in lib/wallet.js). Requiring a login
+   * to reach a payment control was the single largest reason someone
+   * bounced off a boost.
+   *
+   * The gates below still run for a user who IS signed in: the encrypted
+   * path needs the real signer, and it must be the right one.
+   */
   async openWalletConnect() {
-    if (!currentUser || currentUser === undefined) {
-      // Pending action so connecting requires login first.
+    if (currentUser === undefined) {
+      // Restore in flight — we don't yet know whether this is a signed-in
+      // user whose wallet should persist. Queue and let the restore land;
+      // ensureRealRestore is what guarantees something drains the queue if
+      // the ambient restore already failed silently.
       setPendingAction(() => api.openWalletConnect())
-      api.requestLogin()
+      ensureRealRestore()
+      return
+    }
+    if (!currentUser) {
+      setWalletConnectOpen(true)
       return
     }
     if (isStubUser(currentUser)) {
@@ -953,49 +1027,167 @@ const api = {
 
   /**
    * Open the EXTERNAL-episode boost modal (another podcast's episode, from
-   * /feeds). Same login → real-user → signer → wallet gate chain as
-   * openEpisodeBoost, but renders ExternalBoostModal and applies NO LB
-   * recipient overrides — external recipients + the Fountain→aquafox
-   * redirect are already resolved by the caller (value-block.js).
+   * /feeds). Renders ExternalBoostModal and applies NO recipient
+   * overrides.
+   *
+   * ⚠️ ITS GATE CHAIN IS NO LONGER openEpisodeBoost's. Both the login gate
+   * (Phase 1) and the wallet gate (D13) are gone from in front of the modal:
+   * a boost is a payment, a payment needs no Nostr identity, and asking for a
+   * wallet before the reader has seen the amount is the wrong order. What
+   * remains is conditional on there BEING an identity, and each part still
+   * earns its place for a signed-in user.
+   *
+   * Nothing here rewrites a leg: the caller (value-block.js) hands over the
+   * show's published value block verbatim, and its own override map is empty
+   * by design. See the warning there before adding one.
    *
    * @param {object} args
    * @param {object} args.episode          - { showTitle, episodeTitle, podcastGuid, itemGuid, bmbUrl }
    * @param {object} args.recipientsBundle - { recipients, totalWeight }
    */
-  async openExternalBoost({ episode, recipientsBundle }) {
-    if (!episode || !recipientsBundle || !Array.isArray(recipientsBundle.recipients) || recipientsBundle.recipients.length === 0) {
+  async openExternalBoost({ episode, recipientsBundle, donation = false }) {
+    // ⚠️ A DONATION HAS NO EPISODE, AND THAT IS THE ONLY THING IT RELAXES HERE.
+    // The recipients requirement is unchanged, because a payment with no
+    // recipients is the one payload this flow can do nothing with.
+    if ((!episode && !donation) || !recipientsBundle || !Array.isArray(recipientsBundle.recipients) || recipientsBundle.recipients.length === 0) {
       console.warn('[LBLogin] openExternalBoost: missing episode/recipients payload')
       return
     }
-    const args = { episode, recipientsBundle }
+    const args = { episode, recipientsBundle, donation }
 
-    // Gate 1: signed in?
-    if (!currentUser || currentUser === undefined) {
-      setPendingAction(() => api.openExternalBoost(args))
-      api.requestLogin()
-      return
-    }
-    // Gate 1.5: stub user — wait for real restore (NWC unlock needs the real signer).
-    if (isStubUser(currentUser)) {
+    // ⚠️ THERE IS NO LONGER A LOGIN GATE ON THIS PATH. A boost is a
+    // payment, and a payment does not need a Nostr identity: the
+    // boostagram's sender fields are optional, and the note is decided
+    // inside the modal. A signed-out booster types a name or leaves it
+    // blank, and Local Bitcoiners signs the note for them (Phase 2 /
+    // `/api/sign-boost`), so the boost reaches this index either way.
+    //
+    // The identity gates below are therefore conditional on there BEING
+    // an identity, and each still earns its place for a signed-in user:
+    // the stub can't unlock the encrypted NWC blob, and a signer that
+    // has switched accounts would sign a payload claiming the wrong
+    // pubkey. They are skipped, not weakened.
+    if (currentUser === undefined) {
+      // Restore in flight. Wait for it rather than treating a returning
+      // user as signed out — their remembered wallet is one tick away,
+      // and routing them to the connect modal would ask them to paste a
+      // URI they already saved.
       setPendingAction(() => api.openExternalBoost(args))
       ensureRealRestore()
       return
     }
-    // Gate 1.75: signer-account match (the boostagram embeds the sender pubkey).
-    if (!await ensureSignerVerified()) return
-
-    // Gate 2: wallet connected?
-    if (!wallet.isReady()) {
-      wallet.ensureReady(currentUser)
-        .then((ok) => {
-          if (ok) api.openExternalBoost(args)
-          else handleWalletGateFailure(() => api.openExternalBoost(args))
-        })
-        .catch(() => handleWalletGateFailure(() => api.openExternalBoost(args)))
-      return
+    if (currentUser) {
+      // Gate 1.5: stub user — wait for real restore (NWC unlock needs the real signer).
+      if (isStubUser(currentUser)) {
+        setPendingAction(() => api.openExternalBoost(args))
+        ensureRealRestore()
+        return
+      }
+      // Gate 1.75: signer-account match (the boostagram embeds the sender pubkey).
+      if (!await ensureSignerVerified()) return
     }
 
-    setExternalBoostState({ episode, recipientsBundle })
+    // ⚠️ AND THERE IS NO LONGER A WALLET GATE HERE EITHER — see D13 in
+    // boost-login.md. It used to run before the modal ever mounted, so a
+    // visitor who pressed Boost was asked to paste an NWC connection string
+    // before seeing what they were boosting or what it would cost. Compose
+    // first, pay second: the gate now lives behind the modal's own Boost
+    // button (`api.requestWalletForBoost`), where the connect modal arrives
+    // at the moment its purpose is obvious.
+    //
+    // ⚠️ THE RESUME MUST NOT COME BACK THROUGH HERE. `pendingAction` re-enters
+    // an api method from the top, and re-entering this one with the modal
+    // already open would mount a second one over the first. The modal stays
+    // mounted underneath the connect modal instead (`WalletConnectModal` is
+    // z-[78/79] against this one's z-[70/71]), keeps its state, and resumes
+    // off its own `wallet.onChange` subscription.
+    setExternalBoostState({ episode, recipientsBundle, donation })
+  },
+
+  /**
+   * A donation to Local Bitcoiners itself, behind the nav's Donate button.
+   *
+   * ⚠️ IT IS THE BOOST FLOW WITH ONE LEG, NOT A SECOND FLOW. Everything a
+   * donor gets on a podcast boost they get here: the wallet gate behind the
+   * button, the four note outcomes, anonymity, the private-boost opt-out, the
+   * per-leg retry, the 90-second watcher and the site-signed note for someone
+   * with no account. Writing a parallel modal would have meant maintaining two
+   * copies of a money path, and the copy that is exercised less is the one
+   * that rots.
+   *
+   * ⚠️ IT REPLACES `openShowBoost`, WHICH IS THE LB PATH AND STAYS AS IT IS.
+   * That one signs its kind-1 BEFORE paying and batches the approval with the
+   * receipts, so its content is frozen before any outcome is known. That is
+   * safe there only because a single leg at 100% cannot partial — but it also
+   * cannot offer the bot route, so it is login-gated by construction, which is
+   * the whole thing this change is undoing. `MultiLegBoostForm` is deliberately
+   * untouched; see the note in CLAUDE.md under the dead-code list.
+   *
+   * ⚠️ THE SPLIT IS BUILT HERE AND NEVER FETCHED. A podcast boost resolves its
+   * value block from the show's own RSS through `/api/value`; this one is
+   * Local Bitcoiners paying Local Bitcoiners, so there is no third party's block to read
+   * and nothing that could reroute it. One leg, 100%, to the address the site
+   * publishes. `applyExternalOverrides` is not in this path because there is no
+   * external recipient to override.
+   */
+  async openSiteDonation() {
+    if (!RECIPIENT_LUD16) {
+      console.warn('[LBLogin] openSiteDonation: no recipient address configured')
+      return
+    }
+    return api.openExternalBoost({
+      episode: null,
+      donation: true,
+      recipientsBundle: {
+        recipients: [{
+          name: 'Local Bitcoiners',
+          type: 'lnaddress',
+          address: RECIPIENT_LUD16,
+          splitWeight: 100,
+          fee: false,
+        }],
+        totalWeight: 100,
+        level: 'site',
+      },
+    })
+  },
+
+  /**
+   * Engage a wallet on behalf of a boost modal that is ALREADY OPEN (D13).
+   *
+   * Everything the retired Gate 2 did, minus the part that re-opened the
+   * modal: try the at-rest restore first, so a returning visitor with a saved
+   * NWC blob or a remembered extension never sees the connect modal at all;
+   * fall back to the connect modal for someone who genuinely has no wallet;
+   * and keep `handleWalletGateFailure`'s distinction between those two, since
+   * a slow extension that is merely stalled must not be told it has no wallet.
+   *
+   * ⚠️ IT QUEUES NO PENDING ACTION, and that is the difference from the gate
+   * it replaces. There is nothing to re-run: the caller is a mounted component
+   * watching `wallet.onChange`, and it resumes itself when a wallet lands.
+   * Queueing as well would run the boost twice.
+   *
+   * @returns {Promise<boolean>} true if a wallet is ready NOW. False means
+   *   either the connect modal is open or a retry toast was shown; the caller
+   *   waits on its own wallet subscription rather than on this promise.
+   */
+  async requestWalletForBoost() {
+    if (wallet.isReady()) return true
+    try {
+      if (await wallet.ensureReady(currentUser || null)) return true
+    } catch (e) {
+      console.warn('[lb] wallet ensureReady failed', e?.message || e)
+    }
+    const status = wallet.getStatus()
+    if (status.remembered) {
+      const msg = status.rememberedKind === 'nwc'
+        ? 'Couldn\'t unlock your saved wallet connection. Press Boost to try again.'
+        : 'Your wallet extension didn\'t respond. Check that it\'s unlocked, then press Boost again.'
+      try { pushToast({ kind: 'error', message: msg }) } catch {}
+      return false
+    }
+    api.openWalletConnect()
+    return false
   },
 
   /**

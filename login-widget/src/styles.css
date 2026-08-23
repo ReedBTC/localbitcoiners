@@ -2,6 +2,123 @@
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * ⚠️ THE WIDGET'S OWN RESET, AND WITHOUT IT EVERY CONTROL WEARS THE BROWSER'S
+ * NATIVE CHROME.
+ *
+ * Tailwind's preflight is switched off in `tailwind.config.js` — correctly,
+ * because this bundle mounts into the live site and must not reset the host
+ * page. But preflight is also what supplies two things every Tailwind UI
+ * silently assumes:
+ *
+ *   1. `border-width: 0; border-style: solid` on everything, so a `border`
+ *      utility (which sets WIDTH only) actually draws a line, and so a
+ *      `<button>` does not keep its UA `2px outset ButtonBorder`;
+ *   2. `background-color: transparent` and inherited type on form controls.
+ *
+ * Without them the modals rendered with **native button outlines** around
+ * every button — reported as "weird button outlines that make it look
+ * unprofessional", and they were: they were the operating system's. At the
+ * same time `border-style` appeared nowhere in the bundle, so every border we
+ * DID ask for drew nothing. Two opposite faults from one missing base layer,
+ * which is why the modals looked simultaneously outlined and undefined.
+ *
+ * ⚠️ THE SCOPE IS `.lb-w` AND IT HAS TO BE ON EVERY ROOT. `makeHost` puts it on
+ * each host div, and **every `createPortal` wraps its children in one**,
+ * because a portal renders into `document.body` and would otherwise sit
+ * outside any scope. A new portal without the wrapper is a modal wearing OS
+ * chrome again — which looks like a styling bug, not a missing wrapper.
+ *
+ * An earlier version of this keyed on the utility class names themselves
+ * (`.border`, `.border-2`, …) to avoid needing a scope. That fixed the
+ * invisible borders and did nothing for the UA chrome, because a `<button>`
+ * with no border class at all was never selected.
+ */
+/**
+ * ⚠️ `:where()` IS LOAD-BEARING, NOT TIDINESS. Preflight's own selectors are
+ * bare elements (`*`, `button`) with specificity 0,0,0 and 0,0,1, so every
+ * Tailwind utility beats them — which is the entire reason `py-3` works on a
+ * button that preflight just set `padding: 0` on.
+ *
+ * Scoping naively to `.lb-w button` makes it 0,1,1, which BEATS `.py-3`
+ * (0,1,0) and flattens every button in the widget. `:where(.lb-w)` contributes
+ * nothing to specificity, so these land at exactly preflight's own weight and
+ * the utilities keep winning. **Do not remove the `:where()` to "simplify" the
+ * selector.**
+ */
+:where(.lb-w),
+:where(.lb-w) *,
+:where(.lb-w) *::before,
+:where(.lb-w) *::after {
+  border-width: 0;
+  border-style: solid;
+  border-color: currentColor;
+}
+
+/* The form-control half of preflight, at the same weight. */
+:where(.lb-w) button,
+:where(.lb-w) input,
+:where(.lb-w) optgroup,
+:where(.lb-w) select,
+:where(.lb-w) textarea {
+  font-family: inherit;
+  font-size: 100%;
+  font-weight: inherit;
+  line-height: inherit;
+  color: inherit;
+  margin: 0;
+  padding: 0;
+}
+/**
+ * ⚠️ THE INNER `:where()` IS THE SAME LESSON AS THE OUTER ONE, AND LEAVING IT
+ * OFF COST A DAY. An ATTRIBUTE selector carries CLASS weight, so
+ * `:where(.lb-w) [type='button']` is (0,1,0) — dead level with
+ * `.bg-[var(--brand-dd,#0a6fa8)]` — and this block is emitted AFTER
+ * `@tailwind utilities`, so the tie broke in the reset's favour and
+ * `background-color: transparent` won.
+ *
+ * The result: **every element in this widget carrying an explicit
+ * `type="button"` had its `bg-*` utility silently killed.** Measured off a
+ * screenshot on 2026-08-22 — all four boost presets rendered at
+ * `#f4fafd`, the modal's own background, with the picked one white-on-white
+ * and invisible. It read as a colour bug and was reported twice as one; the
+ * fill had never been drawn at all, on any of them, since this reset shipped.
+ *
+ * Wrapping the list in `:where()` takes the whole selector to (0,0,0), which
+ * is where preflight's own rules sit and what the comment above always meant.
+ * A bare `button` was (0,0,1) and was never the problem, which is exactly why
+ * this hid: the buttons with no `type` attribute looked right.
+ *
+ * ⚠️ Tailwind's real preflight writes these same selectors unwrapped and gets
+ * away with it, because it lands in `@layer base` BEFORE the utilities. This
+ * file is appended after them. **Do not "match upstream" by removing the
+ * `:where()`.**
+ */
+:where(.lb-w) :where(button, [type='button'], [type='reset'], [type='submit']) {
+  -webkit-appearance: button;
+  background-color: transparent;
+  background-image: none;
+  cursor: pointer;
+}
+:where(.lb-w) :disabled { cursor: default; }
+
+/* ⚠️ THE LEG LIST WAS SHOWING UA BULLETS, CLIPPED BY ITS OWN CONTAINER. The
+   host page's `*{padding:0}` had already flattened the list's indent, so the
+   disc markers sat OUTSIDE the content box and were cut off by the rounded
+   border — "something thats getting cut off on the left". Preflight normally
+   removes them; this is the third thing it supplies that a Tailwind UI assumes
+   without saying so. */
+:where(.lb-w) ol,
+:where(.lb-w) ul,
+:where(.lb-w) menu {
+  list-style: none;
+}
+
+/* ⚠️ NO `img` / `svg` RULE HERE. Preflight sets `max-width:100%; height:auto`
+   on them, and this widget has run without that since the fork — adding it now
+   would resize icons that are currently correct, which is a visual change
+   nobody asked for wearing the costume of a bug fix. */
+
 /* The /newevent composer + boost-existing card use type="search"
    inputs to suppress LastPass / 1Password / Bitwarden autofill —
    password managers explicitly skip search inputs. Browsers add a
@@ -22,12 +139,12 @@ input[type="search"]::-webkit-search-results-decoration {
 @keyframes lb-boost-banner-glow {
   0%, 100% {
     box-shadow:
-      0 8px 30px -4px rgba(247, 147, 26, 0.45),
+      0 8px 30px -4px rgba(0, 175, 240, 0.45),
       0 0 0 1px rgba(255, 255, 255, 0.06);
   }
   50% {
     box-shadow:
-      0 12px 40px -4px rgba(247, 147, 26, 0.85),
+      0 12px 40px -4px rgba(0, 175, 240, 0.85),
       0 0 0 1px rgba(255, 255, 255, 0.12);
   }
 }

@@ -21,8 +21,8 @@ export default function MyEventsCopyList({ pubkey, enabled, onCopy, manageUrl })
   // The JSON upload and naddr-paste imports above still work logged out.
   if (!pubkey) {
     return (
-      <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.7rem', marginTop: '0.2rem' }}>
-        <p style={{ color: 'var(--muted)', fontSize: '0.82rem', fontStyle: 'italic', margin: 0 }}>
+      <div style={{ borderTop: '1px solid var(--border,#cfe2ee)', paddingTop: '0.7rem', marginTop: '0.2rem' }}>
+        <p style={{ color: 'var(--muted,#5a7488)', fontSize: '0.82rem', fontStyle: 'italic', margin: 0 }}>
           Sign in to import from meetups you’ve already published.
         </p>
       </div>
@@ -34,14 +34,14 @@ export default function MyEventsCopyList({ pubkey, enabled, onCopy, manageUrl })
     : null
 
   return (
-    <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.7rem', marginTop: '0.2rem' }}>
+    <div style={{ borderTop: '1px solid var(--border,#cfe2ee)', paddingTop: '0.7rem', marginTop: '0.2rem' }}>
       <div style={{
         display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
         gap: '0.5rem', marginBottom: '0.5rem',
       }}>
         <span style={{
           fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em',
-          color: 'var(--muted)', fontWeight: 600,
+          color: 'var(--muted,#5a7488)', fontWeight: 600,
         }}>
           Import from your meetups
         </span>
@@ -50,7 +50,7 @@ export default function MyEventsCopyList({ pubkey, enabled, onCopy, manageUrl })
             href={manageUrl}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ color: 'var(--orange)', fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}
+            style={{ color: 'var(--orange,#00aff0)', fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}
             onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
             onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
           >
@@ -70,7 +70,7 @@ export default function MyEventsCopyList({ pubkey, enabled, onCopy, manageUrl })
       {error && <div className="lb-error">{error}</div>}
 
       {sorted && sorted.length === 0 && !error && (
-        <p style={{ color: 'var(--muted)', fontSize: '0.82rem', fontStyle: 'italic', margin: 0 }}>
+        <p style={{ color: 'var(--muted,#5a7488)', fontSize: '0.82rem', fontStyle: 'italic', margin: 0 }}>
           No meetups published under your npub yet.
         </p>
       )}

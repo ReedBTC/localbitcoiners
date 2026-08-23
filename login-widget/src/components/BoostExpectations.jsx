@@ -44,18 +44,18 @@ export default function BoostExpectations({
   if (!showSigner && !showWallet) return null
 
   return (
-    <div className="text-[11px] text-neutral-400 leading-snug rounded-md border border-neutral-800 bg-neutral-900/60 px-3 py-2.5 space-y-1.5">
-      <p className="text-[10px] uppercase tracking-wider text-neutral-500">
-        <span className="text-orange-400">This boost has zap splits!</span>
+    <div className="text-[11px] text-[var(--muted,#5a7488)] leading-snug rounded-md border border-[var(--modal-line,#b9d4e6)] bg-[var(--modal-inset,#e6f1f9)] px-3 py-2.5 space-y-1.5">
+      <p className="text-[10px] uppercase tracking-wider text-[var(--muted,#5a7488)]">
+        <span className="text-[var(--brand-d,#068ace)]">This boost has zap splits!</span>
         {' — '}What to expect:
       </p>
       <ul className="space-y-1">
         {showSigner && (
           <li className="flex gap-2">
-            <span className="text-neutral-600 select-none">•</span>
+            <span className="text-[var(--muted,#5a7488)] select-none">•</span>
             <span>
               Your signer will ask to approve{' '}
-              <span className="font-semibold text-neutral-300">
+              <span className="font-semibold text-[var(--ink,#0f2733)]">
                 {signerPromptCount} {signerPromptCount === 1 ? 'receipt' : 'receipts'}
               </span>{' '}
               before the modal closes
@@ -64,10 +64,10 @@ export default function BoostExpectations({
         )}
         {showWallet && (
           <li className="flex gap-2">
-            <span className="text-neutral-600 select-none">•</span>
+            <span className="text-[var(--muted,#5a7488)] select-none">•</span>
             <span>
               Your extension may ask to approve{' '}
-              <span className="font-semibold text-neutral-300">
+              <span className="font-semibold text-[var(--ink,#0f2733)]">
                 {splitsCount === 1
                   ? '1 payment'
                   : `up to ${splitsCount} payments`}

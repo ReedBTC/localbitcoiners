@@ -196,7 +196,7 @@
 // bot reads to decide whether the boost still needs a note published on the
 // donor's behalf, and that decision is worth getting right on the first boost
 // rather than the second.
-const VERSION = 'lb-v62';
+const VERSION = 'lb-v63';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
@@ -299,6 +299,28 @@ function isLiveDataRequest(url) {
   return url.pathname.startsWith('/api/') && url.pathname !== '/api/rss';
 }
 
+// ⚠️ THE MONEY ENDPOINTS GET NO CACHE IN EITHER DIRECTION: network or
+// nothing. They would otherwise land in isLiveDataRequest's network-first
+// bucket, which keeps a copy to serve when the network is down, and for these
+// an offline answer is worse than no answer.
+//
+// /api/value resolves value blocks, and a stale one pays a split the show no
+// longer publishes. /api/lnurl hands back a BOLT11 INVOICE, which is
+// single-use and expires; a cached one offered again is the double-pay shape
+// arriving through the cache instead of a button. /api/boostbox answers with
+// the descriptor URL a podcaster's Helipad reads, so a previous response
+// attaches the wrong message and amount to this leg. /api/keysend answers
+// with the node pubkey an upgraded lnaddress leg is PAID TO, so a stale copy
+// sends the sats to the wrong destination outright. (/api/sign-boost is POST
+// and never reaches this handler.)
+function isUncacheableMoneyRequest(url) {
+  return url.pathname === '/api/value'
+    || url.pathname.startsWith('/api/value/')
+    || url.pathname === '/api/lnurl'
+    || url.pathname === '/api/boostbox'
+    || url.pathname === '/api/keysend';
+}
+
 // Network-first: fresh data normally, cached copy only when the network fails,
 // which keeps the offline/flaky-link resilience the SW exists for. With no
 // cached copy the fetch error propagates, so the page's own catch runs — for
@@ -349,6 +371,9 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
+  // Straight to the network, no cache in either direction.
+  if (isUncacheableMoneyRequest(url)) return;
 
   if (isHTMLRequest(request)) {
     event.respondWith(
