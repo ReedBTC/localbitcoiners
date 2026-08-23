@@ -1058,7 +1058,7 @@ export default function ExternalBoostModal({ user, onClose, onRequestSignIn, onR
                             /* The hover carried the identical fault: it swapped
                                to white on --brand, so the label thinned out at
                                the moment the pointer was on it. */
-                            : 'bg-[var(--brand-tint,rgba(247,147,26,0.14))] border-[rgba(0,175,240,0.45)] text-[var(--brand-dd,#a85500)] hover:bg-[var(--brand-dd,#a85500)] hover:border-[var(--brand-dd,#a85500)] hover:text-white'}`}>
+                            : 'bg-[var(--brand-tint,rgba(247,147,26,0.14))] border-[var(--brand-ring,rgba(247,147,26,0.35))] text-[var(--brand-dd,#a85500)] hover:bg-[var(--brand-dd,#a85500)] hover:border-[var(--brand-dd,#a85500)] hover:text-white'}`}>
                           {n.toLocaleString()}
                         </button>
                       )

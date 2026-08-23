@@ -144,12 +144,12 @@ export default function BoostModal({ user, onClose, prefillMessage = '', authorS
 
           <div className="px-4 sm:px-6 py-5 space-y-4 flex-1 min-h-0 overflow-y-auto">
             {authorSplit && (
-              <p className="text-[11px] text-neutral-400 leading-snug rounded-md border border-neutral-800 bg-neutral-900/60 px-3 py-2.5">
+              <p className="text-[11px] text-[var(--muted,#6b5a3e)] leading-snug rounded-md border border-[var(--modal-line,#d4c4a0)] bg-[var(--modal-inset,#f1e8d2)] px-3 py-2.5">
                 {authorPaid ? (
                   <>
-                    <span className="text-orange-400 font-semibold">34% of this boost</span>{' '}
+                    <span className="text-[var(--brand-d,#d97b0e)] font-semibold">34% of this boost</span>{' '}
                     goes to{' '}
-                    <span className="text-neutral-300 font-semibold">{authorName}</span>, the
+                    <span className="text-[var(--ink,#2d2010)] font-semibold">{authorName}</span>, the
                     author of the article you're featuring. The rest splits between the hosts.
                   </>
                 ) : (
