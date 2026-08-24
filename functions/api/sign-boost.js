@@ -208,7 +208,7 @@ const SHOW_NOTE_HEADLINE = '⚡ New boost on Local Bitcoiners!'
 // The whole line, and the figure read back out of it so text and the `amount`
 // tag can be held equal: a note whose 💰 line and tag disagree means different
 // amounts to a reader and to an indexer, the one thing a boost note cannot do.
-const SHOW_AMOUNT_LINE_RE = /^💰 ([0-9](?:[0-9,]{0,14})) sats 📱 via localbitcoiners\.com$/
+const SHOW_AMOUNT_LINE_RE = /^💰 ([0-9]{1,10}) sats 📱 via localbitcoiners\.com( \(([0-9]{1,10}) sats intended; ([0-9]{1,3}) legs? failed\))?$/
 // `boost_session` is the key the bots collapse a boost's receipt and its note
 // on (uuid4 from payAllLegs#newBoostSession). The others are the claim tags
 // `build_boost_claim_tags` emits plus the NIP-73 pair. No `p`, no `P`.
@@ -407,9 +407,18 @@ export function validateShowBoostTemplate(body) {
   if (lines[0] !== SHOW_NOTE_HEADLINE) throw new Error('not a show boost note')
   const m = SHOW_AMOUNT_LINE_RE.exec(lines[1] || '')
   if (!m) throw new Error('not a show boost note')
-  const lineSats = Number(m[1].replace(/,/g, ''))
+  const lineSats = Number(m[1])
   if (!Number.isInteger(lineSats) || lineSats <= 0 || lineSats * 1000 > MAX_AMOUNT_MSAT) {
     throw new Error('invalid amount')
+  }
+  // The partial parenthetical, when present, must be internally consistent:
+  // the intended figure covers the headline and is itself under the cap.
+  if (m[2]) {
+    const intended = Number(m[3])
+    if (!Number.isInteger(intended) || intended < lineSats || intended * 1000 > MAX_AMOUNT_MSAT) {
+      throw new Error('invalid amount')
+    }
+    if (!(Number(m[4]) > 0)) throw new Error('invalid amount')
   }
   if (!/^👤 \S/.test(lines[2] || '')) throw new Error('not a show boost note')
 

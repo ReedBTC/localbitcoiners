@@ -66,8 +66,12 @@ import {
   confirmInvoiceSettled,
 } from './boostagram.js'
 import { formatEpisodeComment } from './episodeData.js'
-import { shouldPublishMetadata } from './recipientOverrides.js'
+import { shouldPublishMetadata, resolveNodeRecipients } from './recipientOverrides.js'
 import { isCleanPaymentDecline } from './utils.js'
+import { walletCanKeysend, noteKeysendUnsupported } from './keysendLookup.js'
+import { buildBoostagram, toTlvHex, toWeblnRecords, randomPreimageHex } from './externalBoostagram.js'
+import { FEED_GUID } from './boostagram.js'
+import * as nwcLib from './nwc.js'
 
 /**
  * Compute weight-proportional msats for each recipient.
@@ -186,6 +190,88 @@ function buildLegExtraTags({ episodeMeta, boostSession, legIndex, legCount, tota
  * round-trip and the metadata sign: the modal already did both during
  * its presign step. Shape: `{ invoice, signedEvent }`.
  */
+/**
+ * Pay a type=node leg as a real keysend carrying the boostagram in TLV
+ * 7629169 — Helipad's tier one. Mirrors `payKeysendLeg` in externalBoost.js;
+ * restated here because that one is welded to the external modal's ctx shape
+ * and status vocabulary, and this is a money path where an import that almost
+ * fits is worse than twenty explicit lines.
+ *
+ * ⚠️ THE STATUS RULES ARE THE 0b RULES. A preimage is PAID. No preimage with
+ * no throw is UNCERTAIN — we supplied the preimage so it likely settled, but
+ * keysend has no LUD-21 verify URL, so nothing can confirm it and a FAILED
+ * here would invite the double-paying retry. Only a clean decline is FAILED.
+ * A capability error latches `noteKeysendUnsupported`, so the retry this
+ * FAILED leg offers re-enters runLeg with the latch set and takes the
+ * lnaddress fallback instead.
+ *
+ * The payment hash is sha256(preimage), computed up front so the receipt's
+ * per-leg row carries it (an empty payment_hash reads downstream as "wallet
+ * never contacted" — see the boost-receipt forensics convention).
+ */
+const KEYSEND_UNSUPPORTED_RE = /not.?(supported|implemented)|unsupported|unknown.?method|method.?not.?found|NOT_IMPLEMENTED/i
+
+async function payNodeLegViaKeysend({ leg, update, baseResult, wallet, episodeMeta, boostSession, totalMsats, message, wireSenderName, pageUrl }) {
+  const epNum = episodeMeta?.number != null ? String(episodeMeta.number) : ''
+  const boostagram = buildBoostagram({
+    legMsats: leg.msats,
+    totalMsats,
+    message: (message || '').trim(),
+    senderName: wireSenderName || '',
+    showTitle: 'Local Bitcoiners',
+    episodeTitle: episodeMeta?.title || '',
+    podcastGuid: FEED_GUID,
+    itemGuid: episodeMeta?.guid || '',
+    url: epNum ? `https://localbitcoiners.com/ep${epNum.padStart(3, '0')}` : (pageUrl || 'https://localbitcoiners.com'),
+    recipientName: leg.recipient.name || '',
+    boostUuid: boostSession || '',
+  })
+  const preimage = randomPreimageHex()
+  try {
+    const bytes = new Uint8Array(32)
+    for (let i = 0; i < 32; i++) bytes[i] = parseInt(preimage.slice(i * 2, i * 2 + 2), 16)
+    const digest = await crypto.subtle.digest('SHA-256', bytes)
+    const hash = [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('')
+    update({ paymentHash: hash })
+  } catch { /* subtle unavailable — the leg still pays, the row just has no hash */ }
+
+  update({ status: STATUSES.PAYING })
+  try {
+    if (wallet?.kind === 'nwc') {
+      const client = nwcLib.getClient()
+      const res = await client.payKeysend({
+        amount: leg.msats,                 // msats
+        pubkey: leg.recipient.address,     // node pubkey straight from the value block
+        preimage,
+        tlv_records: toTlvHex(boostagram, leg.recipient),
+      })
+      if (res?.preimage) { update({ status: STATUSES.PAID }); return { ...baseResult } }
+      update({ status: STATUSES.UNCERTAIN, error: 'Couldn’t confirm this keysend — check your wallet before retrying.' })
+      return { ...baseResult }
+    }
+    if (typeof window === 'undefined' || typeof window.webln?.keysend !== 'function') {
+      throw new Error('keysend not supported')
+    }
+    const res = await window.webln.keysend({
+      destination: leg.recipient.address,
+      amount: Math.max(1, Math.round(leg.msats / 1000)),   // WebLN takes SATS
+      customRecords: toWeblnRecords(boostagram, leg.recipient),
+    })
+    if (res?.preimage) { update({ status: STATUSES.PAID }); return { ...baseResult } }
+    update({ status: STATUSES.UNCERTAIN, error: 'Couldn’t confirm this keysend — check your wallet before retrying.' })
+    return { ...baseResult }
+  } catch (e) {
+    const msg = String(e?.message || e)
+    if (KEYSEND_UNSUPPORTED_RE.test(msg)) noteKeysendUnsupported()
+    if (isCleanPaymentDecline(msg) || KEYSEND_UNSUPPORTED_RE.test(msg)) {
+      update({ status: STATUSES.FAILED, error: friendlyPayError(msg) || 'This keysend was declined by your wallet.' })
+      return { ...baseResult }
+    }
+    update({ status: STATUSES.UNCERTAIN, error: 'Couldn’t confirm this keysend. Check your wallet before retrying — it may have already gone through.' })
+    return { ...baseResult }
+  }
+}
+
 async function runLeg({
   leg,
   comment,
@@ -199,6 +285,7 @@ async function runLeg({
   burnerSk,
   wallet,        // { kind, payInvoice } — NWC client or WebLN adapter
   message,
+  wireSenderName,
   lnurlCache,
   onStatus,
   prefetched,   // optional { invoice, signedEvent }
@@ -234,6 +321,52 @@ async function runLeg({
       error: leg.recipient.unpayableReason || 'This recipient can\'t be paid from the browser.',
     })
     return { ...baseResult }
+  }
+
+  // ── A type=node recipient: a real keysend, decided at pay time ──────────
+  //
+  // These legs used to be resolved before the form ever rendered: a kind-0
+  // relay lookup mapped the node to a guest's Lightning address or marked the
+  // leg unpayable, which cost 5–10 seconds of "Preparing recipients…" and
+  // then skipped the leg anyway for most wallets. The OnlyBoosts port brought
+  // the whole keysend stack (walletCanKeysend, the TLV boostagram, NWC
+  // pay_keysend / WebLN keysend), so the decision now happens HERE, where the
+  // wallet is finally known:
+  //
+  //   1. Wallet can keysend → pay the node directly, boostagram in TLV
+  //      7629169, which is Helipad's tier one.
+  //   2. It can't → the old guest-lnaddress resolution, for this leg only.
+  //   3. Neither → the leg fails with the old honest message.
+  //
+  // Order matters: the capability answer is cached per session, the kind-0
+  // lookup costs a relay round-trip, and a keysend-capable wallet never pays
+  // that cost.
+  if (leg.recipient?.type === 'node') {
+    let canKeysend = false
+    try { canKeysend = await walletCanKeysend() } catch {}
+    if (canKeysend) {
+      return await payNodeLegViaKeysend({
+        leg, update, baseResult, wallet, episodeMeta, boostSession,
+        totalMsats: amountTotalMsats ?? totalMsats, message, wireSenderName, pageUrl,
+      })
+    }
+    update({ status: STATUSES.RESOLVING })
+    let fallback = null
+    try {
+      const [resolved] = await resolveNodeRecipients([leg.recipient], episodeMeta?.guests || [])
+      if (resolved && !resolved.unpayable && resolved.type === 'lnaddress') fallback = resolved
+    } catch {}
+    if (!fallback) {
+      update({
+        status: STATUSES.FAILED,
+        error: 'Your wallet can\'t send keysend payments, and this recipient has no Lightning address to fall back to — those sats weren\'t sent.',
+      })
+      return { ...baseResult }
+    }
+    // Fall through to the invoice path against the resolved address. The
+    // leg keeps reporting under the recipient the value block published.
+    leg = { ...leg, recipient: fallback }
+    baseResult.recipient = fallback
   }
 
   try {
@@ -623,6 +756,8 @@ export async function payAllLegs({
   onStatus,
   presigned,
   boostSession: reuseSession,   // retry reuses the original boost's session id
+  wireSenderName = '',   // display name for the keysend TLV boostagram (typed name,
+                          // or the signed-in profile's); never an identity claim
 }) {
   // Session precedence: a presigned bundle already carries the session it
   // stamped on its events, so honor that first; otherwise reuse an explicitly
@@ -654,6 +789,7 @@ export async function payAllLegs({
         burnerSk,
         wallet,
         message,
+        wireSenderName,
         lnurlCache,
         onStatus,
         prefetched: presignByAddress[leg.recipient?.address] || null,

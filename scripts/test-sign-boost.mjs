@@ -489,7 +489,7 @@ await ok('the shipped show template validates, and the dispatcher routes it', ()
 await ok('it is the bots\' standalone note, line for line', () => {
   const lines = showTemplate().content.split('\n')
   assert.equal(lines[0], SHOW_NOTE_HEADLINE)
-  assert.equal(lines[1], '💰 3,333 sats 📱 via localbitcoiners.com')
+  assert.equal(lines[1], '💰 3333 sats 📱 via localbitcoiners.com')
   assert.equal(lines[2], '👤 Smoke Tester')
   assert.equal(lines[3], '💬 great episode')
   assert.equal(lines[4], '🎙️ Ep. 024 | Something')
@@ -530,6 +530,18 @@ await ok('the typed name is bounded and cannot break the line structure', () => 
   assert.equal(sanitizeShowSender('\u0000x'), 'x')
   validateShowBoostTemplate(t)
 })
+await ok('a partial boost carries the bots\' parenthetical, and the oracle holds it consistent', () => {
+  const t = showTemplate({ paidSats: 299, intendedSats: 433, legsFailed: 1 })
+  assert.equal(t.content.split('\n')[1], '💰 299 sats 📱 via localbitcoiners.com (433 sats intended; 1 leg failed)')
+  validateShowBoostTemplate(t)
+  const two = showTemplate({ paidSats: 299, intendedSats: 433, legsFailed: 2 })
+  assert.equal(two.content.split('\n')[1].endsWith('2 legs failed)'), true)
+  validateShowBoostTemplate(two)
+})
+showRejects('a parenthetical claiming less than the headline is refused', (() => {
+  const t = showTemplate({ paidSats: 299, intendedSats: 433, legsFailed: 1 })
+  return { ...t, content: t.content.replace('(433 sats intended', '(100 sats intended') }
+})(), /invalid amount/)
 await ok('the oracle signs a show template end to end', async () => {
   const res = await post(showTemplate())
   assert.equal(res.status, 200)

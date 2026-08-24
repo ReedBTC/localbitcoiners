@@ -139,6 +139,12 @@ export default function MultiLegBoostForm({
   // name on it presents as one consistent thing everywhere it lands, and it
   // names the audience rather than a person, so it discloses nothing.
   const senderName = usingProfile ? '' : (nameInput.trim() || DEFAULT_SENDER_NAME)
+  // What a keysend leg's TLV boostagram calls the sender (Helipad's "from"
+  // line): the profile's display name when the profile is in use, else the
+  // typed name / its default. Display only, never an identity claim.
+  const wireSenderName = usingProfile
+    ? (profile?.displayName || profile?.name || '')
+    : senderName
   const noteRoute = privateBoost ? 'none' : usingProfile ? 'donor' : 'bot'
   // Kept for BoostExpectations' copy, which still speaks in these terms.
   const shareToFeed = noteRoute !== 'none'
@@ -321,12 +327,21 @@ export default function MultiLegBoostForm({
     // and the note id, which is what stops the bots claiming the same boost.
     const signNoteAfterSettle = (includeShare && noteRoute === 'bot')
       ? async (result) => {
-          const paidMsats = (result?.legs || [])
-            .filter(l => l?.status === 'paid')
+          // The headline is the sats that LANDED: paid plus uncertain, the
+          // same credit-uncertain-as-paid policy the receipts and the bots
+          // apply. legsFailed is confirmed-failed only — an uncertain leg may
+          // yet settle, and the note must never claim a failure it can't
+          // prove.
+          const legs = result?.legs || []
+          const landedMsats = legs
+            .filter(l => l?.status === 'paid' || l?.status === 'uncertain')
             .reduce((n, l) => n + (Number(l.msats) || 0), 0)
-          const paidSats = Math.max(1, Math.round(paidMsats / 1000))
+          const paidSats = Math.max(1, Math.round(landedMsats / 1000))
+          const legsFailed = legs.filter(l => l?.status === 'failed').length
           const template = buildShowSiteNoteTemplate({
             paidSats,
+            intendedSats: totalSats,
+            legsFailed,
             message: trimmedMessage,
             senderName,
             episode: episodeMeta,
@@ -351,6 +366,7 @@ export default function MultiLegBoostForm({
       signNoteAfterSettle,
       shareStatus,
       senderName,
+      wireSenderName,
       onStatus: handleLegStatus,
       clientInfo: {
         walletProvider: detectWalletProvider({ kind: walletStatus.kind, alias: walletStatus.alias }),
@@ -538,6 +554,7 @@ export default function MultiLegBoostForm({
       presigned,
       signedKindOne: null,
       senderName,
+      wireSenderName,
       onStatus,
       clientInfo: {
         walletProvider: detectWalletProvider({ kind: walletStatus.kind, alias: walletStatus.alias }),

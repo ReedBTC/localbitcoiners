@@ -886,7 +886,10 @@ export const SHOW_NOTE_HEADLINE = '⚡ New boost on Local Bitcoiners!'
 export const SHOW_NOTE_MAX_MESSAGE = 1500
 
 export function buildShowSiteNoteTemplate({
-  paidSats,
+  paidSats,       // the headline figure: sats that LANDED (paid + uncertain,
+                  // the bots' credit-uncertain-as-paid policy)
+  intendedSats,   // the donor's full boost; only read when legsFailed > 0
+  legsFailed,     // CONFIRMED-failed legs only, matching the receipt's count
   message,
   senderName,     // typed name, or '' → the form's DEFAULT_SENDER_NAME
   episode,        // { number, title, guid?, fountainUrl? } — same as the donor template
@@ -894,6 +897,8 @@ export function buildShowSiteNoteTemplate({
   boostSession,
 }) {
   const sats = Math.max(0, Math.round(Number(paidSats) || 0))
+  const intended = Math.max(sats, Math.round(Number(intendedSats) || 0))
+  const failed = Math.max(0, Math.round(Number(legsFailed) || 0))
   const rawTitle = (episode?.title || '').trim()
   const title = rawTitle.length > MAX_TITLE_LEN
     ? rawTitle.slice(0, MAX_TITLE_LEN - 1) + '…'
@@ -903,9 +908,17 @@ export function buildShowSiteNoteTemplate({
   const epNum = episode?.number != null ? String(episode.number) : ''
   const episodeUrl = epNum ? `${SITE_URL}/ep${epNum.padStart(3, '0')}` : pageUrl
 
+  // ⚠️ PLAIN INTEGERS, NO COMMA GROUPING — the bots' f-string does none, and
+  // this note must be indistinguishable from one the bot would have written.
+  // The parenthetical is the bots' own partial-website-boost annotation,
+  // rendered exactly (boost_formatter.py#format_note_from_info).
+  let amountLine = `💰 ${sats} sats 📱 via localbitcoiners.com`
+  if (failed > 0) {
+    amountLine += ` (${intended} sats intended; ${failed} ${failed === 1 ? 'leg' : 'legs'} failed)`
+  }
   const lines = [
     SHOW_NOTE_HEADLINE,
-    `💰 ${sats.toLocaleString('en-US')} sats 📱 via localbitcoiners.com`,
+    amountLine,
     `👤 ${from}`,
   ]
   if (msg) lines.push(`💬 ${msg}`)

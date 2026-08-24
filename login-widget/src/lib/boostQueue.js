@@ -158,6 +158,7 @@ export function submitBoost({
                     // 'declined' | 'unavailable' | 'anon' | 'failed'. Overwritten
                     // with the real result whenever a signed note exists.
   senderName = '',  // typed display name for the receipt when no npub rides it
+  wireSenderName = '', // display name for a keysend leg's TLV boostagram
   onStatus,         // optional (legIndex, legState) — live per-leg progress
   clientInfo,       // optional { walletProvider, browser } for the receipt
 }) {
@@ -226,6 +227,7 @@ export function submitBoost({
         presigned,
         onStatus,
         boostSession,
+        wireSenderName,
       })
     } catch (e) {
       // payAllLegs is documented as never-throws; this is belt-and-
