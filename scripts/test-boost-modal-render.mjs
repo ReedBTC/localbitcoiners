@@ -457,8 +457,15 @@ console.log('\nThe themed classes emit real CSS:')
   assert.match(form, /buildShowSiteNoteTemplate/, 'the site-signed route does not use the show template')
   assert.match(form, /signNoteAfterSettle/, 'the site-signed note is not deferred to settlement')
   assert.match(form, /onRequestWallet\?\.\(\)/, 'the form never asks for a wallet')
-  assert.match(form, /Private Boost/, 'the Private Boost control is missing')
+  // ⚠️ Reed's call, 2026-08-24: the SHOW form has no no-note control at all
+  // (the boost publisher posts every boost anyway, so offering privacy here
+  // would be a false promise); the community-feed modal keeps its control,
+  // renamed to say exactly what it does.
+  assert.equal(/Private Boost|privateBoost|Do not share/.test(form), false, 'the show form grew a no-note control')
   assert.equal(/Share to my feed/.test(form), false, 'the old opt-in share checkbox is still there')
+  const ext = readFileSync(new URL('../login-widget/src/components/ExternalBoostModal.jsx', import.meta.url), 'utf8')
+  assert.match(ext, /Do not share on nostr/, 'the community-feed control lost its label')
+  assert.equal(/Private Boost</.test(ext), false, 'the community-feed control still says Private Boost')
   assert.equal(/walletGone/.test(form), false, 'the "wallet not connected" dead-end screen is back')
   // A retry never re-signs a note: the parent boost already (maybe) posted one.
   const retry = /async function handleRetryLeg[\s\S]*?\n  \}\n/.exec(form)

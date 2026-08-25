@@ -121,10 +121,16 @@ export default function MultiLegBoostForm({
    * `usingProfile` is the one question both derivations hang off, and the two
    * ways it can be false (pressed Anon, or signed out) behave identically.
    *
-   *   | Boost as   | Private box | Who signs the note                         |
-   *   | Yourself   | unchecked   | the donor's npub, pre-signed at the press  |
-   *   | Anon/out   | unchecked   | the show key, after the legs settle        |
-   *   | either     | checked     | nobody                                     |
+   * ⚠️ THERE IS NO "no note" OUTCOME ON THIS FORM, DELIBERATELY, and that is
+   * where it departs from the community-feed modal. Reed's call, 2026-08-24:
+   * every boost the show receives is published by the boost publisher anyway
+   * (the bots claim any boost no note covers), so a checkbox here would
+   * promise a privacy the pipeline does not provide. The community-feed modal
+   * keeps its opt-out control because those boosts are not ours to publish.
+   *
+   *   | Boost as   | Who signs the note                            |
+   *   | Yourself   | the donor's own npub, pre-signed at the press |
+   *   | Anon/out   | the show key, after the legs settle           |
    *
    * Two derivations stand beside each other and neither may absorb the other:
    * `senderNpub` is the BOOSTAGRAM's answer (the 30078 `sender`, the bots'
@@ -132,7 +138,6 @@ export default function MultiLegBoostForm({
    */
   const signedIn = !!donorNpub
   const usingProfile = signedIn && !anonymous
-  const [privateBoost, setPrivateBoost] = useState(false)
   const [nameInput, setNameInput] = useState('')
   // ⚠️ A BLANK "From" IS REPLACED, NOT OMITTED. It fills the receipt's
   // sender_name and the site-signed note's 👤 line, so a boost with nobody's
@@ -145,9 +150,9 @@ export default function MultiLegBoostForm({
   const wireSenderName = usingProfile
     ? (profile?.displayName || profile?.name || '')
     : senderName
-  const noteRoute = privateBoost ? 'none' : usingProfile ? 'donor' : 'bot'
+  const noteRoute = usingProfile ? 'donor' : 'bot'
   // Kept for BoostExpectations' copy, which still speaks in these terms.
-  const shareToFeed = noteRoute !== 'none'
+  const shareToFeed = true
   const canShareToFeed = true
 
   /**
@@ -251,7 +256,6 @@ export default function MultiLegBoostForm({
     // .decide), so 'declined' on a private boost is what lets the bot's own
     // note claim the boost, and 'failed' on a site-sign failure does the same.
     const shareStatus = !includeShare ? ''
-      : noteRoute === 'none' ? 'declined'
       : noteRoute === 'bot' ? 'failed'      // replaced by 'published' on success
       : 'unavailable'   // donor route; survives only a signer failure
 
@@ -750,26 +754,6 @@ export default function MultiLegBoostForm({
         />
       </div>
 
-      {/* ⚠️ THE CHECKBOX SUPPRESSES THE NOTE AND NOTHING ELSE, so its label
-          carries its own scope: the sats and the message still cross
-          Lightning to the show, which is the half the word "private" does not
-          cover. Leaving it unchecked IS the opt-in; nothing asks again after
-          the payment. */}
-      <label className="flex items-start gap-2 cursor-pointer select-none">
-        <input
-          type="checkbox"
-          checked={privateBoost}
-          onChange={e => setPrivateBoost(e.target.checked)}
-          className="mt-0.5 w-3.5 h-3.5 shrink-0 accent-[var(--brand,#f7931a)]"
-        />
-        <span className="min-w-0">
-          <span className="block text-xs font-medium text-[var(--ink,#2d2010)] leading-snug">Private Boost</span>
-          {/* One line, and no explanation of the unticked case: the default IS
-              the unticked case, so describing it would be explaining the
-              absence of a choice. */}
-          <span className="block text-[10px] text-[var(--muted,#6b5a3e)] leading-snug mt-0.5">Do not share to nostr.</span>
-        </span>
-      </label>
 
       <BoostExpectations
         walletKind={walletStatus.kind}

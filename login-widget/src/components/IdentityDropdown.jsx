@@ -107,15 +107,16 @@ export default function IdentityDropdown({
         <div className="px-4 py-3 border-b border-[var(--modal-line,#d4c4a0)]">
           <p className="font-semibold text-[var(--ink,#2d2010)]">Not logged in</p>
           {/* ⚠️ THIS SAID "none of them post to Nostr" AND PHASE 2 MADE THAT
-              FALSE. A signed-out boost with the Private Boost box left
-              unchecked is published under the show's own account —
+              FALSE. A signed-out boost is published under the show's own
+              account (community-feed boosts can opt out; show boosts are
+              always published, per the boost publisher) —
               that is the whole point, since an anonymous booster still counts
               in the feeds and the totals. The old line told a visitor their
               boost left no public record, which is the one claim about their
               own data they must not be misled on. */}
           <p className="text-[11px] text-[var(--muted,#6b5a3e)] leading-snug mt-0.5">
-            Boosts you send carry no account. Local Bitcoiners posts them for you
-            unless you mark one private.
+            Boosts you send carry no account. Local Bitcoiners posts them for
+            you, unless you choose not to share one.
           </p>
         </div>
       ) : (

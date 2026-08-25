@@ -1173,11 +1173,12 @@ export default function ExternalBoostModal({ user, onClose, onRequestSignIn, onR
                     onChange={(e) => setNoNote(e.target.checked)}
                     className="mt-0.5 w-3.5 h-3.5 shrink-0 accent-[var(--brand,#f7931a)]" />
                   <span className="min-w-0">
-                    <span className="block text-xs font-medium text-[var(--ink,#2d2010)] leading-snug">Private Boost</span>
-                    {/* One line, and no explanation of the unticked case.
-                        The default IS the unticked case, so describing it here
-                        was explaining the absence of a choice. */}
-                    <span className="block text-[10px] text-[var(--muted,#6b5a3e)] leading-snug mt-0.5">Do not share to nostr.</span>
+                    {/* Renamed from "Private Boost" on Reed's call, 2026-08-24:
+                        the sats and the message still cross Lightning to the
+                        show, so "private" promised more than the checkbox
+                        delivers. The label now states exactly its scope, and
+                        the old subline is the label. */}
+                    <span className="block text-xs font-medium text-[var(--ink,#2d2010)] leading-snug">Do not share on nostr</span>
                   </span>
                 </label>
 

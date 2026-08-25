@@ -6,7 +6,7 @@
  * they need to know that logging in fills their details in. The word is **Log
  * in**, the mark is the site's own favicon, and the machinery behind it is the
  * Nostr login modal exactly as before. Same rule as the "Your name" field and
- * the "Private Boost" checkbox: no nsec, no npub, no relays, no keys.
+ * the no-note checkbox: no nsec, no npub, no relays, no keys.
  *
  * ⚠️ TWO SKINS, ONE CONTROL, AND THEY MUST STAY RECOGNISABLY THE SAME BUTTON.
  * A visitor meets it in the nav and then again inside the boost modal, and if

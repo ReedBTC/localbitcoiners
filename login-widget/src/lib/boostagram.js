@@ -856,8 +856,7 @@ const MAX_FOUNTAIN_URL_LEN = 256
  */
 /**
  * The kind 1 a boost gets when THE SHOW signs it: a signed-out booster, or a
- * signed-in one who pressed Anon, left Private Boost unchecked, and so asked
- * the site to post for them. Signed by `/api/sign-boost` under the show key
+ * signed-in one who pressed Anon, and so asked the site to post for them. Signed by `/api/sign-boost` under the show key
  * (not a bot npub; Reed's call 2026-08-23) and published from the browser.
  *
  * ⚠️ THIS IS THE BOTS' STANDALONE NOTE, LINE FOR LINE. The show npub already
