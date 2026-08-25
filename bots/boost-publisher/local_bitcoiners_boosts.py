@@ -10,14 +10,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "shared"))
 from nostr_utils import (
     load_config, publish_to_nostr, build_zap_splits_for_note,
     write_dry_run_event, follow_all, with_header_image, STANDALONE_BOOST_IMAGE,
-    npub_to_hex, BOOST_SCAN_RELAYS,
+    npub_to_hex, nsec_to_pubkey_hex, BOOST_SCAN_RELAYS, NOSTR_RELAYS,
 )
 from collector_common import query_relay
 from boost_formatter import (
     build_note_from_tx, load_published_events, save_published_events,
     record_published_event, record_reply_event, make_cache, is_dry_run,
     persist_cache, build_podcast_guid_tags, build_boost_claim_tags,
-    resolve_item_guid, build_rss_item_index,
+    resolve_item_guid, build_rss_item_index, fetch_event_author,
 )
 import lnbits_source
 import boost_wall
@@ -137,6 +137,7 @@ def main():
     config            = load_config(CREDENTIALS_FILE)
     last_seen         = load_last_seen()
     nsec              = config.get("NSEC_LOCAL_BITCOINERS")
+    show_pubkey       = nsec_to_pubkey_hex(nsec) if nsec else None
     boost_board       = config.get("LOCAL_BITCOINERS_BOOST_BOARD")
     published_events  = load_published_events()
     cache             = make_cache()
@@ -298,6 +299,52 @@ def main():
                       f"Holding this boost and the rest of this batch for the next poll.")
                 break
 
+        # ob-boost-flow (2026-08-25): the website can now sign the donor's
+        # share note WITH THE SHOW KEY ITSELF (/api/sign-boost) — same text and
+        # tags as our standalone note, published by the donor's browser minutes
+        # before we poll. Publishing our own standalone next to it would put
+        # the same boost on the show npub twice (~3 min apart — the exact
+        # duplicate pairs seen 2026-08-24/25). The receipt's
+        # share_status=published can't distinguish that from a donor-signed
+        # note (the pre-existing flow, where our untagged standalone should
+        # still publish), so resolve the share note's AUTHOR on the relays.
+        site_signed_note_id = None
+        if ((info.get("share_status") or "").strip().lower() == "published"
+                and info.get("share_note_id") and show_pubkey):
+            author = fetch_event_author(info["share_note_id"], NOSTR_RELAYS, cache=cache)
+            if author == show_pubkey:
+                site_signed_note_id = info["share_note_id"]
+                print(f"  [site-signed] share note {site_signed_note_id[:12]}... was "
+                      f"signed by the show key — it IS the standalone; ours is skipped")
+            elif author is None:
+                # No relay returned the note. Almost always propagation lag or
+                # a relay flap, so defer (break — last_seen is a single
+                # high-water mark, see the defers above) and retry next poll.
+                # Bounded at 1h: past that, treat the receipt's word as good
+                # enough and skip our standalone anyway — a possible duplicate
+                # from the show npub is irreversible, while a skipped untagged
+                # standalone still leaves the boost fully represented (donor's
+                # note + our board reply + the wall).
+                settled_iso = tx.get("settledAt", "") or ""
+                try:
+                    age_sec = (datetime.now(timezone.utc)
+                               - datetime.fromisoformat(settled_iso.replace("Z", "+00:00"))
+                              ).total_seconds()
+                except Exception:
+                    age_sec = 99999999
+                if age_sec < 3600:
+                    ph = info.get("payment_hash", "")
+                    print(f"[defer] website boost {ph[:12]}... — receipt says a share "
+                          f"note was published ({info['share_note_id'][:12]}...) but no "
+                          f"relay returns it yet ({int(age_sec)}s old); can't tell if "
+                          f"it's site-signed. Holding this boost and the rest of this "
+                          f"batch for the next poll.")
+                    break
+                site_signed_note_id = info["share_note_id"]
+                print(f"  [warn] share note {info['share_note_id'][:12]}... unfetchable "
+                      f"for over an hour — trusting the receipt and skipping our "
+                      f"standalone (reply still publishes) to rule out a show-npub duplicate")
+
         # Claim decision. "skip" → publish the note exactly as we always have.
         # "claim" → add the payment-evidence tags to the STANDALONE note only.
         # "hold" → publish nothing yet; the donor's own note may still land.
@@ -334,7 +381,27 @@ def main():
             print("  [website-dry-run gate active — this note will not publish]")
         print()
 
-        if nsec and not effective_dryrun:
+        if nsec and not effective_dryrun and site_signed_note_id:
+            # The site-signed note IS this boost's standalone — same text,
+            # same guid/claim tags, same author — so record it under the
+            # payment hash (the dedupe gate + what topboosts embeds) and
+            # publish only the board reply, which the site's flow doesn't post.
+            standalone_id = site_signed_note_id
+            record_published_event(published_events, payment_hash, standalone_id, settled_at)
+            save_published_events(published_events)
+
+            if boost_board:
+                print("  Publishing reply to boost board (standalone is the site-signed note)...")
+                zap_tags = build_zap_splits_for_note(note, nsec)
+                reply_ev = publish_to_nostr(note, nsec, reply_to_event_id=boost_board,
+                                            extra_tags=zap_tags, return_event=True)
+                if reply_ev:
+                    record_reply_event(published_events, payment_hash, reply_ev["id"])
+                    save_published_events(published_events)
+                    boost_wall.upsert(wall, boost_wall.build_record(
+                        reply_ev, info=info, standalone_id=standalone_id))
+                    wall_dirty = True
+        elif nsec and not effective_dryrun:
             print("  Building zap splits...")
             zap_tags = build_zap_splits_for_note(note, nsec)
             if zap_tags:
@@ -387,14 +454,19 @@ def main():
         elif effective_dryrun and nsec:
             print("  Building zap splits...")
             zap_tags = build_zap_splits_for_note(note, nsec)
-            all_tags = (zap_tags
-                        + build_podcast_guid_tags(info, cache if CLAIM_BOOST_TAGS else None)
-                        + claim_tags(decision, why, info, cache))
             suffix   = payment_hash[:12] or None
-            path, standalone_id = write_dry_run_event(
-                with_header_image(note, STANDALONE_BOOST_IMAGE), nsec, prefix="boosts", extra_tags=all_tags, suffix=suffix,
-            )
-            print(f"  [dry-run] standalone → {path}")
+            if site_signed_note_id:
+                standalone_id = site_signed_note_id
+                print(f"  [dry-run] standalone skipped — site-signed note "
+                      f"{site_signed_note_id[:12]}... already is the standalone")
+            else:
+                all_tags = (zap_tags
+                            + build_podcast_guid_tags(info, cache if CLAIM_BOOST_TAGS else None)
+                            + claim_tags(decision, why, info, cache))
+                path, standalone_id = write_dry_run_event(
+                    with_header_image(note, STANDALONE_BOOST_IMAGE), nsec, prefix="boosts", extra_tags=all_tags, suffix=suffix,
+                )
+                print(f"  [dry-run] standalone → {path}")
             # Deliberately NOT recording standalone_id to published_events in
             # dry-run: the preview id wouldn't exist on real relays, and
             # persisting it would corrupt future production runs.

@@ -143,6 +143,12 @@ def hex_to_npub(hex_pubkey):
     converted = bech32.convertbits(data, 8, 5)
     return bech32.bech32_encode('npub', converted)
 
+def nsec_to_pubkey_hex(nsec):
+    """Hex pubkey for the account an nsec signs as — i.e. "who am I on Nostr",
+    derived rather than hardcoded so it can never drift from the key in
+    credentials.env."""
+    return PrivateKey.from_nsec(nsec).public_key.hex()
+
 def npub_to_hex(npub):
     """Convert npub bech32 to hex pubkey. Returns None if `npub` isn't one.
 

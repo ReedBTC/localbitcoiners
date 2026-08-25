@@ -647,6 +647,7 @@ def make_cache():
         "guid_to_fountain":      None,  # item_guid   -> {fountain_id, guests} (RSS index, lazy)
         "kind_30078":            {},    # payment_hash -> kind 30078 event dict (or None)
         "kind_30078_by_d":       {},    # d-tag value -> list of ALL kind 30078 events sharing that #d
+        "event_author":          {},    # event id -> author pubkey hex (or None if unfetchable)
         "title_cache":           {},    # episode_id  -> (title, guests) for Fountain pages
         "episode_id_map":        None,  # zero-padded ep number -> fountain_id (lazy disk-backed)
         "episode_id_map_dirty":  False,
@@ -767,6 +768,45 @@ def fetch_all_kind_30078(d_value, relays=None, cache=None):
         cache["kind_30078_by_d"][d_value] = events
     return events
 
+def fetch_event_author(event_id, relays, cache=None):
+    """Author pubkey (hex) of a Nostr event, looked up by id across `relays`.
+    Returns None when no relay in the set returns the event — the caller
+    decides whether that means retry or degrade.
+
+    Built for the ob-boost-flow site-signed share notes (2026-08-24): a
+    boost_receipt's share_status=published can't say WHO signed the share note
+    (the site's own show key vs the donor's), and the publisher must not post
+    its standalone next to a show-key note, so it checks the note's author
+    here. Cached by event id, negatives included — within one run a re-query
+    seconds later would answer the same.
+    """
+    if not event_id:
+        return None
+    if cache is not None and event_id in cache["event_author"]:
+        return cache["event_author"][event_id]
+    author = None
+    for relay in relays:
+        try:
+            ws = websocket.create_connection(relay, timeout=10)
+            ws.send(json.dumps(["REQ", "evauthor", {"ids": [event_id]}]))
+            while True:
+                msg = json.loads(ws.recv())
+                if msg[0] == "EVENT":
+                    author = msg[2].get("pubkey") or None
+                    ws.close()
+                    break
+                elif msg[0] in ("EOSE", "CLOSED", "NOTICE"):
+                    ws.close()
+                    break
+        except Exception as e:
+            print(f"  [warn] relay query failed {relay}: {e}")
+        if author:
+            break
+    if cache is not None:
+        cache["event_author"][event_id] = author
+    return author
+
+
 def _receipt_share_info(receipts):
     """What the login widget did with the donor's own kind-1 boost note.
 
@@ -776,22 +816,30 @@ def _receipt_share_info(receipts):
     `share_note` carries the note's event id whenever one was signed.
 
     Only "published" means a donor note exists. A receipt that predates these
-    tags returns (None, None), which sends the boost down the OnlyBoosts
+    tags returns (None, None, None), which sends the boost down the OnlyBoosts
     lookup path instead — so shipping this ahead of the widget change is a
     no-op, not a wrong answer.
 
+    `sender_name` (added with the ob-boost-flow site-signed notes, 2026-08-24)
+    is the donor's typed display name, ≤40 chars — the widget stamps
+    "A Local Bitcoiner" when left blank and an empty tag when `sender` carries
+    an npub, so a non-empty value is exactly what the site's own note displays.
+
     Retries emit one receipt per round under the same boost_session; take the
-    newest receipt that carries a status, since a later round can only know
+    newest receipt that carries each tag, since a later round can only know
     more about the share than an earlier one did.
     """
-    status = note_id = None
+    status = note_id = sender_name = None
     for r in sorted(receipts, key=lambda e: e.get("created_at", 0), reverse=True):
         tags = {t[0]: t[1] for t in r.get("tags", []) if len(t) >= 2}
         if not status and (tags.get("share_status") or "").strip():
             status  = tags["share_status"].strip()
             note_id = (tags.get("share_note") or "").strip() or None
+        if not sender_name and (tags.get("sender_name") or "").strip():
+            sender_name = tags["sender_name"].strip()
+        if status and sender_name:
             break
-    return status, note_id
+    return status, note_id, sender_name
 
 
 def _merge_receipt_outcomes(receipts, our_payment_hash):
@@ -1384,7 +1432,7 @@ def _classify_website(tx, ep_num_padded, payment_hash, settled_at, our_msats, ca
     receipts = fetch_all_kind_30078(boost_session, cache=cache) if boost_session else []
     (r_intended_msats, r_paid_msats, r_uncertain_msats,
      r_legs_failed, r_sender) = _merge_receipt_outcomes(receipts, payment_hash)
-    share_status, share_note_id = _receipt_share_info(receipts)
+    share_status, share_note_id, receipt_sender_name = _receipt_share_info(receipts)
 
     # Recover attribution for an anon (burner-signed) leg from the boost
     # receipt's claimed sender npub. When a donor's signer is unavailable (e.g.
@@ -1402,6 +1450,13 @@ def _classify_website(tx, ep_num_padded, payment_hash, settled_at, our_msats, ca
         print(f"  [info] website boost {payment_hash[:12]}... — anon leg; "
               f"attributed to receipt's claimed sender {r_sender[:20]}...")
 
+    # Display name for boosts with no npub, from the receipt's sender_name tag
+    # ("A Local Bitcoiner" when the donor typed nothing). Gated on no npub to
+    # keep the sats.csv convention that sender_npub and sender_name are
+    # mutually exclusive; _sender_display prefers the npub anyway. Receipts
+    # predating the tag leave this None → _sender_display's "Anon" fallback.
+    sender_name = receipt_sender_name if not sender_npub else None
+
     # ── Show-level branch ──
     if ep_num_padded is None:
         rss_intended, rss_frac = _website_intended_from_rss(
@@ -1413,6 +1468,7 @@ def _classify_website(tx, ep_num_padded, payment_hash, settled_at, our_msats, ca
         info = _new_info("website", payment_hash, settled_at, our_msats, total_msats, divisor)
         info.update({
             "sender_npub":   sender_npub,
+            "sender_name":   sender_name,
             "message":       event.get("content", "") or "",
             "episode_id":    LB_SHOW_ID,
             "episode_title": LB_SHOW_TITLE,
@@ -1476,6 +1532,7 @@ def _classify_website(tx, ep_num_padded, payment_hash, settled_at, our_msats, ca
     info = _new_info("website", payment_hash, settled_at, our_msats, total_msats, divisor)
     info.update({
         "sender_npub":    sender_npub,
+        "sender_name":    sender_name,
         "message":        event.get("content", "") or "",
         "episode_id":     episode_id,
         "episode_title":  episode_title,
