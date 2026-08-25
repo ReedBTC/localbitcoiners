@@ -31,6 +31,37 @@ Watch the subtle invariants that aren't always visible from the code
 wrong publish can't be undone, so when a code change feeds the publish
 path, double-check those before you let it run.
 
+## The login/boost widget (post-OnlyBoosts-port, lb-v70)
+
+The boost flow was ported back from the OnlyBoosts fork in 2026-08 (merge
+`f7ea1e3`). Four invariants fail silently if missed:
+
+- **Every widget change ends the same way**: `cd login-widget && npm run build`
+  (three vite targets, including the edge signer
+  `functions/_shared/nostr-sign.js`), bump `VERSION` in `sw.js`, commit the
+  rebuilt bundle, then run the four test scripts from the repo root:
+  `node scripts/test-sign-boost.mjs`, `test-boost-modal-render.mjs`,
+  `test-keysend-upgrade.mjs`, `test-boostbox.mjs`. They prove shapes, not
+  rendering — after a structural change, open a modal in a browser.
+- **`assets/css/theme.css` and the widget's `var()` fallbacks are mirrors.**
+  Every `var()` in `login-widget/src` carries a literal fallback equal to its
+  token (a stale cached theme.css against a fresh bundle otherwise renders the
+  modal transparent). `test-boost-modal-render.mjs` fails on drift; edit the
+  token and re-mirror the fallbacks in one commit.
+- **`functions/api/sign-boost.js` signs with the SHOW KEY** (`LB_SIGN_NSEC`
+  secret + `SIGN_RATELIMIT` KV, set on Preview and Production). Its validators
+  restate constants from the widget builders (banner URLs, feed guid, the
+  amount cap) — change both sides in one commit; `test-sign-boost.mjs` feeds
+  the validators from the shipped builders and fails on drift. If a builder
+  emits a new tag, add it to that family's allowlist in the same change.
+- **The site-signed show note must stay byte-identical to the bots' standalone
+  note** (`bots/shared/boost_formatter.py#format_note_from_info` +
+  `build_boost_claim_tags`): the bots skip their own standalone when the
+  receipt's `share_note` author is the show pubkey, precisely because the
+  site's note is theirs. Change the bot's note format and
+  `buildShowSiteNoteTemplate` in `login-widget/src/lib/boostagram.js`
+  together, or the texts drift apart on the show's own profile.
+
 ## Bot infrastructure documentation
 
 The detailed bot infrastructure notes live in `bots/CLAUDE.md` (gitignored,
