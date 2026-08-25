@@ -32,6 +32,13 @@ import { withTimeout, scrubSecrets } from './utils.js'
 let activeClient = null
 let activeOwnerNpub = null
 let activeWalletAlias = null  // optional, from getInfo()
+// True when this URI was pasted by a visitor with no Nostr identity.
+// ⚠️ Nothing was written to localStorage and nothing may be: the URI is a
+// bearer credential with a spend budget, and the at-rest scheme encrypts
+// it to the user's OWN signer. With no signer there is nothing to encrypt
+// to, so the honest answer is a wallet that lasts one page. Never "fix"
+// this by writing the raw URI to storage.
+let activeSessionOnly = false
 
 const listeners = new Set()
 function notify() {
@@ -48,14 +55,20 @@ export function onChange(fn) {
 }
 
 /**
- * Snapshot of NWC state. Three shapes:
+ * Snapshot of NWC state. Four shapes:
  *   { connected: false, hasStoredBlob: false }                          // never connected
  *   { connected: false, hasStoredBlob: true, ownerNpub }                // blob exists but not unlocked yet
  *   { connected: true, ownerNpub, alias? }                              // ready to pay
+ *   { connected: true, ownerNpub: null, sessionOnly: true, alias? }     // pasted with no login; dies with the page
  */
 export function getStatus() {
-  if (activeClient && activeOwnerNpub) {
-    return { connected: true, ownerNpub: activeOwnerNpub, alias: activeWalletAlias || null }
+  if (activeClient) {
+    return {
+      connected: true,
+      ownerNpub: activeOwnerNpub,
+      alias: activeWalletAlias || null,
+      sessionOnly: activeSessionOnly,
+    }
   }
   const blob = loadEncrypted()
   if (!blob) return { connected: false, hasStoredBlob: false }
@@ -65,7 +78,19 @@ export function getStatus() {
 /** Quick sync check used by the boost button to decide whether to
  *  show "boost" vs "connect wallet first". */
 export function isReady() {
-  return !!(activeClient && activeOwnerNpub)
+  // Deliberately not `activeClient && activeOwnerNpub`: a session-only
+  // connection has no owner npub and is every bit as able to pay.
+  return !!activeClient
+}
+
+// Close whatever client is live before another replaces it. Connecting
+// over a live connection is a real path now — a session wallet being
+// re-pasted so it can be saved to the account that has since signed in —
+// and the previous client holds an open relay socket.
+function closeActive() {
+  if (!activeClient) return
+  try { activeClient.close() } catch {}
+  activeClient = null
 }
 
 /** The unwrapped client. Throws if not unlocked — call ensureReady() first. */
@@ -113,18 +138,30 @@ async function probe(nwcUri) {
  *   2. Encrypt it to the current logged-in user via the NDK signer.
  *   3. Persist the ciphertext + activate the in-memory client.
  *
- * Throws if no Nostr session is active (NWC requires a signer to
- * encrypt to). Throws if the URI is malformed or unreachable.
+ * With no logged-in user, steps 2 and 3 are skipped and the connection
+ * is session-only (see activeSessionOnly above). Throws if the URI is
+ * malformed or unreachable.
  */
 export async function connect(nwcUri, currentUser) {
-  if (!currentUser?.pubkey) {
-    throw new Error('Sign in with Nostr first — your wallet connection is encrypted with your account.')
-  }
   if (typeof nwcUri !== 'string' || !nwcUri.startsWith('nostr+walletconnect://')) {
     throw new Error('That doesn\'t look like a NWC connection string. It should start with nostr+walletconnect://')
   }
 
   const { client, alias } = await probe(nwcUri)
+
+  // Session-only path: no Nostr identity, so no signer, so nothing to
+  // encrypt the URI to. The client is live for this page and the URI
+  // never reaches storage. The user is told as much in the connect modal
+  // — a wallet that silently vanished on reload would read as a bug.
+  if (!currentUser?.pubkey) {
+    closeActive()
+    activeClient = client
+    activeOwnerNpub = null
+    activeWalletAlias = alias
+    activeSessionOnly = true
+    notify()
+    return { alias, sessionOnly: true }
+  }
 
   const ndk = getNDK()
   if (!ndk?.signer) {
@@ -157,11 +194,13 @@ export async function connect(nwcUri, currentUser) {
   const ownerNpub = currentUser.npub || nip19.npubEncode(currentUser.pubkey)
   saveEncrypted({ ciphertext, ownerNpub })
 
+  closeActive()
   activeClient = client
   activeOwnerNpub = ownerNpub
   activeWalletAlias = alias
+  activeSessionOnly = false
   notify()
-  return { alias }
+  return { alias, sessionOnly: false }
 }
 
 /**
@@ -241,6 +280,7 @@ export async function ensureReady(currentUser) {
 
   activeClient = client
   activeOwnerNpub = currentNpub
+  activeSessionOnly = false
   // Best-effort alias refresh.
   try {
     const info = await withTimeout(client.getInfo(), 5000, 'info-timeout')
@@ -253,15 +293,23 @@ export async function ensureReady(currentUser) {
   return true
 }
 
-/** Tear down the live client and clear the at-rest blob. */
+/** Tear down the live client and clear the at-rest blob.
+ *
+ *  ⚠️ A session-only client leaves the stored blob ALONE. It never wrote
+ *  one, and any blob present belongs to an account that isn't signed in
+ *  — a signed-out visitor disconnecting the wallet they pasted this page
+ *  must not silently delete the saved wallet of whoever uses this browser
+ *  signed in. Same shape as the shared-browser rules in webln.js. */
 export function disconnect() {
   if (activeClient) {
     try { activeClient.close() } catch {}
   }
+  const wasSessionOnly = activeSessionOnly
   activeClient = null
   activeOwnerNpub = null
   activeWalletAlias = null
-  clearEncrypted()
+  activeSessionOnly = false
+  if (!wasSessionOnly) clearEncrypted()
   notify()
 }
 
@@ -276,5 +324,6 @@ export function lockOnLogout() {
   activeClient = null
   activeOwnerNpub = null
   activeWalletAlias = null
+  activeSessionOnly = false
   notify()
 }

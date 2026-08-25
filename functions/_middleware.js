@@ -617,6 +617,7 @@ function renderEpisodePage(ep) {
   <link rel="stylesheet" href="/assets/css/boost-actions.css" />
   <link rel="stylesheet" href="/assets/css/episode.css" />
   <link rel="stylesheet" href="/assets/css/nav.css" />
+  <link rel="stylesheet" href="/assets/css/theme.css" />
   <link rel="stylesheet" href="/assets/css/footer.css" />
 </head>
 <body>
@@ -851,7 +852,7 @@ function renderEpisodePage(ep) {
   if (hasSession) {
     slot.innerHTML = '<div class="lb-identity-restoring" aria-label="Loading account"></div>';
   } else {
-    slot.innerHTML = '<button type="button" class="lb-identity-placeholder" aria-label="Sign in with Nostr">Sign in</button>';
+    slot.innerHTML = '<button type="button" class="lb-identity-placeholder" aria-label="Log in to Local Bitcoiners"><img src="/assets/favicon.png" alt="" aria-hidden="true" width="18" height="18">Log in</button>';
     var btn = slot.querySelector('button');
     btn.addEventListener('click', function () {
       if (window.LBLogin && typeof window.LBLogin.requestLogin === 'function') {

@@ -90,10 +90,10 @@ function splitsForAuthor(authorSplit) {
 // signal the bot needs (paired with the "LocalBitcoinersShow" LNURL
 // comment from formatEpisodeComment(null)).
 const SHOW_EPISODE_META = { number: null, title: '', guid: '', kind: 'show' }
-const SHOW_PRESETS = [100, 420, 3333, 21000]
+const SHOW_PRESETS = [420, 2100, 3333, 6969]
 const SHOW_SHARE_TAGLINE = 'Posts a kind 1 note to your followers — your message + a link back here.'
 
-export default function BoostModal({ user, onClose, prefillMessage = '', authorSplit = null, onSettled }) {
+export default function BoostModal({ user, onClose, prefillMessage = '', authorSplit = null, onSettled, onRequestSignIn, onRequestWallet }) {
   const { visible, requestClose } = useModalTransition(onClose)
 
   const splits = useMemo(() => splitsForAuthor(authorSplit), [authorSplit])
@@ -121,7 +121,7 @@ export default function BoostModal({ user, onClose, prefillMessage = '', authorS
   return (
     <>
       <div
-        className={`fixed inset-0 bg-black/70 z-[70] transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}
+        className={`fixed inset-0 bg-[var(--scrim,rgba(45,32,16,0.62))] z-[70] transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}
         aria-hidden="true"
       />
 
@@ -130,12 +130,12 @@ export default function BoostModal({ user, onClose, prefillMessage = '', authorS
         role="dialog"
         aria-label="Boost the Show"
       >
-        <div className={`relative bg-neutral-900 border border-neutral-700 rounded-lg w-full max-w-lg max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col shadow-[0_25px_60px_-12px_rgba(0,0,0,0.8),0_0_0_1px_rgba(255,255,255,0.04)] transition-[opacity,transform] duration-200 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
-          <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-neutral-800 shrink-0">
-            <h2 className="text-sm font-semibold text-neutral-200">⚡ Boost the Show</h2>
+        <div className={`relative bg-[var(--modal-bg,#fbf6ea)] border border-[var(--modal-line,#d4c4a0)] rounded-lg w-full max-w-lg max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col shadow-[0_24px_60px_-12px_rgba(11,58,82,0.28),0_0_0_1px_rgba(11,58,82,0.06)] transition-[opacity,transform] duration-200 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+          <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-[var(--modal-line,#d4c4a0)] shrink-0">
+            <h2 className="text-base font-semibold text-[var(--ink,#2d2010)] font-[family-name:var(--font-display,'Playfair_Display',Georgia,serif)]">⚡ Boost the Show</h2>
             <button
               onClick={guardedClose}
-              className="text-neutral-500 hover:text-neutral-300 transition-colors text-lg leading-none"
+              className="text-[var(--muted,#6b5a3e)] hover:text-[var(--ink,#2d2010)] transition-colors text-lg leading-none"
               aria-label="Close"
             >
               ✕
@@ -144,12 +144,12 @@ export default function BoostModal({ user, onClose, prefillMessage = '', authorS
 
           <div className="px-4 sm:px-6 py-5 space-y-4 flex-1 min-h-0 overflow-y-auto">
             {authorSplit && (
-              <p className="text-[11px] text-neutral-400 leading-snug rounded-md border border-neutral-800 bg-neutral-900/60 px-3 py-2.5">
+              <p className="text-[11px] text-[var(--muted,#6b5a3e)] leading-snug rounded-md border border-[var(--modal-line,#d4c4a0)] bg-[var(--modal-inset,#f1e8d2)] px-3 py-2.5">
                 {authorPaid ? (
                   <>
-                    <span className="text-orange-400 font-semibold">34% of this boost</span>{' '}
+                    <span className="text-[var(--brand-d,#d97b0e)] font-semibold">34% of this boost</span>{' '}
                     goes to{' '}
-                    <span className="text-neutral-300 font-semibold">{authorName}</span>, the
+                    <span className="text-[var(--ink,#2d2010)] font-semibold">{authorName}</span>, the
                     author of the article you're featuring. The rest splits between the hosts.
                   </>
                 ) : (
@@ -173,6 +173,8 @@ export default function BoostModal({ user, onClose, prefillMessage = '', authorS
               onCancelled={requestClose}
               onBoostState={setBoostState}
               onSettled={onSettled}
+              onRequestSignIn={onRequestSignIn}
+              onRequestWallet={onRequestWallet}
             />
           </div>
 

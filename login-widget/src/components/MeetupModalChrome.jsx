@@ -36,7 +36,7 @@ export default function MeetupModalChrome({
       {/* z must clear the sticky page nav (z-index: 100 on every LB page)
           so tall modals don't tuck behind the nav bar. */}
       <div
-        className={`fixed inset-0 bg-black/70 z-[200] transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}
+        className={`fixed inset-0 bg-[var(--scrim,rgba(45,32,16,0.62))] z-[200] transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}
         aria-hidden="true"
       />
       {/* Outer container does NOT scroll (overflow-hidden). The modal

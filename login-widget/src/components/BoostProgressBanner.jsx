@@ -74,7 +74,7 @@ export default function BoostProgressBanner() {
   }
 
   return createPortal(
-    <div
+    <div className="lb-w"><div
       className="fixed top-0 inset-x-0 z-[110] flex justify-center pointer-events-none px-3 pt-3"
       role="status"
       aria-live="polite"
@@ -89,7 +89,7 @@ export default function BoostProgressBanner() {
         // pointer-events flipped off during fade so an invisible
         // button in the fading region can't catch a stray click and
         // pop the dropdown after a boost has fully settled.
-        className={`inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-orange-400/70 bg-gradient-to-r from-orange-500/95 to-orange-600/95 hover:from-orange-500 hover:to-orange-600 text-white text-xs sm:text-sm font-medium shadow-[0_8px_30px_-4px_rgba(247,147,26,0.55),0_0_0_1px_rgba(255,255,255,0.06)] transition-[opacity,transform] duration-200 cursor-pointer ${
+        className={`inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-[var(--brand,#f7931a)] bg-gradient-to-r from-[var(--brand,#f7931a)] to-[var(--brand-d,#d97b0e)] hover:from-[var(--brand-d,#d97b0e)] hover:to-[var(--brand-dd,#a85500)] text-white text-xs sm:text-sm font-medium shadow-[0_8px_30px_-4px_rgba(0,175,240,0.45),0_0_0_1px_rgba(255,255,255,0.06)] transition-[opacity,transform] duration-200 cursor-pointer ${
           activeCount > 0 ? 'pointer-events-auto opacity-100 translate-y-0 lb-boost-banner-glow' : 'pointer-events-none opacity-0 -translate-y-1'
         }`}
       >
@@ -109,7 +109,7 @@ export default function BoostProgressBanner() {
         </svg>
         <span className="leading-none">{label}</span>
       </button>
-    </div>,
+    </div></div>,
     document.body,
   )
 }

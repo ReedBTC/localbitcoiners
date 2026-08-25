@@ -149,9 +149,16 @@ export function submitBoost({
   wallet,           // { kind, payInvoice } — NWC client or WebLN adapter
   presigned,        // optional { boostSession, byAddress } from presignAllowlistedLegs
   signedKindOne,    // optional pre-signed kind 1 share-to-feed event
+  signNoteAfterSettle, // optional async (result) => signed kind 1 | null. The
+                    // SITE-SIGNED route: the show key signs a note for a booster
+                    // with no npub on the boost, and it cannot be pre-signed
+                    // because its figure is what settled. Called only when at
+                    // least one leg paid; a throw or null reads as 'failed'.
   shareStatus = '', // share outcome to report when no note gets published:
-                    // 'declined' | 'unavailable' | 'anon'. Overwritten with
-                    // the real result whenever signedKindOne is present.
+                    // 'declined' | 'unavailable' | 'anon' | 'failed'. Overwritten
+                    // with the real result whenever a signed note exists.
+  senderName = '',  // typed display name for the receipt when no npub rides it
+  wireSenderName = '', // display name for a keysend leg's TLV boostagram
   onStatus,         // optional (legIndex, legState) — live per-leg progress
   clientInfo,       // optional { walletProvider, browser } for the receipt
 }) {
@@ -220,6 +227,7 @@ export function submitBoost({
         presigned,
         onStatus,
         boostSession,
+        wireSenderName,
       })
     } catch (e) {
       // payAllLegs is documented as never-throws; this is belt-and-
@@ -277,6 +285,21 @@ export function submitBoost({
     // wrong value would cost a duplicate one.
     const sessionId = result?.boostSession || boostSession || ''
     let share
+    if (!signedKindOne && signNoteAfterSettle && (status === 'paid' || status === 'partial')) {
+      // Site-signed route. The note reports what settled, so it is built and
+      // signed now rather than at the press. A failure here is a failure to
+      // POST A NOTE and never a failure to boost: the sats are gone, the
+      // receipt says 'failed', and the bots' claim path covers the boost on
+      // a later tick (onlyboosts_coverage.decide reads anything but
+      // 'published' as "no donor note is coming").
+      try {
+        signedKindOne = await withTimeout(signNoteAfterSettle(result), SHARE_PUBLISH_TIMEOUT_MS)
+      } catch (e) {
+        console.warn('[boostQueue] site-signed note failed', e?.message || e)
+        signedKindOne = null
+      }
+      if (!signedKindOne) shareStatus = 'failed'
+    }
     if (signedKindOne) {
       share = { noteId: signedKindOne.id, status: '' }
       if (status === 'paid' || status === 'partial') {
@@ -324,6 +347,7 @@ export function submitBoost({
         legs: result.legs,
         shareNoteId: share.noteId,
         shareStatus: share.status,
+        senderName,
       }).catch((e) => {
         console.warn('[boostQueue] boost receipt publish failed', e?.message || e)
       })

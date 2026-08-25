@@ -17,7 +17,6 @@
 
 import { useState, useEffect } from 'react'
 import { fetchLnurlMeta } from '../lib/boostagram.js'
-import { resolveNodeRecipients } from '../lib/recipientOverrides.js'
 import { lockBodyScroll, unlockBodyScroll } from '../lib/scrollLock.js'
 import { useModalTransition } from '../lib/useModalTransition.js'
 import MultiLegBoostForm from './MultiLegBoostForm.jsx'
@@ -28,6 +27,8 @@ const EPISODE_SHARE_TAGLINE = 'Posts a kind 1 note to your followers — the epi
 export default function EpisodeBoostModal({
   user,
   onClose,
+  onRequestSignIn,
+  onRequestWallet,
   episode,        // { number, title, guid }
   splitsBundle,   // { recipients, totalWeight, source }
 }) {
@@ -45,27 +46,15 @@ export default function EpisodeBoostModal({
     else requestClose()
   }
 
-  // Resolve type=node recipients (keysend nodes the browser can't pay) to the
-  // guest's Lightning address before anything else touches the recipients —
-  // see resolveNodeRecipients. lnaddress-only bundles take the synchronous fast
-  // path (no relay hop); a bundle WITH a node recipient waits on the kind-0
-  // lookup. Everything downstream (LNURL prefetch, the form, payAllLegs) uses
-  // `resolvedBundle`, so a node leg is either a real lnaddress leg or flagged
-  // unpayable — never silently dropped.
-  const [resolvedBundle, setResolvedBundle] = useState(null)
-  useEffect(() => {
-    const recipients = splitsBundle?.recipients
-    if (!Array.isArray(recipients)) { setResolvedBundle(splitsBundle || null); return }
-    if (!recipients.some((r) => r?.type === 'node')) {
-      setResolvedBundle(splitsBundle)
-      return
-    }
-    let cancelled = false
-    resolveNodeRecipients(recipients, episode?.guests || []).then((resolved) => {
-      if (!cancelled) setResolvedBundle({ ...splitsBundle, recipients: resolved })
-    })
-    return () => { cancelled = true }
-  }, [splitsBundle, episode?.guests])
+  // ⚠️ type=node recipients are NOT resolved here any more. They used to be
+  // mapped to a guest's Lightning address (or marked unpayable) behind a
+  // kind-0 relay lookup that held the whole form on "Preparing recipients…"
+  // for seconds and then skipped the leg for most wallets anyway. Since the
+  // OnlyBoosts port the wallet can keysend, so the decision belongs at pay
+  // time, where the wallet is known: payAllLegs pays the node directly when
+  // it can, falls back to the guest lnaddress when it can't, and fails the
+  // leg honestly otherwise. The form therefore renders immediately.
+  const resolvedBundle = splitsBundle || null
 
   // Resolve every payable recipient's LNURL endpoint in parallel as soon as
   // the resolved bundle is ready. By the time the user finishes typing the
@@ -78,7 +67,7 @@ export default function EpisodeBoostModal({
     let cancelled = false
     const next = {}
     Promise.all(recipients.map(async (r) => {
-      if (!r?.address || r.unpayable) return
+      if (!r?.address || r.unpayable || r.type === 'node') return
       try {
         next[r.address] = await fetchLnurlMeta(r.address)
       } catch {
@@ -103,7 +92,7 @@ export default function EpisodeBoostModal({
   return (
     <>
       <div
-        className={`fixed inset-0 bg-black/70 z-[70] transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}
+        className={`fixed inset-0 bg-[var(--scrim,rgba(45,32,16,0.62))] z-[70] transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}
         aria-hidden="true"
       />
 
@@ -112,12 +101,12 @@ export default function EpisodeBoostModal({
         role="dialog"
         aria-label={headerTitle}
       >
-        <div className={`relative bg-neutral-900 border border-neutral-700 rounded-lg w-full max-w-lg max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col shadow-[0_25px_60px_-12px_rgba(0,0,0,0.8),0_0_0_1px_rgba(255,255,255,0.04)] transition-[opacity,transform] duration-200 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
-          <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-neutral-800 shrink-0">
-            <h2 className="text-sm font-semibold text-neutral-200">{headerTitle}</h2>
+        <div className={`relative bg-[var(--modal-bg,#fbf6ea)] border border-[var(--modal-line,#d4c4a0)] rounded-lg w-full max-w-lg max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col shadow-[0_24px_60px_-12px_rgba(45,32,16,0.35),0_0_0_1px_rgba(45,32,16,0.06)] transition-[opacity,transform] duration-200 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+          <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-[var(--modal-line,#d4c4a0)] shrink-0">
+            <h2 className="text-base font-semibold text-[var(--ink,#2d2010)] font-[family-name:var(--font-display,'Playfair_Display',Georgia,serif)]">{headerTitle}</h2>
             <button
               onClick={guardedClose}
-              className="text-neutral-500 hover:text-neutral-300 transition-colors text-lg leading-none"
+              className="text-[var(--muted,#6b5a3e)] hover:text-[var(--ink,#2d2010)] transition-colors text-lg leading-none"
               aria-label="Close"
             >
               ✕
@@ -130,15 +119,18 @@ export default function EpisodeBoostModal({
                 user={user}
                 splitsBundle={resolvedBundle}
                 episodeMeta={episode}
+                presets={[420, 2100, 3333, 6969]}
                 shareTagline={EPISODE_SHARE_TAGLINE}
                 buttonLabel="Boost Episode"
                 lnurlCache={lnurlCache}
                 subtitle={episode?.title || null}
                 onCancelled={requestClose}
                 onBoostState={setBoostState}
+                onRequestSignIn={onRequestSignIn}
+                onRequestWallet={onRequestWallet}
               />
             ) : (
-              <p className="text-sm text-neutral-400">Preparing recipients…</p>
+              <p className="text-sm text-[var(--muted,#6b5a3e)]">Preparing recipients…</p>
             )}
           </div>
 

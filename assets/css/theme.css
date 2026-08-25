@@ -1,0 +1,58 @@
+/* Local Bitcoiners — design tokens read by the login/boost widget.
+ *
+ * The widget mounts into this document through a portal and reads these
+ * directly (Tailwind runs there with preflight off), so the modals wear the
+ * site's own palette: cream panels, dark-brown ink, bitcoin orange for the
+ * brand. The page-level :root in each HTML file already defines --cream,
+ * --navy, --orange, --text, --muted, --border and --white; this file adds
+ * the widget-only tokens and restates the shared ones so a page that
+ * forgets the inline block still renders the modals correctly.
+ *
+ * ⚠️ EVERY var() IN login-widget/src CARRIES A LITERAL FALLBACK EQUAL TO THE
+ * VALUE HERE, and scripts/test-boost-modal-render.mjs fails if one drifts.
+ * assets/widgets/ files are never rewritten on a version bump, so a browser
+ * can hold a stale copy of this file against a fresh widget; an undefined
+ * custom property makes the whole declaration invalid and the modal renders
+ * transparent. Edit a value here and re-mirror the fallbacks in one commit.
+ *
+ * ⚠️ --warn (UNCERTAIN) AND --danger (FAILED) MUST DIFFER IN HUE, not just
+ * value: the double-pay guard rests on a donor telling them apart at a
+ * glance, one may be re-paid and the other never. With an orange brand,
+ * --warn is a dark mustard rather than an amber so it does not read as a
+ * brand-coloured "in progress" state either.
+ */
+:root {
+  --brand:     #f7931a;   /* bitcoin orange: borders, rings, accents        */
+  --brand-d:   #d97b0e;   /* link-weight orange on cream (≥4.5:1 as text)    */
+  --brand-dd:  #a85500;   /* filled buttons; white text passes 4.5:1         */
+  --brand-ddd: #8a4500;   /* filled buttons, hover                           */
+
+  --cream:   #f5eedc;
+  --cream-d: #ede3c8;
+  --navy:    #3a3125;
+  --orange:  #f7931a;
+  --text:    #2d2010;
+  --muted:   #6b5a3e;
+  --border:  #d4c4a0;
+  --white:   #fffdf7;
+  --ink:     #2d2010;
+  --surface: #fffdf7;
+
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body:    'Source Serif 4', Georgia, serif;
+
+  /* Modal surfaces: panel, fields sunk into it, boxes raised off it. The
+     panel is not pure white on purpose: a full-bleed white slab over a dimmed
+     page is glare; the fields are the white, which is where you type. */
+  --modal-bg:    #fbf6ea;
+  --modal-line:  #d4c4a0;
+  --modal-field: #fffdf7;
+  --modal-inset: #f1e8d2;
+
+  --brand-tint: rgba(247, 147, 26, 0.14);
+  --brand-ring: rgba(247, 147, 26, 0.35);
+  --ok:     #2f7a3a;
+  --warn:   #7a5c00;
+  --danger: #b3261e;
+  --scrim:  rgba(45, 32, 16, 0.62);
+}

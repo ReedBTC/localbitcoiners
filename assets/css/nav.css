@@ -147,16 +147,32 @@
   min-height: 32px;
 }
 .lb-identity-placeholder {
+  /* Flex + gap so the favicon and the word sit exactly as they do in
+     LoginButton's nav skin. The React button replaces this in place, so any
+     difference reads as the control jumping on page load. */
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
   background: rgba(255, 255, 255, 0.08);
   color: var(--cream);
   border: 1px solid rgba(255, 255, 255, 0.20);
   cursor: pointer;
   font: inherit;
-  font-size: 0.85rem;
+  /* These four match LoginButton's nav skin exactly (text-sm, font-medium,
+     px-2.5 py-1.5, rounded-md). They are not approximations: the React button
+     replaces this element in place, so a few pixels of difference is a visible
+     jump on every page load. */
+  font-size: 0.875rem;
   font-weight: 500;
-  padding: 0.35rem 0.85rem;
+  padding: 0.375rem 0.625rem;
   border-radius: 6px;
   transition: background 0.15s, border-color 0.15s;
+}
+.lb-identity-placeholder img {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 .lb-identity-placeholder:hover {
   background: rgba(255, 255, 255, 0.16);
