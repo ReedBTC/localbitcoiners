@@ -906,6 +906,17 @@ export function buildShowSiteNoteTemplate({
   const msg = String(message || '').replace(/[\u0000-\u0008\u000b-\u001f\u007f]+/g, ' ').trim().slice(0, SHOW_NOTE_MAX_MESSAGE)
   const epNum = episode?.number != null ? String(episode.number) : ''
   const episodeUrl = epNum ? `${SITE_URL}/ep${epNum.padStart(3, '0')}` : pageUrl
+  // The 🔗 line matches the bot's, which links the Fountain episode page
+  // (info["episode_url"], from the RSS <podcast:contentLink>). Bounded and
+  // host-pinned because it lands in a note our key signs; a fresh episode has
+  // no Fountain URL yet, and falls back to this site's own /ep page — the one
+  // divergence from the bot's text, and only until the RSS carries the link.
+  // ⚠️ The `r` TAG stays the /ep URL either way: the oracle holds every `r`
+  // to this site's origin, and the tag is what indexers read as the page.
+  const rawFountain = (episode?.fountainUrl || '').trim()
+  const fountainUrl = rawFountain.startsWith('https://fountain.fm/') && rawFountain.length <= MAX_FOUNTAIN_URL_LEN
+    ? rawFountain
+    : ''
 
   // ⚠️ PLAIN INTEGERS, NO COMMA GROUPING — the bots' f-string does none, and
   // this note must be indistinguishable from one the bot would have written.
@@ -922,7 +933,7 @@ export function buildShowSiteNoteTemplate({
   ]
   if (msg) lines.push(`💬 ${msg}`)
   if (title) lines.push(`🎙️ ${title}`)
-  lines.push(`🔗 ${episodeUrl}`)
+  lines.push(`🔗 ${fountainUrl || episodeUrl}`)
   lines.push('')
   lines.push('#LocalBitcoiners')
 

@@ -542,6 +542,14 @@ showRejects('a parenthetical claiming less than the headline is refused', (() =>
   const t = showTemplate({ paidSats: 299, intendedSats: 433, legsFailed: 1 })
   return { ...t, content: t.content.replace('(433 sats intended', '(100 sats intended') }
 })(), /invalid amount/)
+await ok('the 🔗 line prefers the Fountain URL, matching the bot; the r tag stays on this site', () => {
+  const t = showTemplate({ episode: { number: 24, title: 'T', guid: 'g', fountainUrl: 'https://fountain.fm/episode/abc123' } })
+  assert.equal(t.content.split('\n').some((l) => l === '🔗 https://fountain.fm/episode/abc123'), true)
+  assert.deepEqual(t.tags.filter((x) => x[0] === 'r').map((x) => x[1]), ['https://localbitcoiners.com/ep024'])
+  validateShowBoostTemplate(t)
+  const evil = showTemplate({ episode: { number: 24, title: 'T', guid: 'g', fountainUrl: 'https://evil.example/x' } })
+  assert.equal(evil.content.includes('evil.example'), false)
+})
 await ok('the oracle signs a show template end to end', async () => {
   const res = await post(showTemplate())
   assert.equal(res.status, 200)
