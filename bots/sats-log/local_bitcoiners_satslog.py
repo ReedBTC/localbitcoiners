@@ -66,6 +66,7 @@ This bot does **not** publish anything to Nostr.
 
 import io
 import os
+import urllib.parse
 import re
 import sys
 import csv
@@ -85,7 +86,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "shared"))
 from boost_formatter import (
     classify_lb_tx, make_cache, persist_cache,
     build_rss_item_index, _extract_episode_number,
-    FEATURABLE_KINDS, _NADDR_RE, decode_naddr,
+    FEATURABLE_KINDS, _NADDR_RE, _OB_EPISODE_URL_RE, decode_naddr,
 )
 from nostr_utils import (
     load_config, hex_to_npub, npub_to_hex,
@@ -129,16 +130,19 @@ ZAP_COLUMNS = [
     "message",          # zap comment from the inner 9734 content
 ]
 
-# Columns for data/meetups.csv. One row per (NIP-52 calendar event × boost that
-# shared it) — occurrence grain, like zaps.csv. The website dedups on the
-# `coordinate` column and resolves the live event from `naddr` itself.
+# Columns for data/meetups.csv. One row per (featured item × boost that shared
+# it) — occurrence grain, like zaps.csv. The website dedups on the `coordinate`
+# column and resolves the live event from `naddr` itself. Featured items are
+# Nostr addressable events (calendar events, articles, listings — carried as an
+# naddr) or podcast episodes (carried as an OnlyBoosts episode URL; no naddr,
+# no event_kind, coordinate `podcast:item:guid:<guid>`).
 MEETUP_COLUMNS = [
-    "settled_at",       # settled_at of the boost that carried the naddr
+    "settled_at",       # settled_at of the boost that carried the item
     "payment_hash",     # boost dedup key — join back to sats.csv for full context
     "source",           # boost source (website | fountain_boost | keysend | ...)
-    "naddr",            # the naddr1... as found in the message, lowercased
-    "coordinate",       # kind:pubkey:identifier — stable dedup key for the event
-    "event_kind",       # 31922 (date) | 31923 (time) calendar event | 30023 (article)
+    "naddr",            # the naddr1... as found in the message, lowercased; "" for episodes
+    "coordinate",       # kind:pubkey:identifier | podcast:item:guid:<guid> — stable dedup key
+    "event_kind",       # 31922 (date) | 31923 (time) calendar event | 30023 (article) | 30402 (listing); "" for episodes
     "sender_npub",      # booster's npub when known; empty otherwise
     "sender_name",      # booster's display name when known; empty otherwise
     "episode_num",      # zero-padded episode the boost landed on, if derivable
@@ -2061,56 +2065,77 @@ def build_sats_zap_rows(zap_rows, relays, cache, neg_cache, now, retry_after=864
 
 
 # ---------------------------------------------------------------------------
-# Featured events — addressable-event naddrs shared via boost
+# Featured items — things shared via boost, one per /feeds tab
 #
-# Boosters promote something by pasting its naddr1... into the boost message:
-# a NIP-52 calendar event (a local meetup → the site's Events tab) or a NIP-23
-# long-form article (→ the site's Articles tab). This pass scans every boost
-# message for those naddrs and logs them to data/meetups.csv; the website
-# splits Events vs Articles by the `event_kind` column. (The file keeps its
-# meetups.* name for continuity even though it now also carries articles.)
+# Boosters promote something by pasting a reference into the boost message:
+# a NIP-52 calendar event (a local meetup → the site's Events tab), a NIP-23
+# long-form article (→ Articles), a NIP-99 listing (→ Market) — all carried as
+# an naddr1... — or a podcast episode carried as its OnlyBoosts episode URL
+# (→ Podcasts). This pass scans every boost message for those and logs them to
+# data/meetups.csv; the website splits the tabs by `event_kind` and, for
+# episodes, the `podcast:item:guid:` coordinate prefix. (The file keeps its
+# meetups.* name for continuity even though it now carries all four.)
 # Pure transform of rows already in sats.csv — the pipeline's full rewrite
 # means the first run backfills the whole history.
 #
-# FEATURABLE_KINDS / _NADDR_RE / decode_naddr live in boost_formatter (imported
-# above) so this pass and the boost-publisher's web link agree on what counts
-# as a featurable event.
+# FEATURABLE_KINDS / _NADDR_RE / _OB_EPISODE_URL_RE / decode_naddr live in
+# boost_formatter (imported above) so this pass and the boost-publisher's web
+# link agree on what counts as a featurable item.
 # ---------------------------------------------------------------------------
 
 
 def extract_meetup_rows(boost_rows):
-    """Scan boost messages for featurable naddrs (NIP-52 calendar events +
-    NIP-23 articles) and return one row per (event × boost). Occurrence grain:
-    the same event boosted on three episodes yields three rows; the website
-    dedups on `coordinate`. A naddr repeated within a single message is counted
-    once."""
+    """Scan boost messages for featurable items and return one row per
+    (item × boost). Two carriers:
+
+      * an naddr whose kind is in FEATURABLE_KINDS (NIP-52 calendar events,
+        NIP-23 articles, NIP-99 listings) → coordinate `kind:pubkey:d`;
+      * an OnlyBoosts episode URL (the site's Feature-episode boost message)
+        → coordinate `podcast:item:guid:<guid>`, naddr/event_kind blank. The
+        URL's path is the urlencoded item guid; it's decoded whole — guids are
+        opaque and may themselves contain slashes or be full URLs.
+
+    Occurrence grain: the same item boosted on three episodes yields three
+    rows; the website dedups on `coordinate`. An item repeated within a single
+    message is counted once."""
     rows = []
     for r in boost_rows:
         message = r.get("message") or ""
-        if "naddr1" not in message.lower():
+        lowered = message.lower()
+        if "naddr1" not in lowered and "onlyboosts.social/episode/" not in lowered:
             continue
         seen_here = set()
-        for m in _NADDR_RE.finditer(message):
-            token = m.group(0).lower()
-            decoded = decode_naddr(token)
-            if not decoded or decoded["kind"] not in FEATURABLE_KINDS:
-                continue
-            coordinate = f'{decoded["kind"]}:{decoded["pubkey"]}:{decoded["identifier"]}'
+
+        def _emit(coordinate, naddr, event_kind):
             if coordinate in seen_here:
-                continue
+                return
             seen_here.add(coordinate)
             rows.append({
                 "settled_at":   r.get("settled_at", "") or "",
                 "payment_hash": r.get("payment_hash", "") or "",
                 "source":       r.get("source", "") or "",
-                "naddr":        token,
+                "naddr":        naddr,
                 "coordinate":   coordinate,
-                "event_kind":   str(decoded["kind"]),
+                "event_kind":   event_kind,
                 "sender_npub":  r.get("sender_npub", "") or "",
                 "sender_name":  r.get("sender_name", "") or "",
                 "episode_num":  r.get("episode_num", "") or "",
                 "total_sats":   str(r.get("total_sats", "") or ""),
             })
+
+        for m in _NADDR_RE.finditer(message):
+            token = m.group(0).lower()
+            decoded = decode_naddr(token)
+            if not decoded or decoded["kind"] not in FEATURABLE_KINDS:
+                continue
+            _emit(f'{decoded["kind"]}:{decoded["pubkey"]}:{decoded["identifier"]}',
+                  token, str(decoded["kind"]))
+
+        for m in _OB_EPISODE_URL_RE.finditer(message):
+            guid = urllib.parse.unquote(m.group(1))
+            if not guid:
+                continue
+            _emit(f"podcast:item:guid:{guid}", "", "")
     return rows
 
 
@@ -2395,8 +2420,8 @@ def main():
     meetup_rows = extract_meetup_rows(all_boost_rows)
     unique_meetups = len({r["coordinate"] for r in meetup_rows})
     print()
-    print(f"Meetup naddrs (→meetups.csv): {len(meetup_rows)} occurrences "
-          f"across {unique_meetups} unique calendar events")
+    print(f"Featured items (→meetups.csv): {len(meetup_rows)} occurrences "
+          f"across {unique_meetups} unique events/articles/listings/episodes")
 
     # ── Stats ──
     print()
