@@ -429,7 +429,22 @@ function buildEventActions(parsed, actionsLeft = null, bech32 = '', { promote = 
 // for whoever boosted the event into the Featured section. Click-to-copy-npub,
 // mirroring the author-id control.
 function buildFeaturedBy(info) {
-  if (!info || !info.pubkey) return document.createElement('span')
+  if (!info) return document.createElement('span')
+  // No booster known (an anonymous feature): just "Featured · 3d ago".
+  if (!info.pubkey) {
+    const anon = document.createElement('span')
+    anon.className = 'featured-by featured-by--anon'
+    if (!info.when) return anon
+    const lbl = document.createElement('span')
+    lbl.className = 'featured-by-label'
+    lbl.textContent = 'Featured'
+    anon.appendChild(lbl)
+    const when = document.createElement('span')
+    when.className = 'featured-by-when'
+    when.textContent = '· ' + info.when
+    anon.appendChild(when)
+    return anon
+  }
   const hasPubkey = /^[0-9a-f]{64}$/i.test(info.pubkey)
   const linked = hasPubkey && hasBoosterPage(info.pubkey)
   const el = document.createElement(hasPubkey ? (linked ? 'a' : 'button') : 'span')
@@ -467,6 +482,15 @@ function buildFeaturedBy(info) {
   name.className = 'featured-by-name'
   name.textContent = info.name || (info.pubkey.slice(0, 8) + '…')
   el.appendChild(name)
+
+  // Relative age of the feature, which is what makes the box's 1W/1M/All
+  // range legible without a label explaining it.
+  if (info.when) {
+    const when = document.createElement('span')
+    when.className = 'featured-by-when'
+    when.textContent = '· ' + info.when
+    el.appendChild(when)
+  }
 
   return el
 }

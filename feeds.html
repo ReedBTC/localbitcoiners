@@ -347,18 +347,13 @@
       color: var(--accent-d);
       padding: 0.3rem 0;
     }
-    /* "Find Event to Feature" — pushed to the right edge of the Featured Events
-       header row; wraps to its own line on narrow screens. Inherits the
-       .event-composer-btn look (secondary, not orange). */
-    .feed-find-btn { margin-left: auto; font-size: 0.86rem; padding: 0.28rem 0.6rem; }
-    /* Muted line under the Featured header when the month has events but none
-       are featured yet. */
-    .feed-featured-hint {
-      margin: 0.2rem 0 0.4rem;
-      font-size: 0.88rem;
-      color: var(--muted);
-      font-style: italic;
-    }
+    /* The Featured Events box is the shared .feat-box (see Featured Articles);
+       its Find button is the shared .feat-find, opened by the delegated
+       .feed-find-btn click in the Find-modal controller below. The gap after
+       the box comes from the box's own margin. */
+    .feat-box .feed-list { margin-top: 0; }
+    .featured-by-when { color: var(--muted); white-space: nowrap; }
+    .featured-by--anon { cursor: default; color: var(--muted); font-size: 0.75rem; display: inline-flex; gap: 0.35rem; }
     /* The normal "Events" header, when present, follows the featured grid —
        give it breathing room from the cards above. */
     .feed-list + .feed-section-head { margin-top: 1.6rem; }
