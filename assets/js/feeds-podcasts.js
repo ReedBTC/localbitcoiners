@@ -35,6 +35,31 @@ import {
 import { fromApiValue, applyExternalOverrides } from '/assets/js/value-block.js'
 import { buildActionBar, configureBoostActions } from '/assets/js/boost-actions.js'
 import { ensureLoginWidget } from '/assets/js/widget-loader.js'
+import {
+  episodeCoord,
+  isEpisodeCoord,
+  guidFromCoord,
+  fetchFeaturedEpisodeSet,
+  fetchEpisodeFromOnlyBoosts,
+  fetchShowByPodcastGuid,
+  searchShows,
+  listEpisodes,
+  readConfirmedFeaturedEpisodes,
+  addConfirmedFeaturedEpisode,
+  readPendingPromote,
+  clearPendingPromote,
+  featureEpisode,
+} from '/assets/js/featured-podcasts.js'
+import {
+  FEATURED_DEFAULT_RANGE,
+  inFeaturedRange,
+  featuredHead,
+  featuredEmptyEl,
+  featuredMoreButton,
+  featuredByEl,
+  currentBooster,
+  FEATURE_BOLT_SVG,
+} from '/assets/js/featured-shared.js'
 
 const API_URL = '/api/community-boosts'
 const VALUE_API = '/api/value'   // Podcast Index value-block proxy (splits)
@@ -411,10 +436,28 @@ function waitForModal(timeoutMs = 40000) {
 // Boost click: resolve the episode's value block live from Podcast Index (via
 // /api/value), apply the external overrides, then hand off to the widget's
 // external-boost modal. No value block → a toast, no modal.
+// A backfilled featured episode (from OnlyBoosts' index) knows its podcast
+// guid but not its Podcast Index feed id, which the value-block proxy needs.
+// Resolve it once, on demand, and remember it on the item.
+async function ensureFeedId(item) {
+  const { ep, show } = item
+  let feedId = ep.feed_id || show?.feed_id || null
+  if (feedId) return feedId
+  const pguid = ep.podcast_guid || show?.podcast_guid || null
+  if (!pguid) return null
+  const found = await fetchShowByPodcastGuid(pguid)
+  if (found && found.feed_id) {
+    feedId = found.feed_id
+    ep.feed_id = feedId
+    if (show) { show.feed_id = feedId; if (!show.itunes_id) show.itunes_id = found.itunes_id || null }
+  }
+  return feedId
+}
+
 async function onBoostClick(item, btn) {
   const { ep, show } = item
-  const feedId = ep.feed_id || show?.feed_id
   const guid = ep.item_guid || item.guid
+  const feedId = await ensureFeedId(item)
   if (!feedId) { showToast('No feed id for this episode', true); return }
 
   const label = btn.querySelector('.pcast-boost-label')
@@ -471,8 +514,80 @@ async function onBoostClick(item, btn) {
 // toggles the inline boost thread, which is built lazily on first open and
 // carries its own "hide" control so a long thread is easy to close without
 // scrolling back up.
+// ── Featured affordances ─────────────────────────────────────────────
+// Featured Episodes: an episode is featured when someone boosts the show with
+// its OnlyBoosts URL in the message (see featured-podcasts.js). The Feature
+// button opens that boost prefilled; the boost also pays the podcast's own
+// value block the show's reassignable split leg.
+const FEATURED_INITIAL = 5
+
+async function onFeatureClick(item, btn) {
+  const { ep, show } = item
+  const guid = ep.item_guid || item.guid
+  btn.disabled = true
+  try {
+    const feedId = await ensureFeedId(item)
+    await featureEpisode(
+      { guid, feedId, showTitle: show?.title || '', extra: item.backfilled ? { episode: ep, show } : null },
+      (msg) => showToast(msg, true),
+    )
+  } catch (e) {
+    console.warn('[podcasts] feature failed', e)
+    showToast('Couldn’t start the boost — try again.', true)
+  } finally {
+    btn.disabled = false
+  }
+}
+
+function featureButton(item) {
+  const btn = h('button', {
+    class: 'pcast-btn pcast-btn-feature', type: 'button',
+    title: 'Feature — boost this episode into the Featured section',
+    onclick: (e) => onFeatureClick(item, e.currentTarget),
+  })
+  btn.innerHTML = FEATURE_BOLT_SVG + '<span>Feature</span>'
+  return btn
+}
+
+function npubOf(pk) {
+  try { return nip19.npubEncode(pk) } catch { return '' }
+}
+
+function boosterName(pk) {
+  const p = profileFor(pk)
+  if (p && p.name && p.name.trim()) return p.name.trim()
+  const npub = npubOf(pk)
+  return npub ? npub.slice(0, 12) + '…' : 'someone'
+}
+
+function featuredCredit(info) {
+  return featuredByEl(info, {
+    avatar: (pk) => avatarEl(profileFor(pk), npubOf(pk), { size: 18 }),
+    name: boosterName,
+    link: (pk) => (hasBoosterPage(pk) ? boosterUrl(pk) : null),
+    onCopy: (pk) => copyNpub(npubOf(pk)),
+  })
+}
+
+// An episode the snapshot doesn't hold (featured from outside the community's
+// boosts) as a feed item with no local boosts: the card renders its head,
+// player and buttons, and skips the boost drawer.
+function itemFromRecords(ep, show) {
+  if (!ep || !ep.item_guid) return null
+  return {
+    guid: ep.item_guid,
+    ep,
+    show: show || null,
+    boosts: [],
+    distinctBoosters: [],
+    latest: 0,
+    totalSats: 0,
+    backfilled: true,
+  }
+}
+
 let cardUid = 0
-function episodeCard(item) {
+function episodeCard(item, { featured = false, info = null } = {}) {
   const { ep, show, boosts, distinctBoosters, totalSats, latest } = item
   const detailsId = 'pcast-d-' + (++cardUid)
 
@@ -556,9 +671,12 @@ function episodeCard(item) {
     class: 'pcast-btn pcast-btn-boost', type: 'button',
     onclick: (e) => onBoostClick(item, e.currentTarget),
   }, [boltSvg(), h('span', { class: 'pcast-boost-label' }, 'Boost episode')])
+  // An already-featured card drops the Feature button — it only means "get
+  // this into Featured" — and credits whoever paid for it in the same row.
   const buttons = h('div', { class: 'pcast-card-buttons' }, [
     boostBtn,
     audioUrl ? downloadMp3Button(audioUrl, ep) : null,
+    featured ? featuredCredit(info) : featureButton(item),
   ])
 
   const details = h('div', { class: 'pcast-details', id: detailsId, hidden: 'hidden' })
@@ -600,8 +718,213 @@ function episodeCard(item) {
     drawerMeta,
   ])
 
-  const card = h('div', { class: 'pcast-card' }, [head, player, buttons, drawer, details])
+  // A backfilled episode has no local boosts to open, so no drawer.
+  const hasBoosts = boosts.length > 0
+  const card = h('div', { class: 'pcast-card' + (featured ? ' pcast-card--featured' : '') },
+    hasBoosts ? [head, player, buttons, drawer, details] : [head, player, buttons])
+  card._pcastItem = item
   return card
+}
+
+// ── Featured section ─────────────────────────────────────────────────
+// The gold box, same chrome as Featured Articles: 1W/1M/All over when an
+// episode was featured, inside the border. `visible` is filled with the guids
+// rendered so the feed can drop them; an episode in the box must never also
+// appear below it.
+function featuredEntries(state, byGuid) {
+  const out = []
+  for (const [coord, info] of state.featured) {
+    const item = byGuid.get(guidFromCoord(coord))
+    if (item) out.push({ item, info })
+  }
+  out.sort((x, y) => (y.info.featuredAt || 0) - (x.info.featuredAt || 0))
+  return out
+}
+
+function buildFeaturedSection(state, byGuid, visible, onChange) {
+  const entries = featuredEntries(state, byGuid)
+  const inRange = entries.filter((e) => inFeaturedRange(e.info, state.range))
+  for (const e of inRange) visible.add(e.item.guid)
+
+  const head = featuredHead({
+    title: 'Featured Episodes',
+    count: inRange.length,
+    range: state.range,
+    noun: 'episodes',
+    onRange: (key) => { state.range = key; state.featShown = FEATURED_INITIAL; onChange() },
+    findLabel: 'Find an Episode to Feature',
+    onFind: () => openFindModal(onChange),
+  })
+
+  const section = h('section', { class: 'feat-box', 'aria-label': 'Featured episodes' }, [head])
+  const shown = inRange.slice(0, state.featShown)
+  if (shown.length) {
+    const body = h('div', { class: 'feat-list' })
+    for (const { item, info } of shown) body.appendChild(episodeCard(item, { featured: true, info }))
+    section.appendChild(body)
+    const rest = inRange.length - shown.length
+    if (rest > 0) {
+      section.appendChild(featuredMoreButton(rest, FEATURED_INITIAL, () => { state.featShown += FEATURED_INITIAL; onChange() }))
+    }
+  } else if (state.featuredLoading) {
+    section.appendChild(h('div', { class: 'feat-list' }, h('div', { class: 'feed-skeleton' })))
+  } else {
+    section.appendChild(featuredEmptyEl(state.range, entries.length > 0, { noun: 'episodes', verb: 'boost an episode to feature it here' }))
+  }
+  return section
+}
+
+// ── "Find an Episode to Feature" modal ───────────────────────────────
+// A Podcast Index search: type a show, pick it, pick one of its recent
+// episodes. Every episode PI knows is featurable, not only ones the community
+// has already boosted. Same modal chrome as the other tabs' Find modals.
+let findModal = null
+
+function buildFindModal() {
+  const input = h('input', {
+    class: 'ffind-input', type: 'search', spellcheck: 'false', autocomplete: 'off',
+    placeholder: 'Search podcasts by name',
+    'aria-label': 'Podcast name',
+  })
+  const status = h('p', { class: 'ffind-status', role: 'status', 'aria-live': 'polite' })
+  const result = h('div', { class: 'ffind-result' })
+  const lookup = h('button', { class: 'ffind-go', type: 'button' }, 'Search')
+  const card = h('div', { class: 'event-composer-card', role: 'document' }, [
+    h('button', { class: 'event-composer-close', type: 'button', 'aria-label': 'Close' }, '×'),
+    h('h2', { class: 'event-composer-title', id: 'pfm-title', text: 'Find an Episode to Feature' }),
+    h('p', { class: 'ffind-help' },
+      'Search Podcast Index for a show, then pick the episode. Featuring it boosts Local Bitcoiners and sends a share to that podcast’s own value splits.'),
+    h('div', { class: 'ffind-row' }, [input, lookup]),
+    status,
+    result,
+  ])
+  const backdrop = h('div', {
+    class: 'event-composer-backdrop ffind-backdrop', role: 'dialog',
+    'aria-modal': 'true', 'aria-labelledby': 'pfm-title', hidden: 'hidden',
+  }, card)
+  return { backdrop, card, input, status, result, lookup, close: card.firstChild }
+}
+
+function openFindModal(onFeatured) {
+  if (!findModal) {
+    findModal = buildFindModal()
+    document.body.appendChild(findModal.backdrop)
+    const close = () => {
+      findModal.backdrop.hidden = true
+      document.removeEventListener('keydown', onKey)
+    }
+    const onKey = (e) => { if (e.key === 'Escape') close() }
+    findModal.onKey = onKey
+    findModal.closeFn = close
+    findModal.close.addEventListener('click', close)
+    findModal.backdrop.addEventListener('click', (e) => { if (e.target === findModal.backdrop) close() })
+    findModal.lookup.addEventListener('click', () => runSearch(findModal))
+    findModal.input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); runSearch(findModal) }
+    })
+  }
+  findModal.onFeatured = onFeatured
+  findModal.status.textContent = ''
+  findModal.result.innerHTML = ''
+  findModal.input.value = ''
+  findModal.backdrop.hidden = false
+  document.addEventListener('keydown', findModal.onKey)
+  findModal.input.focus()
+}
+
+function artEl(url, fallback) {
+  return h('div', { class: 'ffind-row-media' },
+    isSafeImg(url) ? h('img', { src: url, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }) : fallback)
+}
+
+async function runSearch(m) {
+  const q = m.input.value.trim()
+  m.result.innerHTML = ''
+  if (q.length < 2) { m.status.textContent = 'Type at least two characters of the show’s name.'; return }
+  m.status.textContent = 'Searching Podcast Index…'
+  m.lookup.disabled = true
+  let shows = []
+  try {
+    shows = await searchShows(q)
+  } catch (e) {
+    console.warn('[podcasts] search failed', e)
+    m.status.textContent = 'Podcast Index didn’t answer — please try again in a moment.'
+    return
+  } finally {
+    m.lookup.disabled = false
+  }
+  if (!shows.length) { m.status.textContent = `No podcasts found for “${q}”.`; return }
+  m.status.textContent = ''
+  const list = h('div', { class: 'ffind-list' })
+  for (const show of shows) {
+    list.appendChild(h('button', {
+      class: 'ffind-row-item', type: 'button',
+      onclick: () => showEpisodes(m, show),
+    }, [
+      artEl(show.image, '🎙'),
+      h('div', { class: 'ffind-row-body' }, [
+        h('div', { class: 'ffind-row-title', text: show.title || 'Untitled show' }),
+        h('div', { class: 'ffind-row-meta', text: [show.author, show.episode_count ? `${show.episode_count} episodes` : ''].filter(Boolean).join(' · ') }),
+      ]),
+      h('span', { class: 'ffind-row-meta', 'aria-hidden': 'true', text: '›' }),
+    ]))
+  }
+  m.result.appendChild(list)
+}
+
+async function showEpisodes(m, show) {
+  m.result.innerHTML = ''
+  m.status.textContent = `Loading episodes of ${show.title || 'this show'}…`
+  let episodes = []
+  try {
+    episodes = await listEpisodes(show.feed_id)
+  } catch (e) {
+    console.warn('[podcasts] episodes failed', e)
+    m.status.textContent = 'Couldn’t load that show’s episodes — please try again.'
+    return
+  }
+  m.status.textContent = ''
+  const back = h('button', { class: 'ffind-back', type: 'button', onclick: () => runSearch(m) },
+    [h('span', { 'aria-hidden': 'true', text: '‹' }), h('span', { text: 'Back to shows' })])
+  if (!episodes.length) {
+    m.result.append(h('p', { class: 'ffind-status', text: 'Podcast Index lists no episodes for this show yet.' }), back)
+    return
+  }
+  const list = h('div', { class: 'ffind-list' })
+  for (const ep of episodes) {
+    const feature = h('button', { class: 'pcast-btn pcast-btn-feature ffind-row-action', type: 'button' })
+    feature.innerHTML = FEATURE_BOLT_SVG + '<span>Feature</span>'
+    feature.addEventListener('click', async () => {
+      feature.disabled = true
+      try {
+        const showRec = {
+          podcast_guid: show.podcast_guid || ep.podcast_guid || null,
+          title: show.title || '',
+          image: show.image || null,
+          feed_id: show.feed_id || ep.feed_id || null,
+          itunes_id: show.itunes_id || null,
+        }
+        const epRec = { ...ep, feed_id: ep.feed_id || show.feed_id || null, podcast_guid: ep.podcast_guid || show.podcast_guid || null }
+        await featureEpisode(
+          { guid: ep.item_guid, feedId: epRec.feed_id, showTitle: show.title || '', extra: { episode: epRec, show: showRec } },
+          (msg) => showToast(msg, true),
+        )
+        m.closeFn()
+        m.onFeatured?.()
+      } finally {
+        feature.disabled = false
+      }
+    })
+    list.appendChild(h('div', { class: 'ffind-row-item ffind-row-item--static' }, [
+      artEl(ep.image || show.image, '🎧'),
+      h('div', { class: 'ffind-row-body' }, [
+        h('div', { class: 'ffind-row-title', text: ep.title || 'Untitled episode' }),
+        h('div', { class: 'ffind-row-meta', text: ep.published ? fullDate(ep.published) : '' }),
+      ]),
+      feature,
+    ]))
+  }
+  m.result.append(list, back)
 }
 
 // Populate a card's boost thread: every boost (no truncation — hiding
@@ -972,10 +1295,35 @@ export async function renderPodcasts({ panel, list }) {
   const profilesReady = loadBoosterProfiles(items)
   loadMentionProfiles(items)
 
+  // Every episode we can render, snapshot or backfilled. The feed only ever
+  // draws from `items`; `byGuid` also holds episodes pulled in by a feature,
+  // which belong in the gold box but not in the community feed.
+  const byGuid = new Map()
+  for (const it of items) byGuid.set(it.guid, it)
+
+  const state = {
+    range: FEATURED_DEFAULT_RANGE,
+    // coord -> { featuredAt, by, sats, extra }. Seeded with anything featured
+    // from this browser recently, so a fresh boost stays lit across a reload
+    // until the authoritative log catches up.
+    featured: readConfirmedFeaturedEpisodes(),
+    featuredLoading: true,
+    featShown: FEATURED_INITIAL,
+  }
+  // Episodes stashed with a confirmed feature (a Find-modal result) render
+  // straight away, before the log or OnlyBoosts know about them.
+  for (const info of state.featured.values()) {
+    const rec = info.extra
+    const it = rec && rec.episode ? itemFromRecords(rec.episode, rec.show) : null
+    if (it && !byGuid.has(it.guid)) byGuid.set(it.guid, it)
+  }
+
   let sortKey = 'count'
   let rangeKey = defaultRange(items)
-  let sorted = sortItems(filterItems(items, rangeKey), sortKey)
+  let visibleFeatured = new Set()
+  let sorted = []
   let shown = 0
+  const featuredMount = h('div', { class: 'pcast-featured-mount' })
   const cards = h('div', { class: 'pcast-list' })
   const moreWrap = h('div', { class: 'pcast-more-wrap' })
 
@@ -1007,13 +1355,23 @@ export async function renderPodcasts({ panel, list }) {
     }
   }
 
+  // The feed is "everything not in the gold box right now": an episode that
+  // drops out of the featured window rejoins the feed in its sorted place,
+  // Feature button restored, so a lapsed feature can be renewed.
   function rebuild() {
-    sorted = sortItems(filterItems(items, rangeKey), sortKey)
+    sorted = sortItems(filterItems(items, rangeKey), sortKey).filter((it) => !visibleFeatured.has(it.guid))
     shown = 0
     cards.innerHTML = ''
     moreWrap.innerHTML = ''
     renderMore()
     repaintProfiles(cards)
+  }
+
+  function rerender() {
+    visibleFeatured = new Set()
+    featuredMount.innerHTML = ''
+    featuredMount.appendChild(buildFeaturedSection(state, byGuid, visibleFeatured, rerender))
+    rebuild()
   }
 
   function applySort(key) {
@@ -1032,13 +1390,75 @@ export async function renderPodcasts({ panel, list }) {
 
   list.className = ''
   list.innerHTML = ''
-  list.append(cards, moreWrap)
-  renderMore()
+  list.append(featuredMount, cards, moreWrap)
+  rerender()
 
   // Repaint avatars/names in place once profiles land. repaintProfiles reads
   // each card's _pcastItem, so it's correct even after a re-sort rebuilds the
   // list into a different order.
-  profilesReady.then(() => repaintProfiles(cards))
+  profilesReady.then(() => { repaintProfiles(cards); repaintProfiles(featuredMount) })
+
+  // Optimistic feature: when a boost settles and a Feature click is pending for
+  // an EPISODE coordinate, light it up now rather than waiting for the log. The
+  // pending slot is shared with the other tabs; a foreign coordinate is left
+  // for its own listener to claim.
+  window.addEventListener('lb:show-boost-settled', (ev) => {
+    const d = ev && ev.detail
+    if (!d || !(d.anySucceeded || d.anyUncertain)) return
+    const pending = readPendingPromote()
+    if (!pending || !pending.coord || !isEpisodeCoord(pending.coord)) return
+    clearPendingPromote()
+    const extra = pending.extra || null
+    const ts = addConfirmedFeaturedEpisode(pending.coord, extra)
+    const by = currentBooster()
+    const prev = state.featured.get(pending.coord)
+    state.featured.set(pending.coord, {
+      featuredAt: ts,
+      by: by || prev?.by || null,
+      sats: prev?.sats || 0,
+      naddr: '',
+      extra: extra || prev?.extra || null,
+    })
+    const guid = guidFromCoord(pending.coord)
+    if (!byGuid.has(guid) && extra && extra.episode) {
+      const it = itemFromRecords(extra.episode, extra.show)
+      if (it) byGuid.set(guid, it)
+    }
+    if (by) profiles.set(by.pubkey, { name: by.name, picture: by.picture })
+    rerender()
+  })
+
+  // The authoritative featured set, then any featured episode missing from the
+  // snapshot from OnlyBoosts' index. Best-effort throughout: a failure here
+  // leaves the section showing whatever the optimistic set knows about.
+  try {
+    const { featured } = await fetchFeaturedEpisodeSet()
+    for (const [coord, info] of featured) {
+      const prev = state.featured.get(coord)
+      state.featured.set(coord, {
+        ...info,
+        featuredAt: Math.max(info.featuredAt || 0, prev?.featuredAt || 0),
+        by: info.by || prev?.by || null,
+        extra: prev?.extra || null,
+      })
+    }
+    const missing = [...state.featured.keys()].map(guidFromCoord).filter((g) => g && !byGuid.has(g))
+    await Promise.all(missing.map(async (guid) => {
+      const rec = await fetchEpisodeFromOnlyBoosts(guid)
+      const it = rec ? itemFromRecords(rec.episode, rec.show) : null
+      if (it) byGuid.set(guid, it)
+    }))
+    const boosters = [...new Set([...state.featured.values()].map((i) => i.by?.pubkey).filter(Boolean))]
+    if (boosters.length) await fetchProfilesInto(boosters.filter((pk) => !profiles.has(pk)))
+  } catch (e) {
+    console.warn('[podcasts] featured load failed', e)
+  }
+  try {
+    state.featuredLoading = false
+    rerender()
+  } catch (e) {
+    console.warn('[podcasts] featured repaint failed', e)
+  }
 }
 
 // Swap decorative card avatars in place after profiles resolve, so we don't

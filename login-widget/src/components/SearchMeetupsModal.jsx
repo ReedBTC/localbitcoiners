@@ -267,7 +267,7 @@ export default function SearchMeetupsModal({ onClose, onBoostMeetup, embedded = 
     if (!p?.naddr) return
     const msg = interpolateNaddr(BOOST_EXISTING_TEMPLATE, p.naddr)
     onClose?.()
-    onBoostMeetup?.(msg)
+    onBoostMeetup?.(msg, p.naddr)
   }
 
   const boostLabel = embedded ? 'Feature' : 'Boost'

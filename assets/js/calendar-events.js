@@ -349,6 +349,7 @@ export function renderCalendarCard(parsed, { bech32 = '', profile = null, action
     const bar = buildEventActions(parsed, actionsLeft, bech32, {
       promote: !featured,
       featuredBy: featured ? featuredBy : null,
+      profile,
     })
     if (bar) actionsParent.appendChild(bar)
   }
@@ -368,7 +369,7 @@ function eventAppUrl(bech32) {
 // boost-actions exposes openZapModal() + repostAnyEvent(). Kept out of
 // the static import graph so the shared renderer stays lightweight for
 // pages that only display events.
-function buildEventActions(parsed, actionsLeft = null, bech32 = '', { promote = true, featuredBy = null } = {}) {
+function buildEventActions(parsed, actionsLeft = null, bech32 = '', { promote = true, featuredBy = null, profile = null } = {}) {
   if (!parsed || !parsed.id || !parsed.pubkey) return null
 
   const bar = document.createElement('div')
@@ -400,7 +401,7 @@ function buildEventActions(parsed, actionsLeft = null, bech32 = '', { promote = 
     promoteBtn.innerHTML =
       '<svg class="promote-bolt" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
       '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg><span>Feature</span>'
-    promoteBtn.addEventListener('click', () => promoteEvent(parsed, bech32, promoteBtn))
+    promoteBtn.addEventListener('click', () => promoteEvent(parsed, bech32, promoteBtn, profile))
     bar.appendChild(promoteBtn)
   }
 
@@ -495,7 +496,12 @@ export function clearPendingPromote() {
   try { localStorage.removeItem(PENDING_PROMOTE_KEY) } catch {}
 }
 
-async function promoteEvent(parsed, bech32, btn) {
+// `profile` is the organizer's cached kind-0 ({ name, picture, lud16 }) when
+// the caller has it. The Feature boost pays the organizer the show's
+// reassignable split leg (see login-widget/src/lib/featureSplit.js); a profile
+// without a lud16 is resolved again inside the widget, from the relays, before
+// the modal opens, and a miss falls back to the standard splits.
+async function promoteEvent(parsed, bech32, btn, profile = null) {
   const coord = `${parsed.kind}:${parsed.pubkey}:${parsed.dTag}`
   try {
     if (btn) btn.disabled = true
@@ -508,8 +514,16 @@ async function promoteEvent(parsed, bech32, btn) {
     } catch {}
     await ensureLoginWidget()
     const prefillMessage = `${PROMOTE_TEMPLATE}\n\nnostr:${bech32}`
+    const lud16 = typeof profile?.lud16 === 'string' ? profile.lud16.trim() : ''
+    const feature = {
+      kind: 'event',
+      pubkey: parsed.pubkey,
+      naddr: bech32,
+      name: profile?.name || '',
+      address: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lud16) ? lud16 : '',
+    }
     if (window.LBLogin?.openShowBoost) {
-      window.LBLogin.openShowBoost({ prefillMessage })
+      window.LBLogin.openShowBoost({ prefillMessage, feature })
     } else {
       showCopyToast('Boost unavailable right now — please try again')
     }

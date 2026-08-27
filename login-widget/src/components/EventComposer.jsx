@@ -205,7 +205,7 @@ export default function EventComposer({
       // silent failure UX; boosting is what lands the event in Featured.
       if (makeFeatured && result?.naddr && onOpenShowBoostWithMessage) {
         const prefilled = interpolateNaddr(DEFAULT_BOOST_TEMPLATE, result.naddr)
-        onOpenShowBoostWithMessage(prefilled)
+        onOpenShowBoostWithMessage(prefilled, result.naddr)
       }
     } catch (e) {
       setError(e?.message || 'Publish failed.')

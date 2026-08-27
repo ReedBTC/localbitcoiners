@@ -28,7 +28,7 @@ export default function CreateMeetupModal({
         // the user is in, this composer is still mounted with the form they
         // already filled out — they just click Publish again.
         onRequestSignIn={() => { onRequestSignIn?.() }}
-        onOpenShowBoostWithMessage={(msg) => { onClose?.(); onOpenShowBoostWithMessage?.(msg) }}
+        onOpenShowBoostWithMessage={(msg, naddr) => { onClose?.(); onOpenShowBoostWithMessage?.(msg, naddr) }}
         ensureSignerOk={ensureSignerOk}
       />
     </MeetupModalChrome>

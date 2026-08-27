@@ -43,6 +43,16 @@ import {
   clearPendingPromote,
   featureArticle,
 } from '/assets/js/featured-articles.js'
+import {
+  FEATURED_DEFAULT_RANGE,
+  inFeaturedRange,
+  featuredHead,
+  featuredEmptyEl,
+  featuredMoreButton,
+  featuredByEl as sharedFeaturedByEl,
+  currentBooster,
+  FEATURE_BOLT_SVG,
+} from '/assets/js/featured-shared.js'
 
 // The reply/repost/like/zap actions publish via the login-widget bundle
 // (window.LBLogin), lazy-loaded on first need. Mirrors feeds-podcasts.js.
@@ -58,11 +68,8 @@ const PROFILE_CHUNK = 80        // Primal user_infos drops results on large batc
 // fast. Show this many, rest behind "Show more featured".
 const FEATURED_INITIAL = 5
 
-// Range windows for the Featured section, in days (All = no window). This
-// filter is scoped to the featured section alone and runs on when an article
-// was FEATURED, never on when it was published.
-const FEATURED_RANGES = [['1w', '1W', 7], ['1m', '1M', 30], ['all', 'All', 0]]
-const FEATURED_DEFAULT_RANGE = 'all'
+// The 1W / 1M / All range over when an article was FEATURED (never when it
+// was published) is shared with the other tabs' boxes: see featured-shared.js.
 
 // ── Tiny DOM helper (same contract as feeds-podcasts.js / feeds-market.js) ──
 function h(tag, attrs = {}, children = []) {
@@ -345,10 +352,6 @@ function openAttrs(a, onOpen) {
 // the boost lands in the same boosted-naddr log the Events tab reads, and the
 // article floats up into the Featured section. Orange fill + white bolt SVG,
 // the house convention for orange-background buttons (never the ⚡ emoji).
-const FEATURE_BOLT_SVG =
-  '<svg class="art-feature-bolt" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
-  '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg>'
-
 function featureButton(a) {
   const btn = h('button', {
     class: 'art-feature', type: 'button',
@@ -372,59 +375,16 @@ function featureButton(a) {
   return btn
 }
 
-// Compact relative age ("4h ago", "3d ago", "6w ago"). This sits on every
-// featured card next to the booster's name, which is what makes the section's
-// 1W / 1M / All filter legible without a label explaining it.
-function relAge(ms) {
-  if (!ms) return ''
-  const secs = Math.max(0, Math.round((Date.now() - ms) / 1000))
-  if (secs < 60) return 'just now'
-  const mins = Math.round(secs / 60)
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.round(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  const days = Math.round(hrs / 24)
-  if (days < 7) return `${days}d ago`
-  const wks = Math.round(days / 7)
-  if (wks < 6) return `${wks}w ago`
-  const mos = Math.round(days / 30)
-  if (mos < 12) return `${mos}mo ago`
-  return `${Math.round(days / 365)}y ago`
-}
-
 // "Featured by (pfp) Name · 3d ago" — who paid to feature this article, sitting
-// where the Feature button is on an unfeatured card. Muted, so it reads as a
-// credit rather than another action. Click copies the booster's npub.
+// where the Feature button is on an unfeatured card. Shared chrome; this tab
+// supplies its own avatar/name lookups.
 function featuredByEl(info) {
-  const when = relAge(info?.featuredAt)
-  if (!info || !info.by || !info.by.pubkey) {
-    return when ? h('span', { class: 'art-featured-by art-featured-by--anon' }, [
-      h('span', { class: 'art-featured-by-label', text: 'Featured' }),
-      h('span', { class: 'art-featured-when', text: when }),
-    ]) : null
-  }
-  const pk = info.by.pubkey
-  const linked = hasBoosterPage(pk)
-  const kids = [
-    h('span', { class: 'art-featured-by-label', text: 'Featured by' }),
-    // The chip is the click target, so the avatar stays non-interactive and
-    // takes the dot only as a cue.
-    avatarEl(pk, 18, { dot: true }),
-    h('span', { class: 'art-featured-by-name', text: authorName(pk) }),
-  ]
-  const el = linked
-    ? h('a', {
-        class: 'art-featured-by', href: boosterUrl(pk),
-        target: '_blank', rel: 'noopener noreferrer',
-        title: 'View ' + authorName(pk) + ' on OnlyBoosts',
-        onclick: (e) => e.stopPropagation(),
-      }, kids)
-    : h('button', {
-        class: 'art-featured-by', type: 'button', title: 'Copy npub',
-        onclick: (e) => { e.stopPropagation(); copyNpub(pk) },
-      }, kids)
-  if (when) el.appendChild(h('span', { class: 'art-featured-when', text: '· ' + when }))
-  return el
+  return sharedFeaturedByEl(info, {
+    avatar: (pk) => avatarEl(pk, 18, { dot: true }),
+    name: authorName,
+    link: (pk) => (hasBoosterPage(pk) ? boosterUrl(pk) : null),
+    onCopy: copyNpub,
+  })
 }
 
 function articleCard(a, onOpen, { featured = false, info = null } = {}) {
@@ -509,12 +469,12 @@ function repaintCards(cardsEl) {
     const nameEl = byline.querySelector('.art-byline-name')
     if (nameEl) nameEl.textContent = authorName(a.pubkey)
     // Booster credit on featured cards resolves on the same pass.
-    const credit = cardEl.querySelector('.art-featured-by')
+    const credit = cardEl.querySelector('.feat-by')
     const bpk = cardEl._featuredInfo?.by?.pubkey
     if (credit && bpk) {
       const bAv = credit.querySelector('.art-avatar')
       if (bAv) bAv.replaceWith(avatarEl(bpk, 18))
-      const bName = credit.querySelector('.art-featured-by-name')
+      const bName = credit.querySelector('.feat-by-name')
       if (bName) bName.textContent = authorName(bpk)
     }
   })
@@ -840,41 +800,6 @@ function mountToolbar(panel, els) {
 // control sits inside the border, so its scope is visibly the border's
 // contents. The pills are gold rather than the tab's purple accent for the
 // same reason — every other range control on /feeds is page-level.
-function featuredRangeControl(state, onPick) {
-  const wrap = h('div', {
-    class: 'art-featured-range', role: 'group',
-    'aria-label': 'Filter featured articles by when they were featured',
-  })
-  const btns = FEATURED_RANGES.map(([key, label, days]) => {
-    const b = h('button', {
-      class: 'art-featured-range-btn', type: 'button', text: label,
-      title: days ? `Featured in the last ${days} days` : 'Every featured article',
-    })
-    b.addEventListener('click', () => { setActive(key); onPick(key) })
-    return b
-  })
-  function setActive(key) {
-    btns.forEach((el, i) => {
-      const on = FEATURED_RANGES[i][0] === key
-      el.classList.toggle('is-active', on)
-      el.setAttribute('aria-pressed', on ? 'true' : 'false')
-    })
-  }
-  setActive(state.range)
-  wrap.append(...btns)
-  return wrap
-}
-
-function rangeDays(key) {
-  const row = FEATURED_RANGES.find(([k]) => k === key)
-  return row ? row[2] : 0
-}
-
-function rangeLabel(key) {
-  const days = rangeDays(key)
-  return days === 7 ? 'the last 7 days' : days === 30 ? 'the last 30 days' : ''
-}
-
 // Featured articles, newest-featured first. `state.featured` is coord → info;
 // an entry whose article we can't resolve (not in the snapshot, backfill
 // missed it) is skipped rather than rendered as a stub.
@@ -888,18 +813,8 @@ function featuredEntries(state, byCoord) {
   return out
 }
 
-function inFeaturedRange(info, range) {
-  const days = rangeDays(range)
-  if (!days) return true
-  return (info.featuredAt || 0) >= Date.now() - days * 86400000
-}
-
 function featuredEmpty(state, anyFeatured) {
-  const label = rangeLabel(state.range)
-  const text = anyFeatured && label
-    ? `No articles featured in ${label}.`
-    : 'No featured articles yet — boost an article to feature it here.'
-  return h('p', { class: 'art-featured-empty', text })
+  return featuredEmptyEl(state.range, anyFeatured, { noun: 'articles', verb: 'boost an article to feature it here' })
 }
 
 // Builds the whole gold box. `visible` is filled with the coordinates rendered
@@ -910,39 +825,30 @@ function buildFeaturedSection(state, byCoord, onOpen, visible, onChange) {
   const inRange = entries.filter((e) => inFeaturedRange(e.info, state.range))
   for (const e of inRange) visible.add(articleCoord(e.a.pubkey, e.a.dTag))
 
-  const head = h('div', { class: 'art-featured-head' }, [
-    h('div', { class: 'art-featured-title' }, [
-      h('span', { class: 'art-featured-star', 'aria-hidden': 'true', text: '⭐' }),
-      h('span', { text: 'Featured Articles' }),
-      inRange.length ? h('span', { class: 'art-featured-count', text: String(inRange.length) }) : null,
-    ]),
-    h('div', { class: 'art-featured-actions' }, [
-      featuredRangeControl(state, (key) => { state.range = key; state.featShown = FEATURED_INITIAL; onChange() }),
-      h('button', {
-        class: 'art-featured-find', type: 'button',
-        'aria-haspopup': 'dialog',
-        onclick: () => openFindModal(onChange),
-      }, [h('span', { 'aria-hidden': 'true', text: '🔍' }), h('span', { text: 'Find an Article to Feature' })]),
-    ]),
-  ])
+  const head = featuredHead({
+    title: 'Featured Articles',
+    count: inRange.length,
+    range: state.range,
+    noun: 'articles',
+    onRange: (key) => { state.range = key; state.featShown = FEATURED_INITIAL; onChange() },
+    findLabel: 'Find an Article to Feature',
+    onFind: () => openFindModal(onChange),
+  })
 
-  const body = h('div', { class: 'art-featured-list' })
+  const body = h('div', { class: 'feat-list' })
   const shown = inRange.slice(0, state.featShown)
   for (const { a, info } of shown) body.appendChild(articleCard(a, onOpen, { featured: true, info }))
 
-  const section = h('section', { class: 'art-featured', 'aria-label': 'Featured articles' }, [head])
+  const section = h('section', { class: 'feat-box', 'aria-label': 'Featured articles' }, [head])
 
   if (shown.length) {
     section.appendChild(body)
     const rest = inRange.length - shown.length
     if (rest > 0) {
-      section.appendChild(h('button', {
-        class: 'art-featured-more', type: 'button',
-        onclick: () => { state.featShown += FEATURED_INITIAL; onChange() },
-      }, `Show ${Math.min(FEATURED_INITIAL, rest)} more featured`))
+      section.appendChild(featuredMoreButton(rest, FEATURED_INITIAL, () => { state.featShown += FEATURED_INITIAL; onChange() }))
     }
   } else if (state.featuredLoading) {
-    section.appendChild(h('div', { class: 'art-featured-list' }, h('div', { class: 'feed-skeleton' })))
+    section.appendChild(h('div', { class: 'feat-list' }, h('div', { class: 'feed-skeleton' })))
   } else {
     section.appendChild(featuredEmpty(state, entries.length > 0))
   }
@@ -959,25 +865,25 @@ let findModal = null
 
 function buildFindModal() {
   const input = h('input', {
-    class: 'art-find-input', type: 'text', spellcheck: 'false',
+    class: 'ffind-input', type: 'text', spellcheck: 'false',
     placeholder: 'naddr1… or a link containing one',
     'aria-label': 'Article address',
   })
-  const status = h('p', { class: 'art-find-status', role: 'status', 'aria-live': 'polite' })
-  const result = h('div', { class: 'art-find-result' })
-  const lookup = h('button', { class: 'art-find-go', type: 'button' }, 'Look Up')
+  const status = h('p', { class: 'ffind-status', role: 'status', 'aria-live': 'polite' })
+  const result = h('div', { class: 'ffind-result' })
+  const lookup = h('button', { class: 'ffind-go', type: 'button' }, 'Look Up')
 
   const card = h('div', { class: 'event-composer-card', role: 'document' }, [
     h('button', { class: 'event-composer-close', type: 'button', 'aria-label': 'Close' }, '×'),
     h('h2', { class: 'event-composer-title', id: 'afm-title', text: 'Find an Article to Feature' }),
-    h('p', { class: 'art-find-help' },
+    h('p', { class: 'ffind-help' },
       'Paste a long-form article’s address. A MyNostr, njump, or Habla link works too — anything with an naddr1 in it.'),
-    h('div', { class: 'art-find-row' }, [input, lookup]),
+    h('div', { class: 'ffind-row' }, [input, lookup]),
     status,
     result,
   ])
   const backdrop = h('div', {
-    class: 'event-composer-backdrop art-find-backdrop', role: 'dialog',
+    class: 'event-composer-backdrop ffind-backdrop', role: 'dialog',
     'aria-modal': 'true', 'aria-labelledby': 'afm-title', hidden: 'hidden',
   }, card)
 
@@ -1056,11 +962,11 @@ async function runLookup(m, onFeatured) {
   // Author name/avatar for the preview — best-effort, the preview renders
   // either way.
   loadAuthorProfiles([a]).then(() => {
-    const nameEl = m.result.querySelector('.art-find-preview-author')
+    const nameEl = m.result.querySelector('.ffind-preview-author')
     if (nameEl) nameEl.textContent = authorName(a.pubkey)
   })
 
-  const feature = h('button', { class: 'art-feature art-find-feature', type: 'button' })
+  const feature = h('button', { class: 'art-feature ffind-feature', type: 'button' })
   feature.innerHTML = FEATURE_BOLT_SVG + '<span>Feature This Article</span>'
   feature.addEventListener('click', async () => {
     feature.disabled = true
@@ -1077,18 +983,18 @@ async function runLookup(m, onFeatured) {
   })
 
   m.result.append(
-    h('div', { class: 'art-find-preview' }, [
+    h('div', { class: 'ffind-preview' }, [
       a.image
-        ? h('div', { class: 'art-find-preview-media' }, h('img', { src: a.image, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }))
-        : h('div', { class: 'art-find-preview-media art-find-preview-media--none' }, '📄'),
-      h('div', { class: 'art-find-preview-body' }, [
-        h('div', { class: 'art-find-preview-title', text: a.title }),
-        h('div', { class: 'art-find-preview-meta' }, [
-          h('span', { class: 'art-find-preview-author', text: authorName(a.pubkey) }),
+        ? h('div', { class: 'ffind-preview-media' }, h('img', { src: a.image, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }))
+        : h('div', { class: 'ffind-preview-media ffind-preview-media--none' }, '📄'),
+      h('div', { class: 'ffind-preview-body' }, [
+        h('div', { class: 'ffind-preview-title', text: a.title }),
+        h('div', { class: 'ffind-preview-meta' }, [
+          h('span', { class: 'ffind-preview-author', text: authorName(a.pubkey) }),
           h('span', { class: 'art-dot', 'aria-hidden': 'true', text: '·' }),
           h('span', { text: fullDate(a.date) }),
         ]),
-        a.summary ? h('p', { class: 'art-find-preview-summary', text: a.summary }) : null,
+        a.summary ? h('p', { class: 'ffind-preview-summary', text: a.summary }) : null,
       ]),
     ]),
     feature,
@@ -1219,14 +1125,10 @@ export async function renderArticles({ panel, list }) {
     const pending = readPendingPromote()
     if (!pending || !pending.coord || !isArticleCoord(pending.coord)) return
     clearPendingPromote()
-    const ts = addConfirmedFeaturedArticle(pending.coord)
+    const ts = addConfirmedFeaturedArticle(pending.coord, pending.naddr || '')
     // The booster is whoever is logged in; credit them immediately instead of
     // showing an anonymous "Featured · just now" until the log lands.
-    let by = null
-    try {
-      const u = window.LBLogin?.getUser?.()
-      if (u && u.pubkey) by = { pubkey: u.pubkey, name: u.name || '', picture: u.picture || u.image || '' }
-    } catch {}
+    const by = currentBooster()
     const prev = state.featured.get(pending.coord)
     state.featured.set(pending.coord, {
       featuredAt: ts,

@@ -91,7 +91,9 @@ export default function BoostExistingEvent({
         prefilled = t.trim() + (t.trim() ? '\n\n' : '') + cls.value
       }
     }
-    onOpenShowBoostWithMessage?.(prefilled)
+    // The naddr rides along so the boost can pay the organizer its
+    // reassignable leg; an external URL has no organizer to pay.
+    onOpenShowBoostWithMessage?.(prefilled, cls.kind === 'naddr' ? cls.value : '')
   }
 
   return (

@@ -62,6 +62,29 @@ The boost flow was ported back from the OnlyBoosts fork in 2026-08 (merge
   `buildShowSiteNoteTemplate` in `login-widget/src/lib/boostagram.js`
   together, or the texts drift apart on the show's own profile.
 
+## Featured sections on /feeds (lb-v71)
+
+Every tab has a gold Featured box. An item is featured when a show boost's
+message references it: an naddr (calendar event 31922/31923, article 30023,
+listing 30402) or the OnlyBoosts episode URL
+(`https://onlyboosts.social/episode/<item guid>`). The sats-log bot scans
+messages into the boosted-item log the site reads at `/api/meetups`; each tab
+filters that one file to its kind (`assets/js/featured-*.js`, shared parts in
+`featured-shared.js`). Two things fail silently if missed:
+
+- **The Feature boost pays the maker the show's reassignable leg** (34%,
+  aquafox30) via `openShowBoost({ feature })`; see
+  `login-widget/src/lib/featureSplit.js` and `BoostModal.splitsForFeature`.
+  Host legs are never reassignable. A podcast episode's leg becomes the
+  podcast's value block (proportional, keysend nodes included). A feature
+  with a pubkey and no address is resolved in the widget before the modal
+  opens; self-features fall back to standard splits.
+- **The site-signed show note mirrors the bot's web-link lines**
+  (`webLinksForMessage` in `boostagram.js` ↔ `_WEB_LINK_BY_KIND` in
+  `bots/shared/boost_formatter.py`): 📅 plektos, 📄 mynostr, 🛒 shopstr, one
+  line per naddr, after 💬. Adding a featurable kind means both sides plus
+  `FEATURABLE_KINDS` in the bot. The episode URL needs no extra line.
+
 ## Bot infrastructure documentation
 
 The detailed bot infrastructure notes live in `bots/CLAUDE.md` (gitignored,

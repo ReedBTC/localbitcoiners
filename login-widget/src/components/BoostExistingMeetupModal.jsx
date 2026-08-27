@@ -24,7 +24,7 @@ export default function BoostExistingMeetupModal({
       <BoostExistingEvent
         sessionUser={user}
         onRequestSignIn={() => { onClose?.(); onRequestSignIn?.() }}
-        onOpenShowBoostWithMessage={(msg) => { onClose?.(); onOpenShowBoostWithMessage?.(msg) }}
+        onOpenShowBoostWithMessage={(msg, naddr) => { onClose?.(); onOpenShowBoostWithMessage?.(msg, naddr) }}
       />
     </MeetupModalChrome>
   )
