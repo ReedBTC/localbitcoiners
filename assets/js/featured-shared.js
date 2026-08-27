@@ -294,13 +294,14 @@ export function featuredRangeControl(current, onPick, { noun = 'items' } = {}) {
   return wrap
 }
 
-/** The gold box's header: ⭐ title, count, range pills, and a Find button. */
-export function featuredHead({ title, count, range, onRange, noun, findLabel, onFind }) {
+/** The gold box's header: ⭐ title, range pills, and a Find button. (No
+ *  count beside the title — Reed's call, 2026-08-27; callers may still pass
+ *  one and it is ignored.) */
+export function featuredHead({ title, range, onRange, noun, findLabel, onFind }) {
   return h('div', { class: 'feat-head' }, [
     h('div', { class: 'feat-title' }, [
       h('span', { class: 'feat-star', 'aria-hidden': 'true', text: '⭐' }),
       h('span', { text: title }),
-      count ? h('span', { class: 'feat-count', text: String(count) }) : null,
     ]),
     h('div', { class: 'feat-actions' }, [
       featuredRangeControl(range, onRange, { noun }),
