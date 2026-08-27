@@ -260,7 +260,23 @@ export function rangeLabel(key) {
   return days === 7 ? 'the last 7 days' : days === 30 ? 'the last 30 days' : ''
 }
 
-export function inFeaturedRange(info, range) {
+// How long a feature lasts. An article, listing or episode stays in its box
+// for 33 days after its most recent Feature boost, then rejoins the feed with
+// its Feature button restored (re-boosting renews it). Events are the
+// exception: a featured event stays featured until it happens, so the Events
+// tab passes `ttlDays: 0`. Reed's call, 2026-08-27.
+export const FEATURE_TTL_DAYS = 33
+
+export function isFeatureLive(info, ttlDays = FEATURE_TTL_DAYS) {
+  if (!ttlDays) return true
+  return (info?.featuredAt || 0) >= Date.now() - ttlDays * 86400000
+}
+
+// Whether an item belongs in the box under `range`: live (see above) AND
+// featured within the range's window. `All` therefore means "featured in the
+// last 33 days", not "ever".
+export function inFeaturedRange(info, range, { ttlDays = FEATURE_TTL_DAYS } = {}) {
+  if (!isFeatureLive(info, ttlDays)) return false
   const days = rangeDays(range)
   if (!days) return true
   return (info.featuredAt || 0) >= Date.now() - days * 86400000
@@ -314,6 +330,8 @@ export function featuredHead({ title, range, onRange, noun, findLabel, onFind })
 
 export function featuredEmptyEl(range, anyFeatured, { noun, verb }) {
   const label = rangeLabel(range)
+  // `anyFeatured` means a LIVE feature exists outside the narrower window;
+  // expired ones read as "none yet" so the hint stays an invitation.
   const text = anyFeatured && label
     ? `No ${noun} featured in ${label}.`
     : `No featured ${noun} yet — ${verb}.`

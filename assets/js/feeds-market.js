@@ -52,6 +52,7 @@ import {
 import {
   FEATURED_DEFAULT_RANGE,
   inFeaturedRange,
+  isFeatureLive,
   featuredHead,
   featuredEmptyEl,
   featuredMoreButton,
@@ -597,7 +598,7 @@ function buildFeaturedSection(state, byCoord, rate, onContact, visible, onChange
   } else if (state.featuredLoading) {
     section.appendChild(h('div', { class: 'feed-list market-grid' }, h('div', { class: 'feed-skeleton' })))
   } else {
-    section.appendChild(featuredEmptyEl(state.range, entries.length > 0, { noun: 'listings', verb: 'boost a listing to feature it here' }))
+    section.appendChild(featuredEmptyEl(state.range, entries.some((e) => isFeatureLive(e.info)), { noun: 'listings', verb: 'boost a listing to feature it here' }))
   }
   return section
 }

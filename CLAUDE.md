@@ -84,6 +84,10 @@ filters that one file to its kind (`assets/js/featured-*.js`, shared parts in
   `bots/shared/boost_formatter.py`): 📅 plektos, 📄 mynostr, 🛒 shopstr, one
   line per naddr, after 💬. Adding a featurable kind means both sides plus
   `FEATURABLE_KINDS` in the bot. The episode URL needs no extra line.
+- **A feature lives 33 days** (`FEATURE_TTL_DAYS` in `featured-shared.js`,
+  enforced by `inFeaturedRange`), then the item rejoins its feed with the
+  Feature button back; re-boosting renews. Events are exempt (`ttlDays: 0` in
+  `feeds.js`): featured until the event happens.
 
 ## Bot infrastructure documentation
 

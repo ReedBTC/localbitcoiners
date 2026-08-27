@@ -46,6 +46,7 @@ import {
 import {
   FEATURED_DEFAULT_RANGE,
   inFeaturedRange,
+  isFeatureLive,
   featuredHead,
   featuredEmptyEl,
   featuredMoreButton,
@@ -850,7 +851,7 @@ function buildFeaturedSection(state, byCoord, onOpen, visible, onChange) {
   } else if (state.featuredLoading) {
     section.appendChild(h('div', { class: 'feat-list' }, h('div', { class: 'feed-skeleton' })))
   } else {
-    section.appendChild(featuredEmpty(state, entries.length > 0))
+    section.appendChild(featuredEmpty(state, entries.some((e) => isFeatureLive(e.info))))
   }
 
   return section

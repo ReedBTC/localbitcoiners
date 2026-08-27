@@ -732,7 +732,10 @@ function renderEvents(panel, allItems, range = '1m', type = 'inperson', featured
   // be renewed with one boost. Featured past events keep their gold in the
   // Past drawer regardless.
   const isFeat = (g) => groupIsFeatured(g, featuredCoords)
-  const inBox = (g) => isFeat(g) && inFeaturedRange({ featuredAt: featuredAtFor(g) }, featRange)
+  // ttlDays 0: an event stays featured until it happens (the forward window
+  // and the Past drawer are its expiry), unlike the 33-day life of a featured
+  // article, listing or episode.
+  const inBox = (g) => isFeat(g) && inFeaturedRange({ featuredAt: featuredAtFor(g) }, featRange, { ttlDays: 0 })
   const featUpcoming = upcoming.filter(inBox)
   const normUpcoming = upcoming.filter((g) => !inBox(g))
   const featPast = past.filter(isFeat)

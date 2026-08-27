@@ -53,6 +53,7 @@ import {
 import {
   FEATURED_DEFAULT_RANGE,
   inFeaturedRange,
+  isFeatureLive,
   featuredHead,
   featuredEmptyEl,
   featuredMoreButton,
@@ -769,7 +770,7 @@ function buildFeaturedSection(state, byGuid, visible, onChange) {
   } else if (state.featuredLoading) {
     section.appendChild(h('div', { class: 'feat-list' }, h('div', { class: 'feed-skeleton' })))
   } else {
-    section.appendChild(featuredEmptyEl(state.range, entries.length > 0, { noun: 'episodes', verb: 'boost an episode to feature it here' }))
+    section.appendChild(featuredEmptyEl(state.range, entries.some((e) => isFeatureLive(e.info)), { noun: 'episodes', verb: 'boost an episode to feature it here' }))
   }
   return section
 }
