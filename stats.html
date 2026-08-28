@@ -414,6 +414,79 @@
       text-anchor: start;
     }
 
+    /* ── "My Stats" episode grid: every episode in numeric order, boosted
+       tiles filled with the sats total, unboosted tiles outlined with a
+       Boost bolt. Sits under the sats-ordered bars. ── */
+    .stats-ep-grid-wrap { margin-top: 1.25rem; }
+    .stats-ep-grid-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .stats-ep-grid-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: var(--navy);
+    }
+    .stats-ep-grid-count {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--brand-d);
+    }
+    .stats-ep-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+    .stats-ep-tile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.15rem;
+      min-height: 56px;
+      padding: 0.45rem 0.4rem;
+      border: 1.5px dashed var(--border);
+      border-radius: 10px;
+      background: var(--white);
+      color: var(--muted);
+      text-decoration: none;
+      text-align: center;
+      line-height: 1.2;
+      transition: border-color 0.15s, background 0.15s, transform 0.1s;
+    }
+    .stats-ep-tile:hover { border-color: var(--orange); transform: translateY(-1px); }
+    .stats-ep-tile.is-boosted {
+      border: 1.5px solid var(--orange);
+      background: var(--orange);
+      color: #fff;
+    }
+    .stats-ep-tile.is-boosted:hover { background: var(--brand-d); border-color: var(--brand-d); }
+    .stats-ep-num { font-weight: 700; font-size: 0.85rem; }
+    .stats-ep-tile.is-boosted .stats-ep-num { color: #fff; }
+    .stats-ep-tile:not(.is-boosted) .stats-ep-num { color: var(--navy); }
+    .stats-ep-sats {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .stats-ep-tile:not(.is-boosted) .stats-ep-sats { color: var(--brand-d); }
+    .stats-ep-bolt { width: 11px; height: 11px; fill: currentColor; }
+    .stats-ep-grid-note {
+      margin: 0.75rem 0 0;
+      font-size: 0.8rem;
+      font-style: italic;
+      color: var(--muted);
+    }
+
     /* ── Pre-Nostr boost mini-cards (mirrors episode.css) ── */
     .ep-supporter-list {
       list-style: none; margin: 0; padding: 0;
