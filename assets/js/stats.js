@@ -1252,7 +1252,7 @@
     }
   }
 
-  // ── Your Episodes — every episode as a tile grid ───────────────────
+  // ── Episodes You’ve Supported — every episode as a tile grid ───────────────────
   // Answers "which episodes have I boosted" the way a ranking can't: one
   // tile per episode in numeric order, so the gaps are visible. Signed in,
   // boosted tiles are filled with the sats you sent and unboosted tiles
