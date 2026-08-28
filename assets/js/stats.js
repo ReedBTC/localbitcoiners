@@ -1064,12 +1064,10 @@
   }
 
   // Horizontal bar chart. `items` is a pre-sorted [{ label, value,
-  // isAnon?, href?, ob?, npub? }] array, drawn top to bottom; the left
-  // margin auto-fits the longest label. Shared by the episode + supporter
-  // leaderboards. A label with `href` links there (same tab: episode
-  // pages); with `ob` it opens that OnlyBoosts page in a new tab; with only
-  // `npub` it copies the npub on click (delegated from the canvas, see
-  // wireCopyDelegation). Plain labels stay plain.
+  // isAnon?, href? }] array, drawn top to bottom; the left margin auto-fits
+  // the longest label. Used by the episode leaderboard (the supporter board
+  // renders HTML rows, see buildBarRows). A label with `href` links there;
+  // plain labels stay plain.
   // opts.breakOutlier: when the top bar(s) dwarf the rest, draw the other
   // bars to scale against the largest NON-outlier value so they stay
   // readable, and render each outlier as a fixed-length "torn" bar (a broken
@@ -1079,6 +1077,41 @@
   // bar, while two whales atop the supporter board (adminpacman + sovreign,
   // both dwarfing #3) break the top two. The true value still labels each
   // bar's end, so the number tells the real story even off-scale.
+  // Broken-axis geometry shared by the SVG bars (episode board) and the
+  // HTML rows (supporter board). When breaking: normal bars scale so the
+  // largest NON-outlier fills NORM_FRAC of the track; each outlier's main
+  // segment runs to OUT_MAIN, a GAP_W tear, then a short tip staggered by
+  // OUT_STAGGER per rank so a bigger outlier still reads as the longer bar.
+  var BAR_LAYOUT = { NORM_FRAC: 0.70, OUT_MAIN: 0.80, OUT_END: 0.90, OUT_STAGGER: 0.04, GAP_W: 14 };
+
+  // Rank the rows by value (descending) to find the "outlier group": the
+  // leading bars that dwarf the rest. We break at the single biggest
+  // relative cliff among the first MAX_BREAK boundaries — data-driven, so
+  // the count of torn bars matches the shape of the data and self-disables
+  // when the leaderboard evens out. Returns { doBreak, breakRank, scaleMax }
+  // where breakRank[originalIdx] is the 0-based rank inside the outlier group.
+  function barPlan(values, breakOutlier) {
+    var order = values.map(function (v, idx) { return idx; })
+      .sort(function (a, b) { return values[b] - values[a]; });
+    var BREAK_RATIO = 1.8, MAX_BREAK = 2;
+    var nBreak = 0, bestRatio = 0;
+    if (breakOutlier) {
+      var lastC = Math.min(MAX_BREAK, order.length - 1);
+      for (var c = 1; c <= lastC; c++) {
+        var hi = values[order[c - 1]], lo = values[order[c]];
+        if (lo <= 0) break;
+        var ratio = hi / lo;
+        if (ratio >= BREAK_RATIO && ratio > bestRatio) { bestRatio = ratio; nBreak = c; }
+      }
+    }
+    var breakRank = Object.create(null);
+    for (var b = 0; b < nBreak; b++) breakRank[order[b]] = b;
+    var doBreak = nBreak > 0;
+    var scaleMax = doBreak ? values[order[nBreak]] : values[order[0]];
+    if (scaleMax <= 0) scaleMax = 1;
+    return { doBreak: doBreak, breakRank: breakRank, scaleMax: scaleMax };
+  }
+
   function buildBarSvg(items, ariaLabel, opts) {
     opts = opts || {};
     var W = 720;
@@ -1091,39 +1124,11 @@
     var H = mT + mB + items.length * rowH;
     var tw = W - mL - mR;
 
-    // Rank the rows by value (descending) so we can find the "outlier group":
-    // the leading bars that dwarf the rest. We break at the single biggest
-    // relative cliff among the first MAX_BREAK boundaries — data-driven, so
-    // the count of torn bars matches the shape of the data and self-disables
-    // when the leaderboard evens out.
-    var order = items.map(function (it, idx) { return idx; })
-      .sort(function (a, b) { return items[b].value - items[a].value; });
-
-    var BREAK_RATIO = 1.8, MAX_BREAK = 2;
-    var nBreak = 0, bestRatio = 0;
-    if (opts.breakOutlier) {
-      var lastC = Math.min(MAX_BREAK, order.length - 1);
-      for (var c = 1; c <= lastC; c++) {
-        var hi = items[order[c - 1]].value, lo = items[order[c]].value;
-        if (lo <= 0) break;
-        var ratio = hi / lo;
-        if (ratio >= BREAK_RATIO && ratio > bestRatio) { bestRatio = ratio; nBreak = c; }
-      }
-    }
-    var doBreak = nBreak > 0;
-
-    // breakRank[originalIdx] = 0-based rank within the outlier group (0 = biggest).
-    var breakRank = Object.create(null);
-    for (var b = 0; b < nBreak; b++) breakRank[order[b]] = b;
-
-    // When breaking: normal bars scale so the largest NON-outlier fills
-    // NORM_FRAC of the track; each outlier's main segment runs to OUT_MAIN, a
-    // GAP_W tear, then a short tip staggered by OUT_STAGGER per rank so a
-    // bigger outlier still reads as the longer torn bar.
-    var NORM_FRAC = 0.70, OUT_MAIN = 0.80, OUT_END = 0.90, OUT_STAGGER = 0.04, GAP_W = 14;
-    var scaleMax = doBreak ? items[order[nBreak]].value : items[order[0]].value;
-    if (scaleMax <= 0) scaleMax = 1;
-    var normFullW = doBreak ? tw * NORM_FRAC : tw;
+    var plan = barPlan(items.map(function (it) { return it.value; }), opts.breakOutlier);
+    var doBreak = plan.doBreak, breakRank = plan.breakRank, scaleMax = plan.scaleMax;
+    var OUT_MAIN = BAR_LAYOUT.OUT_MAIN, OUT_END = BAR_LAYOUT.OUT_END,
+        OUT_STAGGER = BAR_LAYOUT.OUT_STAGGER, GAP_W = BAR_LAYOUT.GAP_W;
+    var normFullW = doBreak ? tw * BAR_LAYOUT.NORM_FRAC : tw;
 
     var parts = [];
     for (var k = 0; k < items.length; k++) {
@@ -1132,16 +1137,9 @@
       var cls = it.isAnon ? 'stats-bar stats-bar-anon' : 'stats-bar';
       var labelEl = '<text class="stats-bar-label" x="' + (mL - 8) + '" y="' +
         (cy + 4) + '">' + svgEsc(it.label) + '</text>';
-      if (it.ob) {
-        parts.push('<a class="stats-bar-link" href="' + svgEsc(it.ob) +
-          '" target="_blank" rel="noopener noreferrer"><title>View ' +
-          svgEsc(it.label) + ' on OnlyBoosts</title>' + labelEl + '</a>');
-      } else if (it.href) {
+      if (it.href) {
         parts.push('<a class="stats-bar-link" href="' + svgEsc(it.href) + '">' +
           labelEl + '</a>');
-      } else if (it.npub) {
-        parts.push('<g class="stats-bar-copy" role="button" tabindex="0" data-copy-npub="' +
-          svgEsc(it.npub) + '"><title>Copy npub</title>' + labelEl + '</g>');
       } else {
         parts.push(labelEl);
       }
@@ -1181,7 +1179,98 @@
       svgEsc(ariaLabel) + '">' + parts.join('') + '</svg>';
   }
 
-  // ── Supporter leaderboard — horizontal bar chart by identity ───────
+  // Horizontal bars as HTML rows, one identity chip (avatar + name, the
+  // same chip the Streamers and Top Zappers cards use) per row with the
+  // bar beside it. Same broken-axis treatment as buildBarSvg, expressed in
+  // percentages of the track. `items` is a pre-sorted [{ label, value,
+  // isAnon?, npub?, picture? }] array. Chips with an npub open the person's
+  // OnlyBoosts page or copy the npub (wireIdentity); the rest stay plain.
+  function buildBarRows(items, ariaLabel, opts) {
+    opts = opts || {};
+    var plan = barPlan(items.map(function (it) { return it.value; }), opts.breakOutlier);
+    var L = BAR_LAYOUT;
+    var wrap = document.createElement('div');
+    wrap.className = 'stats-hbars';
+    wrap.setAttribute('role', 'list');
+    wrap.setAttribute('aria-label', ariaLabel);
+    // The value column is reserved at the right of every track so bars
+    // scale against the same usable width the SVG version uses.
+    var usable = '(100% - 92px)';
+
+    function seg(frac, anon) {
+      var b = document.createElement('span');
+      b.className = anon ? 'stats-hbar stats-hbar-anon' : 'stats-hbar';
+      b.style.width = 'calc(' + usable + ' * ' + frac.toFixed(4) + ')';
+      return b;
+    }
+
+    for (var k = 0; k < items.length; k++) {
+      var it = items[k];
+      var row = document.createElement('div');
+      row.className = 'stats-hbar-row';
+      row.setAttribute('role', 'listitem');
+      row.appendChild(buildIdentityChip(it));
+
+      var track = document.createElement('div');
+      track.className = 'stats-hbar-track';
+      if (plan.doBreak && k in plan.breakRank) {
+        // Torn outlier bar: main segment, two break slashes, staggered tip.
+        var r = plan.breakRank[k];
+        track.appendChild(seg(L.OUT_MAIN, it.isAnon));
+        var tear = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        tear.setAttribute('class', 'stats-hbar-tear');
+        tear.setAttribute('viewBox', '0 0 14 24');
+        tear.setAttribute('aria-hidden', 'true');
+        tear.innerHTML = '<path d="M2,24 L8,0 M8,24 L14,0"/>';
+        track.appendChild(tear);
+        var tipFrac = L.OUT_END - r * L.OUT_STAGGER - L.OUT_MAIN;
+        var tip = seg(tipFrac, it.isAnon);
+        tip.style.width = 'calc(' + usable + ' * ' + tipFrac.toFixed(4) + ' - ' + L.GAP_W + 'px)';
+        track.appendChild(tip);
+      } else {
+        var cap = plan.doBreak ? L.NORM_FRAC : 1;
+        var frac = (it.value / plan.scaleMax) * cap;
+        if (frac > cap) frac = cap;   // guard rounding past the cap
+        var bar = seg(frac, it.isAnon);
+        bar.style.minWidth = '2px';
+        track.appendChild(bar);
+      }
+      var val = document.createElement('span');
+      val.className = 'stats-hbar-value';
+      val.textContent = fmtSats(it.value);
+      track.appendChild(val);
+      row.appendChild(track);
+      wrap.appendChild(row);
+    }
+    return wrap;
+  }
+
+  // The avatar + name chip shared with the Streamers / Top Zappers cards
+  // (buildShoutoutRow builds the same shape inline). Wired to OnlyBoosts or
+  // copy-npub when the person has an npub.
+  function buildIdentityChip(it) {
+    var ident = document.createElement('span');
+    ident.className = 'ep-supporter-identity';
+    var avatar = document.createElement('span');
+    avatar.className = 'ep-supporter-avatar';
+    avatar.setAttribute('aria-hidden', 'true');
+    if (it.picture) {
+      avatar.style.backgroundImage = 'url("' + it.picture.replace(/"/g, '%22') + '")';
+    }
+    var name = document.createElement('span');
+    name.className = 'ep-supporter-name';
+    name.textContent = it.label;
+    name.title = it.label;
+    ident.appendChild(avatar);
+    ident.appendChild(name);
+    if (it.npub) {
+      ident.setAttribute('data-npub', it.npub);
+      wireIdentity(ident, avatar, it.npub, it.label);
+    }
+    return ident;
+  }
+
+  // ── Supporter leaderboard — horizontal bars by identity ────────────
   function renderIdentityBoard(rows) {
     if (!peopleCanvas) return;
 
@@ -1233,6 +1322,7 @@
     for (var pq = 0; pq < people.length; pq++) {
       var pc = people[pq].npub && preCached[people[pq].npub];
       if (pc && pc.name) people[pq].label = pc.name;
+      if (pc && pc.picture) people[pq].picture = pc.picture;
     }
 
     var fieldOf = { sats: 'sats', episodes: 'episodeCount' };
@@ -1247,19 +1337,15 @@
       // npub now, so "how many episodes had anonymous supporters" stopped
       // being a question anyone asks.
       if (anon && metric === 'sats') sorted = sorted.concat([anon]);
-      var ob = window.LBOnlyBoosts || null;
       var items = sorted.map(function (p) {
-        var it = { label: truncate(p.label, 22), value: p[field], isAnon: p.isAnon };
-        if (p.npub) {
-          it.npub = p.npub;
-          if (ob && ob.hasBoosterPage(p.npub)) it.ob = ob.boosterUrl(p.npub);
-        }
-        return it;
+        return { label: p.label, value: p[field], isAnon: p.isAnon,
+                 npub: p.npub || '', picture: p.picture || '' };
       });
-      peopleCanvas.innerHTML = buildBarSvg(items, metric === 'sats'
+      peopleCanvas.innerHTML = '';
+      peopleCanvas.appendChild(buildBarRows(items, metric === 'sats'
         ? 'Supporters ranked by total sats sent'
         : 'Supporters ranked by episodes supported',
-        { breakOutlier: metric === 'sats' });
+        { breakOutlier: metric === 'sats' }));
       if (peopleSubEl) {
         peopleSubEl.textContent = metric === 'sats'
           ? 'Top 10 supporters by total sats sent (boosts + streams)'
@@ -1267,7 +1353,6 @@
       }
     }
     draw('episodes');
-    wireCopyDelegation(peopleCanvas);
 
     var radios = document.querySelectorAll('input[name="stats-people-view"]');
     for (var r = 0; r < radios.length; r++) {
@@ -1289,11 +1374,16 @@
         var changed = false;
         for (var q = 0; q < people.length; q++) {
           var prof = people[q].npub && profiles[people[q].npub];
-          // Only re-draw if the resolved name actually differs from the
-          // (possibly already-cached) current label — avoids a wasted
-          // full-SVG re-render when every name was a cache hit.
-          if (prof && prof.name && people[q].label !== prof.name) {
+          if (!prof) continue;
+          // Only re-draw if a resolved name or avatar actually differs from
+          // the (possibly already-cached) current one — avoids a wasted
+          // full re-render when every profile was a cache hit.
+          if (prof.name && people[q].label !== prof.name) {
             people[q].label = prof.name;
+            changed = true;
+          }
+          if (prof.picture && people[q].picture !== prof.picture) {
+            people[q].picture = prof.picture;
             changed = true;
           }
         }
@@ -1851,25 +1941,6 @@
       ident.setAttribute('aria-label', 'Copy npub for ' + (name || 'this supporter'));
     }
     return linked;
-  }
-
-  // Copy-npub labels inside a bar chart are SVG <g role="button"> nodes
-  // re-rendered on every draw, so the handler lives on the canvas.
-  function wireCopyDelegation(canvasEl) {
-    if (!canvasEl || canvasEl.__copyWired) return;
-    canvasEl.__copyWired = true;
-    function hit(e) {
-      return e.target && e.target.closest ? e.target.closest('[data-copy-npub]') : null;
-    }
-    canvasEl.addEventListener('click', function (e) {
-      var g = hit(e);
-      if (g) copyNpub(g.getAttribute('data-copy-npub'));
-    });
-    canvasEl.addEventListener('keydown', function (e) {
-      if (e.key !== 'Enter' && e.key !== ' ') return;
-      var g = hit(e);
-      if (g) { e.preventDefault(); copyNpub(g.getAttribute('data-copy-npub')); }
-    });
   }
 
   // ── Copy-to-clipboard + toast (mirrors supporters.js) ──────────────

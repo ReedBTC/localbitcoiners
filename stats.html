@@ -413,17 +413,43 @@
       font-weight: 600;
       text-anchor: start;
     }
-    /* Bar labels that go somewhere: episode pages, OnlyBoosts pages, or a
-       copy-npub button. The underline only appears on hover/focus so the
-       chart reads as a chart until you reach for a name. */
-    .stats-bar-link, .stats-bar-copy { cursor: pointer; outline: none; }
-    .stats-bar-link .stats-bar-label, .stats-bar-copy .stats-bar-label { fill: var(--navy); }
+    /* Episode bar labels link to the episode page. The underline only
+       appears on hover/focus so the chart reads as a chart until you reach
+       for a label. */
+    .stats-bar-link { cursor: pointer; outline: none; }
+    .stats-bar-link .stats-bar-label { fill: var(--navy); }
     .stats-bar-link:hover .stats-bar-label,
-    .stats-bar-link:focus .stats-bar-label,
-    .stats-bar-copy:hover .stats-bar-label,
-    .stats-bar-copy:focus .stats-bar-label {
+    .stats-bar-link:focus .stats-bar-label {
       fill: var(--brand-d);
       text-decoration: underline;
+    }
+
+    /* ── Supporter leaderboard: HTML rows, identity chip + bar ── */
+    .stats-hbars { display: flex; flex-direction: column; gap: 0.5rem; }
+    .stats-hbar-row { display: flex; align-items: center; gap: 0.85rem; min-width: 0; }
+    .stats-hbar-row .ep-supporter-identity { flex: 0 0 200px; width: 200px; }
+    .stats-hbar-row .ep-supporter-name {
+      font-size: 0.92rem;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .stats-hbar-track {
+      flex: 1 1 auto; min-width: 0;
+      display: flex; align-items: center;
+    }
+    .stats-hbar {
+      display: block; height: 18px; border-radius: 3px;
+      background: var(--orange); flex-shrink: 0;
+    }
+    .stats-hbar-anon { background: var(--muted); }
+    .stats-hbar-tear {
+      width: 14px; height: 24px; flex-shrink: 0;
+      fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round;
+    }
+    .stats-hbar-value {
+      margin-left: 8px;
+      font-family: 'Source Serif 4', Georgia, serif;
+      font-size: 12px; font-weight: 600; color: var(--muted);
+      white-space: nowrap;
     }
 
     /* ── Episodes You’ve Supported: every episode in numeric order. Signed in, boosted
@@ -610,6 +636,9 @@
     @media (max-width: 600px) {
       .section-wide { padding: 2rem 1rem; }
       .stats-chart-canvas { padding: 0.6rem; }
+      .stats-hbar-row { gap: 0.5rem; }
+      .stats-hbar-row .ep-supporter-identity { flex-basis: 132px; width: 132px; }
+      .stats-hbar-row .ep-supporter-name { font-size: 0.85rem; }
     }
   </style>
   <link rel="stylesheet" href="/assets/css/nav.css" />
