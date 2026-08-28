@@ -78,8 +78,10 @@
   var zappersCanvas = document.querySelector('[data-stats-zappers]');
   var appmixCanvas = document.querySelector('[data-stats-appmix]');
   var appmixLegendEl = document.querySelector('[data-appmix-legend]');
+  var epgridCanvas = document.querySelector('[data-stats-epgrid]');
+  var epgridSubEl = document.querySelector('[data-epgrid-sub]');
   if (!canvas && !boardCanvas && !peopleCanvas && !preNostrCanvas &&
-      !streamersCanvas && !zappersCanvas && !appmixCanvas) return;
+      !streamersCanvas && !zappersCanvas && !appmixCanvas && !epgridCanvas) return;
 
   Promise.all([
     fetch(SATS_URL).then(function (r) { return r.ok ? r.json() : null; })
@@ -98,8 +100,9 @@
     var episodes = rssXml ? parseEpisodes(rssXml) : [];
     render(rows, episodes);
     renderAppMix(rows);
-    renderLeaderboard(rows, episodes);
+    renderLeaderboard(rows);
     renderIdentityBoard(rows);
+    renderEpisodeGrid(rows, episodes);
     renderStreamerShoutout(rows);
     renderTopZappers(rows);
     renderBigPreNostr(rows);
@@ -114,6 +117,7 @@
     if (streamersCanvas) streamersCanvas.innerHTML = msg;
     if (zappersCanvas) zappersCanvas.innerHTML = msg;
     if (appmixCanvas) appmixCanvas.innerHTML = msg;
+    if (epgridCanvas) epgridCanvas.innerHTML = msg;
   }
 
   // ── RSS parsing — episode number + publish date for the markers ────
@@ -898,7 +902,7 @@
   }
 
   // ── Episode leaderboard — horizontal bar chart ─────────────────────
-  function renderLeaderboard(rows, rssEpisodes) {
+  function renderLeaderboard(rows) {
     if (!boardCanvas) return;
 
     // Group episode-attributed rows by episode number. A "supporter" is
@@ -955,11 +959,6 @@
     // onChange hook below redraws the moment they sign in (or a session
     // restore completes). Anonymous (burner-signed) boosts carry no
     // sender_npub, so they correctly never show up as "yours".
-    //
-    // Two views of the same rows: the sats-ordered bars (how much), then
-    // an episode grid in numeric order (which ones). The grid lists every
-    // episode the RSS knows about, so the gaps are the point: an unboosted
-    // tile links to its /ep### page, where the episode boost lives.
     function drawMine() {
       if (boardSubEl) boardSubEl.textContent = 'Sats you’ve boosted to each episode';
       var user = window.LBLogin && typeof window.LBLogin.getUser === 'function'
@@ -982,83 +981,20 @@
       }
       var mine = [];
       for (var k in mineByEp) mine.push({ num: parseInt(k, 10), sats: mineByEp[k] });
+      if (!mine.length) {
+        boardCanvas.innerHTML = '<p class="stats-error">You haven’t boosted any episodes yet — boost one and it’ll show up here.</p>';
+        return;
+      }
       mine.sort(function (a, b) { return b.sats - a.sats; });
-
-      var all = allEpisodes();
-      var html = '';
-      if (mine.length) {
-        var items = mine.map(function (e) {
-          return { label: 'Ep ' + e.num, value: e.sats };
-        });
-        html += buildBarSvg(items, 'Sats you have boosted to each episode');
-      } else {
-        html += '<p class="stats-error">You haven’t boosted any episodes yet — boost one and it’ll show up here.</p>';
-      }
-      html += buildEpisodeGrid(all, mineByEp);
-      boardCanvas.innerHTML = html;
+      var items = mine.map(function (e) {
+        return { label: 'Ep ' + e.num, value: e.sats };
+      });
+      boardCanvas.innerHTML = buildBarSvg(items, 'Sats you have boosted to each episode');
       if (boardSubEl) {
-        boardSubEl.textContent = all.length
-          ? 'You’ve boosted ' + mine.length + ' of ' + all.length + ' episodes'
-          : 'You’ve boosted ' + mine.length + (mine.length === 1 ? ' episode' : ' episodes');
+        boardSubEl.textContent = 'You’ve boosted ' + items.length +
+          (items.length === 1 ? ' episode' : ' episodes');
       }
     }
-
-    // Every episode, numeric order. The RSS is the source of truth; if it
-    // failed to load, fall back to the episodes the ledger has seen so the
-    // grid still renders (it just can't show unboosted episodes nobody has
-    // boosted yet).
-    function allEpisodes() {
-      var byNum = Object.create(null);
-      var list = rssEpisodes && rssEpisodes.length ? rssEpisodes : [];
-      for (var i = 0; i < list.length; i++) {
-        byNum[list[i].num] = { num: list[i].num, title: list[i].title || '' };
-      }
-      if (!list.length) {
-        for (var j = 0; j < rows.length; j++) {
-          var n = parseInt(rows[j].episode_num, 10);
-          if (isFinite(n) && n > 0 && !byNum[n]) byNum[n] = { num: n, title: '' };
-        }
-      }
-      var out = [];
-      for (var k in byNum) out.push(byNum[k]);
-      out.sort(function (a, b) { return a.num - b.num; });
-      return out;
-    }
-
-    // One tile per episode. Boosted tiles carry the sats total; unboosted
-    // tiles carry a bolt and read "Boost". Both link to the episode page.
-    function buildEpisodeGrid(all, mineByEp) {
-      if (!all.length) return '';
-      var BOLT = '<svg class="stats-ep-bolt" viewBox="0 0 24 24" aria-hidden="true">' +
-        '<path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>';
-      var boosted = 0;
-      var tiles = '';
-      for (var i = 0; i < all.length; i++) {
-        var ep = all[i];
-        var sats = mineByEp[ep.num] || 0;
-        var pad = String(ep.num).padStart(3, '0');
-        var title = ep.title ? svgEsc(ep.title) : ('Episode ' + pad);
-        if (sats > 0) {
-          boosted += 1;
-          tiles += '<a class="stats-ep-tile is-boosted" href="/ep' + pad + '" title="' + title + '">' +
-            '<span class="stats-ep-num">Ep ' + pad + '</span>' +
-            '<span class="stats-ep-sats">' + fmtSats(sats) + ' sats</span></a>';
-        } else {
-          tiles += '<a class="stats-ep-tile" href="/ep' + pad + '" title="' + title + '">' +
-            '<span class="stats-ep-num">Ep ' + pad + '</span>' +
-            '<span class="stats-ep-sats">' + BOLT + 'Boost</span></a>';
-        }
-      }
-      return '<div class="stats-ep-grid-wrap">' +
-        '<div class="stats-ep-grid-head">' +
-          '<span class="stats-ep-grid-title">Your episodes</span>' +
-          '<span class="stats-ep-grid-count">' + boosted + ' of ' + all.length + '</span>' +
-        '</div>' +
-        '<div class="stats-ep-grid">' + tiles + '</div>' +
-        '<p class="stats-ep-grid-note">Boosts sent anonymously carry no npub and can’t be matched to you.</p>' +
-        '</div>';
-    }
-
     draw('sats');
 
     var radios = document.querySelectorAll('input[name="stats-board-view"]');
@@ -1313,6 +1249,116 @@
           draw(checked ? checked.value : 'sats');
         }
       }).catch(function () {});
+    }
+  }
+
+  // ── Your Episodes — every episode as a tile grid ───────────────────
+  // Answers "which episodes have I boosted" the way a ranking can't: one
+  // tile per episode in numeric order, so the gaps are visible. Signed in,
+  // boosted tiles are filled with the sats you sent and unboosted tiles
+  // carry a Boost bolt; signed out, every tile is neutral and a sign-in
+  // line sits above the grid. Every tile links to its /ep### page, where
+  // the episode boost lives. Anonymous (burner-signed) boosts carry no
+  // sender_npub, so they correctly never show up as yours.
+  function renderEpisodeGrid(rows, rssEpisodes) {
+    if (!epgridCanvas) return;
+
+    // Every episode, numeric order. The RSS is the source of truth; if it
+    // failed to load, fall back to the episodes the ledger has seen so the
+    // grid still renders (it just can't show episodes nobody has boosted).
+    var byNum = Object.create(null);
+    var list = rssEpisodes && rssEpisodes.length ? rssEpisodes : [];
+    for (var i = 0; i < list.length; i++) {
+      byNum[list[i].num] = { num: list[i].num, title: list[i].title || '' };
+    }
+    if (!list.length) {
+      for (var j = 0; j < rows.length; j++) {
+        var n = parseInt(rows[j].episode_num, 10);
+        if (isFinite(n) && n > 0 && !byNum[n]) byNum[n] = { num: n, title: '' };
+      }
+    }
+    var all = [];
+    for (var k in byNum) all.push(byNum[k]);
+    all.sort(function (a, b) { return a.num - b.num; });
+    if (!all.length) {
+      epgridCanvas.innerHTML = '<p class="stats-error">No episode data yet.</p>';
+      return;
+    }
+
+    var BOLT = '<svg class="stats-ep-bolt" viewBox="0 0 24 24" aria-hidden="true">' +
+      '<path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>';
+
+    function currentUser() {
+      var u = window.LBLogin && typeof window.LBLogin.getUser === 'function'
+        ? window.LBLogin.getUser() : null;
+      return u && u.npub ? u : null;
+    }
+
+    function tile(ep, sats, signedIn) {
+      var pad = String(ep.num).padStart(3, '0');
+      var title = ep.title ? svgEsc(ep.title) : ('Episode ' + pad);
+      var cls = 'stats-ep-tile' + (sats > 0 ? ' is-boosted' : '');
+      var sub = '';
+      if (sats > 0) sub = fmtSats(sats) + ' sats';
+      else if (signedIn) sub = BOLT + 'Boost';
+      return '<a class="' + cls + '" href="/ep' + pad + '" title="' + title + '">' +
+        '<span class="stats-ep-num">Ep ' + pad + '</span>' +
+        (sub ? '<span class="stats-ep-sats">' + sub + '</span>' : '') +
+        '</a>';
+    }
+
+    function draw() {
+      var user = currentUser();
+      var mineByEp = Object.create(null);
+      var boosted = 0;
+      if (user) {
+        for (var r = 0; r < rows.length; r++) {
+          var row = rows[r];
+          if (row.episode_num == null || row.sender_npub !== user.npub) continue;
+          var num = parseInt(row.episode_num, 10);
+          if (!isFinite(num) || num <= 0) continue;
+          mineByEp[num] = (mineByEp[num] || 0) + (row.total_sats || 0);
+        }
+        for (var m in mineByEp) if (mineByEp[m] > 0) boosted += 1;
+      }
+
+      var html = '';
+      if (!user) {
+        html += '<p class="stats-epgrid-login">Sign in with Nostr to see which episodes you’ve boosted. ' +
+          '<a href="#" data-epgrid-login>Sign in</a></p>';
+      }
+      html += '<div class="stats-ep-grid">';
+      for (var t = 0; t < all.length; t++) {
+        html += tile(all[t], mineByEp[all[t].num] || 0, !!user);
+      }
+      html += '</div>';
+      if (user) {
+        html += '<p class="stats-ep-grid-note">Boosts sent anonymously carry no npub and can’t be matched to you.</p>';
+      }
+      epgridCanvas.innerHTML = html;
+
+      if (epgridSubEl) {
+        epgridSubEl.textContent = user
+          ? 'You’ve boosted ' + boosted + ' of ' + all.length + ' episodes'
+          : 'Every episode of the show; the ones you’ve boosted light up once you sign in';
+      }
+
+      var loginLink = epgridCanvas.querySelector('[data-epgrid-login]');
+      if (loginLink) {
+        loginLink.addEventListener('click', function (e) {
+          e.preventDefault();
+          if (window.LBLogin && typeof window.LBLogin.requestLogin === 'function') {
+            window.LBLogin.requestLogin();
+          }
+        });
+      }
+    }
+    draw();
+
+    // Redraw on login/logout so the grid reflects the current user as
+    // soon as a sign-in (or session restore) lands.
+    if (window.LBLogin && typeof window.LBLogin.onChange === 'function') {
+      window.LBLogin.onChange(draw);
     }
   }
 

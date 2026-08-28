@@ -414,34 +414,30 @@
       text-anchor: start;
     }
 
-    /* ── "My Stats" episode grid: every episode in numeric order, boosted
-       tiles filled with the sats total, unboosted tiles outlined with a
-       Boost bolt. Sits under the sats-ordered bars. ── */
-    .stats-ep-grid-wrap { margin-top: 1.25rem; }
-    .stats-ep-grid-head {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 0.75rem;
-      padding-bottom: 0.5rem;
-      border-bottom: 1px solid var(--border);
-    }
-    .stats-ep-grid-title {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-weight: 700;
-      font-size: 1.05rem;
+    /* ── Your Episodes: every episode in numeric order. Signed in, boosted
+       tiles are filled with the sats total and unboosted tiles carry a
+       Boost bolt; signed out, every tile is neutral under a sign-in line. ── */
+    .stats-epgrid-login {
+      margin: 0 0 0.85rem;
+      padding: 0.6rem 0.85rem;
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--orange);
+      border-radius: 8px;
+      background: var(--cream);
       color: var(--navy);
+      font-size: 0.92rem;
     }
-    .stats-ep-grid-count {
-      font-weight: 700;
-      font-size: 0.9rem;
+    .stats-epgrid-login a {
       color: var(--brand-d);
+      font-weight: 700;
+      text-decoration: underline;
+      text-underline-offset: 2px;
     }
+    .stats-epgrid-login a:hover { color: var(--brand-dd); }
     .stats-ep-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
       gap: 0.5rem;
-      margin-top: 0.75rem;
     }
     .stats-ep-tile {
       display: flex;
@@ -760,6 +756,19 @@
     <div class="stats-loading">
       <div class="loading-spinner"></div><br />
       Loading supporter stats…
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════ YOUR EPISODES ══════════════════════════════ -->
+<section class="section-wide">
+  <h2 class="stats-chart-heading">Your Episodes</h2>
+  <p class="stats-chart-sub" data-epgrid-sub>Loading…</p>
+
+  <div class="stats-chart-canvas" data-stats-epgrid>
+    <div class="stats-loading">
+      <div class="loading-spinner"></div><br />
+      Loading episodes…
     </div>
   </div>
 </section>
