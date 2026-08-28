@@ -474,27 +474,43 @@ NIP52_KINDS = {31922, 31923}
 # forking a parallel pipeline. Keep NIP52_KINDS meaning strictly NIP-52; the
 # Events-tab reader still filters on it.
 KIND_ARTICLE     = 30023
-FEATURABLE_KINDS = NIP52_KINDS | {KIND_ARTICLE}
+# NIP-99 classified listing — the Market tab's featured slot.
+KIND_LISTING     = 30402
+FEATURABLE_KINDS = NIP52_KINDS | {KIND_ARTICLE, KIND_LISTING}
 
 # Match an naddr1 bech32 token anywhere — bare, nostr:-prefixed, or embedded in
 # a URL (njump.me/naddr1..., etc.). The lookbehind skips naddr1 glued to a
 # preceding word char. Data charset excludes bech32's 1/b/i/o.
 _NADDR_RE = re.compile(r'(?<!\w)naddr1[02-9ac-hj-np-z]+', re.IGNORECASE)
 
+# A podcast episode featured via its OnlyBoosts page. The site's Feature boost
+# message ends with `https://onlyboosts.social/episode/<urlencoded item guid>`;
+# sats-log's meetups pass turns that into a `podcast:item:guid:<guid>` row.
+# Item guids are opaque — some contain slashes, some are full URLs — so the
+# capture runs to whitespace and the consumer urldecodes it whole, never splits.
+_OB_EPISODE_URL_RE = re.compile(r'https://onlyboosts\.social/episode/([^\s]+)')
+
 # Web-view URLs for the addressable events a boost can carry, so clients that
 # don't render an embedded naddr still give readers something to click.
 #   plektos.app (NIP-52 calendar client) — createEventUrl builds
 #     `${origin}/event/${naddr}`; it's calendar-only, no article view.
 #   mynostr.app renders a NIP-23 article at the bare bech32 root.
+#   shopstr.store renders a NIP-99 listing at /listing/<naddr>.
 PLEKTOS_EVENT_URL   = "https://plektos.app/event/{naddr}"   # 31922 / 31923
 MYNOSTR_ARTICLE_URL = "https://mynostr.app/{naddr}"         # 30023
+SHOPSTR_LISTING_URL = "https://shopstr.store/listing/{naddr}"  # 30402
 
 # Per featurable kind: (line emoji, URL template). Calendar output stays
-# byte-identical to the old plektos-only path; articles get 📄 + a MyNostr link.
+# byte-identical to the old plektos-only path; articles get 📄 + a MyNostr
+# link, listings 🛒 + a Shopstr link. The site's own signed note
+# (buildShowSiteNoteTemplate in login-widget/src/lib/boostagram.js) emits the
+# same lines — keep the two in step. Featured podcast episodes get no line:
+# the OnlyBoosts URL is already the message body.
 _WEB_LINK_BY_KIND = {
     31922: ("📅", PLEKTOS_EVENT_URL),
     31923: ("📅", PLEKTOS_EVENT_URL),
     30023: ("📄", MYNOSTR_ARTICLE_URL),
+    30402: ("🛒", SHOPSTR_LISTING_URL),
 }
 
 def decode_naddr(entity):
@@ -542,7 +558,8 @@ def web_links_for_message(message):
     """(emoji, url) for each distinct featurable naddr in `message`, in
     first-seen order. Many Nostr clients don't render an embedded naddr, so the
     boost note carries a web link too — a plektos.app view for NIP-52 calendar
-    events, a mynostr.app view for NIP-23 articles. naddrs whose kind isn't in
+    events, a mynostr.app view for NIP-23 articles, a shopstr.store view for
+    NIP-99 listings. naddrs whose kind isn't in
     _WEB_LINK_BY_KIND and malformed tokens are skipped; an event referenced
     twice in one message yields one link (dedupe on coordinate)."""
     if not message or "naddr1" not in message.lower():

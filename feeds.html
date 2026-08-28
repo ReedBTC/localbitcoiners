@@ -347,18 +347,13 @@
       color: var(--accent-d);
       padding: 0.3rem 0;
     }
-    /* "Find Event to Feature" — pushed to the right edge of the Featured Events
-       header row; wraps to its own line on narrow screens. Inherits the
-       .event-composer-btn look (secondary, not orange). */
-    .feed-find-btn { margin-left: auto; font-size: 0.86rem; padding: 0.28rem 0.6rem; }
-    /* Muted line under the Featured header when the month has events but none
-       are featured yet. */
-    .feed-featured-hint {
-      margin: 0.2rem 0 0.4rem;
-      font-size: 0.88rem;
-      color: var(--muted);
-      font-style: italic;
-    }
+    /* The Featured Events box is the shared .feat-box (see Featured Articles);
+       its Find button is the shared .feat-find, opened by the delegated
+       .feed-find-btn click in the Find-modal controller below. The gap after
+       the box comes from the box's own margin. */
+    .feat-box .feed-list { margin-top: 0; }
+    .featured-by-when { color: var(--muted); white-space: nowrap; }
+    .featured-by--anon { cursor: default; color: var(--muted); font-size: 0.75rem; display: inline-flex; gap: 0.35rem; }
     /* The normal "Events" header, when present, follows the featured grid —
        give it breathing room from the cards above. */
     .feed-list + .feed-section-head { margin-top: 1.6rem; }
@@ -1153,15 +1148,15 @@
     .art-avatar--btn:hover { box-shadow: 0 0 0 2px var(--accent); }
 
     /* Copy toast (self-contained; mirrors the podcasts feed's toast). */
-    .art-toast {
+    .art-toast, .market-toast {
       position: fixed; left: 50%; bottom: 1.5rem; transform: translate(-50%, 1rem);
       z-index: 1100; background: var(--text, #1e160a); color: #fff;
       padding: 0.55rem 1.1rem; border-radius: 999px;
       font-size: 0.85rem; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,0.25);
       opacity: 0; pointer-events: none; transition: opacity 0.18s, transform 0.18s;
     }
-    .art-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
-    .art-toast.is-error { background: #9b2c2c; }
+    .art-toast.is-visible, .market-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+    .art-toast.is-error, .market-toast.is-error { background: #9b2c2c; }
 
     /* Load-more (shared shape with the podcasts feed's control). */
     .art-more-wrap { margin-top: 0.6rem; }
@@ -1183,7 +1178,7 @@
        a label. Gold is #e0a92e — the same accent as boosted event cards
        and top-tier supporter rings — deliberately not the tab's purple
        accent, which belongs to page-level chrome. */
-    .art-featured {
+    .feat-box {
       --gold: #e0a92e;
       --gold-d: #a9761a;
       margin: 0 0 1.5rem;
@@ -1193,58 +1188,58 @@
       background: rgba(224,169,46,0.05);
       box-shadow: 0 0 0 3px rgba(224,169,46,0.07);
     }
-    .art-featured-head {
+    .feat-head {
       display: flex; align-items: center; justify-content: space-between;
       flex-wrap: wrap; gap: 0.5rem 0.9rem; margin-bottom: 0.8rem;
     }
-    .art-featured-title {
+    .feat-title {
       display: inline-flex; align-items: center; gap: 0.4rem;
       font-family: 'Playfair Display', Georgia, serif;
       font-size: 1.02rem; font-weight: 700; color: var(--gold-d);
     }
-    .art-featured-count {
+    .feat-count {
       font-family: var(--sans, inherit); font-size: 0.72rem; font-weight: 700;
       color: var(--gold-d); background: rgba(224,169,46,0.18);
       padding: 0.05rem 0.42rem; border-radius: 999px;
     }
-    .art-featured-actions {
+    .feat-actions {
       display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
     }
 
     /* Range pills — same near-square shape as the page-level .pcast-range
        control, but gold-on-gold so they read as part of the box. */
-    .art-featured-range { display: flex; flex-shrink: 0; }
-    .art-featured-range-btn {
+    .feat-range { display: flex; flex-shrink: 0; }
+    .feat-range-btn {
       min-width: 2rem; padding: 0.5rem 0.35rem;
       font: inherit; font-size: 0.72rem; font-weight: 700; line-height: 1.2;
       color: var(--gold-d); background: transparent;
       border: none; border-radius: 6px; cursor: pointer; opacity: 0.6;
       transition: background 0.12s, opacity 0.12s;
     }
-    .art-featured-range-btn:hover { opacity: 1; background: rgba(224,169,46,0.14); }
-    .art-featured-range-btn.is-active {
+    .feat-range-btn:hover { opacity: 1; background: rgba(224,169,46,0.14); }
+    .feat-range-btn.is-active {
       opacity: 1; background: rgba(224,169,46,0.28);
     }
 
-    .art-featured-find {
+    .feat-find {
       display: inline-flex; align-items: center; gap: 0.35rem;
       padding: 0.35rem 0.7rem; font: inherit; font-size: 0.78rem; font-weight: 600;
       color: var(--gold-d); background: var(--white);
       border: 1px solid var(--gold); border-radius: 999px; cursor: pointer;
       white-space: nowrap; transition: background 0.12s;
     }
-    .art-featured-find:hover { background: rgba(224,169,46,0.14); }
+    .feat-find:hover { background: rgba(224,169,46,0.14); }
 
-    .art-featured-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem; }
-    .art-featured-empty { margin: 0; font-size: 0.85rem; color: var(--muted); }
-    .art-featured-more {
+    .feat-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem; }
+    .feat-empty { margin: 0; font-size: 0.85rem; color: var(--muted); }
+    .feat-more {
       display: block; margin: 0.7rem auto 0;
       padding: 0.42rem 1.1rem; font: inherit; font-size: 0.8rem; font-weight: 700;
       color: var(--gold-d); background: var(--white);
       border: 1px solid var(--gold); border-radius: 999px; cursor: pointer;
       transition: background 0.12s;
     }
-    .art-featured-more:hover { background: rgba(224,169,46,0.14); }
+    .feat-more:hover { background: rgba(224,169,46,0.14); }
 
     /* A featured card inside the box gets a static gold hairline, not the
        pulsing halo the Events tab puts on boosted cards — the container is
@@ -1265,74 +1260,144 @@
     }
     .art-feature:hover { background: var(--orange-d); }
     .art-feature:disabled { opacity: 0.6; cursor: default; }
-    .art-feature-bolt { width: 0.9em; height: 0.9em; flex-shrink: 0; }
+    .feat-bolt { width: 0.9em; height: 0.9em; flex-shrink: 0; }
 
     /* "Featured by (pfp) Name · 3d ago" — sits where the Feature button is on
        an unfeatured card. Muted so it reads as a credit, not an action; the
        relative age is what makes the range filter legible. */
-    .art-featured-by {
+    .feat-by {
       display: inline-flex; align-items: center; gap: 0.35rem;
       max-width: 60%; padding: 0; font: inherit; font-size: 0.75rem;
-      color: var(--muted); background: none; border: none; cursor: pointer;
+      color: var(--muted); background: none; border: none;
     }
-    .art-featured-by--anon { cursor: default; }
-    .art-featured-by-label { flex-shrink: 0; }
-    .art-featured-by-name {
+    .feat-by-label { flex-shrink: 0; }
+    /* Only the person is the link / copy button; the label and age are text. */
+    .feat-by-who {
+      display: inline-flex; align-items: center; gap: 0.35rem; min-width: 0;
+      padding: 0; font: inherit; color: inherit; background: none; border: none;
+      cursor: pointer; text-decoration: none;
+    }
+    .feat-by-name {
       font-weight: 600; color: var(--text);
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-    .art-featured-by:hover .art-featured-by-name { color: var(--gold-d); }
-    .art-featured-when { flex-shrink: 0; white-space: nowrap; }
+    .feat-by-who:hover .feat-by-name { color: var(--gold-d); }
+    .feat-by-when { flex-shrink: 0; white-space: nowrap; }
 
     /* ── "Find an Article to Feature" modal ───────────────────────────
        Reuses the event composer's backdrop/card chrome so both Find modals
        are one thing; the body is a single paste box, since an article is
        always addressable by naddr. */
-    .art-find-help { margin: 0 0 0.8rem; font-size: 0.85rem; color: var(--muted); line-height: 1.45; }
-    .art-find-row { display: flex; gap: 0.5rem; }
-    .art-find-input {
+    .ffind-help { margin: 0 0 0.8rem; font-size: 0.85rem; color: var(--muted); line-height: 1.45; }
+    .ffind-row { display: flex; gap: 0.5rem; }
+    .ffind-input {
       flex: 1; min-width: 0; padding: 0.55rem 0.7rem;
       font: inherit; font-size: 0.85rem; color: var(--text);
       background: var(--white); border: 1px solid var(--border); border-radius: 8px;
     }
-    .art-find-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-    .art-find-go {
+    .ffind-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .ffind-go {
       padding: 0.55rem 1.1rem; font: inherit; font-size: 0.82rem; font-weight: 700;
       color: #fff; background: var(--accent); border: none; border-radius: 8px;
       cursor: pointer; white-space: nowrap;
     }
-    .art-find-go:disabled { opacity: 0.6; cursor: default; }
-    .art-find-status { margin: 0.7rem 0 0; font-size: 0.82rem; color: var(--muted); }
-    .art-find-status:empty { display: none; }
-    .art-find-result:not(:empty) { margin-top: 0.9rem; }
-    .art-find-preview {
+    .ffind-go:disabled { opacity: 0.6; cursor: default; }
+    .ffind-status { margin: 0.7rem 0 0; font-size: 0.82rem; color: var(--muted); }
+    .ffind-status:empty { display: none; }
+    .ffind-result:not(:empty) { margin-top: 0.9rem; }
+    .ffind-preview {
       display: flex; gap: 0.75rem; align-items: flex-start;
       padding: 0.7rem; border: 1px solid var(--gold, #e0a92e); border-radius: 10px;
       background: rgba(224,169,46,0.05);
     }
-    .art-find-preview-media {
+    .ffind-preview-media {
       flex-shrink: 0; width: 68px; height: 68px; border-radius: 8px;
       overflow: hidden; background: var(--tint);
     }
-    .art-find-preview-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .art-find-preview-media--none {
+    .ffind-preview-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .ffind-preview-media--none {
       display: flex; align-items: center; justify-content: center; font-size: 1.5rem; opacity: 0.5;
     }
-    .art-find-preview-body { min-width: 0; }
-    .art-find-preview-title {
+    .ffind-preview-body { min-width: 0; }
+    .ffind-preview-title {
       font-family: 'Playfair Display', Georgia, serif;
       font-size: 0.98rem; font-weight: 700; line-height: 1.25; color: var(--text);
     }
-    .art-find-preview-meta {
+    .ffind-preview-meta {
       display: flex; align-items: center; gap: 0.35rem; margin-top: 0.2rem;
       font-size: 0.76rem; color: var(--muted);
     }
-    .art-find-preview-summary {
+    .ffind-preview-summary {
       margin: 0.35rem 0 0; font-size: 0.82rem; line-height: 1.4; color: var(--muted);
       display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
       overflow-wrap: anywhere;
     }
-    .art-find-feature { margin-top: 0.8rem; padding: 0.5rem 1.1rem; font-size: 0.85rem; }
+    .ffind-feature { margin-top: 0.8rem; padding: 0.5rem 1.1rem; font-size: 0.85rem; }
+
+    /* ── Featured Listings (Marketplace tab) ──────────────────────────
+       Same gold box as Featured Articles; the cards are the market grid's
+       own tiles with a gold hairline. The Feature button sits under the
+       Add-to-cart / Contact button, full width like it. */
+    .market-featured-mount .feat-box { margin-bottom: 1.2rem; }
+    .market-card--featured { border-color: var(--gold, #e0a92e); }
+    .market-card--featured:hover { box-shadow: 0 8px 22px rgba(224,169,46,0.24); }
+    .market-card-actions { display: flex; flex-direction: column; gap: 0.35rem; }
+    .market-btn--feature {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem;
+      color: #fff; background: var(--orange); border-color: var(--orange);
+    }
+    .market-btn--feature:hover { background: var(--orange-d); border-color: var(--orange-d); }
+    .market-btn--feature:disabled { opacity: 0.6; cursor: default; }
+    .market-btn--feature .feat-bolt { width: 0.9em; height: 0.9em; flex-shrink: 0; }
+    .market-btn--feature.ffind-feature { width: auto; }
+    .market-card-actions .feat-by { max-width: 100%; justify-content: center; }
+    .market-card-actions .feat-by .market-seller-pfp { width: 16px; height: 16px; }
+
+    /* ── Featured Episodes (Podcast Boosts tab) ───────────────────────
+       The gold box again; featured episode cards keep their full layout
+       (player, drawer) with a gold hairline. The Feature button is gold
+       rather than orange here because it sits beside the orange "Boost
+       episode" button: on this page gold means "the featured slot", and
+       two orange bolts side by side would read as one action twice. */
+    .pcast-featured-mount .feat-box { margin-bottom: 1.2rem; }
+    .pcast-featured-mount .feat-list { gap: 0.9rem; }
+    .pcast-card--featured { border-color: var(--gold, #e0a92e); box-shadow: 0 0 0 1px rgba(224,169,46,0.18); }
+    .pcast-btn-feature { color: #fff; background: #e0a92e; border-color: #e0a92e; }
+    .pcast-btn-feature:hover { background: #c9931f; border-color: #c9931f; }
+    .pcast-btn-feature:disabled { opacity: 0.6; cursor: default; }
+    .pcast-btn-feature .feat-bolt { width: 15px; height: 15px; }
+    .pcast-card-buttons .feat-by { margin-left: auto; max-width: 55%; }
+    .pcast-card-buttons .feat-by img,
+    .pcast-card-buttons .feat-by .pcast-avatar { width: 18px; height: 18px; border-radius: 50%; object-fit: cover; }
+
+    /* "Find an Episode to Feature": a Podcast Index search. Shows come back
+       as a list; picking one lists its recent episodes; each episode row
+       carries its own Feature button. */
+    .ffind-list { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.9rem; max-height: 50vh; overflow-y: auto; }
+    .ffind-row-item {
+      display: flex; align-items: center; gap: 0.65rem; width: 100%; text-align: left;
+      padding: 0.5rem 0.6rem; font: inherit; color: var(--text);
+      background: var(--white); border: 1px solid var(--border); border-radius: 10px; cursor: pointer;
+      transition: border-color 0.12s, background 0.12s;
+    }
+    .ffind-row-item:hover { border-color: var(--gold, #e0a92e); background: rgba(224,169,46,0.05); }
+    .ffind-row-item--static { cursor: default; }
+    .ffind-row-item--static:hover { border-color: var(--border); background: var(--white); }
+    .ffind-row-media {
+      flex-shrink: 0; width: 44px; height: 44px; border-radius: 8px; overflow: hidden; background: var(--tint);
+      display: flex; align-items: center; justify-content: center; font-size: 1.2rem; opacity: 0.9;
+    }
+    .ffind-row-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .ffind-row-body { min-width: 0; flex: 1; }
+    .ffind-row-title { font-size: 0.88rem; font-weight: 700; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .ffind-row-meta { font-size: 0.74rem; color: var(--muted); margin-top: 0.15rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ffind-row-action { flex-shrink: 0; padding: 0.4rem 0.75rem; font-size: 0.78rem; }
+    .ffind-back {
+      display: inline-flex; align-items: center; gap: 0.3rem; margin: 0.8rem 0 0;
+      padding: 0; font: inherit; font-size: 0.8rem; font-weight: 600; color: var(--muted);
+      background: none; border: none; cursor: pointer;
+    }
+    .ffind-back:hover { color: var(--text); }
 
     /* ── Shared feed toggle pill (panel head) ─────────────────────────
        A default-off switch that widens a feed. Used by the Articles tab
@@ -1522,13 +1587,13 @@
       /* Featured box: the title can't share a row with both the range pills
          and the Find button here, so the actions wrap onto their own line and
          pin right (still inside the gold border, which is the whole point). */
-      .art-featured { padding: 0.75rem 0.7rem 0.8rem; }
-      .art-featured-actions { margin-left: auto; }
-      .art-featured-find { font-size: 0.74rem; padding: 0.3rem 0.6rem; }
+      .feat-box { padding: 0.75rem 0.7rem 0.8rem; }
+      .feat-actions { margin-left: auto; }
+      .feat-find { font-size: 0.74rem; padding: 0.3rem 0.6rem; }
       /* The card foot runs out of room for "Read Full Article" plus a booster
          credit, so let the two stack rather than squeezing the name to nothing. */
       .art-card-foot { flex-wrap: wrap; gap: 0.35rem 0.5rem; }
-      .art-featured-by { max-width: 100%; }
+      .feat-by { max-width: 100%; }
       /* Events head: keep the range buttons + type dropdown at the top-right
          beside the Create button (align-items:flex-start top-aligns them).
          flex-wrap is a safety net for very narrow screens where the controls

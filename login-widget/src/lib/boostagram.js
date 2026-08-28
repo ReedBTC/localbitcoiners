@@ -884,6 +884,43 @@ const MAX_FOUNTAIN_URL_LEN = 256
 export const SHOW_NOTE_HEADLINE = '⚡ New boost on Local Bitcoiners!'
 export const SHOW_NOTE_MAX_MESSAGE = 1500
 
+// Web views for the addressable events a Feature boost carries, so clients
+// that don't render an embedded naddr still give readers something to click.
+// ⚠️ MIRRORS `bots/shared/boost_formatter.py#_WEB_LINK_BY_KIND` — same emoji,
+// same URL template per kind, one line per distinct coordinate in first-seen
+// order, malformed and non-featurable naddrs skipped. Change both together.
+//   plektos.app renders NIP-52 calendar events (`/event/<naddr>`, calendar-only)
+//   mynostr.app renders a NIP-23 article at the bare bech32 root
+//   shopstr.store renders a NIP-99 listing (`/listing/<naddr>`)
+export const WEB_LINK_BY_KIND = {
+  31922: ['📅', 'https://plektos.app/event/'],
+  31923: ['📅', 'https://plektos.app/event/'],
+  30023: ['📄', 'https://mynostr.app/'],
+  30402: ['🛒', 'https://shopstr.store/listing/'],
+}
+const NADDR_IN_TEXT_RE = /(?<![0-9a-z_])naddr1[02-9ac-hj-np-z]+/gi
+
+/** [emoji, url] per distinct featurable naddr in `message`, first-seen order. */
+export function webLinksForMessage(message) {
+  const text = String(message || '')
+  if (!/naddr1/i.test(text)) return []
+  const out = []
+  const seen = new Set()
+  for (const m of text.matchAll(NADDR_IN_TEXT_RE)) {
+    const token = m[0].toLowerCase()
+    let d = null
+    try { d = nip19.decode(token) } catch { continue }
+    if (!d || d.type !== 'naddr') continue
+    const link = WEB_LINK_BY_KIND[d.data.kind]
+    if (!link) continue
+    const coord = `${d.data.kind}:${d.data.pubkey}:${d.data.identifier}`
+    if (seen.has(coord)) continue
+    seen.add(coord)
+    out.push([link[0], link[1] + token])
+  }
+  return out
+}
+
 export function buildShowSiteNoteTemplate({
   paidSats,       // the headline figure: sats that LANDED (paid + uncertain,
                   // the bots' credit-uncertain-as-paid policy)
@@ -932,6 +969,9 @@ export function buildShowSiteNoteTemplate({
     `👤 ${from}`,
   ]
   if (msg) lines.push(`💬 ${msg}`)
+  // A Feature boost's naddr gets its web view, exactly where the bot puts it
+  // (after the message, before the episode line).
+  for (const [emoji, url] of webLinksForMessage(msg)) lines.push(`${emoji} ${url}`)
   if (title) lines.push(`🎙️ ${title}`)
   lines.push(`🔗 ${fountainUrl || episodeUrl}`)
   lines.push('')

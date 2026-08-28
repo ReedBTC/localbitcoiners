@@ -349,6 +349,7 @@ export function renderCalendarCard(parsed, { bech32 = '', profile = null, action
     const bar = buildEventActions(parsed, actionsLeft, bech32, {
       promote: !featured,
       featuredBy: featured ? featuredBy : null,
+      profile,
     })
     if (bar) actionsParent.appendChild(bar)
   }
@@ -368,7 +369,7 @@ function eventAppUrl(bech32) {
 // boost-actions exposes openZapModal() + repostAnyEvent(). Kept out of
 // the static import graph so the shared renderer stays lightweight for
 // pages that only display events.
-function buildEventActions(parsed, actionsLeft = null, bech32 = '', { promote = true, featuredBy = null } = {}) {
+function buildEventActions(parsed, actionsLeft = null, bech32 = '', { promote = true, featuredBy = null, profile = null } = {}) {
   if (!parsed || !parsed.id || !parsed.pubkey) return null
 
   const bar = document.createElement('div')
@@ -400,7 +401,7 @@ function buildEventActions(parsed, actionsLeft = null, bech32 = '', { promote = 
     promoteBtn.innerHTML =
       '<svg class="promote-bolt" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
       '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg><span>Feature</span>'
-    promoteBtn.addEventListener('click', () => promoteEvent(parsed, bech32, promoteBtn))
+    promoteBtn.addEventListener('click', () => promoteEvent(parsed, bech32, promoteBtn, profile))
     bar.appendChild(promoteBtn)
   }
 
@@ -428,26 +429,46 @@ function buildEventActions(parsed, actionsLeft = null, bech32 = '', { promote = 
 // for whoever boosted the event into the Featured section. Click-to-copy-npub,
 // mirroring the author-id control.
 function buildFeaturedBy(info) {
-  if (!info || !info.pubkey) return document.createElement('span')
+  if (!info) return document.createElement('span')
+  // No booster known (an anonymous feature): just "Featured · 3d ago".
+  if (!info.pubkey) {
+    const anon = document.createElement('span')
+    anon.className = 'featured-by featured-by--anon'
+    if (!info.when) return anon
+    const lbl = document.createElement('span')
+    lbl.className = 'featured-by-label'
+    lbl.textContent = 'Featured'
+    anon.appendChild(lbl)
+    const when = document.createElement('span')
+    when.className = 'featured-by-when'
+    when.textContent = '· ' + info.when
+    anon.appendChild(when)
+    return anon
+  }
   const hasPubkey = /^[0-9a-f]{64}$/i.test(info.pubkey)
   const linked = hasPubkey && hasBoosterPage(info.pubkey)
-  const el = document.createElement(hasPubkey ? (linked ? 'a' : 'button') : 'span')
+  // The credit is plain text; only the person (pfp + name) is clickable —
+  // their OnlyBoosts page when they have one, else copy-npub.
+  const el = document.createElement('span')
   el.className = 'featured-by'
+  const who = document.createElement(hasPubkey ? (linked ? 'a' : 'button') : 'span')
+  who.className = 'featured-by-who'
   if (linked) {
-    el.href = boosterUrl(info.pubkey)
-    el.target = '_blank'
-    el.rel = 'noopener noreferrer'
-    el.title = 'View ' + (info.name || 'this booster') + ' on OnlyBoosts'
+    who.href = boosterUrl(info.pubkey)
+    who.target = '_blank'
+    who.rel = 'noopener noreferrer'
+    who.title = 'View ' + (info.name || 'this booster') + ' on OnlyBoosts'
   } else if (hasPubkey) {
-    el.type = 'button'
-    el.title = 'Copy npub'
-    el.addEventListener('click', () => copyNpub(info.pubkey))
+    who.type = 'button'
+    who.title = 'Copy npub'
+    who.addEventListener('click', () => copyNpub(info.pubkey))
   }
 
   const label = document.createElement('span')
   label.className = 'featured-by-label'
   label.textContent = 'Featured by'
   el.appendChild(label)
+  el.appendChild(who)
 
   const img = document.createElement('img')
   img.className = 'featured-by-pfp'
@@ -460,12 +481,21 @@ function buildFeaturedBy(info) {
   img.alt = ''
   img.referrerPolicy = 'no-referrer'
   img.onerror = () => { img.src = '/assets/LocalBitcoiners.png' }
-  el.appendChild(linked ? wrapWithDot(img) : img)
+  who.appendChild(linked ? wrapWithDot(img) : img)
 
   const name = document.createElement('span')
   name.className = 'featured-by-name'
   name.textContent = info.name || (info.pubkey.slice(0, 8) + '…')
-  el.appendChild(name)
+  who.appendChild(name)
+
+  // Relative age of the feature, which is what makes the box's 1W/1M/All
+  // range legible without a label explaining it.
+  if (info.when) {
+    const when = document.createElement('span')
+    when.className = 'featured-by-when'
+    when.textContent = '· ' + info.when
+    el.appendChild(when)
+  }
 
   return el
 }
@@ -495,7 +525,12 @@ export function clearPendingPromote() {
   try { localStorage.removeItem(PENDING_PROMOTE_KEY) } catch {}
 }
 
-async function promoteEvent(parsed, bech32, btn) {
+// `profile` is the organizer's cached kind-0 ({ name, picture, lud16 }) when
+// the caller has it. The Feature boost pays the organizer the show's
+// reassignable split leg (see login-widget/src/lib/featureSplit.js); a profile
+// without a lud16 is resolved again inside the widget, from the relays, before
+// the modal opens, and a miss falls back to the standard splits.
+async function promoteEvent(parsed, bech32, btn, profile = null) {
   const coord = `${parsed.kind}:${parsed.pubkey}:${parsed.dTag}`
   try {
     if (btn) btn.disabled = true
@@ -508,8 +543,16 @@ async function promoteEvent(parsed, bech32, btn) {
     } catch {}
     await ensureLoginWidget()
     const prefillMessage = `${PROMOTE_TEMPLATE}\n\nnostr:${bech32}`
+    const lud16 = typeof profile?.lud16 === 'string' ? profile.lud16.trim() : ''
+    const feature = {
+      kind: 'event',
+      pubkey: parsed.pubkey,
+      naddr: bech32,
+      name: profile?.name || '',
+      address: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lud16) ? lud16 : '',
+    }
     if (window.LBLogin?.openShowBoost) {
-      window.LBLogin.openShowBoost({ prefillMessage })
+      window.LBLogin.openShowBoost({ prefillMessage, feature })
     } else {
       showCopyToast('Boost unavailable right now — please try again')
     }

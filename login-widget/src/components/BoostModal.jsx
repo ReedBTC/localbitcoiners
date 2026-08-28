@@ -20,18 +20,20 @@
  * the show-boost path. It is called with a null episode number, so
  * per-episode override layers never apply to a show boost.
  *
- * `authorSplit` reassigns the third leg. A Feature boost from the
- * Articles tab pays the featured article's author out of that leg, so
- * the sats follow the thing being promoted; the two host legs are
- * untouched. The host callers may only pass a name (no address) when
- * the author has no Lightning address on their profile, in which case
- * the splits stay as-is and the modal says why.
+ * `feature` reassigns the third leg. A Feature boost from any /feeds tab
+ * pays whoever made the featured thing out of that leg (an article's
+ * author, an event's organizer, a listing's seller, or a podcast's own
+ * value block, split proportionally), so the sats follow the thing being
+ * promoted; the two host legs are untouched. See lib/featureSplit.js for
+ * the shape. A feature that resolved no payable address keeps the
+ * standard splits, and the modal says why.
  */
 
 import { useEffect, useMemo, useState } from 'react'
 import { lockBodyScroll, unlockBodyScroll } from '../lib/scrollLock.js'
 import { useModalTransition } from '../lib/useModalTransition.js'
 import { applyRecipientOverrides } from '../lib/recipientOverrides.js'
+import { describeFeature, isLightningAddress } from '../lib/featureSplit.js'
 import MultiLegBoostForm from './MultiLegBoostForm.jsx'
 import ConfirmLeaveOverlay from './ConfirmLeaveOverlay.jsx'
 
@@ -40,9 +42,10 @@ const SHOW_RECIPIENTS_RAW = [
   { name: 'RevHodl',   address: 'revhodl@minibits.cash', splitWeight: 33, type: 'lnaddress' },
   { name: 'aquafox30', address: 'aquafox30@primal.net',  splitWeight: 34, type: 'lnaddress' },
 ]
-// The leg an authorSplit takes over. Named rather than indexed so a future
+// The leg a feature takes over. Named rather than indexed so a future
 // reorder of the list above can't silently redirect a host's sats.
 const REASSIGNABLE_ADDRESS = 'aquafox30@primal.net'
+const REASSIGNABLE_WEIGHT = SHOW_RECIPIENTS_RAW.find((r) => r.address === REASSIGNABLE_ADDRESS).splitWeight
 
 function buildSplits(recipients) {
   // `null` episode number: a show boost belongs to no episode, so only the
@@ -58,27 +61,49 @@ function buildSplits(recipients) {
 
 const SHOW_SPLITS = buildSplits(SHOW_RECIPIENTS_RAW)
 
-// A Lightning address, loosely — the LNURL fetch is the real validator. This
-// only has to reject the empty/garbage values a kind-0 profile can carry.
-function isLightningAddress(s) {
-  return typeof s === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim())
-}
-
 /**
- * Show splits with the reassignable leg pointed at the article's author.
+ * Show splits with the reassignable leg pointed at the feature's maker.
+ *
+ * One address (author / organizer / seller): that leg is renamed and
+ * re-addressed, weight unchanged. A recipients bundle (a podcast's value
+ * block): the leg becomes one leg per bundle recipient, weights scaled so
+ * they sum to the leg's 34, keysend nodes included — payAllLegs decides at
+ * pay time whether a node leg is a real keysend or falls back to the node's
+ * Lightning address, exactly as it does for the external-boost flow.
+ *
  * No usable address (many long-form authors publish through RSS bridges
  * and have no lud16) → the standard splits are returned untouched, so
  * that 34% stays with aquafox30 rather than being spread across the
- * other two legs. applyRecipientOverrides deduplicates by address, so an
- * author who is already a host gets one merged leg rather than being
- * paid twice.
+ * other two legs. applyRecipientOverrides deduplicates by address, so a
+ * maker who is already a host gets one merged leg rather than being paid
+ * twice.
  */
-function splitsForAuthor(authorSplit) {
-  const address = authorSplit?.address?.trim?.() || ''
+function splitsForFeature(feature, selfPubkey) {
+  if (!feature) return SHOW_SPLITS
+  // Featuring your own thing: the leg would come straight back to you, less
+  // routing fees. Standard splits instead, and the modal says so.
+  if (selfPubkey && feature.pubkey && feature.pubkey === selfPubkey) return SHOW_SPLITS
+
+  if (feature.recipients && feature.recipients.length) {
+    const total = feature.recipients.reduce((n, r) => n + (r.splitWeight || 0), 0)
+    if (!(total > 0)) return SHOW_SPLITS
+    const legs = feature.recipients.map((r) => ({
+      ...r,
+      splitWeight: (r.splitWeight / total) * REASSIGNABLE_WEIGHT,
+    }))
+    const out = []
+    for (const r of SHOW_RECIPIENTS_RAW) {
+      if (r.address === REASSIGNABLE_ADDRESS) out.push(...legs)
+      else out.push(r)
+    }
+    return buildSplits(out)
+  }
+
+  const address = feature.address?.trim?.() || ''
   if (!isLightningAddress(address)) return SHOW_SPLITS
   return buildSplits(SHOW_RECIPIENTS_RAW.map((r) => (
     r.address === REASSIGNABLE_ADDRESS
-      ? { ...r, name: authorSplit.name || address, address: address.toLowerCase() }
+      ? { ...r, name: feature.name || address, address: address.toLowerCase() }
       : r
   )))
 }
@@ -93,12 +118,68 @@ const SHOW_EPISODE_META = { number: null, title: '', guid: '', kind: 'show' }
 const SHOW_PRESETS = [420, 2100, 3333, 6969]
 const SHOW_SHARE_TAGLINE = 'Posts a kind 1 note to your followers — your message + a link back here.'
 
-export default function BoostModal({ user, onClose, prefillMessage = '', authorSplit = null, onSettled, onRequestSignIn, onRequestWallet }) {
+/** The one-line explanation above the form for a Feature boost. */
+function FeatureNote({ feature, splits, isSelf }) {
+  const { thing, role } = describeFeature(feature)
+  const paid = splits !== SHOW_SPLITS
+  const pct = `${REASSIGNABLE_WEIGHT}% of this boost`
+  let body
+  if (isSelf) {
+    body = (
+      <>
+        You're featuring your own {thing}, so this boost uses the show's standard
+        splits rather than routing a share back to you.
+      </>
+    )
+  } else if (paid && feature.kind === 'episode') {
+    const n = feature.recipients.length
+    body = (
+      <>
+        <span className="text-[var(--brand-d,#d97b0e)] font-semibold">{pct}</span>{' '}
+        goes to{' '}
+        <span className="text-[var(--ink,#2d2010)] font-semibold">{feature.name || 'this podcast'}</span>
+        {' '}through its own value splits ({n} {n === 1 ? 'recipient' : 'recipients'}), the
+        same way a boost from a podcast app would. The rest splits between the hosts.
+      </>
+    )
+  } else if (paid) {
+    body = (
+      <>
+        <span className="text-[var(--brand-d,#d97b0e)] font-semibold">{pct}</span>{' '}
+        goes to{' '}
+        <span className="text-[var(--ink,#2d2010)] font-semibold">{feature.name || `the ${role}`}</span>,
+        {' '}the {role} of the {thing} you're featuring. The rest splits between the hosts.
+      </>
+    )
+  } else if (feature.kind === 'episode') {
+    body = (
+      <>
+        This podcast has no payable value block, so there's nowhere to route its
+        share; this boost uses the show's standard splits instead.
+      </>
+    )
+  } else {
+    body = (
+      <>
+        This {thing}'s {role} has no Lightning address on their Nostr profile, so
+        there's nowhere to route their share; this boost uses the show's standard
+        splits instead.
+      </>
+    )
+  }
+  return (
+    <p className="text-[11px] text-[var(--muted,#6b5a3e)] leading-snug rounded-md border border-[var(--modal-line,#d4c4a0)] bg-[var(--modal-inset,#f1e8d2)] px-3 py-2.5">
+      {body}
+    </p>
+  )
+}
+
+export default function BoostModal({ user, onClose, prefillMessage = '', feature = null, onSettled, onRequestSignIn, onRequestWallet }) {
   const { visible, requestClose } = useModalTransition(onClose)
 
-  const splits = useMemo(() => splitsForAuthor(authorSplit), [authorSplit])
-  const authorPaid = splits !== SHOW_SPLITS
-  const authorName = authorSplit?.name || 'the author'
+  const selfPubkey = (user?.pubkey || '').toLowerCase()
+  const isSelf = !!(feature && feature.pubkey && selfPubkey && feature.pubkey === selfPubkey)
+  const splits = useMemo(() => splitsForFeature(feature, selfPubkey), [feature, selfPubkey])
 
   // Close guard: while legs are in flight, intercept the ✕ with a
   // confirm step instead of closing outright. boostState is reported up
@@ -143,24 +224,7 @@ export default function BoostModal({ user, onClose, prefillMessage = '', authorS
           </div>
 
           <div className="px-4 sm:px-6 py-5 space-y-4 flex-1 min-h-0 overflow-y-auto">
-            {authorSplit && (
-              <p className="text-[11px] text-[var(--muted,#6b5a3e)] leading-snug rounded-md border border-[var(--modal-line,#d4c4a0)] bg-[var(--modal-inset,#f1e8d2)] px-3 py-2.5">
-                {authorPaid ? (
-                  <>
-                    <span className="text-[var(--brand-d,#d97b0e)] font-semibold">34% of this boost</span>{' '}
-                    goes to{' '}
-                    <span className="text-[var(--ink,#2d2010)] font-semibold">{authorName}</span>, the
-                    author of the article you're featuring. The rest splits between the hosts.
-                  </>
-                ) : (
-                  <>
-                    This article's author has no Lightning address on their Nostr profile, so
-                    there's nowhere to route their share; this boost uses the show's standard
-                    splits instead.
-                  </>
-                )}
-              </p>
-            )}
+            {feature && <FeatureNote feature={feature} splits={splits} isSelf={isSelf} />}
 
             <MultiLegBoostForm
               user={user}

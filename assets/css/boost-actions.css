@@ -156,15 +156,29 @@
   background: transparent;
   border: none;
   padding: 0.2rem 0.3rem;
-  border-radius: 5px;
   font: inherit;
   font-size: 0.8rem;
   color: var(--muted);
-  cursor: pointer;
   max-width: 100%;
+}
+/* Only the person (pfp + name) is the link / copy button; "Featured by" and
+   the age are plain text. */
+.note-actions .featured-by-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  padding: 0.1rem 0.25rem;
+  border-radius: 5px;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: none;
   transition: background 0.15s, color 0.15s;
 }
-.note-actions button.featured-by:hover {
+.note-actions .featured-by-who:hover {
   background: rgba(247,147,26,0.1);
   color: var(--orange);
 }
@@ -184,7 +198,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.note-actions button.featured-by:hover .featured-by-name { color: var(--orange); }
+.note-actions .featured-by-who:hover .featured-by-name { color: var(--orange); }
 .note-actions .like-btn[aria-pressed="true"],
 .note-actions .repost-btn[aria-pressed="true"] {
   color: var(--orange);

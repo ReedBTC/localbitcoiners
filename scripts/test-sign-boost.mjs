@@ -550,6 +550,28 @@ await ok('the 🔗 line prefers the Fountain URL, matching the bot; the r tag st
   const evil = showTemplate({ episode: { number: 24, title: 'T', guid: 'g', fountainUrl: 'https://evil.example/x' } })
   assert.equal(evil.content.includes('evil.example'), false)
 })
+await ok('a Feature boost’s naddr gets the bot’s web-link line, and the oracle still accepts it', () => {
+  // One coordinate per kind; a repeated naddr and a non-featurable kind add nothing.
+  const pk = 'a'.repeat(64)
+  const article = nip19.naddrEncode({ kind: 30023, pubkey: pk, identifier: 'post-1' })
+  const meetup = nip19.naddrEncode({ kind: 31923, pubkey: pk, identifier: 'meet-1' })
+  const listing = nip19.naddrEncode({ kind: 30402, pubkey: pk, identifier: 'item-1' })
+  const other = nip19.naddrEncode({ kind: 30078, pubkey: pk, identifier: 'x' })
+  const message = `Boosting this article from https://localbitcoiners.com/feeds\n\nnostr:${article} nostr:${article} nostr:${meetup} nostr:${listing} nostr:${other}`
+  const t = showTemplate({ message })
+  const lines = t.content.split('\n')
+  const at = (prefix) => lines.findIndex((l) => l.startsWith(prefix))
+  assert.equal(lines.filter((l) => l.startsWith('📄 ')).length, 1)
+  assert.equal(lines[at('📄 ')], `📄 https://mynostr.app/${article}`)
+  assert.equal(lines[at('📅 ')], `📅 https://plektos.app/event/${meetup}`)
+  assert.equal(lines[at('🛒 ')], `🛒 https://shopstr.store/listing/${listing}`)
+  assert.equal(lines.some((l) => /^(📄|📅|🛒) /.test(l) && l.includes(other)), false)
+  // Bot ordering: 💬, then the links, then 🎙️ and 🔗.
+  assert.ok(at('💬 ') < at('📄 ') && at('📄 ') < at('📅 ') && at('📅 ') < at('🛒 ') && at('🛒 ') < at('🔗 '))
+  validateShowBoostTemplate(t)
+  // No naddr → no link line, byte-identical to before.
+  assert.equal(showTemplate().content.split('\n').some((l) => /^(📄|📅|🛒) /.test(l)), false)
+})
 await ok('the oracle signs a show template end to end', async () => {
   const res = await post(showTemplate())
   assert.equal(res.status, 200)

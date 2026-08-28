@@ -29,6 +29,7 @@ import * as wallet from './lib/wallet.js'
 import { bolt11PaymentHash, confirmInvoiceSettled, RECIPIENT_LUD16 } from './lib/boostagram.js'
 import { isCleanPaymentDecline } from './lib/utils.js'
 import { applyRecipientOverrides } from './lib/recipientOverrides.js'
+import { normalizeFeature, resolveFeatureAddress } from './lib/featureSplit.js'
 import { pushToast } from './lib/toast.js'
 // Side-effect import: installs a same-origin click interceptor that
 // briefly holds nav (≤2s) when a boost is in flight, so a user who
@@ -374,7 +375,7 @@ function ShowBoostHost() {
     <div className="lb-w"><BoostModal
       user={user || null}
       prefillMessage={state.prefillMessage || ''}
-      authorSplit={state.authorSplit || null}
+      feature={state.feature || null}
       onRequestSignIn={() => api.requestLogin()}
       onRequestWallet={() => api.requestWalletForBoost()}
       onClose={() => setShowBoostState(null)}
@@ -587,7 +588,11 @@ function MeetupModalHost() {
   if (!state) return null
 
   const close = () => setMeetupModalState(null)
-  const openShowBoostWithMessage = (msg) => api.openShowBoost({ prefillMessage: msg })
+  // `naddr` is the meetup being featured, when the flow has one: it carries
+  // the organizer's pubkey, and openShowBoost resolves their Lightning address
+  // so the Feature boost pays them its reassignable leg (see featureSplit.js).
+  const openShowBoostWithMessage = (msg, naddr = '') =>
+    api.openShowBoost({ prefillMessage: msg, feature: naddr ? { kind: 'event', naddr } : null })
 
   // Pass the stub-inclusive user so the modals render their real content
   // (event list / composer form) during the brief background-restore
@@ -901,21 +906,23 @@ const api = {
    * per-domain permission can silently re-grant on a shared browser,
    * leaking one user's wallet to another's first boost click.
    *
-   * `authorSplit` ({ name, address }) reassigns the show's third split
-   * leg to the author of a featured article — see BoostModal. It is
+   * `feature` reassigns the show's third split leg to whoever made the
+   * thing being featured (an article's author, an event's organizer, a
+   * listing's seller, or a podcast's value block) — see featureSplit.js
+   * for the shape and BoostModal for the leg. `authorSplit` ({ name,
+   * address }) is the older article-only form and still works. Either is
    * carried through every gate re-entry so a boost that had to stop for
-   * login or a wallet connect still pays the author on resume. The two
-   * host legs are not reassignable from here.
+   * login or a wallet connect still pays them on resume. The two host
+   * legs are not reassignable from here.
+   *
+   * A feature with a pubkey and no address is resolved from the maker's
+   * kind-0 before the modal opens (time-boxed), so the split is settled
+   * before the form can be submitted rather than changing underneath it.
    */
   async openShowBoost(opts = {}) {
     const prefillMessage = typeof opts?.prefillMessage === 'string' ? opts.prefillMessage : ''
-    const authorSplit = opts?.authorSplit && typeof opts.authorSplit === 'object'
-      ? {
-          name: typeof opts.authorSplit.name === 'string' ? opts.authorSplit.name : '',
-          address: typeof opts.authorSplit.address === 'string' ? opts.authorSplit.address : '',
-        }
-      : null
-    const reopen = { prefillMessage, authorSplit }
+    let feature = normalizeFeature(opts)
+    const reopen = { prefillMessage, feature }
 
     // ⚠️ THERE IS NO LOGIN GATE ON THIS PATH ANY MORE (phase 2 of the
     // OnlyBoosts port). A boost is a payment, and a payment needs no Nostr
@@ -946,7 +953,10 @@ const api = {
     // arrives at the moment its purpose is obvious; the form resumes off its
     // own `wallet.onChange` subscription, never through here, because
     // re-entering this method with the modal open would mount a second one.
-    setShowBoostState({ prefillMessage, authorSplit })
+    if (feature && !feature.address && !feature.recipients && feature.pubkey) {
+      feature = await resolveFeatureAddress(feature)
+    }
+    setShowBoostState({ prefillMessage, feature })
   },
 
   /**

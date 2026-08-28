@@ -33,6 +33,15 @@ import { SimplePool, verifyEvent, nip19 } from '/assets/widgets/nostr-tools.js'
 // Supporter-set resolution lives in one shared module; re-exported below so
 // home-feeds.js keeps importing resolveSupporters from feeds.js unchanged.
 import { resolveSupporters } from '/assets/js/supporter-set.js'
+import {
+  FEATURED_DEFAULT_RANGE,
+  inFeaturedRange,
+  featuredHead as buildFeaturedHead,
+  featuredEmptyEl,
+  parseSettledAt,
+  relAge,
+  currentBooster,
+} from '/assets/js/featured-shared.js'
 
 // Hourly events snapshot (Cloudflare Pages Function proxying the file
 // bots/community-feeds pushes to the VPS). It carries the same raw signed
@@ -257,6 +266,9 @@ function hydrateStateFromCache(state, cached) {
   for (const pair of cached.featuredBy || []) {
     if (Array.isArray(pair) && pair[1]) state.featuredBy.set(pair[0], pair[1])
   }
+  for (const pair of cached.featuredAt || []) {
+    if (Array.isArray(pair) && pair[1]) state.featuredAt.set(pair[0], pair[1])
+  }
 }
 
 function writeCache(state) {
@@ -272,6 +284,7 @@ function writeCache(state) {
       profiles: [...state.profiles.entries()].map(([pk, p]) => [pk, { name: p?.name || '', picture: p?.picture || '' }]),
       featured: [...state.featuredCoords],
       featuredBy: [...state.featuredBy.entries()],
+      featuredAt: [...state.featuredAt.entries()],
     }
     localStorage.setItem(CACHE_KEY, JSON.stringify(data))
   } catch {}
@@ -328,14 +341,17 @@ function isCalendarCoord(coordinate) {
 }
 
 // Read the boosted-event log. Returns the set of boosted coordinates, any relay
-// hints from their naddrs, and a coord→booster map (who paid to feature it, for
-// the "Featured by …" credit). Rows are newest-first, so the first booster seen
-// per coordinate is the most recent one. Best-effort: a missing/unreachable file
-// just means "nothing featured", never a hard error on the Events tab.
+// hints from their naddrs, a coord→booster map (who paid to feature it, for
+// the "Featured by …" credit) and a coord→featured-at map (the newest boost,
+// which is what the box's 1W/1M/All range filters on). Rows are newest-first,
+// so the first booster seen per coordinate is the most recent one.
+// Best-effort: a missing/unreachable file just means "nothing featured", never
+// a hard error on the Events tab.
 async function fetchBoostedSet() {
   const coords = new Set()
   const hints = new Set()
   const by = new Map()  // coord -> { pubkey, name, picture }
+  const at = new Map()  // coord -> ms of the most recent boost
   try {
     const res = await fetch(MEETUPS_JSON, { cache: 'no-cache' })
     if (!res.ok) throw new Error('meetups.json ' + res.status)
@@ -345,6 +361,8 @@ async function fetchBoostedSet() {
       if (!r || typeof r.coordinate !== 'string') continue
       if (!isCalendarCoord(r.coordinate)) continue
       coords.add(r.coordinate)
+      const ts = parseSettledAt(r.settled_at)
+      if (ts > (at.get(r.coordinate) || 0)) at.set(r.coordinate, ts)
       if (typeof r.naddr === 'string') {
         for (const h of relayHintsFromNaddr(r.naddr)) hints.add(h)
       }
@@ -356,7 +374,7 @@ async function fetchBoostedSet() {
   } catch (e) {
     console.warn('[feeds] boosted-set load failed', e)
   }
-  return { coords, hints, by }
+  return { coords, hints, by, at }
 }
 
 // Pull any boosted coordinates not already in state (i.e. boosted events whose
@@ -399,16 +417,30 @@ function readConfirmedFeatured() {
   return out
 }
 
-function addConfirmedFeatured(coord) {
+// Same store, as coord → featured-at, for the box's range filter.
+function readConfirmedFeaturedAt() {
+  const out = new Map()
   try {
     const map = JSON.parse(localStorage.getItem(CONFIRMED_FEATURED_KEY) || '{}')
     const now = Date.now()
+    for (const [coord, ts] of Object.entries(map)) {
+      if (now - (ts || 0) <= CONFIRMED_FEATURED_TTL) out.set(coord, ts)
+    }
+  } catch {}
+  return out
+}
+
+function addConfirmedFeatured(coord) {
+  const now = Date.now()
+  try {
+    const map = JSON.parse(localStorage.getItem(CONFIRMED_FEATURED_KEY) || '{}')
     for (const [c, ts] of Object.entries(map)) {
       if (now - (ts || 0) > CONFIRMED_FEATURED_TTL) delete map[c]
     }
     map[coord] = now
     localStorage.setItem(CONFIRMED_FEATURED_KEY, JSON.stringify(map))
   } catch {}
+  return now
 }
 
 function naddrFor(parsed, relays) {
@@ -602,44 +634,38 @@ function sectionHead(label, { featured = false } = {}) {
   return head
 }
 
-// The "Find Event to Feature" action lives at the right of the Featured Events
-// header row (moved out of the panel head). It carries no listener of its own —
-// the inline Find-modal controller in feeds.html opens the modal via a
-// delegated click on `.feed-find-btn`, so it survives every repaint.
-function findEventsButton() {
-  const btn = document.createElement('button')
-  btn.type = 'button'
-  btn.className = 'event-composer-btn feed-find-btn'
-  btn.setAttribute('aria-haspopup', 'dialog')
-  btn.setAttribute('aria-controls', 'event-find-modal')
-  btn.innerHTML =
-    '<span class="ecb-icon" aria-hidden="true">🔍</span>' +
-    '<span>Find Event to Feature</span>'
-  return btn
-}
-
-// The Featured Events header is always on screen — it hosts the Find action, so
-// it renders even for empty/no-featured months.
-function featuredHead() {
-  const head = sectionHead('Featured Events', { featured: true })
-  head.appendChild(findEventsButton())
-  return head
+// The gold Featured box — the same container the other tabs use: ⭐ title,
+// count, 1W/1M/All over WHEN an event was featured (independent of the page's
+// forward range), and the Find action in its header. The Find button carries
+// no listener of its own: the inline Find-modal controller in feeds.html opens
+// the modal via a delegated click on `.feed-find-btn`, so it survives every
+// repaint.
+function featuredBox({ count, featRange, onFeatRange }) {
+  const box = document.createElement('section')
+  box.className = 'feat-box'
+  box.setAttribute('aria-label', 'Featured events')
+  const head = buildFeaturedHead({
+    title: 'Featured Events',
+    count,
+    range: featRange,
+    noun: 'events',
+    onRange: onFeatRange,
+    findLabel: 'Find an Event to Feature',
+    onFind: () => {},   // delegated — see above
+  })
+  const find = head.querySelector('.feat-find')
+  if (find) {
+    find.classList.add('feed-find-btn')
+    find.setAttribute('aria-controls', 'event-find-modal')
+  }
+  box.appendChild(head)
+  return box
 }
 
 function skeletonCard() {
   const sk = document.createElement('div')
   sk.className = 'feed-skeleton'
   return sk
-}
-
-// A muted line under the Featured header for a month that has events but none
-// featured yet — teaches the feature and keeps the header from butting straight
-// into the "Events" header with nothing between them.
-function featuredEmptyHint() {
-  const hint = document.createElement('p')
-  hint.className = 'feed-featured-hint'
-  hint.textContent = 'No featured events yet — boost a meetup to feature it here.'
-  return hint
 }
 
 // Single collapsible "Past Events" drawer holding featured past events (gold
@@ -658,14 +684,33 @@ function pastDrawer(featPast, normPast, featuredBy = null) {
   return details
 }
 
-function renderEvents(panel, allItems, range = '1m', type = 'inperson', featuredCoords = null, featuredLoading = false, featuredBy = null) {
+function renderEvents(panel, allItems, range = '1m', type = 'inperson', featuredCoords = null, featuredLoading = false, featuredBy = null, { featuredAt = null, featRange = FEATURED_DEFAULT_RANGE, onFeatRange = () => {} } = {}) {
   const list = panel.querySelector('[data-feed-list]')
   list.className = ''
   list.innerHTML = ''
 
-  // Featured Events header is always first — it hosts the "Find Event to
-  // Feature" action, so it renders even for empty or no-featured views.
-  list.appendChild(featuredHead())
+  // When a group was last featured: the primary or any collapsed version's
+  // coordinate, whichever the log knows.
+  const featuredAtFor = (g) => {
+    if (!featuredAt) return 0
+    const hit = featuredAt.get(coordOf(g.parsed))
+    if (hit) return hit
+    for (const v of g.versions || []) {
+      const h = featuredAt.get(coordOf(v.parsed))
+      if (h) return h
+    }
+    return 0
+  }
+  // The credit gets the relative age beside the name, like the other tabs'
+  // boxes; a feature with no known booster still says "Featured · 3d ago".
+  const credits = new Map()
+  const creditFor = (coord) => {
+    const by = featuredBy && featuredBy.get(coord)
+    const ts = featuredAt && featuredAt.get(coord)
+    if (!by && !ts) return null
+    return { ...(by || { pubkey: '', name: '', picture: '' }), when: ts ? relAge(ts) : '' }
+  }
+  if (featuredCoords) for (const c of featuredCoords) { const cr = creditFor(c); if (cr) credits.set(c, cr) }
 
   const groups = groupItems(allItems.filter((it) => matchesType(it, type)))
 
@@ -680,48 +725,52 @@ function renderEvents(panel, allItems, range = '1m', type = 'inperson', featured
     .sort((a, b) => a.startMs - b.startMs)
   const past = days ? [] : groups.filter((g) => g.endMs < now).sort((a, b) => b.startMs - a.startMs)
 
+  // Each bucket is split into featured (boosted) vs normal. A featured
+  // upcoming event floats into the gold box only while its last feature is
+  // inside the box's range; out of the window it rejoins the normal list in
+  // its chronological place, Feature button restored, so a lapsed feature can
+  // be renewed with one boost. Featured past events keep their gold in the
+  // Past drawer regardless.
+  const isFeat = (g) => groupIsFeatured(g, featuredCoords)
+  // ttlDays 0: an event stays featured until it happens (the forward window
+  // and the Past drawer are its expiry), unlike the 33-day life of a featured
+  // article, listing or episode.
+  const inBox = (g) => isFeat(g) && inFeaturedRange({ featuredAt: featuredAtFor(g) }, featRange, { ttlDays: 0 })
+  const featUpcoming = upcoming.filter(inBox)
+  const normUpcoming = upcoming.filter((g) => !inBox(g))
+  const featPast = past.filter(isFeat)
+  const normPast = past.filter((g) => !isFeat(g))
+  const anyFeatured = upcoming.some(isFeat) || featPast.length > 0
+
+  // 1. The Featured box is always first — it hosts the Find action, so it
+  // renders even for empty or no-featured views. While the boosted set is
+  // still resolving, a pulsing skeleton trails the real featured cards (same
+  // grid, same gap) so it reads as "another one loading in".
+  const box = featuredBox({ count: featUpcoming.length, featRange, onFeatRange })
+  if (featUpcoming.length) {
+    const grid = buildGrid(featUpcoming, true, credits)
+    if (featuredLoading) grid.appendChild(skeletonCard())
+    box.appendChild(grid)
+  } else if (featuredLoading) {
+    const grid = document.createElement('div')
+    grid.className = 'feed-list'
+    grid.appendChild(skeletonCard())
+    box.appendChild(grid)
+  } else {
+    box.appendChild(featuredEmptyEl(featRange, anyFeatured, { noun: 'events', verb: 'boost a meetup to feature it here' }))
+  }
+  list.appendChild(box)
+
   if (!upcoming.length && !past.length) {
     // Boosted set still resolving — a backfilled featured event may land in
-    // range, so show a trailing skeleton rather than a premature "no events".
-    if (featuredLoading) {
-      const grid = document.createElement('div')
-      grid.className = 'feed-list'
-      grid.appendChild(skeletonCard())
-      list.appendChild(grid)
-      return
-    }
+    // range, so the box's skeleton stands in for a premature "no events".
+    if (featuredLoading) return
     appendPlaceholder(
       list,
       rangeEmptyTitle(range),
       'Try a wider range or event type — or check back as supporters post new events.'
     )
     return
-  }
-
-  // Each bucket is split into featured (boosted) vs normal — featured events
-  // float up into their own section and are removed from the normal list (they
-  // "moved up", shown once).
-  const isFeat = (g) => groupIsFeatured(g, featuredCoords)
-  const featUpcoming = upcoming.filter(isFeat)
-  const normUpcoming = upcoming.filter((g) => !isFeat(g))
-  const featPast = past.filter(isFeat)
-  const normPast = past.filter((g) => !isFeat(g))
-
-  // 1. Featured Events — gold glow, under the always-present header. While the
-  // boosted set is still resolving, a pulsing skeleton trails the real featured
-  // cards (same grid, same gap) so it reads as "another one loading in". When
-  // nothing is featured yet, a muted hint fills the gap.
-  if (featUpcoming.length) {
-    const grid = buildGrid(featUpcoming, true, featuredBy)
-    if (featuredLoading) grid.appendChild(skeletonCard())
-    list.appendChild(grid)
-  } else if (featuredLoading) {
-    const grid = document.createElement('div')
-    grid.className = 'feed-list'
-    grid.appendChild(skeletonCard())
-    list.appendChild(grid)
-  } else {
-    list.appendChild(featuredEmptyHint())
   }
 
   // 2. Events — non-collapsible, always labelled with its own header (the panel
@@ -741,7 +790,7 @@ function renderEvents(panel, allItems, range = '1m', type = 'inperson', featured
 
   // 3. Past Events — one collapsible drawer, featured (gold) past events first.
   if (featPast.length || normPast.length) {
-    list.appendChild(pastDrawer(featPast, normPast, featuredBy))
+    list.appendChild(pastDrawer(featPast, normPast, credits))
   }
 }
 
@@ -910,12 +959,21 @@ async function loadEvents() {
     // coord -> { pubkey, name, picture } for whoever boosted each featured
     // event (the "Featured by …" credit).
     featuredBy: new Map(),
+    // coord -> ms of the most recent feature; the box's 1W/1M/All filters on
+    // it. Seeded from the optimistic store like featuredCoords.
+    featuredAt: readConfirmedFeaturedAt(),
+    // The box's own range over featured-at (not the page's forward range).
+    featRange: FEATURED_DEFAULT_RANGE,
     // True until the boosted set (+ backfill) resolves — drives the pulsing
     // "Featured" loading ghost so the section doesn't read as empty first.
     featuredLoading: true,
   }
 
-  const paint = () => renderEvents(panel, computeItems(state), state.range, state.typeFilter, state.featuredCoords, state.featuredLoading, state.featuredBy)
+  const paint = () => renderEvents(panel, computeItems(state), state.range, state.typeFilter, state.featuredCoords, state.featuredLoading, state.featuredBy, {
+    featuredAt: state.featuredAt,
+    featRange: state.featRange,
+    onFeatRange: (key) => { state.featRange = key; paint() },
+  })
 
   // Debounced repaint so a burst of streamed events doesn't thrash the DOM.
   let paintTimer = null
@@ -937,8 +995,13 @@ async function loadEvents() {
     // Articles listener still finds it — whoever claims it clears it.
     if (!isCalendarCoord(pending.coord)) return
     clearPendingPromote()
-    addConfirmedFeatured(pending.coord)
+    const ts = addConfirmedFeatured(pending.coord)
     state.featuredCoords.add(pending.coord)
+    state.featuredAt.set(pending.coord, ts)
+    // Credit whoever is logged in immediately, instead of an anonymous
+    // "Featured · just now" until the log lands.
+    const by = currentBooster()
+    if (by) state.featuredBy.set(pending.coord, by)
     paint()
   })
 
@@ -993,6 +1056,9 @@ async function loadEvents() {
     await backfillFeatured(state, boosted)
     for (const c of boosted.coords) state.featuredCoords.add(c)
     for (const [c, info] of boosted.by) state.featuredBy.set(c, info)
+    for (const [c, ts] of boosted.at) {
+      if (ts > (state.featuredAt.get(c) || 0)) state.featuredAt.set(c, ts)
+    }
     state.featuredLoading = false
 
     // Organizer + booster profiles (avatar + name) once the author set is

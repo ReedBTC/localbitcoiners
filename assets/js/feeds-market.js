@@ -35,6 +35,31 @@
 import { SimplePool, verifyEvent, nip19 } from '/assets/widgets/nostr-tools.js'
 import { STATIC_RELAYS, fetchProfilesFromPrimal } from '/assets/js/boosts-thread.js'
 import { gradeListing } from '/assets/js/gamma-compliance.js'
+import { ready as obReady, hasBoosterPage, boosterUrl } from '/assets/js/onlyboosts.js'
+import {
+  listingCoord,
+  isListingCoord,
+  fetchFeaturedListingSet,
+  fetchListingsFromRelays,
+  fetchListingByNaddr,
+  naddrFromText,
+  readConfirmedFeaturedListings,
+  addConfirmedFeaturedListing,
+  readPendingPromote,
+  clearPendingPromote,
+  featureListing,
+} from '/assets/js/featured-market.js'
+import {
+  FEATURED_DEFAULT_RANGE,
+  inFeaturedRange,
+  isFeatureLive,
+  featuredHead,
+  featuredEmptyEl,
+  featuredMoreButton,
+  featuredByEl,
+  currentBooster,
+  FEATURE_BOLT_SVG,
+} from '/assets/js/featured-shared.js'
 import {
   MERCHANT_HEX,
   catalog,
@@ -419,7 +444,83 @@ function openDetail(item, onContact) {
   openProductModal(item.product, opts)
 }
 
-function renderCard(item, rate, onContact) {
+// ── Featured affordances ─────────────────────────────────────────────
+// Featured Listings: a listing is featured when someone boosts the show with
+// its naddr in the message (see featured-market.js). The Feature button opens
+// that boost prefilled; the boost also pays the seller the show's reassignable
+// split leg. House-store listings carry no Feature button — the seller would
+// be the show.
+const FEATURED_INITIAL = 8
+
+let toastTimer = null
+function showToast(msg, isError = false) {
+  let t = document.querySelector('.market-toast')
+  if (!t) {
+    t = h('div', { class: 'market-toast', role: 'status', 'aria-live': 'polite' })
+    document.body.appendChild(t)
+  }
+  t.textContent = msg
+  t.classList.toggle('is-error', !!isError)
+  requestAnimationFrame(() => t.classList.add('is-visible'))
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => t.classList.remove('is-visible'), 2200)
+}
+
+async function copyNpub(pubkey) {
+  let npub = ''
+  try { npub = nip19.npubEncode(pubkey) } catch {}
+  if (!npub) return
+  try { await navigator.clipboard.writeText(npub); showToast('npub copied') }
+  catch { showToast('Copy failed — clipboard blocked', true) }
+}
+
+function featureButton(item) {
+  const p = item.product
+  const btn = h('button', {
+    class: 'market-btn market-btn--feature', type: 'button',
+    title: 'Feature — boost this listing into the Featured section',
+  })
+  btn.innerHTML = FEATURE_BOLT_SVG + '<span>Feature</span>'
+  btn.addEventListener('click', async (e) => {
+    e.stopPropagation()
+    btn.disabled = true
+    try {
+      await featureListing(
+        { pubkey: p.merchant, dTag: p.d, naddr: naddrForProduct(p), seller: item.profile },
+        (msg) => showToast(msg, true),
+      )
+    } finally {
+      btn.disabled = false
+    }
+  })
+  return btn
+}
+
+// Booster profiles for the "Featured by …" credit (the seller profiles live on
+// the items themselves).
+const boosterProfiles = new Map()
+function boosterName(pk) {
+  const p = boosterProfiles.get(pk)
+  if (p && p.name && p.name.trim()) return p.name.trim()
+  try { return nip19.npubEncode(pk).slice(0, 12) + '…' } catch { return 'someone' }
+}
+function boosterAvatar(pk) {
+  const p = boosterProfiles.get(pk)
+  const pic = p && isHttpUrl(p.picture) ? p.picture : ''
+  return pic
+    ? h('img', { class: 'market-seller-pfp', src: pic, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' })
+    : h('span', { class: 'market-seller-pfp market-seller-pfp--none', text: (boosterName(pk)[0] || '?').toUpperCase() })
+}
+function featuredCredit(info) {
+  return featuredByEl(info, {
+    avatar: boosterAvatar,
+    name: boosterName,
+    link: (pk) => (hasBoosterPage(pk) ? boosterUrl(pk) : null),
+    onCopy: copyNpub,
+  })
+}
+
+function renderCard(item, rate, onContact, { featured = false, info = null } = {}) {
   const p = item.product
   const media = h('div', { class: 'market-card-media' },
     p.images.length
@@ -431,8 +532,14 @@ function renderCard(item, rate, onContact) {
     media.appendChild(h('span', { class: 'market-badge market-badge--classified', title: item.reason, text: item.reason }))
   }
 
+  // An already-featured card drops the Feature button — it only means "get
+  // this into Featured" — and credits whoever paid for it in the same slot.
+  const foot = featured
+    ? featuredCredit(info)
+    : (item.isHouse ? null : featureButton(item))
+
   const card = h('article', {
-    class: 'market-card', role: 'button', tabindex: '0',
+    class: 'market-card' + (featured ? ' market-card--featured' : ''), role: 'button', tabindex: '0',
     onclick: () => openDetail(item, onContact),
     onkeydown: (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); openDetail(item, onContact) } },
   }, [
@@ -442,10 +549,196 @@ function renderCard(item, rate, onContact) {
       sellerRow(item),
       priceEl(p, rate),
       p.summary ? h('p', { class: 'market-card-summary', text: p.summary }) : null,
-      h('div', { class: 'market-card-actions' }, [actionButton(item, onContact, { stop: true })]),
+      h('div', { class: 'market-card-actions' }, [actionButton(item, onContact, { stop: true }), foot]),
     ]),
   ])
   return card
+}
+
+// ── Featured section ─────────────────────────────────────────────────
+// The gold box, same chrome as Featured Articles: 1W/1M/All over when a
+// listing was featured, inside the border. `visible` is filled with the
+// coordinates rendered so the community grid can drop them; a listing shown
+// in the box must never also appear below it.
+function featuredEntries(state, byCoord) {
+  const out = []
+  for (const [coord, info] of state.featured) {
+    const item = byCoord.get(coord)
+    if (item) out.push({ item, info })
+  }
+  out.sort((x, y) => (y.info.featuredAt || 0) - (x.info.featuredAt || 0))
+  return out
+}
+
+function buildFeaturedSection(state, byCoord, rate, onContact, visible, onChange) {
+  const entries = featuredEntries(state, byCoord)
+  const inRange = entries.filter((e) => inFeaturedRange(e.info, state.range))
+  for (const e of inRange) visible.add(e.item.product.coord)
+
+  const head = featuredHead({
+    title: 'Featured Listings',
+    count: inRange.length,
+    range: state.range,
+    noun: 'listings',
+    onRange: (key) => { state.range = key; state.featShown = FEATURED_INITIAL; onChange() },
+    findLabel: 'Find a Listing to Feature',
+    onFind: () => openFindModal(onChange),
+  })
+
+  const section = h('section', { class: 'feat-box', 'aria-label': 'Featured listings' }, [head])
+  const shown = inRange.slice(0, state.featShown)
+  if (shown.length) {
+    const grid = h('div', { class: 'feed-list market-grid' })
+    for (const { item, info } of shown) grid.appendChild(renderCard(item, rate, onContact, { featured: true, info }))
+    section.appendChild(grid)
+    const rest = inRange.length - shown.length
+    if (rest > 0) {
+      section.appendChild(featuredMoreButton(rest, FEATURED_INITIAL, () => { state.featShown += FEATURED_INITIAL; onChange() }))
+    }
+  } else if (state.featuredLoading) {
+    section.appendChild(h('div', { class: 'feed-list market-grid' }, h('div', { class: 'feed-skeleton' })))
+  } else {
+    section.appendChild(featuredEmptyEl(state.range, entries.some((e) => isFeatureLive(e.info)), { noun: 'listings', verb: 'boost a listing to feature it here' }))
+  }
+  return section
+}
+
+// Turn raw 30402 events fetched outside the snapshot (a featured listing from
+// a non-supporter, or a pasted one) into classified items. Runs them through
+// merch.js's catalog so the cart and product modal resolve them like any other.
+async function itemsFromEvents(events, relays) {
+  const products = ingestListings(events)
+    .filter((p) => p.visibility !== 'hidden' && p.status !== 'sold' && p.visibility !== 'sold' && p.stock !== 0)
+  if (!products.length) return []
+  const merchants = [...new Set(products.map((p) => p.merchant))]
+  let profiles = await fetchProfilesFromPrimal(merchants).catch(() => new Map())
+  if (!profiles.size) profiles = await fetchMerchantProfiles(merchants, relays).catch(() => new Map())
+  return products.map((p) => classify(p, profiles.get(p.merchant)))
+}
+
+// ── "Find a Listing to Feature" modal ────────────────────────────────
+// Same single paste box as the Articles tab's Find modal: a listing is always
+// addressable by naddr (Shopstr, Conduit and MyNostr links all carry one).
+let findModal = null
+const pastedItems = new Map()   // coord -> classified item
+
+function buildFindModal() {
+  const input = h('input', {
+    class: 'ffind-input', type: 'text', spellcheck: 'false',
+    placeholder: 'naddr1… or a link containing one',
+    'aria-label': 'Listing address',
+  })
+  const status = h('p', { class: 'ffind-status', role: 'status', 'aria-live': 'polite' })
+  const result = h('div', { class: 'ffind-result' })
+  const lookup = h('button', { class: 'ffind-go', type: 'button' }, 'Look Up')
+  const card = h('div', { class: 'event-composer-card', role: 'document' }, [
+    h('button', { class: 'event-composer-close', type: 'button', 'aria-label': 'Close' }, '×'),
+    h('h2', { class: 'event-composer-title', id: 'mfm-title', text: 'Find a Listing to Feature' }),
+    h('p', { class: 'ffind-help' },
+      'Paste a NIP-99 listing’s address. A Shopstr, Conduit, or MyNostr link works too — anything with an naddr1 in it.'),
+    h('div', { class: 'ffind-row' }, [input, lookup]),
+    status,
+    result,
+  ])
+  const backdrop = h('div', {
+    class: 'event-composer-backdrop ffind-backdrop', role: 'dialog',
+    'aria-modal': 'true', 'aria-labelledby': 'mfm-title', hidden: 'hidden',
+  }, card)
+  return { backdrop, card, input, status, result, lookup, close: card.firstChild }
+}
+
+function openFindModal(onFeatured) {
+  if (!findModal) {
+    findModal = buildFindModal()
+    document.body.appendChild(findModal.backdrop)
+    const close = () => {
+      findModal.backdrop.hidden = true
+      document.removeEventListener('keydown', onKey)
+    }
+    const onKey = (e) => { if (e.key === 'Escape') close() }
+    findModal.onKey = onKey
+    findModal.closeFn = close
+    findModal.close.addEventListener('click', close)
+    findModal.backdrop.addEventListener('click', (e) => { if (e.target === findModal.backdrop) close() })
+    findModal.lookup.addEventListener('click', () => runLookup(findModal, onFeatured))
+    findModal.input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); runLookup(findModal, onFeatured) }
+    })
+  }
+  findModal.onFeatured = onFeatured
+  findModal.status.textContent = ''
+  findModal.result.innerHTML = ''
+  findModal.input.value = ''
+  findModal.backdrop.hidden = false
+  document.addEventListener('keydown', findModal.onKey)
+  findModal.input.focus()
+}
+
+async function runLookup(m, onFeatured) {
+  const naddr = naddrFromText(m.input.value)
+  m.result.innerHTML = ''
+  if (!naddr) {
+    m.status.textContent = 'That doesn’t contain a listing address. Paste an naddr1… or a link with one in it.'
+    return
+  }
+  m.status.textContent = 'Looking up…'
+  m.lookup.disabled = true
+  let found = null
+  try {
+    found = await fetchListingByNaddr(naddr)
+  } catch (e) {
+    console.warn('[market] lookup failed', e)
+  } finally {
+    m.lookup.disabled = false
+  }
+  if (found && found.wrongKind) {
+    m.status.textContent = `That address points to a kind-${found.wrongKind} event, not a marketplace listing.`
+    return
+  }
+  if (!found) {
+    m.status.textContent = 'Couldn’t find that listing on the relays we query. Check the address, or try a link from the client it was published in.'
+    return
+  }
+  const [item] = await itemsFromEvents([found.event], feedRelays)
+  if (!item) {
+    m.status.textContent = 'That listing is hidden, sold, or out of stock, so it can’t be featured.'
+    return
+  }
+  pastedItems.set(item.product.coord, item)
+  m.status.textContent = ''
+
+  const feature = h('button', { class: 'market-btn market-btn--feature ffind-feature', type: 'button' })
+  feature.innerHTML = FEATURE_BOLT_SVG + '<span>Feature This Listing</span>'
+  feature.addEventListener('click', async () => {
+    feature.disabled = true
+    try {
+      const p = item.product
+      await featureListing(
+        { pubkey: p.merchant, dTag: p.d, naddr, seller: item.profile },
+        (msg) => showToast(msg, true),
+      )
+      m.closeFn()
+      onFeatured?.()
+    } finally {
+      feature.disabled = false
+    }
+  })
+
+  const p = item.product
+  const img = p.images.find(isHttpUrl)
+  m.result.append(
+    h('div', { class: 'ffind-preview' }, [
+      img
+        ? h('div', { class: 'ffind-preview-media' }, h('img', { src: img, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }))
+        : h('div', { class: 'ffind-preview-media ffind-preview-media--none' }, '🛍️'),
+      h('div', { class: 'ffind-preview-body' }, [
+        h('div', { class: 'ffind-preview-title', text: p.title }),
+        h('div', { class: 'ffind-preview-meta' }, [sellerRow(item)]),
+        p.summary ? h('p', { class: 'ffind-preview-summary', text: p.summary }) : null,
+      ]),
+    ]),
+    feature,
+  )
 }
 
 // ── Contact-seller DM modal (NIP-17, NIP-04 legacy fallback) ─────────
@@ -706,7 +999,9 @@ export async function renderMarket({ panel, list, relays, members } = {}) {
     window.LBLogin?.onChange?.(() => renderManageButton(list))
   }
 
-  const { items, rate } = await loadMarketItems({ relays, members })
+  // The booster index decides link-vs-copy for the "Featured by …" credit
+  // synchronously; obReady() resolves either way.
+  const [{ items, rate }] = await Promise.all([loadMarketItems({ relays, members }), obReady()])
   const onContact = (item) => openContactModal(item, feedRelays)
 
   // Split the one classified list into the two rendered sections. Inside Show
@@ -716,14 +1011,51 @@ export async function renderMarket({ panel, list, relays, members } = {}) {
     .sort((a, b) => (b.product.created_at || 0) - (a.product.created_at || 0))
   const community = items.filter((it) => !it.isHouse)
 
+  // Every listing we can render, snapshot or backfilled. The community grid
+  // only ever draws from `community`; `byCoord` also holds listings pulled in
+  // by a feature, which belong in the gold box but not in the community grid.
+  const byCoord = new Map()
+  for (const it of items) byCoord.set(it.product.coord, it)
+
+  const state = {
+    range: FEATURED_DEFAULT_RANGE,
+    // coord -> { featuredAt, by, sats, naddr }. Seeded with anything featured
+    // from this browser recently, so a fresh boost stays lit across a reload
+    // until the authoritative log catches up.
+    featured: readConfirmedFeaturedListings(),
+    featuredLoading: true,
+    featShown: FEATURED_INITIAL,
+  }
+
   const grid = (section) => {
     const g = h('div', { class: 'feed-list market-grid' })
     for (const item of section) g.appendChild(renderCard(item, rate, onContact))
     return g
   }
 
+  const featuredMount = h('div', { class: 'market-featured-mount' })
+  const communityMount = h('div', { class: 'market-community-mount' })
+
+  // Repaints the gold box and the community grid together: which listings the
+  // box holds depends on the active range, and the grid is "everything not in
+  // the box right now". A listing that drops out of the window rejoins the
+  // grid, Feature button restored, so a lapsed feature can be renewed.
+  function rerender() {
+    const visible = new Set()
+    featuredMount.innerHTML = ''
+    featuredMount.appendChild(buildFeaturedSection(state, byCoord, rate, onContact, visible, rerender))
+    const rest = community.filter((it) => !visible.has(it.product.coord))
+    communityMount.innerHTML = ''
+    communityMount.appendChild(rest.length
+      ? grid(rest)
+      : placeholder('No listings yet', ' No marketplace listings from supporters right now — check back soon.'))
+  }
+
   list.className = ''
   list.innerHTML = ''
+
+  // Featured first: it is the paid-for slot, so it leads the tab.
+  list.appendChild(featuredMount)
 
   // Show Merch is boxed so the house store reads as its own storefront rather
   // than the first few cards of the community list.
@@ -740,9 +1072,8 @@ export async function renderMarket({ panel, list, relays, members } = {}) {
     h('a', { class: 'feed-section-link', href: '/supporters' }, 'Community'),
     ' Marketplace',
   ], 'market-community-head'))
-  list.appendChild(community.length
-    ? grid(community)
-    : placeholder('No listings yet', ' No marketplace listings from supporters right now — check back soon.'))
+  list.appendChild(communityMount)
+  rerender()
 
   renderManageButton(list)
 
@@ -752,5 +1083,66 @@ export async function renderMarket({ panel, list, relays, members } = {}) {
   if (window.__lbOpenCartOnMarket) {
     window.__lbOpenCartOnMarket = false
     openCart()
+  }
+
+  // Optimistic feature: when a boost settles and a Feature click is pending for
+  // a LISTING coordinate, light it up now rather than waiting for the log. The
+  // pending slot is shared with the other tabs; a foreign coordinate is left
+  // for its own listener to claim.
+  window.addEventListener('lb:show-boost-settled', (ev) => {
+    const d = ev && ev.detail
+    if (!d || !(d.anySucceeded || d.anyUncertain)) return
+    const pending = readPendingPromote()
+    if (!pending || !pending.coord || !isListingCoord(pending.coord)) return
+    clearPendingPromote()
+    const ts = addConfirmedFeaturedListing(pending.coord, pending.naddr || '')
+    const by = currentBooster()
+    const prev = state.featured.get(pending.coord)
+    state.featured.set(pending.coord, {
+      featuredAt: ts,
+      by: by || prev?.by || null,
+      sats: prev?.sats || 0,
+      naddr: pending.naddr || prev?.naddr || '',
+    })
+    if (!byCoord.has(pending.coord) && pastedItems.has(pending.coord)) {
+      byCoord.set(pending.coord, pastedItems.get(pending.coord))
+    }
+    if (by) boosterProfiles.set(by.pubkey, { name: by.name, picture: by.picture })
+    rerender()
+  })
+
+  // The authoritative featured set, then any featured listing missing from the
+  // snapshot straight from relays. Best-effort throughout: a failure here
+  // leaves the section showing whatever the optimistic set knows about.
+  try {
+    const { featured, hints } = await fetchFeaturedListingSet()
+    for (const [coord, info] of featured) {
+      const prev = state.featured.get(coord)
+      state.featured.set(coord, {
+        ...info,
+        featuredAt: Math.max(info.featuredAt || 0, prev?.featuredAt || 0),
+        by: info.by || prev?.by || null,
+      })
+    }
+    const missing = [...state.featured.keys()].filter((c) => !byCoord.has(c))
+    if (missing.length) {
+      const relaysPlus = [...new Set([...feedRelays, ...hints])]
+      const found = await fetchListingsFromRelays(missing, relaysPlus)
+      const added = await itemsFromEvents([...found.values()], relaysPlus)
+      for (const it of added) byCoord.set(it.product.coord, it)
+    }
+    const boosters = [...new Set([...state.featured.values()].map((i) => i.by?.pubkey).filter(Boolean))]
+    if (boosters.length) {
+      const got = await fetchProfilesFromPrimal(boosters).catch(() => new Map())
+      for (const [pk, prof] of got) boosterProfiles.set(pk, prof)
+    }
+  } catch (e) {
+    console.warn('[market] featured load failed', e)
+  }
+  try {
+    state.featuredLoading = false
+    rerender()
+  } catch (e) {
+    console.warn('[market] featured repaint failed', e)
   }
 }

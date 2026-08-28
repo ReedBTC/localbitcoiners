@@ -35,7 +35,7 @@ export default function MyMeetupsModal({ user, onClose, onBoostMeetup, onRequest
     if (!p?.naddr) return
     const msg = interpolateNaddr(BOOST_EXISTING_TEMPLATE, p.naddr)
     onClose?.()
-    onBoostMeetup?.(msg)
+    onBoostMeetup?.(msg, p.naddr)
   }
 
   // Embedded (the /feeds "Find" modal drawer): body only — no modal chrome,
