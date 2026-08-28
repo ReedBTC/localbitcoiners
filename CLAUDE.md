@@ -87,6 +87,12 @@ filters that one file to its kind (`assets/js/featured-*.js`, shared parts in
   `bots/shared/boost_formatter.py`): 📅 plektos, 📄 mynostr, 🛒 shopstr, one
   line per naddr, after 💬. Adding a featurable kind means both sides plus
   `FEATURABLE_KINDS` in the bot. The episode URL needs no extra line.
+- **Episode rows in `meetups.csv` have no naddr and no `event_kind`**
+  (`extract_meetup_rows` in `bots/sats-log/local_bitcoiners_satslog.py`):
+  their key is `coordinate = podcast:item:guid:<guid>`, the guid urldecoded
+  from the OnlyBoosts URL path *whole* — item guids are opaque, some contain
+  slashes, some are full URLs. Split on `/` or treat a blank `event_kind` as
+  malformed and the Podcasts tab silently empties.
 - **A feature lives 33 days** (`FEATURE_TTL_DAYS` in `featured-shared.js`,
   enforced by `inFeaturedRange`), then the item rejoins its feed with the
   Feature button back; re-boosting renews. Events are exempt (`ttlDays: 0` in
