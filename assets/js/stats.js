@@ -101,12 +101,36 @@
     render(rows, episodes);
     renderAppMix(rows);
     renderLeaderboard(rows);
-    renderIdentityBoard(rows);
     renderEpisodeGrid(rows, episodes);
-    renderStreamerShoutout(rows);
-    renderTopZappers(rows);
     renderBigPreNostr(rows);
+    // The surfaces that render a person wait for the OnlyBoosts booster
+    // index so each name is wired up front as a link or a copy button
+    // (see the note on obReady). Resolves either way, so a dead index
+    // just means every name copies.
+    obReady().then(function () {
+      renderIdentityBoard(rows);
+      renderStreamerShoutout(rows);
+      renderTopZappers(rows);
+    });
   });
+
+  // Wait for the OnlyBoosts booster index. This file is a classic deferred
+  // script and cannot import the module, so it reads it off window; the
+  // <script type="module"> for it sits before this one in stats.html, so
+  // the global is normally there already and the poll is insurance.
+  function obReady() {
+    var ob = window.LBOnlyBoosts;
+    if (ob && ob.ready) return ob.ready();
+    return new Promise(function (res) {
+      var tries = 0;
+      (function poll() {
+        var o = window.LBOnlyBoosts;
+        if (o && o.ready) { o.ready().then(res, res); return; }
+        if (++tries > 20) { res(); return; }  // ~1s, then paint without it
+        setTimeout(poll, 50);
+      })();
+    });
+  }
 
   function showError() {
     var msg = '<p class="stats-error">Couldn\'t load sats data right now — try again later.</p>';
@@ -941,7 +965,7 @@
         .sort(function (a, b) { return b[metric] - a[metric]; })
         .slice(0, 10);
       var items = sorted.map(function (e) {
-        return { label: 'Ep ' + e.num, value: e[metric] };
+        return { label: 'Ep ' + e.num, value: e[metric], href: epHref(e.num) };
       });
       boardCanvas.innerHTML = buildBarSvg(items, metric === 'sats'
         ? 'Episodes ranked by total sats received'
@@ -987,7 +1011,7 @@
       }
       mine.sort(function (a, b) { return b.sats - a.sats; });
       var items = mine.map(function (e) {
-        return { label: 'Ep ' + e.num, value: e.sats };
+        return { label: 'Ep ' + e.num, value: e.sats, href: epHref(e.num) };
       });
       boardCanvas.innerHTML = buildBarSvg(items, 'Sats you have boosted to each episode');
       if (boardSubEl) {
@@ -1040,8 +1064,12 @@
   }
 
   // Horizontal bar chart. `items` is a pre-sorted [{ label, value,
-  // isAnon? }] array, drawn top to bottom; the left margin auto-fits the
-  // longest label. Shared by the episode + supporter leaderboards.
+  // isAnon?, href?, ob?, npub? }] array, drawn top to bottom; the left
+  // margin auto-fits the longest label. Shared by the episode + supporter
+  // leaderboards. A label with `href` links there (same tab: episode
+  // pages); with `ob` it opens that OnlyBoosts page in a new tab; with only
+  // `npub` it copies the npub on click (delegated from the canvas, see
+  // wireCopyDelegation). Plain labels stay plain.
   // opts.breakOutlier: when the top bar(s) dwarf the rest, draw the other
   // bars to scale against the largest NON-outlier value so they stay
   // readable, and render each outlier as a fixed-length "torn" bar (a broken
@@ -1102,8 +1130,21 @@
       var it = items[k];
       var cy = mT + k * rowH + rowH / 2;
       var cls = it.isAnon ? 'stats-bar stats-bar-anon' : 'stats-bar';
-      parts.push('<text class="stats-bar-label" x="' + (mL - 8) + '" y="' +
-        (cy + 4) + '">' + svgEsc(it.label) + '</text>');
+      var labelEl = '<text class="stats-bar-label" x="' + (mL - 8) + '" y="' +
+        (cy + 4) + '">' + svgEsc(it.label) + '</text>';
+      if (it.ob) {
+        parts.push('<a class="stats-bar-link" href="' + svgEsc(it.ob) +
+          '" target="_blank" rel="noopener noreferrer"><title>View ' +
+          svgEsc(it.label) + ' on OnlyBoosts</title>' + labelEl + '</a>');
+      } else if (it.href) {
+        parts.push('<a class="stats-bar-link" href="' + svgEsc(it.href) + '">' +
+          labelEl + '</a>');
+      } else if (it.npub) {
+        parts.push('<g class="stats-bar-copy" role="button" tabindex="0" data-copy-npub="' +
+          svgEsc(it.npub) + '"><title>Copy npub</title>' + labelEl + '</g>');
+      } else {
+        parts.push(labelEl);
+      }
 
       if (doBreak && k in breakRank) {
         // Torn outlier bar: main segment + staggered tip, two break slashes between.
@@ -1133,8 +1174,10 @@
       parts.push('<text class="stats-bar-value" x="' + (mL + bw + 8) + '" y="' +
         (cy + 4) + '">' + fmtSats(it.value) + '</text>');
     }
+    // role="group", not "img": the labels are links and buttons, and an
+    // image role would hide them from assistive tech.
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="stats-bar-svg" ' +
-      'role="img" preserveAspectRatio="xMidYMid meet" aria-label="' +
+      'role="group" preserveAspectRatio="xMidYMid meet" aria-label="' +
       svgEsc(ariaLabel) + '">' + parts.join('') + '</svg>';
   }
 
@@ -1204,8 +1247,14 @@
       // npub now, so "how many episodes had anonymous supporters" stopped
       // being a question anyone asks.
       if (anon && metric === 'sats') sorted = sorted.concat([anon]);
+      var ob = window.LBOnlyBoosts || null;
       var items = sorted.map(function (p) {
-        return { label: truncate(p.label, 22), value: p[field], isAnon: p.isAnon };
+        var it = { label: truncate(p.label, 22), value: p[field], isAnon: p.isAnon };
+        if (p.npub) {
+          it.npub = p.npub;
+          if (ob && ob.hasBoosterPage(p.npub)) it.ob = ob.boosterUrl(p.npub);
+        }
+        return it;
       });
       peopleCanvas.innerHTML = buildBarSvg(items, metric === 'sats'
         ? 'Supporters ranked by total sats sent'
@@ -1218,6 +1267,7 @@
       }
     }
     draw('episodes');
+    wireCopyDelegation(peopleCanvas);
 
     var radios = document.querySelectorAll('input[name="stats-people-view"]');
     for (var r = 0; r < radios.length; r++) {
@@ -1420,7 +1470,13 @@
         for (var m = 0; m < npubEls.length; m++) {
           var prof = profiles[npubEls[m].npub];
           if (!prof) continue;
-          if (prof.name) npubEls[m].nameEl.textContent = prof.name;
+          if (prof.name) {
+            npubEls[m].nameEl.textContent = prof.name;
+            if (npubEls[m].linked && npubEls[m].identEl) {
+              npubEls[m].identEl.title = 'View ' + prof.name + ' on OnlyBoosts';
+              npubEls[m].identEl.setAttribute('aria-label', 'View ' + prof.name + ' on OnlyBoosts');
+            }
+          }
           if (prof.picture) {
             npubEls[m].avatarEl.style.backgroundImage =
               'url("' + prof.picture.replace(/"/g, '%22') + '")';
@@ -1593,7 +1649,13 @@
         for (var m = 0; m < npubEls.length; m++) {
           var prof = profiles[npubEls[m].npub];
           if (!prof) continue;
-          if (prof.name) npubEls[m].nameEl.textContent = prof.name;
+          if (prof.name) {
+            npubEls[m].nameEl.textContent = prof.name;
+            if (npubEls[m].linked && npubEls[m].identEl) {
+              npubEls[m].identEl.title = 'View ' + prof.name + ' on OnlyBoosts';
+              npubEls[m].identEl.setAttribute('aria-label', 'View ' + prof.name + ' on OnlyBoosts');
+            }
+          }
           if (prof.picture) {
             npubEls[m].avatarEl.style.backgroundImage =
               'url("' + prof.picture.replace(/"/g, '%22') + '")';
@@ -1629,7 +1691,8 @@
     var npubEl = null;
     if (s.npub) {
       ident.setAttribute('data-npub', s.npub);
-      npubEl = { npub: s.npub, nameEl: name, avatarEl: avatar };
+      npubEl = { npub: s.npub, nameEl: name, avatarEl: avatar, identEl: ident };
+      npubEl.linked = wireIdentity(ident, avatar, s.npub, name.textContent);
     }
 
     var meta = document.createElement('span');
@@ -1718,7 +1781,13 @@
         for (var m = 0; m < npubEls.length; m++) {
           var prof = profiles[npubEls[m].npub];
           if (!prof) continue;
-          if (prof.name) npubEls[m].nameEl.textContent = prof.name;
+          if (prof.name) {
+            npubEls[m].nameEl.textContent = prof.name;
+            if (npubEls[m].linked && npubEls[m].identEl) {
+              npubEls[m].identEl.title = 'View ' + prof.name + ' on OnlyBoosts';
+              npubEls[m].identEl.setAttribute('aria-label', 'View ' + prof.name + ' on OnlyBoosts');
+            }
+          }
           if (prof.picture) {
             npubEls[m].avatarEl.style.backgroundImage =
               'url("' + prof.picture.replace(/"/g, '%22') + '")';
@@ -1750,6 +1819,122 @@
     } catch (e) {
       return new Date(ms).toISOString().slice(0, 10);
     }
+  }
+
+  function epHref(num) {
+    return '/ep' + String(num).padStart(3, '0');
+  }
+
+  // Make a person's identity chip (avatar + name) act like every other
+  // person on the site: opens their OnlyBoosts page in a new tab if they
+  // have one (blue dot on the avatar), otherwise copies their npub.
+  // Returns true when linked. Keyboard-reachable either way.
+  function wireIdentity(ident, avatar, npub, name) {
+    ident.classList.add('is-clickable');
+    ident.setAttribute('role', 'button');
+    ident.setAttribute('tabindex', '0');
+    ident.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ident.click(); }
+    });
+    var ob = window.LBOnlyBoosts || null;
+    var linked = false;
+    if (ob && typeof ob.wireBoosterAction === 'function') {
+      linked = ob.wireBoosterAction(ident, {
+        id: npub, name: name, avatar: avatar,
+        onCopy: function () { copyNpub(npub); },
+      });
+    } else {
+      ident.addEventListener('click', function () { copyNpub(npub); });
+    }
+    if (!linked) {
+      ident.title = 'Copy npub';
+      ident.setAttribute('aria-label', 'Copy npub for ' + (name || 'this supporter'));
+    }
+    return linked;
+  }
+
+  // Copy-npub labels inside a bar chart are SVG <g role="button"> nodes
+  // re-rendered on every draw, so the handler lives on the canvas.
+  function wireCopyDelegation(canvasEl) {
+    if (!canvasEl || canvasEl.__copyWired) return;
+    canvasEl.__copyWired = true;
+    function hit(e) {
+      return e.target && e.target.closest ? e.target.closest('[data-copy-npub]') : null;
+    }
+    canvasEl.addEventListener('click', function (e) {
+      var g = hit(e);
+      if (g) copyNpub(g.getAttribute('data-copy-npub'));
+    });
+    canvasEl.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      var g = hit(e);
+      if (g) { e.preventDefault(); copyNpub(g.getAttribute('data-copy-npub')); }
+    });
+  }
+
+  // ── Copy-to-clipboard + toast (mirrors supporters.js) ──────────────
+  // execCommand fallback for when navigator.clipboard is unavailable or
+  // rejected (e.g. Firefox on Android gates the async clipboard). The
+  // textarea must be ON-SCREEN with real size, and we honour the actual
+  // execCommand return value rather than assuming success.
+  function fallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '0';
+    ta.style.left = '0';
+    ta.style.width = '1px';
+    ta.style.height = '1px';
+    ta.style.padding = '0';
+    ta.style.border = '0';
+    ta.style.fontSize = '16px';   // avoids iOS zoom; harmless elsewhere
+    document.body.appendChild(ta);
+    var ok = false;
+    try {
+      ta.focus();
+      ta.select();
+      try { ta.setSelectionRange(0, text.length); } catch (e) {}
+      ok = document.execCommand('copy');
+    } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    return !!ok;
+  }
+
+  function copyNpub(npub) {
+    if (!npub) return;
+    function finish(ok) {
+      if (ok) { showToast('npub copied'); return; }
+      // Last resort so it NEVER silently does nothing: prompt() shows the
+      // npub for manual copy on every browser, including Firefox Android.
+      try { window.prompt('Copy this npub:', npub); }
+      catch (e) { showToast('Couldn’t copy npub'); }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(npub)
+        .then(function () { finish(true); })
+        .catch(function () { finish(fallbackCopy(npub)); });
+    } else {
+      finish(fallbackCopy(npub));
+    }
+  }
+
+  var toastEl = null;
+  var toastTimer = null;
+  function showToast(msg) {
+    if (!toastEl) {
+      toastEl = document.createElement('div');
+      toastEl.className = 'stats-toast';
+      toastEl.setAttribute('role', 'status');
+      toastEl.setAttribute('aria-live', 'polite');
+      document.body.appendChild(toastEl);
+    }
+    toastEl.textContent = msg;
+    // Force reflow so re-triggering restarts the transition.
+    void toastEl.offsetWidth;
+    toastEl.classList.add('is-visible');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove('is-visible'); }, 1600);
   }
 
   function xmlEsc(s) {

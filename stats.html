@@ -413,6 +413,18 @@
       font-weight: 600;
       text-anchor: start;
     }
+    /* Bar labels that go somewhere: episode pages, OnlyBoosts pages, or a
+       copy-npub button. The underline only appears on hover/focus so the
+       chart reads as a chart until you reach for a name. */
+    .stats-bar-link, .stats-bar-copy { cursor: pointer; outline: none; }
+    .stats-bar-link .stats-bar-label, .stats-bar-copy .stats-bar-label { fill: var(--navy); }
+    .stats-bar-link:hover .stats-bar-label,
+    .stats-bar-link:focus .stats-bar-label,
+    .stats-bar-copy:hover .stats-bar-label,
+    .stats-bar-copy:focus .stats-bar-label {
+      fill: var(--brand-d);
+      text-decoration: underline;
+    }
 
     /* ── Episodes You’ve Supported: every episode in numeric order. Signed in, boosted
        tiles are filled with the sats total and unboosted tiles carry a
@@ -556,6 +568,42 @@
     [data-stats-zappers]   .ep-supporter-avatar { width: 24px; height: 24px; }
     [data-stats-streamers] .ep-supporter-name,
     [data-stats-zappers]   .ep-supporter-name { font-size: 0.92rem; }
+    /* Streamer / zapper identities are clickable: OnlyBoosts page when they
+       have one (blue dot on the avatar, from onlyboosts.css), copy npub
+       otherwise. */
+    .ep-supporter-identity.is-clickable { cursor: pointer; border-radius: 999px; }
+    .ep-supporter-identity.is-clickable:hover .ep-supporter-name,
+    .ep-supporter-identity.is-clickable:focus-visible .ep-supporter-name {
+      color: var(--brand-d);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .ep-supporter-identity.is-clickable:focus-visible {
+      outline: 2px solid var(--brand);
+      outline-offset: 2px;
+    }
+    /* Copy-npub toast (mirrors supporters.html) */
+    .stats-toast {
+      position: fixed;
+      left: 50%;
+      bottom: 1.5rem;
+      transform: translateX(-50%) translateY(0.75rem);
+      background: var(--navy);
+      color: var(--white);
+      padding: 0.5rem 1.05rem;
+      border-radius: 7px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s ease, transform 0.18s ease;
+      z-index: 1000;
+    }
+    .stats-toast.is-visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
     /* Footer styles are shared — see /assets/css/footer.css. */
 
     /* ── Responsive ── */
@@ -567,6 +615,7 @@
   <link rel="stylesheet" href="/assets/css/nav.css" />
   <link rel="stylesheet" href="/assets/css/theme.css" />
   <link rel="stylesheet" href="/assets/css/footer.css" />
+  <link rel="stylesheet" href="/assets/css/onlyboosts.css" />
 </head>
 <body>
 
@@ -969,6 +1018,9 @@
 <!-- episode-enhance.js exposes window.LBEpisodeEnhance.fetchProfilesByNpub,
      which stats.js uses to resolve npub labels in the supporter board. -->
 <script src="/assets/js/episode-enhance.js" defer></script>
+<!-- OnlyBoosts booster index: stats.js is a classic script and reads this
+     module off window.LBOnlyBoosts, so it must sit before stats.js. -->
+<script type="module" src="/assets/js/onlyboosts.js"></script>
 <script src="/assets/js/stats.js" defer></script>
 <script type="module" src="/assets/js/stats-boosts.js"></script>
 </body>
