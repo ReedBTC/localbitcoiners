@@ -1199,8 +1199,11 @@
       var sorted = people.slice()
         .sort(function (a, b) { return b[field] - a[field]; })
         .slice(0, 10);
-      // The anonymous bucket is always shown, pinned to the bottom.
-      if (anon) sorted = sorted.concat([anon]);
+      // The anonymous bucket is pinned to the bottom of the sats view only.
+      // On the episodes view it's dropped: nearly everyone boosts with an
+      // npub now, so "how many episodes had anonymous supporters" stopped
+      // being a question anyone asks.
+      if (anon && metric === 'sats') sorted = sorted.concat([anon]);
       var items = sorted.map(function (p) {
         return { label: truncate(p.label, 22), value: p[field], isAnon: p.isAnon };
       });
