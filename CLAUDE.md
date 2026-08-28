@@ -62,9 +62,12 @@ The boost flow was ported back from the OnlyBoosts fork in 2026-08 (merge
   `buildShowSiteNoteTemplate` in `login-widget/src/lib/boostagram.js`
   together, or the texts drift apart on the show's own profile.
 
-## Featured sections on /feeds (lb-v71)
+## Featured sections on /feeds (lb-v71 → lb-v75)
 
-Every tab has a gold Featured box. An item is featured when a show boost's
+Every tab has the same gold Featured box (`featuredHead()` and the credit
+builders in `featured-shared.js` are the only place its chrome lives; the
+Events card keeps its own credit builder in `calendar-events.js`, kept in
+step by hand). An item is featured when a show boost's
 message references it: an naddr (calendar event 31922/31923, article 30023,
 listing 30402) or the OnlyBoosts episode URL
 (`https://onlyboosts.social/episode/<item guid>`). The sats-log bot scans
