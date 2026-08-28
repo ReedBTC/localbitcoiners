@@ -387,21 +387,23 @@ export function featuredByEl(info, { avatar, name, link, onCopy, cls = 'feat-by'
   const pk = info.by.pubkey
   const who = name(pk)
   const url = link ? link(pk) : null
-  const kids = [
-    h('span', { class: `${cls}-label`, text: 'Featured by' }),
-    avatar(pk),
-    h('span', { class: `${cls}-name`, text: who }),
-  ]
-  const el = url
+  // Only the person is clickable: "Featured by" and the age are plain text,
+  // the pfp + name open their OnlyBoosts page (or copy their npub).
+  const person = [avatar(pk), h('span', { class: `${cls}-name`, text: who })]
+  const target = url
     ? h('a', {
-        class: cls, href: url, target: '_blank', rel: 'noopener noreferrer',
+        class: `${cls}-who`, href: url, target: '_blank', rel: 'noopener noreferrer',
         title: 'View ' + who + ' on OnlyBoosts',
         onclick: (e) => e.stopPropagation(),
-      }, kids)
+      }, person)
     : h('button', {
-        class: cls, type: 'button', title: 'Copy npub',
+        class: `${cls}-who`, type: 'button', title: 'Copy npub',
         onclick: (e) => { e.stopPropagation(); onCopy?.(pk) },
-      }, kids)
+      }, person)
+  const el = h('span', { class: cls }, [
+    h('span', { class: `${cls}-label`, text: 'Featured by' }),
+    target,
+  ])
   if (when) el.appendChild(h('span', { class: `${cls}-when`, text: '· ' + when }))
   return el
 }

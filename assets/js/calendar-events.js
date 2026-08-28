@@ -447,23 +447,28 @@ function buildFeaturedBy(info) {
   }
   const hasPubkey = /^[0-9a-f]{64}$/i.test(info.pubkey)
   const linked = hasPubkey && hasBoosterPage(info.pubkey)
-  const el = document.createElement(hasPubkey ? (linked ? 'a' : 'button') : 'span')
+  // The credit is plain text; only the person (pfp + name) is clickable —
+  // their OnlyBoosts page when they have one, else copy-npub.
+  const el = document.createElement('span')
   el.className = 'featured-by'
+  const who = document.createElement(hasPubkey ? (linked ? 'a' : 'button') : 'span')
+  who.className = 'featured-by-who'
   if (linked) {
-    el.href = boosterUrl(info.pubkey)
-    el.target = '_blank'
-    el.rel = 'noopener noreferrer'
-    el.title = 'View ' + (info.name || 'this booster') + ' on OnlyBoosts'
+    who.href = boosterUrl(info.pubkey)
+    who.target = '_blank'
+    who.rel = 'noopener noreferrer'
+    who.title = 'View ' + (info.name || 'this booster') + ' on OnlyBoosts'
   } else if (hasPubkey) {
-    el.type = 'button'
-    el.title = 'Copy npub'
-    el.addEventListener('click', () => copyNpub(info.pubkey))
+    who.type = 'button'
+    who.title = 'Copy npub'
+    who.addEventListener('click', () => copyNpub(info.pubkey))
   }
 
   const label = document.createElement('span')
   label.className = 'featured-by-label'
   label.textContent = 'Featured by'
   el.appendChild(label)
+  el.appendChild(who)
 
   const img = document.createElement('img')
   img.className = 'featured-by-pfp'
@@ -476,12 +481,12 @@ function buildFeaturedBy(info) {
   img.alt = ''
   img.referrerPolicy = 'no-referrer'
   img.onerror = () => { img.src = '/assets/LocalBitcoiners.png' }
-  el.appendChild(linked ? wrapWithDot(img) : img)
+  who.appendChild(linked ? wrapWithDot(img) : img)
 
   const name = document.createElement('span')
   name.className = 'featured-by-name'
   name.textContent = info.name || (info.pubkey.slice(0, 8) + '…')
-  el.appendChild(name)
+  who.appendChild(name)
 
   // Relative age of the feature, which is what makes the box's 1W/1M/All
   // range legible without a label explaining it.
