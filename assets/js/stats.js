@@ -203,7 +203,7 @@
   //   Sat Splits: Rev (Net), Reed (Net), Guests, V4V Budget, Fountain,
   //     Samourai Devs. Each host's tile is their share minus half of the
   //     production costs (the * carries that explanation as a tooltip), so
-  //     the six tiles sum to the net figure in the subline. Ep 015 routes
+  //     the six tiles sum to received minus costs. Ep 015 routes
   //     entirely to Samourai Devs (see SAMOURAI_EP). Costs accrue evenly
   //     across each bill's calendar month (COSTS), so a 1W window carries
   //     about a quarter of a month's bill and a bill dated in the future
@@ -287,12 +287,7 @@
         apps[app] = (apps[app] || 0) + row.total_sats;
       }
       splits.costs = costsWithin(start);
-      // Sats the ledger received but did not attribute to any recipient
-      // leg (a handful of zap rows carry legs that sum to less than their
-      // total). Named in the subline so the tiles reconcile with "received".
-      var attributed = splits.reed + splits.rev + splits.guests + splits.aquafox +
-        splits.fountain + splits.samourai;
-      return { gross: gross, splits: splits, apps: apps, unattributed: gross - attributed };
+      return { gross: gross, splits: splits, apps: apps };
     }
 
     // `tip`, when given, adds a * after the label that explains the number
@@ -343,13 +338,6 @@
           var val = def.k in shown ? shown[def.k] : (data.splits[def.k] || 0);
           grid.appendChild(tile(def.label, val, def.c, def.tip || ''));
         }
-        var net = data.gross - data.splits.costs;
-        if (subEl) {
-          subEl.textContent = fmtSats(net) + ' sats net ' + rangePhrase(state.range) +
-            ' (' + fmtSats(data.gross) + ' received' +
-            (data.unattributed > 0 ? ', ' + fmtSats(data.unattributed) + ' unattributed' : '') +
-            ', ' + fmtSats(data.splits.costs) + ' in costs)';
-        }
       } else {
         var names = Object.keys(data.apps).sort(function (a, b) { return data.apps[b] - data.apps[a]; });
         if (!names.length) {
@@ -361,11 +349,9 @@
         for (var n = 0; n < names.length; n++) {
           grid.appendChild(tile(APP_LABELS[names[n]] || names[n], data.apps[names[n]], appColorVar(names[n]), ''));
         }
-        if (subEl) {
-          subEl.textContent = fmtSats(data.gross) + ' sats received ' + rangePhrase(state.range) +
-            ' across ' + names.length + (names.length === 1 ? ' app' : ' apps');
-        }
       }
+      // The subline is the total received for the range, on both views.
+      if (subEl) subEl.textContent = fmtSats(data.gross) + ' sats received ' + rangePhrase(state.range);
       canvas.innerHTML = '';
       canvas.appendChild(grid);
     }
