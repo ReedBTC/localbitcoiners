@@ -396,25 +396,37 @@
     var shown = Math.max(0, WALL_VISIBLE - PODIUM);
     if (rest.length) {
       var grid = buildGrid(rest);
-      rest.forEach(function (c, i) {
-        if (i >= shown) { c.hidden = true; c.setAttribute('data-overflow', ''); }
-      });
+      rest.forEach(function (c, i) { if (i >= shown) c.hidden = true; });
       section.appendChild(grid);
     }
 
+    // One button that toggles: "Show N more" opens the fold, then reads
+    // "Show fewer" and closes it again (restoring exactly the top
+    // WALL_VISIBLE), scrolling the heading back into view so the reader
+    // isn't left partway down the guests section after the collapse.
     var hidden = Math.max(0, rest.length - shown);
     if (hidden > 0) {
+      var folded = rest.slice(shown);
+      var open = false;
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'sup-show-more';
-      btn.textContent = 'Show ' + fmtInt(hidden) + ' more supporter' + (hidden === 1 ? '' : 's');
+      btn.setAttribute('aria-expanded', 'false');
+      function label() {
+        btn.textContent = open
+          ? 'Show fewer supporters'
+          : 'Show ' + fmtInt(hidden) + ' more supporter' + (hidden === 1 ? '' : 's');
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
+      label();
       btn.addEventListener('click', function () {
-        var folded = section.querySelectorAll('[data-overflow]');
-        for (var i = 0; i < folded.length; i++) {
-          folded[i].hidden = false;
-          folded[i].removeAttribute('data-overflow');
+        open = !open;
+        for (var i = 0; i < folded.length; i++) folded[i].hidden = !open;
+        label();
+        if (!open) {
+          try { section.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+          catch (e) { section.scrollIntoView(); }
         }
-        btn.remove();
       });
       section.appendChild(btn);
     }
