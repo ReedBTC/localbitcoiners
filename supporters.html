@@ -204,7 +204,7 @@
 
     /* ── Supporters grids ── */
     .supporters-wrap {
-      max-width: 1000px;
+      max-width: 60rem;   /* OB's wall column: 8 grid cards across at 92px min */
       margin: 0 auto;
       padding: 2.75rem 1.25rem 1.5rem;
     }
@@ -264,10 +264,12 @@
       color: var(--muted);
       font-style: italic;
     }
+    /* 5.75rem minimum + 0.75rem gap = eight across in the 60rem column, so
+       the 16 visible grid cards under the podium make two full rows. */
     .sup-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
-      gap: 1.5rem 0.75rem;
+      grid-template-columns: repeat(auto-fill, minmax(5.75rem, 1fr));
+      gap: 1.4rem 0.75rem;
     }
     /* The Supporters wall (OnlyBoosts' community wall, ported): the top
        PODIUM cards on their own centered row with larger brand-ringed
@@ -411,9 +413,9 @@
     /* Loading + error states. */
     .supporters-loading {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
-      gap: 1.5rem 0.75rem;
-      max-width: 1000px;
+      grid-template-columns: repeat(auto-fill, minmax(5.75rem, 1fr));
+      gap: 1.4rem 0.75rem;
+      max-width: 60rem;   /* OB's wall column: 8 grid cards across at 92px min */
       margin: 2.75rem auto 0;
       padding: 0 1.25rem;
     }
@@ -429,7 +431,7 @@
       animation: skeleton-shimmer 1.4s ease-in-out infinite;
     }
     .supporters-error {
-      max-width: 1000px;
+      max-width: 60rem;   /* OB's wall column: 8 grid cards across at 92px min */
       margin: 2rem auto;
       padding: 0 1.25rem;
       color: var(--muted);
@@ -440,16 +442,21 @@
 
     /* ── Responsive ── */
     @media (max-width: 640px) {
-      /* Three podium cards across on a phone; four and five wrap to a
-         centered second line rather than disappearing. */
+      /* OB's phone rules: three podium cards across (four and five wrap to a
+         centered second line rather than disappearing), then a grid of
+         4.75rem cards, which lands four across on a 375px phone so the 16
+         visible grid cards fill four even rows. */
       .sup-podium { gap: 1.1rem 0.7rem; margin-bottom: 1.5rem; }
       .sup-card--podium { width: calc((100% - 2 * 0.7rem) / 3); }
       .sup-card--podium .sup-avatar { width: 74px; height: 74px; }
       .sup-card--podium .sup-name { font-size: 0.82rem; }
-    }
-    @media (max-width: 420px) {
-      .sup-grid, .supporters-loading { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
-      .sup-avatar, .sup-skeleton { width: 64px; height: 64px; }
+      .sup-grid, .supporters-loading {
+        grid-template-columns: repeat(auto-fill, minmax(4.75rem, 1fr));
+        gap: 1.15rem 0.6rem;
+      }
+      .sup-avatar, .sup-skeleton { width: 56px; height: 56px; }
+      .sup-name { font-size: 0.76rem; }
+      .sup-sats { font-size: 0.68rem; }
     }
   </style>
   <link rel="stylesheet" href="/assets/css/nav.css" />
