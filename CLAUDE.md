@@ -98,6 +98,34 @@ filters that one file to its kind (`assets/js/featured-*.js`, shared parts in
   Feature button back; re-boosting renews. Events are exempt (`ttlDays: 0` in
   `feeds.js`): featured until the event happens.
 
+## Stats, supporters and boosts pages (lb-v76, 2026-08-29)
+
+`/stats` is tiles and ranked lists; `/supporters` is the OnlyBoosts community
+wall (podium of 5, 21 visible, Show more / fewer); `/boosts.html` has a
+Sort + 1W/1M/All head. Things that fail silently if missed:
+
+- **`COSTS` in `assets/js/stats.js` is hand-maintained.** One entry per
+  monthly bill (Fountain + Riverside). The Rev (Net) / Reed (Net) tiles
+  subtract half of it each, prorated across the bill's calendar month, so a
+  missing month quietly overstates both hosts. Reed supplies the numbers;
+  Aug and Sep 2026 were entered at July's figure (74,700 sats).
+- **Sat tiers are retired.** No 100k/69k/21k buckets, rings or labels
+  anywhere; `supporter-set.js` unions every kind-39089 pack the show
+  publishes, so a stale tier or coders pack left on relays re-adds its
+  members. The bot must delete retired packs, not just stop updating them.
+- **Stream rows in `sats.json` are per-(episode, supporter) aggregates**
+  stamped with last activity, not payments. A 1W/1M window on streamers
+  means "who streamed in it", and their sats can include earlier listens of
+  the same episode; boost and zap rows are per payment. Say so in any new
+  subline, do not present a stream window as exact.
+- **By App tiles are data-driven** from `row.app`; a new app appears on its
+  own the first time it boosts. Colors are a fixed map (`appColorVar`);
+  add one when a new app shows up grey.
+- **The range/sort widgets exist twice on purpose**: `assets/js/head-controls.js`
+  for module pages (boosts.html), a classic-script copy inside `stats.js`.
+  The `.pcast-range` / `.pcast-sort` CSS is copied per page (feeds, stats,
+  boosts, supporters) with `--accent` / `--accent-d` / `--tint` set locally.
+
 ## Bot infrastructure documentation
 
 The detailed bot infrastructure notes live in `bots/CLAUDE.md` (gitignored,
