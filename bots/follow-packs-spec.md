@@ -53,21 +53,37 @@ website link's `?p=` MUST be the same pubkey.
 - Keep the `d` slugs **stable and exactly as below** — the website URLs
   are hardcoded to them.
 
-## The six packs
+## The two published packs
 
 | d slug (`d` tag)        | title                                          | members |
 |-------------------------|------------------------------------------------|---------|
-| `lb-supporters-guests`  | Local Bitcoiners — Show Guests                  | guest npubs |
+| `lb-supporters-guests`  | Local Bitcoiners — Show Guests                  | co-hosts + guest npubs |
+| `lb-supporters-all`     | Local Bitcoiners — All Supporters               | union of every category below |
+
+### Retired 2026-08 — computed, not published
+
+`/supporters` became one ranked wall and dropped the lifetime tiers, so the
+site reads only the two packs above (`assets/js/supporter-set.js`). These five
+slugs are no longer published, but their membership rules still run because
+`lb-supporters-all` is their union — deleting the rules empties the all-pack,
+which gates `/feeds` and `community-status.js`.
+
+| d slug (`d` tag)        | title                                          | members |
+|-------------------------|------------------------------------------------|---------|
 | `lb-supporters-coders`  | Local Bitcoiners — Coding Contributors          | coder npubs (hardcoded) |
 | `lb-supporters-100k`    | Local Bitcoiners — 100k+ Boosters & Streamers   | tier ≥ 100,000 |
 | `lb-supporters-69k`     | Local Bitcoiners — 69k+ Boosters & Streamers    | tier 69,000–99,999 |
 | `lb-supporters-21k`     | Local Bitcoiners — 21k+ Boosters & Streamers    | tier 21,000–68,999 |
 | `lb-supporters-other`   | Local Bitcoiners — All Other Boosters & Streamers | tier 100–20,999 (grandfathered: members published under the old 1-sat floor are never removed) |
 
+Their last-published kind-39089 events still stand on the relays; nothing
+rewrites or deletes them.
+
 ## Membership — must match the /supporters page exactly
 
-The website derives the same sets in `assets/js/supporters.js`; mirror
-that logic so the packs match what the page shows.
+The website no longer derives tiers — `supporters.js` renders one ranked wall
+and reads pack membership back from `supporter-set.js`. The tier rules below
+survive only as the definition of who belongs in `lb-supporters-all`.
 
 **Booster tiers** — from `data/sats.json` rows:
 - Group by `sender_npub`; sum `total_sats` (boosts **and** streams).

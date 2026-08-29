@@ -83,8 +83,16 @@ CO_HOSTS = [
 ENTRY_TIER_MIN_SATS = 100
 
 # Booster tier floors (inclusive), highest first — a supporter lands in the
-# first tier they clear, by lifetime total_sats (boosts + streams). Mirrors
-# TIERS in supporters.js apart from the entry floor above.
+# first tier they clear, by lifetime total_sats (boosts + streams).
+#
+# RETIRED AS PUBLISHED PACKS 2026-08: /supporters became one ranked wall and
+# dropped the 100k/69k/21k tiers, so the site now reads only lb-supporters-all
+# and lb-supporters-guests (assets/js/supporter-set.js). These floors are still
+# evaluated because ALL_PACK is the union of every category — the tiers are how
+# "everyone at or above ENTRY_TIER_MIN_SATS" gets enumerated. Don't delete them
+# thinking they're dead: doing so empties the all-supporters pack, which gates
+# /feeds and community-status.js. supporters.js no longer mirrors these floors,
+# so there is nothing left to keep in sync with it.
 TIER_PACKS = [
     (100000,              "lb-supporters-100k",  "Local Bitcoiners — 100k+ Boosters & Streamers"),
     (69000,               "lb-supporters-69k",   "Local Bitcoiners — 69k+ Boosters & Streamers"),
@@ -93,6 +101,9 @@ TIER_PACKS = [
 ]
 
 GUESTS_PACK = ("lb-supporters-guests", "Local Bitcoiners — Show Guests")
+# Also retired 2026-08 as a published pack. CODING_CONTRIBUTORS still feeds
+# ALL_PACK, so Reed and Chad stay in the supporter set even though no coder
+# pack ships any more.
 CODERS_PACK = ("lb-supporters-coders", "Local Bitcoiners — Coding Contributors")
 # Combined pack: the union of every category above — one-click "follow every
 # Local Bitcoiners supporter". Built from the same sources, deduped by hex, so
@@ -330,11 +341,11 @@ def main():
         all_members += tier_members.get(slug, [])
 
     published = 0
-    # Guests, coders, tiers high→low, then the combined "everyone" pack.
+    # Two packs ship: Show Guests, then the combined "everyone" pack. The four
+    # tier packs and the coder pack were RETIRED 2026-08 when /supporters became
+    # one ranked wall — see the note on TIER_PACKS. Their membership is still
+    # computed above because all_members unions it; only the publish is gone.
     published += process_pack(GUESTS_PACK[0], GUESTS_PACK[1], guests, nsec, relays, state)
-    published += process_pack(CODERS_PACK[0], CODERS_PACK[1], coders, nsec, relays, state)
-    for floor, slug, title in TIER_PACKS:
-        published += process_pack(slug, title, tier_members.get(slug, []), nsec, relays, state)
     published += process_pack(ALL_PACK[0], ALL_PACK[1], all_members, nsec, relays, state)
 
     print(f"\n{published} pack(s) {'previewed' if DRY_RUN else 'published'}.")
