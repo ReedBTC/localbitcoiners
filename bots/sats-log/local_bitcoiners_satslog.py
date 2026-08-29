@@ -675,6 +675,14 @@ BUCKET_BY_ADDRESS = {
     "aquafox30@primal.net":          "aquafox_sats",
     "boostbot@fountain.fm":          "fountain_sats",
     "localbitcoiners@getalby.com":   "reed_sats",   # legacy node lud16 (era-3 RSS history)
+    # Self-hosted lnbits address (see bots/shared/lnbits_source.py). The feed
+    # carried it on Ep001/Ep020 from 2026-07 until the VoidWallet outage sent
+    # the value blocks back to reed@getalby.com; either address can be live in
+    # a <podcast:value> block, so both must bucket to Reed. Keep this set in
+    # step with OUR_VALUE_ADDRESSES in bots/shared/boost_formatter.py and
+    # META_PUBLISH_ALLOWLIST in login-widget/src/lib/recipientOverrides.js —
+    # an address missing here doesn't error, it silently pays out as a guest.
+    "reed@localbitcoiners.com":      "reed_sats",
 }
 
 # Per-host substitutions applied to RSS-derived splits before bucket
