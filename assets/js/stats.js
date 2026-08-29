@@ -200,13 +200,14 @@
   // One tile per category for the chosen range (1W / 1M / ALL, measured
   // back from now on settled_at) and view:
   //
-  //   Sat Splits: Rev, Reed, Guests, V4V Budget, Fountain, Samourai Devs,
-  //     Costs. Hosts are GROSS; Costs is its own negative tile, so the seven
-  //     tiles sum to the net figure in the subline. Ep 015 routes entirely
-  //     to Samourai Devs (see SAMOURAI_EP). Costs accrue evenly across each
-  //     bill's calendar month (COSTS), so a 1W window carries about a
-  //     quarter of a month's bill and a bill dated in the future adds
-  //     nothing until its month starts.
+  //   Sat Splits: Rev (Net), Reed (Net), Guests, V4V Budget, Fountain,
+  //     Samourai Devs. Each host's tile is their share minus half of the
+  //     production costs (the * carries that explanation as a tooltip), so
+  //     the six tiles sum to the net figure in the subline. Ep 015 routes
+  //     entirely to Samourai Devs (see SAMOURAI_EP). Costs accrue evenly
+  //     across each bill's calendar month (COSTS), so a 1W window carries
+  //     about a quarter of a month's bill and a bill dated in the future
+  //     adds nothing until its month starts.
   //   By App: whatever `app` names the rows carry, largest first. The set
   //     is data-driven, so a new app (OnlyBoosts, say) appears on its own
   //     the first time someone boosts from it; only its color is a fixed
@@ -215,14 +216,14 @@
   // Every row counts (boosts, streams, zaps), as the old chart did.
   var RANGE_OPTIONS = [['1w', '1W'], ['1m', '1M'], ['all', 'All']];
   var VIEW_OPTIONS = [['splits', 'Sat Splits'], ['apps', 'By App']];
+  var HOST_NET_TIP = 'Share of the sats minus half of the production costs (Fountain and Riverside) for the range.';
   var SPLIT_TILES = [
-    { k: 'rev',      label: 'Rev',           c: '--bucket-rev' },
-    { k: 'reed',     label: 'Reed',          c: '--bucket-reed' },
+    { k: 'rev',      label: 'Rev (Net)',     c: '--bucket-rev',  tip: HOST_NET_TIP },
+    { k: 'reed',     label: 'Reed (Net)',    c: '--bucket-reed', tip: HOST_NET_TIP },
     { k: 'guests',   label: 'Guests',        c: '--bucket-guests' },
     { k: 'aquafox',  label: 'V4V Budget',    c: '--bucket-adbudget' },
     { k: 'fountain', label: 'Fountain',      c: '--bucket-fountain' },
     { k: 'samourai', label: 'Samourai Devs', c: '--bucket-samourai' },
-    { k: 'costs',    label: 'Costs',         c: '--bucket-costs', negative: true },
   ];
   var APP_LABELS = { 'nostr zaps': 'Nostr Zaps' };
 
@@ -294,16 +295,28 @@
       return { gross: gross, splits: splits, apps: apps, unattributed: gross - attributed };
     }
 
-    function tile(label, value, colorVar, negative) {
+    // `tip`, when given, adds a * after the label that explains the number
+    // on hover, or on tap (the page's [data-tip] tooltip, see
+    // ensureChartTooltipEl).
+    function tile(label, value, colorVar, tip) {
       var t = document.createElement('div');
-      t.className = 'stats-tile' + (negative ? ' is-negative' : '');
+      t.className = 'stats-tile';
       t.style.setProperty('--c', 'var(' + colorVar + ')');
       var l = document.createElement('span');
       l.className = 'stats-tile-label';
       l.textContent = label;
+      if (tip) {
+        var star = document.createElement('span');
+        star.className = 'stats-tile-star';
+        star.textContent = '*';
+        star.setAttribute('data-tip', tip);
+        star.setAttribute('role', 'img');
+        star.setAttribute('aria-label', tip);
+        l.appendChild(star);
+      }
       var v = document.createElement('span');
       v.className = 'stats-tile-value';
-      v.textContent = (negative && value > 0 ? '−' : '') + fmtSats(value);
+      v.textContent = fmtSats(value);
       var u = document.createElement('span');
       u.className = 'stats-tile-unit';
       u.textContent = 'sats';
@@ -316,11 +329,19 @@
     function draw() {
       var data = compute(state.range);
       var grid = document.createElement('div');
-      grid.className = 'stats-tiles';
+      grid.className = 'stats-tiles ' + (state.view === 'splits' ? 'stats-tiles--3' : 'stats-tiles--4');
       if (state.view === 'splits') {
+        // Each host absorbs half of the costs, capped at what they were paid
+        // (the same rule the old cumulative chart used).
+        var half = data.splits.costs / 2;
+        var shown = {
+          reed: Math.max(0, Math.round(data.splits.reed - half)),
+          rev:  Math.max(0, Math.round(data.splits.rev - half)),
+        };
         for (var t = 0; t < SPLIT_TILES.length; t++) {
           var def = SPLIT_TILES[t];
-          grid.appendChild(tile(def.label, data.splits[def.k] || 0, def.c, !!def.negative));
+          var val = def.k in shown ? shown[def.k] : (data.splits[def.k] || 0);
+          grid.appendChild(tile(def.label, val, def.c, def.tip || ''));
         }
         var net = data.gross - data.splits.costs;
         if (subEl) {
@@ -338,7 +359,7 @@
           grid.appendChild(empty);
         }
         for (var n = 0; n < names.length; n++) {
-          grid.appendChild(tile(APP_LABELS[names[n]] || names[n], data.apps[names[n]], appColorVar(names[n]), false));
+          grid.appendChild(tile(APP_LABELS[names[n]] || names[n], data.apps[names[n]], appColorVar(names[n]), ''));
         }
         if (subEl) {
           subEl.textContent = fmtSats(data.gross) + ' sats received ' + rangePhrase(state.range) +

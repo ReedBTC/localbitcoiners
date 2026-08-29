@@ -392,11 +392,12 @@
     .pcast-sort-item.is-active { color: var(--accent-d); background: var(--tint); }
     .pcast-sort-item.is-active::after { content: ' ✓'; float: right; }
 
-    .stats-tiles {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: 0.75rem;
-    }
+    /* Three across for the six split tiles, four across for the apps
+       (wide enough for "localbitcoiners.com" on one line); two across on
+       phones, where the label may wrap instead. */
+    .stats-tiles { display: grid; gap: 0.75rem; }
+    .stats-tiles--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .stats-tiles--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .stats-tile {
       display: flex; flex-direction: column; gap: 0.15rem;
       padding: 0.85rem 0.95rem;
@@ -409,7 +410,11 @@
     .stats-tile-label {
       font-size: 0.78rem; font-weight: 700; letter-spacing: 0.02em;
       color: var(--muted); text-transform: uppercase;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      overflow-wrap: anywhere;
+    }
+    .stats-tile-star {
+      margin-left: 0.15rem; color: var(--brand-d); font-weight: 700;
+      cursor: help;
     }
     .stats-tile-value {
       font-family: 'Playfair Display', Georgia, serif;
@@ -418,7 +423,6 @@
       font-variant-numeric: tabular-nums;
       overflow-wrap: anywhere;
     }
-    .stats-tile.is-negative .stats-tile-value { color: var(--c, var(--muted)); }
     .stats-tile-unit { font-size: 0.75rem; color: var(--muted); }
     .stats-tiles .stats-error { grid-column: 1 / -1; }
 
@@ -665,7 +669,7 @@
     @media (max-width: 600px) {
       .section-wide { padding: 2rem 1rem; }
       .stats-chart-canvas { padding: 0.6rem; }
-      .stats-tiles { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 0.5rem; }
+      .stats-tiles--3, .stats-tiles--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
       .stats-tile { padding: 0.7rem 0.75rem; }
       .stats-hbar-row { gap: 0.5rem; }
       .stats-hbar-row .ep-supporter-identity { flex-basis: 132px; width: 132px; }
