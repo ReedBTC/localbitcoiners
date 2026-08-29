@@ -1,10 +1,10 @@
 /* Stats page — "Biggest Boosts" feed.
  *
  * Fetches the show-wide boost mega-thread (same fetch + render path as
- * /boosts.html and the episode pages), keeps only the bot boost notes
- * worth 10,000+ sats, and renders them largest-first. Replies to those
- * boosts are not shown. The sat amount is parsed from the bot's
- * "💰 N sats" line in the note content.
+ * /boosts.html and the episode pages) and renders the biggest bot boost
+ * notes largest-first: the top TOP_MONTH of the last 30 days, or the top
+ * TOP_ALL of all time. Replies to those boosts are not shown. The sat
+ * amount is parsed from the bot's "💰 N sats" line in the note content.
  *
  * Hooks the shared boost-actions module in so every card gets the same
  * Reply/Repost/Like/Zap bar /boosts.html shows.
@@ -19,13 +19,17 @@ import {
 } from '/assets/js/boosts-thread.js'
 import { configureBoostActions } from '/assets/js/boost-actions.js'
 
-const MIN_SATS = 10000
+// How many notes each range shows. No sat floor: a quiet month still has
+// a top five, and the all-time top ten are all well past five figures.
+const TOP_MONTH = 5
+const TOP_ALL = 10
 
 // 1M / All. The show reads the last month's biggest boosts off the air, so
 // that is the default; All is a click away. Applied on the note's
 // created_at, which is when the bot published the boost.
 const RANGES = [['1m', '1M', 'Last 30 days'], ['all', 'All', 'All time']]
 let range = '1m'
+function topN() { return range === '1m' ? TOP_MONTH : TOP_ALL }
 function rangeStart() { return range === '1m' ? Date.now() / 1000 - 30 * 86400 : -Infinity }
 
 function mountRangeControl(onPick) {
@@ -61,8 +65,8 @@ function updateSub() {
   const sub = document.querySelector('[data-boosts-sub]')
   if (!sub) return
   sub.textContent = range === '1m'
-    ? 'Every 10,000+ sat Nostr Boost Bot Note from the last 30 days, largest first'
-    : 'Every 10,000+ sat Nostr Boost Bot Note of all time, largest first'
+    ? 'The ' + TOP_MONTH + ' biggest Nostr Boost Bot Notes of the last 30 days'
+    : 'The ' + TOP_ALL + ' biggest Nostr Boost Bot Notes of all time'
 }
 
 // Bot boost notes that were published un-threaded — no `e` tag links
@@ -170,15 +174,16 @@ function repaint(rootEvent, childrenOf, container, extras) {
       if (!ev || !ev.id || seen.has(ev.id)) return false
       seen.add(ev.id)
       if ((ev.created_at || 0) < start) return false
-      return boostSats(ev.content) >= MIN_SATS
+      return boostSats(ev.content) > 0   // bot boost notes only; human replies carry no 💰 line
     })
     .sort((a, b) => boostSats(b.content) - boostSats(a.content))
+    .slice(0, topN())
 
   container.innerHTML = ''
   if (!anchors.length) {
     container.innerHTML = '<p class="stats-error">' + (range === '1m'
-      ? 'No 10,000+ sat boosts in the last 30 days.'
-      : 'No 10,000+ sat boosts yet.') + '</p>'
+      ? 'No boosts in the last 30 days.'
+      : 'No boosts yet.') + '</p>'
     return
   }
 
