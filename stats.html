@@ -244,50 +244,7 @@
       padding: 1rem;
       min-height: 200px;
     }
-    .stats-chart-svg { width: 100%; height: auto; display: block; }
-    .stats-chart-grid { stroke: var(--border); stroke-width: 1; }
-    .stats-chart-ylabel,
-    .stats-chart-xlabel {
-      fill: var(--muted);
-      font-family: 'Source Serif 4', Georgia, serif;
-      font-size: 12px;
-    }
-    .stats-chart-ylabel { text-anchor: end; }
-    .stats-chart-xlabel { text-anchor: middle; }
-
-    /* App-mix chart — per-app variable + line/dot styles using it. */
-    .stats-app-fountain   { --app-c: var(--app-fountain); }
-    .stats-app-website    { --app-c: var(--app-website); }
-    .stats-app-podguru    { --app-c: var(--app-podguru); }
-    .stats-app-curio      { --app-c: var(--app-curio); }
-    .stats-app-castamatic { --app-c: var(--app-castamatic); }
-    .stats-app-bmb        { --app-c: var(--app-bmb); }
-    .stats-app-nostr-zaps { --app-c: var(--app-nostr-zaps); }
-    .stats-app-other      { --app-c: var(--app-other); }
-    .stats-appmix-line {
-      fill: none;
-      stroke: var(--app-c);
-      stroke-width: 1.6;
-      stroke-linejoin: round;
-      stroke-linecap: round;
-    }
-    /* Each data point is a <g> wrapping an invisible-but-hit-testable
-       halo (which becomes a faint colored ring on hover) and the visible
-       inner dot. Custom JS tooltip handles the popup so it appears
-       instantly — the native <title> delay is fixed at ~half a second. */
-    .stats-appmix-halo {
-      fill: var(--app-c);
-      fill-opacity: 0;
-      pointer-events: all;
-      transition: fill-opacity 0.1s ease;
-    }
-    .stats-appmix-dotgrp:hover .stats-appmix-halo { fill-opacity: 0.22; }
-    .stats-appmix-dot {
-      fill: var(--app-c);
-      stroke: var(--white);
-      stroke-width: 1;
-      pointer-events: none;
-    }
+    /* Tooltip for [data-tip] elements (the * on the host tiles). */
     .stats-tooltip {
       position: fixed;
       z-index: 1000;
@@ -303,37 +260,11 @@
     }
     .stats-tooltip[hidden] { display: none; }
 
-    /* Tell mobile browsers these chart elements are interactive — kills
-       the Android Chrome double-tap zoom delay and ensures the synth
-       click target lands on the SVG element rather than the body. */
+    /* Tell mobile browsers these elements are interactive — kills the
+       Android Chrome double-tap zoom delay so a tap pins the tooltip. */
     [data-tip] {
       cursor: pointer;
       touch-action: manipulation;
-    }
-
-    .stats-chart-legend-list {
-      list-style: none;
-      margin: 0.7rem 0 0;
-      padding: 0;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.4rem 0.85rem;
-      font-size: 0.85rem;
-      color: var(--muted);
-    }
-    .stats-chart-legend-list[hidden] { display: none; }
-    .stats-chart-legend-list li {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-    }
-    .stats-legend-swatch {
-      display: inline-block;
-      width: 14px;
-      height: 14px;
-      border-radius: 3px;
-      background: var(--c, var(--cream-d));
-      border: 1px solid rgba(0, 0, 0, 0.08);
     }
 
     /* ── Podcast Sat Distribution: view dropdown + range buttons + tiles ──
@@ -424,6 +355,7 @@
       overflow-wrap: anywhere;
     }
     .stats-tile-unit { font-size: 0.75rem; color: var(--muted); }
+    .stats-tile-count { margin-top: 0.3rem; font-size: 0.78rem; font-weight: 600; color: var(--brand-d); }
     .stats-tiles .stats-error { grid-column: 1 / -1; }
 
     /* ── Episode leaderboard (horizontal bars) ── */
@@ -886,7 +818,8 @@
 <!-- ══════════════════════════════ BIGGEST BOOSTS ══════════════════════════════ -->
 <section class="section-wide stats-boost-feed">
   <h2 class="stats-chart-heading">Biggest Boosts - Notes</h2>
-  <p class="stats-chart-sub">Every 10,000+ sat Nostr Boost Bot Note, largest first</p>
+  <p class="stats-chart-sub" data-boosts-sub>Every 10,000+ sat Nostr Boost Bot Note from the last 30 days, largest first</p>
+  <div class="stats-dist-head pcast-controls" data-boosts-controls></div>
   <div data-stats-boosts>
     <div class="stats-loading">
       <div class="loading-spinner"></div><br />
@@ -905,35 +838,6 @@
       Loading pre-Nostr boosts…
     </div>
   </div>
-</section>
-
-<!-- ══════════════════════════════ APP MIX OVER TIME ══════════════════════════════ -->
-<section class="section-wide">
-  <h2 class="stats-chart-heading">App Mix Over Time</h2>
-
-  <div class="stats-chart-controls" role="radiogroup" aria-label="App-mix view">
-    <label class="stats-chart-opt">
-      <input type="radio" name="stats-appmix-view" value="percent" checked /> Percentage
-    </label>
-    <label class="stats-chart-opt">
-      <input type="radio" name="stats-appmix-view" value="absolute" /> Sats
-    </label>
-    <label class="stats-chart-opt">
-      <input type="radio" name="stats-appmix-view" value="boosts" /> Boosts
-    </label>
-    <label class="stats-chart-opt">
-      <input type="radio" name="stats-appmix-view" value="streams" /> Streams
-    </label>
-  </div>
-
-  <div class="stats-chart-canvas" data-stats-appmix>
-    <div class="stats-loading">
-      <div class="loading-spinner"></div><br />
-      Loading app mix…
-    </div>
-  </div>
-
-  <ul class="stats-chart-legend-list" data-appmix-legend></ul>
 </section>
 
 <!-- ══════════════════════════════ FOOTER ══════════════════════════════ -->

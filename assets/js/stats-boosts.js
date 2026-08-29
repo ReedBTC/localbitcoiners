@@ -21,6 +21,50 @@ import { configureBoostActions } from '/assets/js/boost-actions.js'
 
 const MIN_SATS = 10000
 
+// 1M / All. The show reads the last month's biggest boosts off the air, so
+// that is the default; All is a click away. Applied on the note's
+// created_at, which is when the bot published the boost.
+const RANGES = [['1m', '1M', 'Last 30 days'], ['all', 'All', 'All time']]
+let range = '1m'
+function rangeStart() { return range === '1m' ? Date.now() / 1000 - 30 * 86400 : -Infinity }
+
+function mountRangeControl(onPick) {
+  const host = document.querySelector('[data-boosts-controls]')
+  if (!host) return
+  host.innerHTML = ''
+  const wrap = document.createElement('div')
+  wrap.className = 'pcast-range'
+  wrap.setAttribute('role', 'group')
+  wrap.setAttribute('aria-label', 'Time range')
+  const btns = RANGES.map(([key, label, title]) => {
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.className = 'pcast-range-btn'
+    btn.textContent = label
+    btn.title = title
+    btn.addEventListener('click', () => { setActive(key); onPick(key) })
+    wrap.appendChild(btn)
+    return btn
+  })
+  function setActive(key) {
+    btns.forEach((el, i) => {
+      const on = RANGES[i][0] === key
+      el.classList.toggle('is-active', on)
+      el.setAttribute('aria-pressed', on ? 'true' : 'false')
+    })
+  }
+  setActive(range)
+  host.appendChild(wrap)
+}
+
+function updateSub() {
+  const sub = document.querySelector('[data-boosts-sub]')
+  if (!sub) return
+  sub.textContent = range === '1m'
+    ? 'Every 10,000+ sat Nostr Boost Bot Note from the last 30 days, largest first'
+    : 'Every 10,000+ sat Nostr Boost Bot Note of all time, largest first'
+}
+
 // Bot boost notes that were published un-threaded — no `e` tag links
 // them to the mega-thread, so fetchBoostThread can't see them. Hardcoded
 // here so they still show in this feed. The bot threads notes correctly
@@ -67,6 +111,10 @@ const EXTRA_BOOST_IDS = [
     childrenOf: result.childrenOf,
     rerender: () => repaint(result.rootEvent, result.childrenOf, container, extras),
   })
+  mountRangeControl((key) => {
+    range = key
+    repaint(result.rootEvent, result.childrenOf, container, extras)
+  })
   repaint(result.rootEvent, result.childrenOf, container, extras)
 })().catch((err) => {
   console.error('[stats-boosts] init failed', err)
@@ -111,6 +159,8 @@ function fetchEventsById(ids, relays) {
 }
 
 function repaint(rootEvent, childrenOf, container, extras) {
+  updateSub()
+  const start = rangeStart()
   const directReplies = childrenOf.get(rootEvent.id) || []
   const seen = new Set()
   const anchors = directReplies
@@ -119,14 +169,16 @@ function repaint(rootEvent, childrenOf, container, extras) {
       // De-dupe in case an "extra" id also turns up in the thread.
       if (!ev || !ev.id || seen.has(ev.id)) return false
       seen.add(ev.id)
+      if ((ev.created_at || 0) < start) return false
       return boostSats(ev.content) >= MIN_SATS
     })
     .sort((a, b) => boostSats(b.content) - boostSats(a.content))
 
   container.innerHTML = ''
   if (!anchors.length) {
-    container.innerHTML =
-      '<p class="stats-error">No 10,000+ sat boosts yet.</p>'
+    container.innerHTML = '<p class="stats-error">' + (range === '1m'
+      ? 'No 10,000+ sat boosts in the last 30 days.'
+      : 'No 10,000+ sat boosts yet.') + '</p>'
     return
   }
 

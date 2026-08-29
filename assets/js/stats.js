@@ -83,12 +83,10 @@
   var zappersCanvas = document.querySelector('[data-stats-zappers]');
   var zappersControlsEl = document.querySelector('[data-zappers-controls]');
   var zappersSubEl = document.querySelector('[data-zappers-sub]');
-  var appmixCanvas = document.querySelector('[data-stats-appmix]');
-  var appmixLegendEl = document.querySelector('[data-appmix-legend]');
   var epgridCanvas = document.querySelector('[data-stats-epgrid]');
   var epgridSubEl = document.querySelector('[data-epgrid-sub]');
   if (!canvas && !boardCanvas && !peopleCanvas && !preNostrCanvas &&
-      !streamersCanvas && !zappersCanvas && !appmixCanvas && !epgridCanvas) return;
+      !streamersCanvas && !zappersCanvas && !epgridCanvas) return;
 
   Promise.all([
     fetch(SATS_URL).then(function (r) { return r.ok ? r.json() : null; })
@@ -106,7 +104,6 @@
     if (!rows.length) { showError(); return; }
     var episodes = rssXml ? parseEpisodes(rssXml) : [];
     renderDistribution(rows);
-    renderAppMix(rows);
     renderLeaderboard(rows);
     renderEpisodeGrid(rows, episodes);
     renderBigPreNostr(rows);
@@ -147,7 +144,6 @@
     if (preNostrCanvas) preNostrCanvas.innerHTML = msg;
     if (streamersCanvas) streamersCanvas.innerHTML = msg;
     if (zappersCanvas) zappersCanvas.innerHTML = msg;
-    if (appmixCanvas) appmixCanvas.innerHTML = msg;
     if (epgridCanvas) epgridCanvas.innerHTML = msg;
   }
 
@@ -267,6 +263,7 @@
       var start = rangeStart(rangeKey);
       var splits = { reed: 0, rev: 0, guests: 0, aquafox: 0, fountain: 0, samourai: 0 };
       var apps = Object.create(null);
+      var appCounts = Object.create(null);   // boosts (or zaps) per app; stream rows are aggregates, not counted
       var gross = 0;
       for (var r = 0; r < rows.length; r++) {
         var row = rows[r];
@@ -283,15 +280,17 @@
         }
         var app = row.app || 'Other';
         apps[app] = (apps[app] || 0) + row.total_sats;
+        if (row.kind === 'boost' || row.kind === 'zap') appCounts[app] = (appCounts[app] || 0) + 1;
       }
       splits.costs = costsWithin(start);
-      return { gross: gross, splits: splits, apps: apps };
+      return { gross: gross, splits: splits, apps: apps, appCounts: appCounts };
     }
 
     // `tip`, when given, adds a * after the label that explains the number
     // on hover, or on tap (the page's [data-tip] tooltip, see
-    // ensureChartTooltipEl).
-    function tile(label, value, colorVar, tip) {
+    // ensureChartTooltipEl). `note`, when given, is a second line under the
+    // unit (the By App tiles' boost count).
+    function tile(label, value, colorVar, tip, note) {
       var t = document.createElement('div');
       t.className = 'stats-tile';
       t.style.setProperty('--c', 'var(' + colorVar + ')');
@@ -316,6 +315,12 @@
       t.appendChild(l);
       t.appendChild(v);
       t.appendChild(u);
+      if (note) {
+        var n = document.createElement('span');
+        n.className = 'stats-tile-count';
+        n.textContent = note;
+        t.appendChild(n);
+      }
       return t;
     }
 
@@ -345,7 +350,10 @@
           grid.appendChild(empty);
         }
         for (var n = 0; n < names.length; n++) {
-          grid.appendChild(tile(APP_LABELS[names[n]] || names[n], data.apps[names[n]], appColorVar(names[n]), ''));
+          var cnt = data.appCounts[names[n]] || 0;
+          var noun = names[n] === 'nostr zaps' ? 'zap' : 'boost';
+          grid.appendChild(tile(APP_LABELS[names[n]] || names[n], data.apps[names[n]], appColorVar(names[n]), '',
+            fmtSats(cnt) + ' ' + noun + (cnt === 1 ? '' : 's')));
         }
       }
       // The subline is the total received for the range, on both views.
@@ -366,6 +374,7 @@
       }));
     }
     draw();
+    setupChartTooltip(canvas);   // the * on the host tiles
   }
 
   // Range keys shared by every 1W / 1M / All control on the page.
@@ -480,7 +489,7 @@
     return wrap;
   }
 
-  // Tile accent per app; mirrors appCls (the App Mix chart).
+  // Tile accent per app; a fixed map, grey for anything new.
   function appColorVar(app) {
     switch (app) {
       case 'Fountain':            return '--app-fountain';
@@ -492,142 +501,6 @@
       case 'nostr zaps':          return '--app-nostr-zaps';
       default:                    return '--app-other';
     }
-  }
-
-  // First-of-month timestamps within [minMs, maxMs], for X-axis ticks.
-  function monthTicks(minMs, maxMs) {
-    var ticks = [];
-    var start = new Date(minMs);
-    var cur = Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1);
-    while (cur <= maxMs) {
-      var cd = new Date(cur);
-      ticks.push({ ms: cur, label: MONTHS[cd.getUTCMonth()] });
-      cur = Date.UTC(cd.getUTCFullYear(), cd.getUTCMonth() + 1, 1);
-    }
-    // Short ranges may straddle no month boundary — anchor with the start.
-    if (!ticks.length) {
-      ticks.push({ ms: minMs, label: MONTHS[start.getUTCMonth()] });
-    }
-    return ticks;
-  }
-
-  // ── App mix over time — multi-line per-week chart ──────────────────
-  // Buckets every row's total_sats by ISO week (Mon-start UTC) × app,
-  // then renders one line per app: percentage-of-week or absolute sats.
-  function renderAppMix(rows) {
-    if (!appmixCanvas) return;
-
-    var WEEK_MS = 7 * DAY_MS;
-    var byWeekApp = Object.create(null);        // sats sums (every kind)
-    var byWeekAppBoost = Object.create(null);   // boost-row counts only
-    var byWeekAppStream = Object.create(null);  // stream-row counts only
-    var appsSeen = Object.create(null);
-    var minWeek = Infinity, maxWeek = -Infinity;
-
-    for (var i = 0; i < rows.length; i++) {
-      var row = rows[i];
-      var t = Date.parse(row.settled_at);
-      if (!isFinite(t)) continue;
-      var wk = weekStartMs(t);
-      var app = row.app || 'Other';
-      appsSeen[app] = true;
-      var bucket = byWeekApp[wk] || (byWeekApp[wk] = Object.create(null));
-      bucket[app] = (bucket[app] || 0) + row.total_sats;
-      if (row.kind === 'boost') {
-        var bb = byWeekAppBoost[wk] || (byWeekAppBoost[wk] = Object.create(null));
-        bb[app] = (bb[app] || 0) + 1;
-      } else if (row.kind === 'stream') {
-        var bs = byWeekAppStream[wk] || (byWeekAppStream[wk] = Object.create(null));
-        bs[app] = (bs[app] || 0) + 1;
-      }
-      if (wk < minWeek) minWeek = wk;
-      if (wk > maxWeek) maxWeek = wk;
-    }
-
-    if (!isFinite(minWeek)) {
-      appmixCanvas.innerHTML = '<p class="stats-error">No app data yet.</p>';
-      return;
-    }
-    // Always extend the axis to the current week so the timeline reads
-    // as current even when the latest week has no boosts.
-    var nowWeek = weekStartMs(Date.now());
-    if (nowWeek > maxWeek) maxWeek = nowWeek;
-
-    var weeks = [];
-    for (var w = minWeek; w <= maxWeek; w += WEEK_MS) {
-      var b = byWeekApp[w] || {};
-      var bc = byWeekAppBoost[w] || {};
-      var sc = byWeekAppStream[w] || {};
-      var totalW = 0;
-      for (var aa in b) totalW += b[aa];
-      weeks.push({ start: w, byApp: b, byAppBoost: bc, byAppStream: sc, total: totalW });
-    }
-
-    // Order apps by all-time total sats (descending). The highest-total
-    // app draws last, ending up on top in the SVG paint order.
-    var appList = Object.keys(appsSeen);
-    var allTime = Object.create(null);
-    var allTimeBoost = Object.create(null);
-    var allTimeStream = Object.create(null);
-    for (var w2 = 0; w2 < weeks.length; w2++) {
-      for (var a2 in weeks[w2].byApp) {
-        allTime[a2] = (allTime[a2] || 0) + weeks[w2].byApp[a2];
-      }
-      for (var a3 in weeks[w2].byAppBoost) {
-        allTimeBoost[a3] = (allTimeBoost[a3] || 0) + weeks[w2].byAppBoost[a3];
-      }
-      for (var a4 in weeks[w2].byAppStream) {
-        allTimeStream[a4] = (allTimeStream[a4] || 0) + weeks[w2].byAppStream[a4];
-      }
-    }
-    appList.sort(function (a, b) { return allTime[b] - allTime[a]; });
-
-    // The count views (Boosts / Streams) each use their own app list: only
-    // apps that have ever taken that kind, ordered by all-time count. This
-    // drops apps that would otherwise sit as a flat zero line (e.g. "nostr
-    // zaps" in the Boosts view, or boost-only apps in the Streams view).
-    function countAppList(totals) {
-      return appList.filter(function (a) { return totals[a] > 0; })
-        .sort(function (a, b) { return totals[b] - totals[a]; });
-    }
-    var boostAppList = countAppList(allTimeBoost);
-    var streamAppList = countAppList(allTimeStream);
-
-    function appsForView(view) {
-      return view === 'boosts' ? boostAppList
-        : view === 'streams' ? streamAppList
-        : appList;
-    }
-
-    function renderLegend(list) {
-      if (!appmixLegendEl) return;
-      appmixLegendEl.innerHTML = '';
-      for (var li = 0; li < list.length; li++) {
-        var liEl = document.createElement('li');
-        var sw = document.createElement('span');
-        sw.className = 'stats-legend-swatch';
-        sw.style.setProperty('--c', 'var(--' + appCls(list[li]).replace(/^stats-app-/, 'app-') + ')');
-        liEl.appendChild(sw);
-        liEl.appendChild(document.createTextNode(' ' + list[li]));
-        appmixLegendEl.appendChild(liEl);
-      }
-    }
-
-    function draw(view) {
-      var list = appsForView(view);
-      appmixCanvas.innerHTML = buildAppMixSvg(weeks, list, view);
-      renderLegend(list);
-    }
-    draw('percent');
-
-    var radios = document.querySelectorAll('input[name="stats-appmix-view"]');
-    for (var r = 0; r < radios.length; r++) {
-      radios[r].addEventListener('change', function (e) {
-        if (e.target.checked) draw(e.target.value);
-      });
-    }
-
-    setupChartTooltip(appmixCanvas);
   }
 
   // Custom JS tooltip system, shared by every chart on the page.
@@ -728,173 +601,11 @@
     return tip;
   }
 
-  // Kept as the public API the chart renders call. The document-level
-  // listeners in ensureChartTooltipEl cover everything, so this is now
-  // just an idempotent setup hook.
+  // Idempotent setup hook; the document-level listeners in
+  // ensureChartTooltipEl cover every [data-tip] on the page (today: the
+  // * on the host tiles in Podcast Sat Distribution).
   function setupChartTooltip(_canvas) {
     ensureChartTooltipEl();
-  }
-
-  function buildAppMixSvg(weeks, apps, view) {
-    if (weeks.length < 2) {
-      return '<p class="stats-error">Not enough data yet.</p>';
-    }
-    var W = 960, H = 320;
-    var mL = 64, mR = 20, mT = 18, mB = 38;
-    var pw = W - mL - mR, ph = H - mT - mB;
-    var minMs = weeks[0].start;
-    var maxMs = weeks[weeks.length - 1].start;
-    var spanMs = Math.max(maxMs - minMs, DAY_MS);
-
-    // Per-app per-week values (% or absolute sats).
-    var seriesByApp = Object.create(null);
-    for (var a = 0; a < apps.length; a++) {
-      var app = apps[a];
-      var pts = [];
-      for (var w = 0; w < weeks.length; w++) {
-        var wk = weeks[w];
-        var v = view === 'boosts' ? (wk.byAppBoost[app] || 0)
-          : view === 'streams' ? (wk.byAppStream[app] || 0)
-          : (wk.byApp[app] || 0);
-        if (view === 'percent') v = wk.total > 0 ? (v / wk.total) * 100 : 0;
-        pts.push({ ms: wk.start, val: v });
-      }
-      seriesByApp[app] = pts;
-    }
-
-    var yMax;
-    if (view === 'percent') {
-      yMax = 100;
-    } else if (view === 'boosts') {
-      // Fixed scale so the boosts chart stays comparable week-to-week:
-      // 25 max, gridlines every 5. (Peak per-app weekly count is ~23.)
-      yMax = 25;
-    } else if (view === 'streams') {
-      // Fixed scale, same rationale: 10 max, gridlines every 2. (Peak
-      // per-app weekly count is ~6.)
-      yMax = 10;
-    } else {
-      yMax = 0;
-      for (var aa = 0; aa < apps.length; aa++) {
-        var sa = seriesByApp[apps[aa]];
-        for (var ii = 0; ii < sa.length; ii++) {
-          if (sa[ii].val > yMax) yMax = sa[ii].val;
-        }
-      }
-      yMax = niceCeil(yMax > 0 ? yMax : 1);
-    }
-
-    function x(ms) { return mL + ((ms - minMs) / spanMs) * pw; }
-    function y(v) { return mT + ph - (v / yMax) * ph; }
-
-    var parts = [];
-
-    // Y gridlines + labels.
-    var ySteps = view === 'percent' ? [0, 0.25, 0.5, 0.75, 1]
-      : view === 'boosts' || view === 'streams' ? [0, 0.2, 0.4, 0.6, 0.8, 1]
-      : [0, 0.5, 1];
-    for (var s = 0; s < ySteps.length; s++) {
-      var yv = yMax * ySteps[s];
-      var yy = y(yv);
-      parts.push('<line class="stats-chart-grid" x1="' + mL + '" y1="' + yy +
-        '" x2="' + (W - mR) + '" y2="' + yy + '"/>');
-      var lbl = view === 'percent' ? Math.round(yv) + '%' : fmtSats(Math.round(yv));
-      parts.push('<text class="stats-chart-ylabel" x="' + (mL - 8) + '" y="' +
-        (yy + 4) + '">' + lbl + '</text>');
-    }
-
-    // X axis: month boundaries.
-    var months = monthTicks(minMs, maxMs);
-    for (var mi = 0; mi < months.length; mi++) {
-      var mx = x(months[mi].ms);
-      parts.push('<line class="stats-chart-grid" x1="' + mx + '" y1="' + mT +
-        '" x2="' + mx + '" y2="' + (mT + ph) + '"/>');
-      parts.push('<text class="stats-chart-xlabel" x="' + mx + '" y="' +
-        (H - mB + 20) + '">' + months[mi].label + '</text>');
-    }
-
-    // Lines per app + dots with tooltips. Bottom-up paint order so the
-    // largest-total app draws last and sits on top.
-    for (var ai = apps.length - 1; ai >= 0; ai--) {
-      var app2 = apps[ai];
-      var cls = appCls(app2);
-      var spts = seriesByApp[app2];
-      var ptsStr = [];
-      for (var p = 0; p < spts.length; p++) {
-        ptsStr.push(x(spts[p].ms) + ',' + y(spts[p].val));
-      }
-      parts.push('<polyline class="stats-appmix-line ' + cls +
-        '" points="' + ptsStr.join(' ') + '"/>');
-      for (var p2 = 0; p2 < spts.length; p2++) {
-        var sp = spts[p2];
-        // Skip 0-value dots in every view — many inactive apps would
-        // otherwise pile dots on top of each other along the x-axis.
-        // The line still rests at zero to show the app had nothing.
-        if (sp.val <= 0) continue;
-        var labelTxt;
-        if (view === 'percent') {
-          labelTxt = app2 + ' — ' + sp.val.toFixed(1) + '% (' + fmtWeekRange(sp.ms) + ')';
-        } else if (view === 'boosts') {
-          var nb = Math.round(sp.val);
-          labelTxt = app2 + ' — ' + nb + (nb === 1 ? ' boost' : ' boosts') +
-            ' (' + fmtWeekRange(sp.ms) + ')';
-        } else if (view === 'streams') {
-          var ns = Math.round(sp.val);
-          labelTxt = app2 + ' — ' + ns + (ns === 1 ? ' stream' : ' streams') +
-            ' (' + fmtWeekRange(sp.ms) + ')';
-        } else {
-          labelTxt = app2 + ' — ' + fmtSats(Math.round(sp.val)) + ' sats (' + fmtWeekRange(sp.ms) + ')';
-        }
-        var dx = x(sp.ms), dy = y(sp.val);
-        // <g> wraps an invisible-hit-testable halo + visible inner dot;
-        // the halo grows visible on hover via CSS, and setupChartTooltip
-        // reads data-tip to show the popup (hover OR tap-to-pin).
-        parts.push('<g class="stats-appmix-dotgrp ' + cls +
-          '" data-tip="' + xmlEsc(labelTxt) + '">' +
-          '<circle class="stats-appmix-halo" cx="' + dx + '" cy="' + dy + '" r="11"/>' +
-          '<circle class="stats-appmix-dot" cx="' + dx + '" cy="' + dy + '" r="4.5"/>' +
-          '</g>');
-      }
-    }
-
-    return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="stats-chart-svg" ' +
-      'role="img" preserveAspectRatio="xMidYMid meet" ' +
-      'aria-label="App mix over time">' + parts.join('') + '</svg>';
-  }
-
-  function weekStartMs(ms) {
-    var d = new Date(ms);
-    var dow = d.getUTCDay();  // 0=Sun, 6=Sat
-    var mondayOffset = (dow === 0) ? -6 : 1 - dow;
-    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + mondayOffset);
-  }
-
-  function fmtWeekRange(weekMs) {
-    var s = new Date(weekMs);
-    var e = new Date(weekMs + 6 * DAY_MS);
-    var sm = MONTHS[s.getUTCMonth()];
-    var em = MONTHS[e.getUTCMonth()];
-    if (sm === em) return sm + ' ' + s.getUTCDate() + '–' + e.getUTCDate();
-    return sm + ' ' + s.getUTCDate() + '–' + em + ' ' + e.getUTCDate();
-  }
-
-  function appCls(app) {
-    switch (app) {
-      case 'Fountain':            return 'stats-app-fountain';
-      case 'localbitcoiners.com': return 'stats-app-website';
-      case 'PodcastGuru':         return 'stats-app-podguru';
-      case 'CurioCaster':         return 'stats-app-curio';
-      case 'Castamatic':          return 'stats-app-castamatic';
-      case 'BoostMeBitch':        return 'stats-app-bmb';
-      case 'nostr zaps':          return 'stats-app-nostr-zaps';
-      default:                    return 'stats-app-other';
-    }
-  }
-
-  // Always show one decimal place so tooltips read consistently across
-  // dominant apps and sub-percent slivers (e.g. "87.3%" + "0.1%").
-  function fmtPct(n) {
-    return n.toFixed(1) + '%';
   }
 
   // ── Episode leaderboard — horizontal bar chart ─────────────────────
@@ -2016,14 +1727,6 @@
     toastTimer = setTimeout(function () { toastEl.classList.remove('is-visible'); }, 1600);
   }
 
-  function xmlEsc(s) {
-    return String(s)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-  }
-
   function shortNpub(npub) {
     return npub.length > 20 ? npub.slice(0, 12) + '…' + npub.slice(-6) : npub;
   }
@@ -2053,15 +1756,6 @@
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
-  }
-
-  // Round up to a clean axis bound (1/2/5 * 10^n).
-  function niceCeil(n) {
-    if (n <= 10) return Math.ceil(n);
-    var mag = Math.pow(10, Math.floor(Math.log(n) / Math.LN10));
-    var norm = n / mag;
-    var step = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
-    return step * mag;
   }
 
   function fmtSats(n) {
