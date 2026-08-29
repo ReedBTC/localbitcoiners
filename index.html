@@ -1164,36 +1164,6 @@
       .cf-item.is-dupe { display: none; }
     }
 
-    /* Supporter tier rings (gold/silver/bronze) on the carousel pfps.
-       Layered shadow = crisp inner ring + a soft outer halo glow so the
-       tier reads at a glance. Hover pushes the glow a little brighter. */
-    .people-avatar.tier-gold {
-      border: 3px solid #ffcf33;
-      box-shadow: 0 0 0 2px rgba(255,207,51,0.85), 0 0 16px 3px rgba(255,196,0,0.65);
-    }
-    .people-avatar.tier-silver {
-      border: 3px solid #dfe6ec;
-      box-shadow: 0 0 0 2px rgba(206,214,222,0.90), 0 0 15px 3px rgba(190,201,212,0.60);
-    }
-    .people-avatar.tier-bronze {
-      border: 3px solid #b07d42;
-      box-shadow: 0 0 0 2px rgba(176,125,66,0.85), 0 0 15px 3px rgba(150,100,48,0.55);
-    }
-    /* Keep the tier border color on hover (the generic hover turns it
-       green otherwise) and push the glow brighter. */
-    .people-card:hover .people-avatar.tier-gold {
-      border-color: #ffcf33;
-      box-shadow: 0 0 0 2px rgba(255,207,51,1), 0 0 22px 5px rgba(255,196,0,0.85);
-    }
-    .people-card:hover .people-avatar.tier-silver {
-      border-color: #dfe6ec;
-      box-shadow: 0 0 0 2px rgba(206,214,222,1), 0 0 20px 5px rgba(190,201,212,0.80);
-    }
-    .people-card:hover .people-avatar.tier-bronze {
-      border-color: #b07d42;
-      box-shadow: 0 0 0 2px rgba(176,125,66,1), 0 0 20px 5px rgba(150,100,48,0.78);
-    }
-
     /* ── Explore grid (a card per page) ── 4 across on desktop, 2 on mobile. */
     #explore { background: var(--white); }
     .explore-grid {

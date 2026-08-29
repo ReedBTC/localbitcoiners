@@ -100,22 +100,6 @@ button.lb-cstat:active { transform: translateY(1px); }
 .lb-cstat--member .lb-cstat__pfp,
 .lb-cstat--thanks .lb-cstat__pfp { border-color: var(--green); }
 
-/* Sat-tier rings around the member avatar (bronze / silver / gold). The
-   metallic border + soft halo read as a status ring; higher tiers only —
-   Pioneer keeps the plain green border. */
-.lb-cstat__pfp--bronze {
-  border-color: #c77b30;
-  box-shadow: 0 0 0 2px rgba(199, 123, 48, 0.35);
-}
-.lb-cstat__pfp--silver {
-  border-color: #9aa0a6;
-  box-shadow: 0 0 0 2px rgba(154, 160, 166, 0.4);
-}
-.lb-cstat__pfp--gold {
-  border-color: #e0a92e;
-  box-shadow: 0 0 0 2px rgba(224, 169, 46, 0.45);
-}
-
 /* ── Tooltip (desktop hover bonus; label stands alone on touch) ── */
 .lb-cstat[data-tip]::after {
   content: attr(data-tip);

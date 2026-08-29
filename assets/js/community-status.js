@@ -17,7 +17,7 @@
  * bundle is only pulled (via ensureLoginWidget) when you actually click an
  * action. Styles live in assets/css/community-status.css.
  */
-import { resolveSupporters, getCachedSupporters, TIER_META } from '/assets/js/supporter-set.js'
+import { resolveSupporters, getCachedSupporters } from '/assets/js/supporter-set.js'
 import { ensureLoginWidget } from '/assets/js/widget-loader.js'
 
 // Keys owned by the login widget's sessionPersistence.js — the source of
@@ -66,13 +66,10 @@ function safeImgSrc(url) {
   return /^https?:\/\//i.test(url || '') ? url : ''
 }
 
-function makePfp(pubkey, ring) {
+function makePfp(pubkey) {
   const src = safeImgSrc(liveImage || readCachedImage(pubkey))
   const img = document.createElement('img')
   img.className = 'lb-cstat__pfp'
-  // Metallic tier ring around the avatar (bronze/silver/gold); 'none' or
-  // absent → plain member border.
-  if (ring && ring !== 'none') img.classList.add('lb-cstat__pfp--' + ring)
   img.alt = ''
   if (src) img.src = src
   // A dead avatar URL shouldn't leave a broken-image glyph in the chip.
@@ -90,7 +87,6 @@ function makeIcon(svg) {
 // ── State: current live values ───────────────────────────────────────
 let mount = null
 let members = null       // Set<hex> once resolved, else null (still checking)
-let tiers = {}           // hex → sat-tier pack slug (for the member badge)
 let liveImage = ''       // fresher avatar from LBLogin.getUser(), if loaded
 
 function render() {
@@ -124,17 +120,15 @@ function render() {
     return
   }
 
-  // Logged in + a member — inert green badge. Show their sat tier (if any)
-  // and ring the avatar bronze/silver/gold for the higher tiers.
+  // Logged in + a member — inert green badge. (Sat tiers used to label and
+  // ring this; they were retired 2026-08 along with the tier follow packs.)
   if (members.has(pubkey)) {
-    const meta = TIER_META[tiers[pubkey]] || null
-    const label = meta ? `Community Member · ${meta.label}` : 'Community Member'
     const div = document.createElement('div')
     div.className = 'lb-cstat lb-cstat--member'
     div.setAttribute('tabindex', '0')
     div.setAttribute('data-tip', 'Your notes appear on the community feeds')
-    div.appendChild(makePfp(pubkey, meta ? meta.ring : 'none'))
-    div.appendChild(document.createTextNode(label))
+    div.appendChild(makePfp(pubkey))
+    div.appendChild(document.createTextNode('Community Member'))
     mount.appendChild(div)
     return
   }
@@ -211,7 +205,6 @@ function init() {
   const cached = getCachedSupporters()
   if (cached && cached.members.length) {
     members = new Set(cached.members.map((h) => h.toLowerCase()))
-    tiers = cached.tiers || {}
   }
 
   render()   // cached → member/join/login now; else → checking (or login)
@@ -219,10 +212,9 @@ function init() {
   // Revalidate in the background and re-evaluate. Ignore an empty result
   // (relay hiccup) so a cached real supporter isn't flipped to "boost to join".
   resolveSupporters()
-    .then(({ members: list, tiers: freshTiers }) => {
+    .then(({ members: list }) => {
       if (list && list.length) {
         members = new Set(list.map((h) => h.toLowerCase()))
-        tiers = freshTiers || {}
         render()
       }
       // else: keep whatever we have (cache, or null → stays "Checking…").

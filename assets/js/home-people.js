@@ -2,8 +2,7 @@
  *   1. "Meet Our Show Guests"  — carousel from the show's guest follow pack
  *      (following.space kind-39089), falling back to /api/guests.
  *   2. "Meet Our Supporters"   — carousel of every supporter aggregated from
- *      /data/sats.json, largest → smallest. Tier rings (gold/silver/bronze)
- *      mark the Sovereign / Frontiersmen / Trailblazer tiers.
+ *      /data/sats.json, largest → smallest.
  *   3. "Recent Boosts"         — a scrolling list of the latest boost messages
  *      (top 20, ~4 visible) with each sender's pfp + display name.
  *
@@ -33,17 +32,6 @@ const PACK_RELAYS = [
   'wss://relay.ditto.pub',
   'wss://nostr.mom',
 ];
-
-// Lifetime-sats tier → pfp ring (mirrors supporters.js TIERS).
-const TIER_RINGS = [
-  { min: 100000, ring: 'tier-gold' },   // Sovereigns
-  { min: 69000, ring: 'tier-silver' },  // Frontiersmen
-  { min: 21000, ring: 'tier-bronze' },  // Trailblazers
-];
-function ringFor(sats) {
-  for (const t of TIER_RINGS) if (sats >= t.min) return t.ring;
-  return null;
-}
 
 const SKELETON_COUNT = 8;
 
@@ -188,7 +176,7 @@ function makeCard(opts) {
     card.setAttribute('aria-label', 'Copy npub for ' + name);
   }
 
-  const avatar = makeAvatar(npub, opts.picture, opts.ring);
+  const avatar = makeAvatar(npub, opts.picture);
   card.appendChild(avatar);
 
   if (npub) {
@@ -397,7 +385,7 @@ async function initGuests(el) {
   renderCarousel(el, cards, npubs);
 }
 
-// ── 2. supporters (all, largest → smallest, tier rings, no rank) ────
+// ── 2. supporters (all, largest → smallest, no rank) ────────────────
 async function initSupporters(el) {
   skeletons(el);
   let rows = [];
@@ -419,7 +407,6 @@ async function initSupporters(el) {
       npub: p.npub,
       name: (prof && prof.name) || p.name,
       picture: prof && prof.picture,
-      ring: ringFor(p.sats),
     });
   });
   renderCarousel(el, cards, npubs);

@@ -20,7 +20,7 @@
   " />
 
   <title>Supporters — Local Bitcoiners</title>
-  <meta name="description" content="The boosters, streamers, coding contributors, and show guests who power the Local Bitcoiners podcast." />
+  <meta name="description" content="The boosters, streamers, and show guests who power the Local Bitcoiners podcast." />
   <link rel="canonical" href="https://localbitcoiners.com/supporters" />
   <link rel="icon" type="image/png" href="assets/favicon.png" />
 
@@ -36,7 +36,7 @@
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://localbitcoiners.com/supporters" />
   <meta property="og:title" content="Supporters — Local Bitcoiners" />
-  <meta property="og:description" content="The boosters, streamers, coding contributors, and show guests who power Local Bitcoiners." />
+  <meta property="og:description" content="The boosters, streamers, and show guests who power Local Bitcoiners." />
   <meta property="og:site_name" content="Local Bitcoiners" />
   <meta property="og:image" content="https://localbitcoiners.com/assets/LocalBitcoiners_banner.png" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -264,50 +264,57 @@
       color: var(--muted);
       font-style: italic;
     }
-    /* Tier sub-sections nested under the Boosters & Streamers header —
-       lighter (no border) than the top-level section headings. */
-    .sup-tier { margin-top: 1.6rem; }
-    .sup-tier-head { margin-bottom: 1rem; text-align: center; }
-    /* Divider ABOVE each subsequent tier (between it and the previous tier's
-       pfps), so each title groups with its OWN pfps below it rather than
-       looking tied to the group beneath. */
-    .sup-tier + .sup-tier {
-      border-top: 1px solid var(--border);
-      padding-top: 1.6rem;
-    }
-    .sup-tier-head h3 {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: clamp(1.15rem, 2.8vw, 1.4rem);
-      font-weight: 700;
-      color: var(--navy);
-      display: flex;
-      align-items: baseline;
-      gap: 0.5rem;
-    }
     .sup-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
       gap: 1.5rem 0.75rem;
     }
-    /* Top tiers (100k+/69k+/21k+): bigger pfps, horizontally centered. */
-    .sup-tier--featured .sup-grid {
+    /* The Supporters wall (OnlyBoosts' community wall, ported): the top
+       PODIUM cards on their own centered row with larger brand-ringed
+       avatars, then the ranked grid. The podium card is an exact fraction
+       of the row (five across, three on a phone) so the break never depends
+       on viewport arithmetic. */
+    .sup-podium {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      gap: 1.85rem 1.4rem;
+      gap: 1.6rem 1.3rem;
+      margin-bottom: 1.9rem;
     }
-    .sup-tier--featured .sup-card { width: 112px; }
-    .sup-tier--featured .sup-avatar { width: 104px; height: 104px; }
-    .sup-tier--featured .sup-name { font-size: 0.9rem; }
-    /* Small/curated groups (Coding Contributors, Hosts): normal-size pfps,
-       horizontally centered instead of left-packed. */
-    .sup-grid--centered {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 1.5rem 1.25rem;
+    .sup-card--podium { width: calc((100% - 4 * 1.3rem) / 5); }
+    .sup-card--podium .sup-avatar {
+      width: 96px;
+      height: 96px;
+      border-width: 3px;
+      border-color: var(--brand);
+      box-shadow: 0 0 0 2px var(--brand-ring);
     }
-    .sup-grid--centered .sup-card { width: 92px; }
+    .sup-card.is-copyable:hover .sup-avatar.sup-avatar { border-color: var(--green-d); }
+    .sup-card--podium .sup-name { font-size: 0.88rem; }
+    .sup-card[hidden] { display: none; }
+    /* Centered under the name; tabular so a column of them lines up. */
+    .sup-sats {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--brand-d);
+      font-variant-numeric: tabular-nums;
+    }
+    .sup-card--podium .sup-sats { font-size: 0.78rem; }
+    .sup-show-more {
+      display: block;
+      margin: 1.6rem auto 0;
+      padding: 0.5rem 1.2rem;
+      font: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--green-d);
+      background: var(--white);
+      border: 1px solid var(--green-d);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .sup-show-more:hover { background: var(--green-d); color: #fff; }
     .sup-card {
       display: flex;
       flex-direction: column;
@@ -369,24 +376,6 @@
         radial-gradient(circle at 50% 92%, var(--border) 0 40%, transparent 41%),
         var(--cream-d);
     }
-    /* Gold/silver/bronze pfp rings for the top three supporter tiers
-       (mirrors the homepage carousels). */
-    .sup-avatar.tier-gold {
-      border: 3px solid #ffcf33;
-      box-shadow: 0 0 0 2px rgba(255,207,51,0.85), 0 0 16px 3px rgba(255,196,0,0.65);
-    }
-    .sup-avatar.tier-silver {
-      border: 3px solid #dfe6ec;
-      box-shadow: 0 0 0 2px rgba(206,214,222,0.90), 0 0 15px 3px rgba(190,201,212,0.60);
-    }
-    .sup-avatar.tier-bronze {
-      border: 3px solid #b07d42;
-      box-shadow: 0 0 0 2px rgba(176,125,66,0.85), 0 0 15px 3px rgba(150,100,48,0.55);
-    }
-    /* Keep the tier color on hover (the generic hover turns it green). */
-    .sup-card.is-copyable:hover .sup-avatar.tier-gold { border-color: #ffcf33; }
-    .sup-card.is-copyable:hover .sup-avatar.tier-silver { border-color: #dfe6ec; }
-    .sup-card.is-copyable:hover .sup-avatar.tier-bronze { border-color: #b07d42; }
     .sup-name {
       font-size: 0.82rem;
       font-weight: 600;
@@ -450,11 +439,17 @@
     /* Footer styles are shared — see /assets/css/footer.css. */
 
     /* ── Responsive ── */
+    @media (max-width: 640px) {
+      /* Three podium cards across on a phone; four and five wrap to a
+         centered second line rather than disappearing. */
+      .sup-podium { gap: 1.1rem 0.7rem; margin-bottom: 1.5rem; }
+      .sup-card--podium { width: calc((100% - 2 * 0.7rem) / 3); }
+      .sup-card--podium .sup-avatar { width: 74px; height: 74px; }
+      .sup-card--podium .sup-name { font-size: 0.82rem; }
+    }
     @media (max-width: 420px) {
       .sup-grid, .supporters-loading { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
       .sup-avatar, .sup-skeleton { width: 64px; height: 64px; }
-      .sup-tier--featured .sup-card { width: 92px; }
-      .sup-tier--featured .sup-avatar { width: 84px; height: 84px; }
     }
   </style>
   <link rel="stylesheet" href="/assets/css/nav.css" />
@@ -554,10 +549,10 @@
 <!-- ══════════════════════════════ PAGE HEADER ══════════════════════════════ -->
 <section class="page-header">
   <h1>Supporters</h1>
-  <p>Meet the boosters, streamers, coding contributors, and show guests who power Local Bitcoiners.<button type="button" class="info-tip" data-tip="Supporters list updates daily" aria-label="Supporters list updates daily">i</button></p>
+  <p>Meet the boosters, streamers, and show guests who power Local Bitcoiners.<button type="button" class="info-tip" data-tip="Supporters list updates daily" aria-label="Supporters list updates daily">i</button></p>
   <!-- Community-status chip (community-status.js), same placement as /feeds.
        Replaced the old "Become a Supporter!" box — its not-member state fires
-       the same show-boost, and its member state shows the visitor's tier. -->
+       the same show-boost, and its member state confirms membership. -->
   <div id="lb-community-status">
     <div class="lb-cstat lb-cstat--checking" role="status">
       <span class="lb-cstat__spinner"></span>Checking membership…

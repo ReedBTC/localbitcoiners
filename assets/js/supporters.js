@@ -1,13 +1,16 @@
-/* Supporters page — mempool.space-style grids of the people who power
- * Local Bitcoiners, in three groups:
+/* Supporters page — the people who power Local Bitcoiners, in two groups:
  *
- *   1. Boosters & Streamers — everyone who sent sats, bucketed into
- *      lifetime tiers (100k+ / 69k+ / 21k+ / under 21k). Totals come
- *      from /data/sats.json (total_sats per sender_npub, boosts AND
- *      streams), the same ledger the Stats leaderboard uses. Truly
- *      anonymous payments (no npub and no name) are skipped.
- *   2. Coding Contributors — hardcoded; Reed maintains this by hand.
- *   3. Show Guests — npubs pulled live from /api/guests (the [guests:]
+ *   1. Supporters — everyone who sent sats, as one wall ordered by lifetime
+ *      sats (the OnlyBoosts community wall, ported): a podium of the top
+ *      PODIUM with larger brand-ringed avatars, then a ranked grid, with
+ *      WALL_VISIBLE cards showing and the rest behind a "Show N more"
+ *      button. Each card carries the person's sats under their name.
+ *      Totals come from /data/sats.json (total_sats per sender_npub,
+ *      boosts AND streams), the same ledger the Stats leaderboard uses.
+ *      Truly anonymous payments (no npub and no name) are skipped. The
+ *      old lifetime tiers (100k / 69k / 21k) are gone; one Follow Pack
+ *      (lb-supporters-all) covers the whole wall.
+ *   2. Show Guests — npubs pulled live from /api/guests (the [guests:]
  *      tags in each episode's RSS shownotes).
  *
  * Names + circular avatars resolve through the shared profile cache
@@ -25,7 +28,7 @@
   // Co-hosts — Reed + Rev. Injected into the Show Guests section right before
   // the earliest-episode (EP002) guests and labelled "co-host" instead of an
   // episode (they aren't in the RSS [guests:] roster, so we add them by hand).
-  // Also counted in the Supporters tiers by what they've boosted.
+  // Also ranked on the Supporters wall by what they've boosted.
   var CO_HOSTS = [
     { npub: 'npub1xgyjasdztryl9sg6nfdm2wcj0j3qjs03sq7a0an32pg0lr5l6yaqxhgu7s', label: 'Reed' },
     { npub: 'npub1f5pre6wl6ad87vr4hr5wppqq30sh58m4p33mthnjreh03qadcajs7gwt3z', label: 'Rev Hodl' },
@@ -33,20 +36,23 @@
   var CO_HOST_SET = Object.create(null);
   CO_HOSTS.forEach(function (c) { CO_HOST_SET[c.npub] = true; });
 
-  // Coding Contributors — maintained by hand. Reed will say when to add.
-  var CODING_CONTRIBUTORS = [
-    { npub: 'npub1xgyjasdztryl9sg6nfdm2wcj0j3qjs03sq7a0an32pg0lr5l6yaqxhgu7s', label: 'Reed' },
-    { npub: 'npub177fz5zkm87jdmf0we2nz7mm7uc2e7l64uzqrv6rvdrsg8qkrg7yqx0aaq7', label: 'Chad Farrow' },
-  ];
+  // The wall's shape, matching OnlyBoosts' community wall: the top PODIUM
+  // people get larger cards on their own row; WALL_VISIBLE counts the
+  // podium, so the grid under it shows WALL_VISIBLE - PODIUM before the
+  // "Show N more" button. Nobody is dropped, only folded.
+  var PODIUM = 5;
+  var WALL_VISIBLE = 21;
 
-  // Tier buckets, top to bottom. `min` is the inclusive lifetime-sats
-  // floor; a supporter lands in the first tier they clear.
-  var TIERS = [
-    { id: 't100', min: 100000, title: '100k+ Sovereigns',   pack: 'lb-supporters-100k', featured: true },
-    { id: 't69',  min: 69000,  title: '69k+ Frontiersmen',  pack: 'lb-supporters-69k',  featured: true },
-    { id: 't21',  min: 21000,  title: '21k+ Trailblazers',  pack: 'lb-supporters-21k',  featured: true },
-    { id: 't0',   min: 1,      title: 'Pioneers',           pack: 'lb-supporters-other' },
-  ];
+  // Compact sat figures — 1435000 → "1.4M", 41200 → "41k" (OnlyBoosts' rule).
+  function compact(n) {
+    var v = Number(n || 0);
+    if (v >= 1e9) return (v / 1e9).toFixed(v >= 1e10 ? 0 : 1).replace(/\.0$/, '') + 'B';
+    if (v >= 1e6) return (v / 1e6).toFixed(v >= 1e7 ? 0 : 1).replace(/\.0$/, '') + 'M';
+    if (v >= 1e4) return Math.round(v / 1e3) + 'k';
+    if (v >= 1e3) return (v / 1e3).toFixed(1).replace(/\.0$/, '') + 'k';
+    return String(v);
+  }
+  function fmtInt(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
 
   function shortNpub(npub) {
     if (!npub || npub.length < 20) return npub || '';
@@ -59,9 +65,7 @@
   // follow everyone in that category. Owner = the show account.
   var SHOW_PUBKEY_HEX = 'c330881e28768381dd8bdfd274341dca0c5882c29b8642ea4bc82f7563264592';
   var GUESTS_PACK = 'lb-supporters-guests';
-  var CODERS_PACK = 'lb-supporters-coders';
-  // Everyone from all the tier packs combined — links off the "Supporters"
-  // group header (above the 100k tier).
+  // Everyone on the wall — links off the "Supporters" heading.
   var ALL_PACK = 'lb-supporters-all';
 
   function followPackUrl(slug) {
@@ -169,7 +173,7 @@
     // to hang the booster dot on, and the card's element type depends on the
     // answer that wiring gives.
     var avatar = document.createElement('span');
-    avatar.className = 'sup-avatar' + (opts.ring ? ' ' + opts.ring : '');
+    avatar.className = 'sup-avatar';
     var img = null;
     if (picture) {
       img = document.createElement('img');
@@ -191,7 +195,7 @@
     var ob = window.LBOnlyBoosts || null;
     var linked = !!(npub && ob && ob.hasBoosterPage(npub));
     var card = document.createElement(npub ? (linked ? 'a' : 'button') : 'div');
-    card.className = 'sup-card' + (npub ? ' is-copyable' : '');
+    card.className = 'sup-card' + (npub ? ' is-copyable' : '') + (opts.podium ? ' sup-card--podium' : '');
     if (npub) {
       if (!linked) {
         card.type = 'button';
@@ -214,6 +218,16 @@
 
     card.appendChild(avatar);
     card.appendChild(nameEl);
+
+    // Supporters carry their lifetime sats under the name, compact ("412k")
+    // with the exact figure on hover. Tabular digits so a column lines up.
+    if (typeof opts.sats === 'number') {
+      var satsEl = document.createElement('span');
+      satsEl.className = 'sup-sats';
+      satsEl.textContent = compact(opts.sats) + ' sats';
+      satsEl.title = fmtInt(opts.sats) + ' sats';
+      card.appendChild(satsEl);
+    }
 
     // Co-hosts get a plain "co-host" role chip in place of episode links.
     if (opts.roleLabel) {
@@ -312,7 +326,7 @@
   }
 
   // Title + count badge as a heading element (h2 or h3).
-  // `count` may be null to omit the count badge (e.g. tier sub-headers).
+  // `count` may be null to omit the count badge.
   function makeHeading(tag, title, count) {
     var h = document.createElement(tag);
     h.textContent = title;
@@ -325,9 +339,9 @@
     return h;
   }
 
-  function buildGrid(cards, centered) {
+  function buildGrid(cards) {
     var grid = document.createElement('div');
-    grid.className = 'sup-grid' + (centered ? ' sup-grid--centered' : '');
+    grid.className = 'sup-grid';
     for (var i = 0; i < cards.length; i++) grid.appendChild(cards[i]);
     return grid;
   }
@@ -342,16 +356,12 @@
     return row;
   }
 
-  // Top-level section (Show Guests, Coding Contributors, Hosts). Skipped if
-  // empty. `centered` centers the pfp grid (for small/curated groups).
-  function renderSection(container, title, sub, cards, packSlug, centered) {
-    if (!cards.length) return;
+  function makeSection(title, sub, count, packSlug) {
     var section = document.createElement('section');
     section.className = 'sup-section';
-
     var head = document.createElement('div');
     head.className = 'sup-section-head';
-    head.appendChild(makeHeadRow('h2', title, null, packSlug));
+    head.appendChild(makeHeadRow('h2', title, count, packSlug));
     if (sub) {
       var p = document.createElement('p');
       p.className = 'sup-section-sub';
@@ -359,50 +369,64 @@
       head.appendChild(p);
     }
     section.appendChild(head);
-    section.appendChild(buildGrid(cards, centered));
+    return section;
+  }
+
+  // Top-level section (Show Guests). Skipped if empty.
+  function renderSection(container, title, sub, cards, packSlug) {
+    if (!cards.length) return;
+    var section = makeSection(title, sub, null, packSlug);
+    section.appendChild(buildGrid(cards));
     container.appendChild(section);
   }
 
-  // The Boosters & Streamers group: one section header + note, then a
-  // lighter sub-header per tier. `tiers` is [{ title, cards }, …].
-  function renderBoosterGroup(container, title, note, tiers, packSlug) {
-    var live = tiers.filter(function (t) { return t.cards.length; });
-    if (!live.length) return;
+  // The Supporters wall: podium row, ranked grid, "Show N more". `cards`
+  // arrive in rank order (largest sats first); the first PODIUM are built
+  // with opts.podium so they carry the larger avatar.
+  function renderWall(container, title, sub, cards, packSlug) {
+    if (!cards.length) return;
+    var section = makeSection(title, sub, cards.length, packSlug);
 
-    var section = document.createElement('section');
-    section.className = 'sup-section';
+    var podium = document.createElement('div');
+    podium.className = 'sup-podium';
+    cards.slice(0, PODIUM).forEach(function (c) { podium.appendChild(c); });
+    section.appendChild(podium);
 
-    var head = document.createElement('div');
-    head.className = 'sup-section-head';
-    head.appendChild(makeHeadRow('h2', title, null, packSlug));
-    if (note) {
-      var p = document.createElement('p');
-      p.className = 'sup-section-sub';
-      p.textContent = note;
-      head.appendChild(p);
+    var rest = cards.slice(PODIUM);
+    var shown = Math.max(0, WALL_VISIBLE - PODIUM);
+    if (rest.length) {
+      var grid = buildGrid(rest);
+      rest.forEach(function (c, i) {
+        if (i >= shown) { c.hidden = true; c.setAttribute('data-overflow', ''); }
+      });
+      section.appendChild(grid);
     }
-    section.appendChild(head);
 
-    live.forEach(function (t) {
-      var tier = document.createElement('div');
-      tier.className = 'sup-tier' + (t.featured ? ' sup-tier--featured' : '');
-      var th = document.createElement('div');
-      th.className = 'sup-tier-head';
-      th.appendChild(makeHeadRow('h3', t.title, null, t.pack));
-      tier.appendChild(th);
-      tier.appendChild(buildGrid(t.cards));
-      section.appendChild(tier);
-    });
-
+    var hidden = Math.max(0, rest.length - shown);
+    if (hidden > 0) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'sup-show-more';
+      btn.textContent = 'Show ' + fmtInt(hidden) + ' more supporter' + (hidden === 1 ? '' : 's');
+      btn.addEventListener('click', function () {
+        var folded = section.querySelectorAll('[data-overflow]');
+        for (var i = 0; i < folded.length; i++) {
+          folded[i].hidden = false;
+          folded[i].removeAttribute('data-overflow');
+        }
+        btn.remove();
+      });
+      section.appendChild(btn);
+    }
     container.appendChild(section);
   }
 
   // ── Aggregate supporters from the sats ledger ──────────────────────
-  // Zap-sourced sats are held aside per supporter and only count toward
-  // their tier once they aggregate to ZAP_MIN_SATS — a tiny one-off zap
-  // shouldn't park a random npub in the entry tier. Boosts and streams
-  // always count. Mirrors compute_tier_members() in bots/follow-packs so
-  // the page and the kind-39089 packs (the "Follow Pack" buttons) agree.
+  // Zap-sourced sats are held aside per supporter and only count once they
+  // aggregate to ZAP_MIN_SATS — a tiny one-off zap shouldn't put a random
+  // npub on the wall. Boosts and streams always count. Mirrors
+  // bots/follow-packs so the page and the kind-39089 pack (the "Follow
+  // Pack" button) agree.
   var ZAP_MIN_SATS = 100;
 
   function aggregate(rows) {
@@ -432,16 +456,6 @@
     return people;
   }
 
-  function tierOf(sats) {
-    for (var i = 0; i < TIERS.length; i++) {
-      if (sats >= TIERS[i].min) return TIERS[i].id;
-    }
-    return null;
-  }
-
-  // Gold/silver/bronze pfp rings for the top three tiers.
-  var TIER_RINGS = { t100: 'tier-gold', t69: 'tier-silver', t21: 'tier-bronze' };
-
   function render(people, guestNpubs, cache, epMap) {
     var root = document.getElementById('supporters-root');
     var loading = document.getElementById('supporters-loading');
@@ -450,26 +464,20 @@
 
     function profFor(npub) { return (npub && cache[npub]) || null; }
 
-    function cardFor(npub, label, ring, episodes, roleLabel) {
+    function cardFor(npub, label, extra) {
       var prof = profFor(npub);
-      return makeCard({ npub: npub, name: (prof && prof.name) || label || null, picture: prof && prof.picture, ring: ring, episodes: episodes, roleLabel: roleLabel });
+      var opts = { npub: npub, name: (prof && prof.name) || label || null, picture: prof && prof.picture };
+      if (extra) for (var k in extra) opts[k] = extra[k];
+      return makeCard(opts);
     }
 
-    // 1. Supporters — boost/stream tiers. One group header + note, then a tier each.
-    var buckets = Object.create(null);
-    TIERS.forEach(function (t) { buckets[t.id] = []; });
-    people.forEach(function (p) {
-      var tid = tierOf(p.sats);
-      if (!tid) return;
-      buckets[tid].push(cardFor(p.npub, p.name, TIER_RINGS[tid]));
+    // 1. Supporters — one wall, ranked by lifetime sats (people arrive sorted).
+    var wallCards = people.map(function (p, i) {
+      return cardFor(p.npub, p.name, { sats: p.sats, podium: i < PODIUM });
     });
-    renderBoosterGroup(
-      root,
-      'Supporters',
-      'Lifetime sats sent via boosts + streams. Anonymous supporters aren’t shown.',
-      TIERS.map(function (t) { return { title: t.title, cards: buckets[t.id], pack: t.pack, featured: t.featured }; }),
-      ALL_PACK
-    );
+    renderWall(root, 'Supporters',
+      'Lifetime sats sent via boosts + streams, most first. Anonymous supporters aren’t shown.',
+      wallCards, ALL_PACK);
 
     // 2. Show Guests — below the supporters (with their episode link(s)). The
     //    guest list runs newest-episode-first, so its oldest-aired end is the
@@ -481,25 +489,20 @@
     guestNpubs.forEach(function (n) {
       if (CO_HOST_SET[n]) return;   // never double-list a co-host from the RSS roster
       var eps = epMap[n];
-      guestCards.push(cardFor(n, null, null, eps));
+      guestCards.push(cardFor(n, null, { episodes: eps }));
       if (eps && eps.indexOf('002') !== -1) lastEp002 = guestCards.length - 1;
     });
-    var coHostCards = CO_HOSTS.map(function (c) { return cardFor(c.npub, c.label, null, null, 'co-host'); });
+    var coHostCards = CO_HOSTS.map(function (c) { return cardFor(c.npub, c.label, { roleLabel: 'co-host' }); });
     // After the last EP002 guest; if none resolved (e.g. epMap unavailable),
     // fall back to the very end (still the oldest-aired side of the list).
     var insertAt = lastEp002 >= 0 ? lastEp002 + 1 : guestCards.length;
     guestCards.splice.apply(guestCards, [insertAt, 0].concat(coHostCards));
     renderSection(root, 'Show Guests', 'Everyone who’s come on the podcast.', guestCards, GUESTS_PACK);
-
-    // 3. Coding Contributors — small group, centered pfps.
-    renderSection(root, 'Coding Contributors', 'Builders who’ve shipped code to the site and bots.',
-      CODING_CONTRIBUTORS.map(function (c) { return cardFor(c.npub, c.label); }), CODERS_PACK, true);
   }
 
   function collectNpubs(people, guestNpubs) {
     var set = Object.create(null);
     people.forEach(function (p) { if (p.npub) set[p.npub] = true; });
-    CODING_CONTRIBUTORS.forEach(function (c) { set[c.npub] = true; });
     CO_HOSTS.forEach(function (c) { set[c.npub] = true; });
     guestNpubs.forEach(function (n) { set[n] = true; });
     return Object.keys(set);
@@ -537,7 +540,7 @@
       .then(function (d) { return Array.isArray(d.rows) ? d.rows : []; });
 
     // Guests are non-critical — fall back to an empty roster if the
-    // feed endpoint is down so the booster tiers still render.
+    // feed endpoint is down so the supporters wall still renders.
     var guestsP = fetch(GUESTS_URL)
       .then(function (r) { return r.ok ? r.json() : { guests: [] }; })
       .then(function (d) { return Array.isArray(d.guests) ? d.guests : []; })
