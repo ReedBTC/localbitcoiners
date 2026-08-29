@@ -58,6 +58,8 @@
     { ms: Date.parse('2026-05-02T00:00:00Z'), dollars: 49, sats: 62500 }, // Fountain 31888 + Riverside 30612
     { ms: Date.parse('2026-06-01T00:00:00Z'), dollars: 49, sats: 62500 }, // Fountain 31888 + Riverside 30612
     { ms: Date.parse('2026-07-01T00:00:00Z'), dollars: 49, sats: 74700 }, // Fountain 38112 + Riverside 36588
+    { ms: Date.parse('2026-08-01T00:00:00Z'), dollars: 49, sats: 74700 }, // same as July (Reed, 2026-08-29)
+    { ms: Date.parse('2026-09-01T00:00:00Z'), dollars: 49, sats: 74700 }, // same as July (Reed, 2026-08-29)
   ];
 
   // Ep 015 was donated in full to the Samourai Wallet devs: the guest set his
@@ -67,8 +69,9 @@
   // a dedicated "Samourai Devs" split bucket rather than the usual recipients.
   var SAMOURAI_EP = 15;
 
-  var canvas = document.querySelector('[data-stats-canvas]');
+  var canvas = document.querySelector('[data-stats-dist]');
   var subEl = document.querySelector('[data-stats-sub]');
+  var distControlsEl = document.querySelector('[data-stats-dist-controls]');
   var boardCanvas = document.querySelector('[data-stats-leaderboard]');
   var boardSubEl = document.querySelector('[data-board-sub]');
   var peopleCanvas = document.querySelector('[data-stats-people]');
@@ -98,7 +101,7 @@
     });
     if (!rows.length) { showError(); return; }
     var episodes = rssXml ? parseEpisodes(rssXml) : [];
-    render(rows, episodes);
+    renderDistribution(rows);
     renderAppMix(rows);
     renderLeaderboard(rows);
     renderEpisodeGrid(rows, episodes);
@@ -193,319 +196,284 @@
       .trim();
   }
 
-  // ── Sats-over-time chart ───────────────────────────────────────────
-  function render(rows, episodes) {
-    if (!canvas) return;
-    // Bucket every row's total_sats by UTC calendar day, plus the same
-    // breakdown into the 5 recipient buckets so the cumulative view can
-    // render them as stacked bands. Bucket sums equal total_sats on
-    // every row (other-agent guarantee), so the stack's top edge tracks
-    // the cumulative total line exactly.
-    var byDay = Object.create(null);
-    var byDayBuckets = Object.create(null);
-    var byDayApps = Object.create(null);   // dayMs -> { appName: sats }
-    var seenApps = Object.create(null);
-    var minMs = Infinity, maxMs = -Infinity;
-    for (var i = 0; i < rows.length; i++) {
-      var row = rows[i];
-      var dayMs = Math.floor(Date.parse(row.settled_at) / DAY_MS) * DAY_MS;
-      byDay[dayMs] = (byDay[dayMs] || 0) + row.total_sats;
-      var bkt = byDayBuckets[dayMs] || (byDayBuckets[dayMs] =
-        { reed: 0, rev: 0, guests: 0, aquafox: 0, fountain: 0, samourai: 0 });
-      // Ep 015's entire take was donated to the Samourai devs — route the whole
-      // row there instead of splitting it across the normal recipient buckets,
-      // so the split view credits it as one Samourai band. total_sats equals the
-      // sum of the per-recipient legs (other-agent guarantee), so conservation
-      // with the cumulative line still holds.
-      if (parseInt(row.episode_num, 10) === SAMOURAI_EP) {
-        bkt.samourai += row.total_sats;
-      } else {
-        bkt.reed     += row.reed_sats     || 0;
-        bkt.rev      += row.rev_sats      || 0;
-        bkt.guests   += row.guests_sats   || 0;
-        bkt.aquafox  += row.aquafox_sats  || 0;
-        bkt.fountain += row.fountain_sats || 0;
-      }
-      var app = row.app || 'Other';
-      seenApps[app] = true;
-      var appBkt = byDayApps[dayMs] || (byDayApps[dayMs] = Object.create(null));
-      appBkt[app] = (appBkt[app] || 0) + row.total_sats;
-      if (dayMs < minMs) minMs = dayMs;
-      if (dayMs > maxMs) maxMs = dayMs;
-    }
-    // Stretch the axis to cover every episode release too — episode 1
-    // published a day before its first boost, so without this its
-    // marker would fall off the left edge of the chart.
-    for (var ei = 0; ei < episodes.length; ei++) {
-      var epDay = Math.floor(episodes[ei].pubMs / DAY_MS) * DAY_MS;
-      if (epDay < minMs) minMs = epDay;
-      if (epDay > maxMs) maxMs = epDay;
-    }
-    // Extend the axis to today so the timeline reads as current.
-    var todayMs = Math.floor(Date.now() / DAY_MS) * DAY_MS;
-    if (todayMs > maxMs) maxMs = todayMs;
+  // ── Podcast Sat Distribution — live totals as tiles ────────────────
+  // One tile per category for the chosen range (1W / 1M / ALL, measured
+  // back from now on settled_at) and view:
+  //
+  //   Sat Splits: Rev, Reed, Guests, V4V Budget, Fountain, Samourai Devs,
+  //     Costs. Hosts are GROSS; Costs is its own negative tile, so the seven
+  //     tiles sum to the net figure in the subline. Ep 015 routes entirely
+  //     to Samourai Devs (see SAMOURAI_EP). Costs accrue evenly across each
+  //     bill's calendar month (COSTS), so a 1W window carries about a
+  //     quarter of a month's bill and a bill dated in the future adds
+  //     nothing until its month starts.
+  //   By App: whatever `app` names the rows carry, largest first. The set
+  //     is data-driven, so a new app (OnlyBoosts, say) appears on its own
+  //     the first time someone boosts from it; only its color is a fixed
+  //     map (appColorVar), and an unmapped app gets the grey "other" color.
+  //
+  // Every row counts (boosts, streams, zaps), as the old chart did.
+  var RANGE_OPTIONS = [['1w', '1W'], ['1m', '1M'], ['all', 'All']];
+  var VIEW_OPTIONS = [['splits', 'Sat Splits'], ['apps', 'By App']];
+  var SPLIT_TILES = [
+    { k: 'rev',      label: 'Rev',           c: '--bucket-rev' },
+    { k: 'reed',     label: 'Reed',          c: '--bucket-reed' },
+    { k: 'guests',   label: 'Guests',        c: '--bucket-guests' },
+    { k: 'aquafox',  label: 'V4V Budget',    c: '--bucket-adbudget' },
+    { k: 'fountain', label: 'Fountain',      c: '--bucket-fountain' },
+    { k: 'samourai', label: 'Samourai Devs', c: '--bucket-samourai' },
+    { k: 'costs',    label: 'Costs',         c: '--bucket-costs', negative: true },
+  ];
+  var APP_LABELS = { 'nostr zaps': 'Nostr Zaps' };
 
-    // Daily + cumulative series across every day in [minMs, maxMs],
-    // including each recipient bucket's running cumulative. Reed and
-    // Rev each eat half of the running operating cost from their bucket
-    // before anything counts as "profit"; the Costs band shows the sats
-    // actually consumed (capped by what each host has been paid). The
-    // sum of all six bands at every day still equals `cumulative`.
-    var days = [];
-    var run = 0;
-    var rReedRaw = 0, rRevRaw = 0, rGuests = 0, rAquafox = 0, rFountain = 0, rSamourai = 0;
-    var costIdx = 0, cumCostSats = 0;
-    var rApps = Object.create(null);  // running per-app cumulative
-    for (var d = minMs; d <= maxMs; d += DAY_MS) {
-      var v = byDay[d] || 0;
-      run += v;
-      var bktD = byDayBuckets[d];
-      if (bktD) {
-        rReedRaw  += bktD.reed;
-        rRevRaw   += bktD.rev;
-        rGuests   += bktD.guests;
-        rAquafox  += bktD.aquafox;
-        rFountain += bktD.fountain;
-        rSamourai += bktD.samourai;
+  function renderDistribution(rows) {
+    if (!canvas) return;
+    var firstMs = Infinity;
+    for (var i = 0; i < rows.length; i++) {
+      var ms = Date.parse(rows[i].settled_at);
+      if (ms < firstMs) firstMs = ms;
+    }
+
+    var state = { range: 'all', view: 'splits' };
+
+    function rangeStart(key) {
+      if (key === '1w') return Date.now() - 7 * DAY_MS;
+      if (key === '1m') return Date.now() - 30 * DAY_MS;
+      return -Infinity;
+    }
+    function rangePhrase(key) {
+      if (key === '1w') return 'over the last 7 days';
+      if (key === '1m') return 'over the last 30 days';
+      return isFinite(firstMs) ? 'since ' + fmtDate(firstMs) : 'all time';
+    }
+
+    // Operating costs inside [start, now], each bill spread evenly over
+    // the days of its calendar month (UTC).
+    function costsWithin(start) {
+      var now = Date.now();
+      var total = 0;
+      for (var c = 0; c < COSTS.length; c++) {
+        var bill = COSTS[c];
+        var d = new Date(bill.ms);
+        var mStart = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1);
+        var mEnd = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
+        var overlap = Math.min(now, mEnd) - Math.max(start, mStart);
+        if (overlap <= 0) continue;
+        total += bill.sats * (overlap / (mEnd - mStart));
       }
-      var appBktD = byDayApps[d];
-      if (appBktD) {
-        for (var aname in appBktD) {
-          rApps[aname] = (rApps[aname] || 0) + appBktD[aname];
+      return Math.round(total);
+    }
+
+    function compute(rangeKey) {
+      var start = rangeStart(rangeKey);
+      var splits = { reed: 0, rev: 0, guests: 0, aquafox: 0, fountain: 0, samourai: 0 };
+      var apps = Object.create(null);
+      var gross = 0;
+      for (var r = 0; r < rows.length; r++) {
+        var row = rows[r];
+        if (Date.parse(row.settled_at) < start) continue;
+        gross += row.total_sats;
+        if (parseInt(row.episode_num, 10) === SAMOURAI_EP) {
+          splits.samourai += row.total_sats;
+        } else {
+          splits.reed     += row.reed_sats     || 0;
+          splits.rev      += row.rev_sats      || 0;
+          splits.guests   += row.guests_sats   || 0;
+          splits.aquafox  += row.aquafox_sats  || 0;
+          splits.fountain += row.fountain_sats || 0;
+        }
+        var app = row.app || 'Other';
+        apps[app] = (apps[app] || 0) + row.total_sats;
+      }
+      splits.costs = costsWithin(start);
+      // Sats the ledger received but did not attribute to any recipient
+      // leg (a handful of zap rows carry legs that sum to less than their
+      // total). Named in the subline so the tiles reconcile with "received".
+      var attributed = splits.reed + splits.rev + splits.guests + splits.aquafox +
+        splits.fountain + splits.samourai;
+      return { gross: gross, splits: splits, apps: apps, unattributed: gross - attributed };
+    }
+
+    function tile(label, value, colorVar, negative) {
+      var t = document.createElement('div');
+      t.className = 'stats-tile' + (negative ? ' is-negative' : '');
+      t.style.setProperty('--c', 'var(' + colorVar + ')');
+      var l = document.createElement('span');
+      l.className = 'stats-tile-label';
+      l.textContent = label;
+      var v = document.createElement('span');
+      v.className = 'stats-tile-value';
+      v.textContent = (negative && value > 0 ? '−' : '') + fmtSats(value);
+      var u = document.createElement('span');
+      u.className = 'stats-tile-unit';
+      u.textContent = 'sats';
+      t.appendChild(l);
+      t.appendChild(v);
+      t.appendChild(u);
+      return t;
+    }
+
+    function draw() {
+      var data = compute(state.range);
+      var grid = document.createElement('div');
+      grid.className = 'stats-tiles';
+      if (state.view === 'splits') {
+        for (var t = 0; t < SPLIT_TILES.length; t++) {
+          var def = SPLIT_TILES[t];
+          grid.appendChild(tile(def.label, data.splits[def.k] || 0, def.c, !!def.negative));
+        }
+        var net = data.gross - data.splits.costs;
+        if (subEl) {
+          subEl.textContent = fmtSats(net) + ' sats net ' + rangePhrase(state.range) +
+            ' (' + fmtSats(data.gross) + ' received' +
+            (data.unattributed > 0 ? ', ' + fmtSats(data.unattributed) + ' unattributed' : '') +
+            ', ' + fmtSats(data.splits.costs) + ' in costs)';
+        }
+      } else {
+        var names = Object.keys(data.apps).sort(function (a, b) { return data.apps[b] - data.apps[a]; });
+        if (!names.length) {
+          var empty = document.createElement('p');
+          empty.className = 'stats-error';
+          empty.textContent = 'No boosts ' + rangePhrase(state.range) + '.';
+          grid.appendChild(empty);
+        }
+        for (var n = 0; n < names.length; n++) {
+          grid.appendChild(tile(APP_LABELS[names[n]] || names[n], data.apps[names[n]], appColorVar(names[n]), false));
+        }
+        if (subEl) {
+          subEl.textContent = fmtSats(data.gross) + ' sats received ' + rangePhrase(state.range) +
+            ' across ' + names.length + (names.length === 1 ? ' app' : ' apps');
         }
       }
-      // Step costs forward through any bills whose date is now reached.
-      while (costIdx < COSTS.length && COSTS[costIdx].ms <= d) {
-        cumCostSats += COSTS[costIdx].sats;
-        costIdx++;
-      }
-      var costShare = cumCostSats / 2;
-      var reedNet = Math.max(0, rReedRaw - costShare);
-      var revNet  = Math.max(0, rRevRaw - costShare);
-      var costsActual = Math.min(rReedRaw, costShare) + Math.min(rRevRaw, costShare);
-      // Snapshot the running per-app cumulative for the apps view.
-      var appsSnap = Object.create(null);
-      for (var sName in seenApps) appsSnap[sName] = rApps[sName] || 0;
-      days.push({
-        ms: d, daily: v, cumulative: run,
-        reed: reedNet, rev: revNet, costs: costsActual,
-        guests: rGuests, aquafox: rAquafox, fountain: rFountain,
-        samourai: rSamourai,
-        apps: appsSnap,
-      });
-    }
-    var grandTotal = run;
-
-    if (subEl) {
-      subEl.textContent = fmtSats(grandTotal) + ' sats received' +
-        (episodes.length ? ' across ' + episodes.length + ' episodes' : '') +
-        ' since ' + fmtDate(minMs);
+      canvas.innerHTML = '';
+      canvas.appendChild(grid);
     }
 
-    var legendEl = document.querySelector('[data-stats-legend]');
-    var legendAppsEl = document.querySelector('[data-stats-legend-apps]');
-    function draw(view) {
-      canvas.innerHTML = buildSvg(days, episodes, view, minMs, maxMs);
-      // Show the matching legend per view; both hidden on daily.
-      if (legendEl) {
-        if (view === 'splits') legendEl.removeAttribute('hidden');
-        else legendEl.setAttribute('hidden', '');
-      }
-      if (legendAppsEl) {
-        if (view === 'apps') legendAppsEl.removeAttribute('hidden');
-        else legendAppsEl.setAttribute('hidden', '');
-      }
+    if (distControlsEl) {
+      distControlsEl.innerHTML = '';
+      distControlsEl.appendChild(viewControl(state.view, function (key) {
+        state.view = key;
+        draw();
+      }));
+      distControlsEl.appendChild(rangeControl(state.range, function (key) {
+        state.range = key;
+        draw();
+      }));
     }
-    draw('splits');
-
-    var radios = document.querySelectorAll('input[name="stats-chart-view"]');
-    for (var r = 0; r < radios.length; r++) {
-      radios[r].addEventListener('change', function (e) {
-        if (e.target.checked) draw(e.target.value);
-      });
-    }
-
-    setupChartTooltip(canvas);
+    draw();
   }
 
-  // ── Inline-SVG chart renderer ──────────────────────────────────────
-  function buildSvg(days, episodes, view, minMs, maxMs) {
-    var W = 960, H = 360;
-    var mL = 64, mR = 20, mT = 18, mB = 44;
-    var pw = W - mL - mR, ph = H - mT - mB;
-    var spanMs = Math.max(maxMs - minMs, DAY_MS);
-    // Both stacked views (splits + apps) sum to the cumulative line, so
-    // they share its y-axis; daily has its own (smaller) per-day max.
-    var key = view === 'daily' ? 'daily' : 'cumulative';
-
-    var yMax = 0;
-    for (var i = 0; i < days.length; i++) if (days[i][key] > yMax) yMax = days[i][key];
-    yMax = niceCeil(yMax > 0 ? yMax : 1);
-
-    function x(ms) { return mL + ((ms - minMs) / spanMs) * pw; }
-    function y(val) { return mT + ph - (val / yMax) * ph; }
-
-    var parts = [];
-
-    // Horizontal gridlines + Y labels at 0 / 25 / 50 / 75 / 100%.
-    var ySteps = [0, 0.25, 0.5, 0.75, 1];
-    for (var s = 0; s < ySteps.length; s++) {
-      var yv = yMax * ySteps[s];
-      var yy = y(yv);
-      parts.push('<line class="stats-chart-grid" x1="' + mL + '" y1="' + yy +
-        '" x2="' + (W - mR) + '" y2="' + yy + '"/>');
-      parts.push('<text class="stats-chart-ylabel" x="' + (mL - 8) + '" y="' +
-        (yy + 4) + '">' + fmtSats(Math.round(yv)) + '</text>');
-    }
-
-    // X axis: month boundaries.
-    var months = monthTicks(minMs, maxMs);
-    for (var mi = 0; mi < months.length; mi++) {
-      var mx = x(months[mi].ms);
-      parts.push('<line class="stats-chart-grid" x1="' + mx + '" y1="' + mT +
-        '" x2="' + mx + '" y2="' + (mT + ph) + '"/>');
-      parts.push('<text class="stats-chart-xlabel" x="' + mx + '" y="' +
-        (H - mB + 20) + '">' + months[mi].label + '</text>');
-    }
-
-    if (view === 'splits' || view === 'apps') {
-      // Stacked cumulative bands. Two flavors share the same algorithm:
-      //   splits — recipient breakdown (Costs/Fountain/AdBudget/Guests/
-      //            Reed/Rev), bottom-up.
-      //   apps   — boost/stream source breakdown, ordered smallest at
-      //            the bottom up to biggest, derived from days[].apps.
-      // Each band sums into the cumulative total; the orange total line
-      // draws on top for crisp definition.
-      var BUCKETS;
-      if (view === 'splits') {
-        BUCKETS = [
-          { k: 'costs',    cls: 'stats-band-costs',    label: 'Costs' },
-          { k: 'samourai', cls: 'stats-band-samourai', label: 'Samourai Devs' },
-          { k: 'fountain', cls: 'stats-band-fountain', label: 'Fountain' },
-          { k: 'aquafox',  cls: 'stats-band-adbudget', label: 'V4V Budget' },
-          { k: 'guests',   cls: 'stats-band-guests',   label: 'Guests' },
-          { k: 'reed',     cls: 'stats-band-reed',     label: 'Reed' },
-          { k: 'rev',      cls: 'stats-band-rev',      label: 'Rev' },
-        ];
-      } else {
-        // Discover apps from the final day's snapshot. Fountain anchors
-        // the bottom (it's so dominant that putting it on top buries
-        // the smaller apps); the rest sort ascending by total so the
-        // tiniest sliver sits just above Fountain and the biggest non-
-        // Fountain app crowns the stack against the cumulative line.
-        var lastApps = days[days.length - 1].apps || {};
-        var appNames = Object.keys(lastApps);
-        appNames.sort(function (a, b) {
-          if (a === 'Fountain' && b !== 'Fountain') return -1;
-          if (b === 'Fountain' && a !== 'Fountain') return 1;
-          return lastApps[a] - lastApps[b];
-        });
-        BUCKETS = [];
-        for (var an = 0; an < appNames.length; an++) {
-          BUCKETS.push({
-            k: '__app__' + appNames[an],   // sentinel so getter knows to look in .apps
-            app: appNames[an],
-            cls: appBandCls(appNames[an]),
-            label: appNames[an],
-          });
-        }
-      }
-
-      var bottoms = new Array(days.length);
-      for (var bz = 0; bz < bottoms.length; bz++) bottoms[bz] = 0;
-      for (var bi = 0; bi < BUCKETS.length; bi++) {
-        var bk = BUCKETS[bi];
-        var bottomPath = [], topPath = [];
-        for (var d2 = 0; d2 < days.length; d2++) {
-          var bot = bottoms[d2];
-          var add = bk.app
-            ? ((days[d2].apps && days[d2].apps[bk.app]) || 0)
-            : days[d2][bk.k];
-          var top = bot + add;
-          bottomPath.push(x(days[d2].ms) + ',' + y(bot));
-          topPath.push(x(days[d2].ms) + ',' + y(top));
-          bottoms[d2] = top;
-        }
-        var pathD = 'M' + bottomPath.join(' L') +
-          ' L' + topPath.reverse().join(' L') + ' Z';
-        var grand = bk.app
-          ? ((days[days.length - 1].apps && days[days.length - 1].apps[bk.app]) || 0)
-          : days[days.length - 1][bk.k];
-        var tipText;
-        if (bk.k === 'costs') {
-          // Show what's been billed in dollars alongside the sat amount
-          // actually consumed (the band's height).
-          var totalDollars = 0;
-          for (var ci = 0; ci < COSTS.length; ci++) totalDollars += COSTS[ci].dollars;
-          tipText = bk.label + ' — $' + fmtSats(totalDollars) +
-            ' (' + fmtSats(grand) + ' sats)';
-        } else if (bk.app) {
-          var grandTotal = days[days.length - 1].cumulative || 1;
-          var pct = (grand / grandTotal) * 100;
-          tipText = bk.label + ' — ' + fmtSats(grand) + ' sats (' + fmtPct(pct) + ')';
-        } else {
-          tipText = bk.label + ' — ' + fmtSats(grand) + ' sats';
-        }
-        parts.push('<path class="stats-chart-band ' + bk.cls + '" d="' + pathD +
-          '" data-tip="' + xmlEsc(tipText) + '"></path>');
-      }
-      var ptsCum = [];
-      for (var dc = 0; dc < days.length; dc++) {
-        ptsCum.push(x(days[dc].ms) + ',' + y(days[dc].cumulative));
-      }
-      parts.push('<polyline class="stats-chart-line" points="' + ptsCum.join(' ') + '"/>');
-    } else {
-      // Daily view — single-color area + spiky line; dots are added
-      // further below.
-      var pts = [];
-      for (var dd = 0; dd < days.length; dd++) {
-        pts.push(x(days[dd].ms) + ',' + y(days[dd].daily));
-      }
-      var areaD = 'M' + x(days[0].ms) + ',' + y(0) + ' L' + pts.join(' L') +
-        ' L' + x(days[days.length - 1].ms) + ',' + y(0) + ' Z';
-      parts.push('<path class="stats-chart-area" d="' + areaD + '"/>');
-      parts.push('<polyline class="stats-chart-line" points="' + pts.join(' ') + '"/>');
-    }
-
-    // Episode publish markers — a wide, faint highlight band per release
-    // that brightens on hover (CSS, via the <g> wrapper) and carries the
-    // "Ep N — date" tooltip. Bands are clamped to the plot so edge
-    // episodes don't overhang the axes. The per-episode text label is
-    // intentionally omitted — the tooltip covers it and the labels crowd
-    // the top margin once there are many episodes.
-    var bandW = 5;
-    for (var e = 0; e < episodes.length; e++) {
-      var ep = episodes[e];
-      // Snap the marker to the same UTC day-bucket the sats data uses,
-      // so a release lines up with that day's dot/step instead of
-      // sitting hours to its right.
-      var epDayMs = Math.floor(ep.pubMs / DAY_MS) * DAY_MS;
-      if (epDayMs < minMs || epDayMs > maxMs) continue;
-      var ex = x(epDayMs);
-      var bx = Math.max(mL, ex - bandW / 2);
-      var bxEnd = Math.min(mL + pw, ex + bandW / 2);
-      var tip = 'Ep ' + ep.num + ' — ' + fmtDateET(ep.pubMs);
-      parts.push('<g class="stats-chart-epmark" data-tip="' + xmlEsc(tip) + '">' +
-        '<rect class="stats-chart-epband" x="' + bx + '" y="' + mT +
-        '" width="' + (bxEnd - bx) + '" height="' + ph + '" rx="2"/></g>');
-    }
-
-    // Daily view: mark every day that actually received sats with a
-    // dot, tooltipped with its date + amount.
-    if (view === 'daily') {
-      for (var di = 0; di < days.length; di++) {
-        if (days[di].daily <= 0) continue;
-        var dailyTip = fmtDate(days[di].ms) + ': ' + fmtSats(days[di].daily) + ' sats';
-        parts.push('<circle class="stats-chart-dot" cx="' + x(days[di].ms) +
-          '" cy="' + y(days[di].daily) + '" r="3.5" data-tip="' +
-          xmlEsc(dailyTip) + '"></circle>');
+  // Borderless 1W / 1M / All segmented control, ported from the feeds
+  // page (feeds-podcasts.js rangeControl): the selected segment's faint
+  // tint is the only chrome.
+  function rangeControl(initialKey, onPick) {
+    var wrap = document.createElement('div');
+    wrap.className = 'pcast-range';
+    wrap.setAttribute('role', 'group');
+    wrap.setAttribute('aria-label', 'Time range');
+    var btns = [];
+    function setActive(key) {
+      for (var i = 0; i < btns.length; i++) {
+        var on = RANGE_OPTIONS[i][0] === key;
+        btns[i].classList.toggle('is-active', on);
+        btns[i].setAttribute('aria-pressed', on ? 'true' : 'false');
       }
     }
+    RANGE_OPTIONS.forEach(function (opt) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'pcast-range-btn';
+      b.textContent = opt[1];
+      b.title = opt[0] === 'all' ? 'All time' :
+        'Last ' + (opt[0] === '1w' ? '7 days' : '30 days');
+      b.addEventListener('click', function () { setActive(opt[0]); onPick(opt[0]); });
+      btns.push(b);
+      wrap.appendChild(b);
+    });
+    setActive(initialKey);
+    return wrap;
+  }
 
-    return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="stats-chart-svg" ' +
-      'role="img" preserveAspectRatio="xMidYMid meet" ' +
-      'aria-label="Sats received over time across the podcast">' +
-      parts.join('') + '</svg>';
+  // "View: Sat Splits ▾" dropdown, ported from the feeds page sort control
+  // (outside-click / Escape to close). Calls onPick(key) on selection.
+  function viewControl(initialKey, onPick) {
+    function labelFor(k) {
+      for (var i = 0; i < VIEW_OPTIONS.length; i++) if (VIEW_OPTIONS[i][0] === k) return VIEW_OPTIONS[i][1];
+      return VIEW_OPTIONS[0][1];
+    }
+    var wrap = document.createElement('div');
+    wrap.className = 'pcast-sort';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'pcast-sort-btn';
+    btn.setAttribute('aria-haspopup', 'true');
+    btn.setAttribute('aria-expanded', 'false');
+    btn.title = 'Choose a breakdown';
+    var tag = document.createElement('span');
+    tag.className = 'pcast-sort-tag';
+    tag.textContent = 'View: ';
+    var cur = document.createElement('span');
+    cur.className = 'pcast-sort-cur';
+    cur.textContent = labelFor(initialKey);
+    var caret = document.createElement('span');
+    caret.className = 'pcast-sort-caret';
+    caret.setAttribute('aria-hidden', 'true');
+    caret.textContent = '▾';
+    btn.appendChild(tag); btn.appendChild(cur); btn.appendChild(caret);
+
+    var activeKey = initialKey;
+    var menu = document.createElement('div');
+    menu.className = 'pcast-sort-menu';
+    menu.hidden = true;
+    var items = VIEW_OPTIONS.map(function (opt) {
+      var it = document.createElement('button');
+      it.type = 'button';
+      it.className = 'pcast-sort-item';
+      it.textContent = opt[1];
+      it.addEventListener('click', function () {
+        activeKey = opt[0];
+        cur.textContent = opt[1];
+        close();
+        onPick(opt[0]);
+      });
+      menu.appendChild(it);
+      return it;
+    });
+    wrap.appendChild(btn);
+    wrap.appendChild(menu);
+
+    function refreshActive() {
+      for (var i = 0; i < items.length; i++) {
+        items[i].classList.toggle('is-active', VIEW_OPTIONS[i][0] === activeKey);
+      }
+    }
+    function onDoc(e) { if (!wrap.contains(e.target)) close(); }
+    function onKey(e) { if (e.key === 'Escape') close(); }
+    function open() {
+      refreshActive();
+      menu.hidden = false; btn.setAttribute('aria-expanded', 'true');
+      document.addEventListener('click', onDoc, true); document.addEventListener('keydown', onKey);
+    }
+    function close() {
+      menu.hidden = true; btn.setAttribute('aria-expanded', 'false');
+      document.removeEventListener('click', onDoc, true); document.removeEventListener('keydown', onKey);
+    }
+    btn.addEventListener('click', function () { if (menu.hidden) open(); else close(); });
+    return wrap;
+  }
+
+  // Tile accent per app; mirrors appCls (the App Mix chart).
+  function appColorVar(app) {
+    switch (app) {
+      case 'Fountain':            return '--app-fountain';
+      case 'localbitcoiners.com': return '--app-website';
+      case 'PodcastGuru':         return '--app-podguru';
+      case 'CurioCaster':         return '--app-curio';
+      case 'Castamatic':          return '--app-castamatic';
+      case 'BoostMeBitch':        return '--app-bmb';
+      case 'nostr zaps':          return '--app-nostr-zaps';
+      default:                    return '--app-other';
+    }
   }
 
   // First-of-month timestamps within [minMs, maxMs], for X-axis ticks.
@@ -902,20 +870,6 @@
       case 'BoostMeBitch':        return 'stats-app-bmb';
       case 'nostr zaps':          return 'stats-app-nostr-zaps';
       default:                    return 'stats-app-other';
-    }
-  }
-
-  // App-band variant for the cumulative "By App" view.
-  function appBandCls(app) {
-    switch (app) {
-      case 'Fountain':            return 'stats-band-app-fountain';
-      case 'localbitcoiners.com': return 'stats-band-app-website';
-      case 'PodcastGuru':         return 'stats-band-app-podguru';
-      case 'CurioCaster':         return 'stats-band-app-curio';
-      case 'Castamatic':          return 'stats-band-app-castamatic';
-      case 'BoostMeBitch':        return 'stats-band-app-bmb';
-      case 'nostr zaps':          return 'stats-band-app-nostr-zaps';
-      default:                    return 'stats-band-app-other';
     }
   }
 
@@ -1892,19 +1846,6 @@
     try {
       return new Date(ms).toLocaleDateString('en-US', {
         month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC',
-      });
-    } catch (e) {
-      return new Date(ms).toISOString().slice(0, 10);
-    }
-  }
-
-  // Episode markers tooltip the publish date in the show's local time
-  // (Eastern; tracks DST automatically via the IANA zone).
-  function fmtDateET(ms) {
-    try {
-      return new Date(ms).toLocaleDateString('en-US', {
-        weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
-        timeZone: 'America/New_York',
       });
     } catch (e) {
       return new Date(ms).toISOString().slice(0, 10);

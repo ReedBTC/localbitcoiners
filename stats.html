@@ -189,7 +189,7 @@
       color: var(--muted);
     }
 
-    /* ── Sats-over-time chart ── */
+    /* ── Section chrome (heading, subline, canvas), shared by every section ── */
     .stats-chart-heading {
       font-family: 'Playfair Display', Georgia, serif;
       font-size: clamp(1.4rem, 3vw, 1.9rem);
@@ -254,42 +254,6 @@
     }
     .stats-chart-ylabel { text-anchor: end; }
     .stats-chart-xlabel { text-anchor: middle; }
-    .stats-chart-area { fill: rgba(247,147,26,0.12); stroke: none; }
-    .stats-chart-line {
-      fill: none;
-      stroke: var(--orange);
-      stroke-width: 2;
-      stroke-linejoin: round;
-      stroke-linecap: round;
-    }
-
-    /* Recipient-bucket bands stacked under the cumulative line. Each
-       band brightens on hover so the tooltip (bucket grand total) has a
-       visible focal column. */
-    .stats-chart-band {
-      fill-opacity: 0.55;
-      stroke-width: 0.5;
-      stroke-opacity: 0.7;
-      transition: fill-opacity 0.12s ease;
-    }
-    .stats-chart-band:hover { fill-opacity: 0.85; }
-    .stats-band-reed     { fill: var(--bucket-reed);     stroke: var(--bucket-reed); }
-    .stats-band-rev      { fill: var(--bucket-rev);      stroke: var(--bucket-rev); }
-    .stats-band-guests   { fill: var(--bucket-guests);   stroke: var(--bucket-guests); }
-    .stats-band-adbudget { fill: var(--bucket-adbudget); stroke: var(--bucket-adbudget); }
-    .stats-band-fountain { fill: var(--bucket-fountain); stroke: var(--bucket-fountain); }
-    .stats-band-costs    { fill: var(--bucket-costs);    stroke: var(--bucket-costs); }
-    .stats-band-samourai { fill: var(--bucket-samourai); stroke: var(--bucket-samourai); }
-    /* App-keyed band variants for the cumulative "By App" view — same
-       .stats-chart-band base; only the fill/stroke colors differ. */
-    .stats-band-app-fountain   { fill: var(--app-fountain);   stroke: var(--app-fountain); }
-    .stats-band-app-website    { fill: var(--app-website);    stroke: var(--app-website); }
-    .stats-band-app-podguru    { fill: var(--app-podguru);    stroke: var(--app-podguru); }
-    .stats-band-app-curio      { fill: var(--app-curio);      stroke: var(--app-curio); }
-    .stats-band-app-castamatic { fill: var(--app-castamatic); stroke: var(--app-castamatic); }
-    .stats-band-app-bmb        { fill: var(--app-bmb);        stroke: var(--app-bmb); }
-    .stats-band-app-nostr-zaps { fill: var(--app-nostr-zaps); stroke: var(--app-nostr-zaps); }
-    .stats-band-app-other      { fill: var(--app-other);      stroke: var(--app-other); }
 
     /* App-mix chart — per-app variable + line/dot styles using it. */
     .stats-app-fountain   { --app-c: var(--app-fountain); }
@@ -346,9 +310,6 @@
       cursor: pointer;
       touch-action: manipulation;
     }
-    .stats-chart-band,
-    .stats-chart-epband,
-    .stats-chart-dot { pointer-events: all; }
 
     .stats-chart-legend-list {
       list-style: none;
@@ -374,24 +335,92 @@
       background: var(--c, var(--cream-d));
       border: 1px solid rgba(0, 0, 0, 0.08);
     }
-    .stats-chart-epband {
-      fill: var(--navy-l);
-      fill-opacity: 0.1;
-      stroke: var(--navy-l);
-      stroke-opacity: 0.3;
-      stroke-width: 0.75;
-      transition: fill-opacity 0.12s ease, stroke-opacity 0.12s ease;
+
+    /* ── Podcast Sat Distribution: view dropdown + range buttons + tiles ──
+       The controls are the feeds page's .pcast-range / .pcast-sort, copied
+       here with the accent tokens pinned to the brand orange. */
+    .stats-dist-head {
+      --accent: var(--brand);
+      --accent-d: var(--brand-d);
+      --tint: var(--brand-tint);
+      display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem;
+      margin-top: 1.1rem;
     }
-    /* Hover anywhere on the marker column brightens the band. */
-    .stats-chart-epmark:hover .stats-chart-epband {
-      fill-opacity: 0.32;
-      stroke-opacity: 0.7;
+    .pcast-range { display: flex; flex-shrink: 0; }
+    .pcast-range-btn {
+      min-width: 2rem; padding: 0.5rem 0.35rem;
+      font: inherit; font-size: 0.72rem; font-weight: 700; line-height: 1.2;
+      color: var(--muted); background: transparent;
+      border: none; border-radius: 6px; cursor: pointer;
+      transition: background 0.12s, color 0.12s;
     }
-    .stats-chart-dot {
-      fill: var(--orange-d);
-      stroke: var(--white);
-      stroke-width: 1.5;
+    .pcast-range-btn:hover {
+      color: var(--accent-d);
+      background: var(--tint);
+      background: color-mix(in srgb, var(--accent) 7%, transparent);
     }
+    .pcast-range-btn.is-active {
+      color: var(--accent-d);
+      background: var(--tint);
+      background: color-mix(in srgb, var(--accent) 14%, transparent);
+    }
+    .pcast-sort { position: relative; flex-shrink: 0; align-self: center; }
+    .pcast-sort-btn {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      padding: 0.3rem 0.7rem; font: inherit; font-size: 0.78rem; font-weight: 600;
+      color: var(--text); background: var(--white);
+      border: 1px solid var(--border); border-radius: 999px; cursor: pointer;
+      white-space: nowrap; transition: border-color 0.12s, background 0.12s;
+    }
+    .pcast-sort-btn:hover { border-color: var(--accent); background: var(--tint); }
+    .pcast-sort-tag { color: var(--muted); }
+    .pcast-sort-cur { color: var(--accent-d); font-weight: 700; }
+    .pcast-sort-caret { color: var(--muted); font-size: 0.85em; }
+    .pcast-sort-menu {
+      position: absolute; top: calc(100% + 4px); right: 0; z-index: 6;
+      min-width: 175px; background: var(--white);
+      border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18); padding: 0.35rem;
+    }
+    .pcast-sort-menu[hidden] { display: none; }
+    .pcast-sort-item {
+      display: block; width: 100%; text-align: left;
+      padding: 0.45rem 0.6rem; font: inherit; font-size: 0.85rem; font-weight: 600;
+      color: var(--text); background: transparent; border: none; border-radius: 6px; cursor: pointer;
+    }
+    .pcast-sort-item:hover { background: var(--tint); color: var(--accent-d); }
+    .pcast-sort-item.is-active { color: var(--accent-d); background: var(--tint); }
+    .pcast-sort-item.is-active::after { content: ' ✓'; float: right; }
+
+    .stats-tiles {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 0.75rem;
+    }
+    .stats-tile {
+      display: flex; flex-direction: column; gap: 0.15rem;
+      padding: 0.85rem 0.95rem;
+      background: var(--cream);
+      border: 1px solid var(--border);
+      border-left: 5px solid var(--c, var(--orange));
+      border-radius: 10px;
+      min-width: 0;
+    }
+    .stats-tile-label {
+      font-size: 0.78rem; font-weight: 700; letter-spacing: 0.02em;
+      color: var(--muted); text-transform: uppercase;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .stats-tile-value {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(1.25rem, 2.6vw, 1.6rem); font-weight: 700; line-height: 1.15;
+      color: var(--navy);
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+    }
+    .stats-tile.is-negative .stats-tile-value { color: var(--c, var(--muted)); }
+    .stats-tile-unit { font-size: 0.75rem; color: var(--muted); }
+    .stats-tiles .stats-error { grid-column: 1 / -1; }
 
     /* ── Episode leaderboard (horizontal bars) ── */
     .stats-bar-svg { width: 100%; height: auto; display: block; }
@@ -636,6 +665,8 @@
     @media (max-width: 600px) {
       .section-wide { padding: 2rem 1rem; }
       .stats-chart-canvas { padding: 0.6rem; }
+      .stats-tiles { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 0.5rem; }
+      .stats-tile { padding: 0.7rem 0.75rem; }
       .stats-hbar-row { gap: 0.5rem; }
       .stats-hbar-row .ep-supporter-identity { flex-basis: 132px; width: 132px; }
       .stats-hbar-row .ep-supporter-name { font-size: 0.85rem; }
@@ -746,48 +777,19 @@
 
 <!-- ══════════════════════════════ SATS OVER TIME ══════════════════════════════ -->
 <section class="section-wide">
-  <h2 class="stats-chart-heading">Podcast Value Details</h2>
+  <h2 class="stats-chart-heading">Podcast Sat Distribution</h2>
   <p class="stats-chart-sub" data-stats-sub>Loading…</p>
 
-  <div class="stats-chart-controls" role="radiogroup" aria-label="Chart view">
-    <label class="stats-chart-opt">
-      <input type="radio" name="stats-chart-view" value="splits" checked /> Sat Splits
-    </label>
-    <label class="stats-chart-opt">
-      <input type="radio" name="stats-chart-view" value="apps" /> By App
-    </label>
-    <label class="stats-chart-opt">
-      <input type="radio" name="stats-chart-view" value="daily" /> Daily
-    </label>
-  </div>
+  <!-- View dropdown + 1W / 1M / All range, built by stats.js in the same
+       style as the feeds page controls. -->
+  <div class="stats-dist-head pcast-controls" data-stats-dist-controls></div>
 
-  <div class="stats-chart-canvas" data-stats-canvas>
+  <div class="stats-chart-canvas" data-stats-dist>
     <div class="stats-loading">
       <div class="loading-spinner"></div><br />
       Loading sats data…
     </div>
   </div>
-
-  <!-- Order mirrors the stacked bands top→bottom (left = top of stack).
-       Two legends, one per cumulative view; JS toggles which is shown. -->
-  <ul class="stats-chart-legend-list" data-stats-legend>
-    <li><span class="stats-legend-swatch" style="--c: var(--bucket-rev);"></span>Rev</li>
-    <li><span class="stats-legend-swatch" style="--c: var(--bucket-reed);"></span>Reed</li>
-    <li><span class="stats-legend-swatch" style="--c: var(--bucket-guests);"></span>Guests</li>
-    <li><span class="stats-legend-swatch" style="--c: var(--bucket-adbudget);"></span>V4V Budget</li>
-    <li><span class="stats-legend-swatch" style="--c: var(--bucket-fountain);"></span>Fountain</li>
-    <li><span class="stats-legend-swatch" style="--c: var(--bucket-samourai);"></span>Samourai Devs</li>
-    <li><span class="stats-legend-swatch" style="--c: var(--bucket-costs);"></span>Costs</li>
-  </ul>
-  <ul class="stats-chart-legend-list" data-stats-legend-apps hidden>
-    <li><span class="stats-legend-swatch" style="--c: var(--app-podguru);"></span>PodcastGuru</li>
-    <li><span class="stats-legend-swatch" style="--c: var(--app-website);"></span>localbitcoiners.com</li>
-    <li><span class="stats-legend-swatch" style="--c: var(--app-curio);"></span>CurioCaster</li>
-    <li><span class="stats-legend-swatch" style="--c: var(--app-castamatic);"></span>Castamatic</li>
-    <li><span class="stats-legend-swatch" style="--c: var(--app-bmb);"></span>BoostMeBitch</li>
-    <li><span class="stats-legend-swatch" style="--c: var(--app-fountain);"></span>Fountain</li>
-  </ul>
-
 </section>
 
 <!-- ══════════════════════════════ EPISODE LEADERBOARD ══════════════════════════════ -->
