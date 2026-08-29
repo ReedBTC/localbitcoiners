@@ -19,10 +19,10 @@ import {
 } from '/assets/js/boosts-thread.js'
 import { configureBoostActions } from '/assets/js/boost-actions.js'
 
-// How many notes each range shows. No sat floor: a quiet month still has
-// a top five, and the all-time top ten are all well past five figures.
+// How many notes each range shows: five either way. No sat floor, so a
+// quiet month still has a top five.
 const TOP_MONTH = 5
-const TOP_ALL = 10
+const TOP_ALL = 5
 
 // 1M / All. The show reads the last month's biggest boosts off the air, so
 // that is the default; All is a click away. Applied on the note's
