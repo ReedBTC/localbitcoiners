@@ -216,7 +216,7 @@
   // Every row counts (boosts, streams, zaps), as the old chart did.
   var RANGE_OPTIONS = [['1w', '1W'], ['1m', '1M'], ['all', 'All']];
   var VIEW_OPTIONS = [['splits', 'Sat Splits'], ['apps', 'By App']];
-  var HOST_NET_TIP = 'Share of the sats minus half of the production costs (Fountain and Riverside) for the range.';
+  var HOST_NET_TIP = 'Total less production costs';
   var SPLIT_TILES = [
     { k: 'rev',      label: 'Rev (Net)',     c: '--bucket-rev',  tip: HOST_NET_TIP },
     { k: 'reed',     label: 'Reed (Net)',    c: '--bucket-reed', tip: HOST_NET_TIP },
