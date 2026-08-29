@@ -25,6 +25,7 @@ import json
 import re
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
@@ -110,6 +111,32 @@ CODERS_PACK = ("lb-supporters-coders", "Local Bitcoiners — Coding Contributors
 # it always mirrors whatever the per-category packs contain.
 ALL_PACK    = ("lb-supporters-all", "Local Bitcoiners — All Supporters")
 
+# State key holding the entry-floor grandfather roster — see compute_tier_members.
+GRANDFATHER_KEY = "entry_grandfathered"
+
+# Refresh a pack this many days after its last publish even when its membership
+# hasn't moved. kind-39089 is addressable, so a pack only needs one event on a
+# relay — but relays prune, and a pack that only republishes on change can sit
+# untouched for weeks and quietly decay off one (lb-supporters-guests went
+# missing from relay.primal.net exactly this way while healthy on four others).
+# Until the set comparison in process_pack was fixed, the all-supporters pack's
+# member order churned daily and republished it as an accidental keepalive;
+# this is that keepalive made deliberate and cheap.
+REPUBLISH_AFTER_DAYS = 14
+
+# Slugs retired 2026-08 whose kind-39089 events are still standing on the
+# relays advertising stale membership. Each is republished ONCE with no p-tags
+# to clear it; after that its state entry is [], process_pack sees no change and
+# skips it forever. Keep the list — it costs one no-op comparison a day and
+# re-clears the pack if a relay ever misses the empty event.
+RETIRED_PACKS = [
+    (TIER_PACKS[0][1], TIER_PACKS[0][2]),
+    (TIER_PACKS[1][1], TIER_PACKS[1][2]),
+    (TIER_PACKS[2][1], TIER_PACKS[2][2]),
+    (TIER_PACKS[3][1], TIER_PACKS[3][2]),
+    CODERS_PACK,
+]
+
 NPUB_RE   = re.compile(r"^npub1[02-9ac-hj-np-z]{58}$")
 GUESTS_RE = re.compile(r"\[guests:\s*([^\]]+)\]", re.IGNORECASE)
 
@@ -177,15 +204,28 @@ def compute_tier_members(rows, state=None):
                 packs[slug].append(npub)
                 break
 
-    # Grandfather the entry-floor raise. Anyone the entry pack has already
+    # Grandfather the entry-floor raise. Anyone the entry pack had already
     # published stays in it even if their lifetime total is now under
     # ENTRY_TIER_MIN_SATS — the floor governs who gets in from here on, not who
     # gets removed. Members already placed in a tier this run are skipped, so a
     # grandfathered supporter who has since climbed to a higher tier graduates
     # normally instead of appearing twice.
+    #
+    # The roster lives in its own state key. It used to be read straight off
+    # state["lb-supporters-other"]["members"], but that pack was retired in
+    # 2026-08 and then CLEARED (published empty), which would have zeroed the
+    # roster as a side effect of an unrelated publish. GRANDFATHER_KEY is seeded
+    # once from that pack's last-published members and is never written by
+    # process_pack.
     if state:
         entry_slug = TIER_PACKS[-1][1]
-        prev_hexes = set((state.get(entry_slug) or {}).get("members") or [])
+        if GRANDFATHER_KEY not in state:
+            state[GRANDFATHER_KEY] = list(
+                (state.get(entry_slug) or {}).get("members") or []
+            )
+            print(f"  [{GRANDFATHER_KEY}] seeded with "
+                  f"{len(state[GRANDFATHER_KEY])} hex(es) from {entry_slug}")
+        prev_hexes = set(state.get(GRANDFATHER_KEY) or [])
         if prev_hexes:
             placed = set()
             for members in packs.values():
@@ -247,6 +287,18 @@ def pack_tags(slug, title, member_npubs):
 
 
 # ── publish ──────────────────────────────────────────────────────────────────
+def _days_since(stamp):
+    """Whole days since an ISO-8601 published_at, or None if absent/unparseable
+    (treated as stale so the pack gets one refresh and a fresh timestamp)."""
+    if not stamp:
+        return None
+    try:
+        when = datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    except (TypeError, ValueError):
+        return None
+    return max(0, (datetime.now(timezone.utc) - when).days)
+
+
 def process_pack(slug, title, member_npubs, nsec, relays, state):
     """Publish/refresh one pack unless its member set is unchanged. Returns True
     if it published (or would have, in dry-run).
@@ -262,11 +314,23 @@ def process_pack(slug, title, member_npubs, nsec, relays, state):
     tags, hexes = pack_tags(slug, title, member_npubs)
     prev = (state.get(slug) or {}).get("members") or []
 
-    if hexes == prev:
-        # Covers "unchanged non-empty" and "still empty / never published".
-        shown = f"{len(hexes)} members" if hexes else "empty, never published"
-        print(f"  [{slug}] unchanged ({shown}) — skipping republish")
-        return False
+    # Compare as SETS. hexes is ordered by however the union was assembled,
+    # which churns with sats.json row order, so an ordered compare republished
+    # the all-supporters pack daily on an identical member set.
+    if set(hexes) == set(prev):
+        # An empty pack is never refreshed — there is nothing to keep alive, and
+        # a cleared retired pack must stay a no-op forever.
+        age = _days_since((state.get(slug) or {}).get("published_at"))
+        if not hexes:
+            print(f"  [{slug}] unchanged (empty) — skipping republish")
+            return False
+        if age is not None and age < REPUBLISH_AFTER_DAYS:
+            print(f"  [{slug}] unchanged ({len(hexes)} members, published "
+                  f"{age}d ago) — skipping republish")
+            return False
+        stale = "never dated" if age is None else f"{age}d ago"
+        print(f"  [{slug}] unchanged ({len(hexes)} members) but last published "
+              f"{stale} — refreshing to keep it on the relays")
 
     if not hexes:
         print(f"  [{slug}] now empty — republishing with no members to clear "
@@ -347,6 +411,9 @@ def main():
     # computed above because all_members unions it; only the publish is gone.
     published += process_pack(GUESTS_PACK[0], GUESTS_PACK[1], guests, nsec, relays, state)
     published += process_pack(ALL_PACK[0], ALL_PACK[1], all_members, nsec, relays, state)
+    # Clear the retired packs (no-op once each has been emptied).
+    for slug, title in RETIRED_PACKS:
+        published += process_pack(slug, title, [], nsec, relays, state)
 
     print(f"\n{published} pack(s) {'previewed' if DRY_RUN else 'published'}.")
 
