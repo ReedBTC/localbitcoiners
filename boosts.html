@@ -191,6 +191,68 @@
     @media (max-width: 600px) {
       .section-wide { padding: 2rem 1rem; }
     }
+
+    /* ── Boost list head: count on the left, sort + range on the right.
+       The controls are the feeds/stats .pcast-range / .pcast-sort widgets
+       (assets/js/head-controls.js) with the accent pinned to brand orange. ── */
+    .boosts-head {
+      display: flex; align-items: flex-end; justify-content: space-between;
+      flex-wrap: wrap; gap: 0.6rem 1rem;
+      margin-bottom: 1rem;
+    }
+    .boosts-head .replies-heading { margin-bottom: 0; }
+    .boosts-controls {
+      --accent: var(--brand, #f7931a);
+      --accent-d: var(--brand-d, #d97b0e);
+      --tint: var(--brand-tint, rgba(247, 147, 26, 0.14));
+      display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;
+      margin-left: auto;
+    }
+    .pcast-range { display: flex; flex-shrink: 0; }
+    .pcast-range-btn {
+      min-width: 2rem; padding: 0.5rem 0.35rem;
+      font: inherit; font-size: 0.72rem; font-weight: 700; line-height: 1.2;
+      color: var(--muted); background: transparent;
+      border: none; border-radius: 6px; cursor: pointer;
+      transition: background 0.12s, color 0.12s;
+    }
+    .pcast-range-btn:hover {
+      color: var(--accent-d);
+      background: var(--tint);
+      background: color-mix(in srgb, var(--accent) 7%, transparent);
+    }
+    .pcast-range-btn.is-active {
+      color: var(--accent-d);
+      background: var(--tint);
+      background: color-mix(in srgb, var(--accent) 14%, transparent);
+    }
+    .pcast-sort { position: relative; flex-shrink: 0; align-self: center; }
+    .pcast-sort-btn {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      padding: 0.3rem 0.7rem; font: inherit; font-size: 0.78rem; font-weight: 600;
+      color: var(--text); background: var(--white);
+      border: 1px solid var(--border); border-radius: 999px; cursor: pointer;
+      white-space: nowrap; transition: border-color 0.12s, background 0.12s;
+    }
+    .pcast-sort-btn:hover { border-color: var(--accent); background: var(--tint); }
+    .pcast-sort-tag { color: var(--muted); }
+    .pcast-sort-cur { color: var(--accent-d); font-weight: 700; }
+    .pcast-sort-caret { color: var(--muted); font-size: 0.85em; }
+    .pcast-sort-menu {
+      position: absolute; top: calc(100% + 4px); right: 0; z-index: 6;
+      min-width: 175px; background: var(--white);
+      border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18); padding: 0.35rem;
+    }
+    .pcast-sort-menu[hidden] { display: none; }
+    .pcast-sort-item {
+      display: block; width: 100%; text-align: left;
+      padding: 0.45rem 0.6rem; font: inherit; font-size: 0.85rem; font-weight: 600;
+      color: var(--text); background: transparent; border: none; border-radius: 6px; cursor: pointer;
+    }
+    .pcast-sort-item:hover { background: var(--tint); color: var(--accent-d); }
+    .pcast-sort-item.is-active { color: var(--accent-d); background: var(--tint); }
+    .pcast-sort-item.is-active::after { content: ' ✓'; float: right; }
   </style>
   <link rel="stylesheet" href="/assets/css/nav.css" />
   <link rel="stylesheet" href="/assets/css/theme.css" />
@@ -388,8 +450,44 @@
     ROOT_NEVENT,
     fetchBoostThread,
     renderChildCards,
+    getBoostMeta,
   } from '/assets/js/boosts-thread.js'
   import { configureBoostActions } from '/assets/js/boost-actions.js'
+  import { rangeControl, sortControl, rangeStartMs, rangeWindow } from '/assets/js/head-controls.js'
+
+  // ── Range + sort ────────────────────────────────────────────────────
+  // 1W / 1M / All on the note's created_at (when the bot published the
+  // boost), and Latest / Largest. Sats come from the boost-wall record
+  // (getBoostMeta) when the wall was the source, else from the bot's
+  // "💰 N sats" line; a note with neither sorts to the bottom of Largest.
+  const SORT_OPTIONS = [['latest', 'Latest boost'], ['largest', 'Largest boost']]
+  const view = { range: 'all', sort: 'latest' }
+
+  function boostSats(ev) {
+    const meta = getBoostMeta(ev.id)
+    if (meta && Number.isFinite(meta.sats)) return meta.sats
+    const m = (ev.content || '').match(/💰\s*([\d,]+)\s*sats/i)
+    return m ? parseInt(m[1].replace(/,/g, ''), 10) || 0 : 0
+  }
+
+  function selectBoosts(all) {
+    const start = rangeStartMs(view.range) / 1000
+    const list = all.filter((ev) => (ev.created_at || 0) >= start)
+    if (view.sort === 'largest') {
+      list.sort((a, b) => (boostSats(b) - boostSats(a)) || ((b.created_at || 0) - (a.created_at || 0)))
+    } else {
+      list.sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
+    }
+    return list
+  }
+
+  function buildControls() {
+    const wrap = document.createElement('div')
+    wrap.className = 'boosts-controls pcast-controls'
+    wrap.appendChild(sortControl(SORT_OPTIONS, view.sort, (k) => { view.sort = k; rerenderBoosts() }, { title: 'Sort boosts' }))
+    wrap.appendChild(rangeControl(view.range, (k) => { view.range = k; rerenderBoosts() }))
+    return wrap
+  }
 
   // ── Main load ──────────────────────────────────────────────────────
   const $loading = document.getElementById('boosts-loading')
@@ -408,22 +506,31 @@
     $loading.style.display = 'none'
     $content.innerHTML = ''
 
-    const boosts = childrenOf.get(root.id) || []
+    const all = childrenOf.get(root.id) || []
+    const boosts = selectBoosts(all)
 
+    const head = document.createElement('div')
+    head.className = 'boosts-head'
     const repliesHeading = document.createElement('h2')
     repliesHeading.className = 'replies-heading'
     repliesHeading.textContent = boosts.length
       ? `${boosts.length} ${boosts.length === 1 ? 'Boost' : 'Boosts'}`
       : 'Boosts'
-    $content.appendChild(repliesHeading)
+    head.appendChild(repliesHeading)
+    head.appendChild(buildControls())
+    $content.appendChild(head)
 
     if (!boosts.length) {
       const empty = document.createElement('p')
       empty.className = 'replies-empty'
-      empty.textContent = 'No boosts yet — be the first to reply on Nostr.'
+      empty.textContent = all.length
+        ? `No boosts in the ${rangeWindow(view.range)}.`
+        : 'No boosts yet — be the first to reply on Nostr.'
       $content.appendChild(empty)
     } else {
-      renderChildCards(root.id, childrenOf, $content)
+      // renderChildCards reads its list from a Map, so hand it the
+      // filtered + sorted list under the root id.
+      renderChildCards(root.id, new Map([[root.id, boosts]]), $content)
     }
   }
 
