@@ -78,7 +78,11 @@
   var peopleSubEl = document.querySelector('[data-people-sub]');
   var preNostrCanvas = document.querySelector('[data-stats-prenostr]');
   var streamersCanvas = document.querySelector('[data-stats-streamers]');
+  var streamersControlsEl = document.querySelector('[data-streamers-controls]');
+  var streamersSubEl = document.querySelector('[data-streamers-sub]');
   var zappersCanvas = document.querySelector('[data-stats-zappers]');
+  var zappersControlsEl = document.querySelector('[data-zappers-controls]');
+  var zappersSubEl = document.querySelector('[data-zappers-sub]');
   var appmixCanvas = document.querySelector('[data-stats-appmix]');
   var appmixLegendEl = document.querySelector('[data-appmix-legend]');
   var epgridCanvas = document.querySelector('[data-stats-epgrid]');
@@ -237,15 +241,9 @@
 
     var state = { range: 'all', view: 'splits' };
 
-    function rangeStart(key) {
-      if (key === '1w') return Date.now() - 7 * DAY_MS;
-      if (key === '1m') return Date.now() - 30 * DAY_MS;
-      return -Infinity;
-    }
     function rangePhrase(key) {
-      if (key === '1w') return 'over the last 7 days';
-      if (key === '1m') return 'over the last 30 days';
-      return isFinite(firstMs) ? 'since ' + fmtDate(firstMs) : 'all time';
+      if (key === 'all') return isFinite(firstMs) ? 'since ' + fmtDate(firstMs) : 'all time';
+      return 'over the ' + rangeWindow(key);
     }
 
     // Operating costs inside [start, now], each bill spread evenly over
@@ -368,6 +366,19 @@
       }));
     }
     draw();
+  }
+
+  // Range keys shared by every 1W / 1M / All control on the page.
+  function rangeStart(key) {
+    if (key === '1w') return Date.now() - 7 * DAY_MS;
+    if (key === '1m') return Date.now() - 30 * DAY_MS;
+    return -Infinity;
+  }
+  function rangeWindow(key) {
+    return key === '1w' ? 'last 7 days' : key === '1m' ? 'last 30 days' : 'all time';
+  }
+  function inRange(row, start) {
+    return start === -Infinity || Date.parse(row.settled_at) >= start;
   }
 
   // Borderless 1W / 1M / All segmented control, ported from the feeds
@@ -1628,14 +1639,41 @@
   // > display name > each truly-anon row its own). Hosts excluded for
   // the same reason as the supporter leaderboard. Sorted largest-first
   // and rendered as the same mini-cards the episode pages use.
+  // Stream rows are per-(episode, supporter) aggregates stamped with the
+  // supporter's latest activity on that episode (Fountain's Firestore
+  // lastseen; the bot's own aggregates likewise), not per-payment. So a
+  // 1W / 1M window means "people who streamed in that window", and the sats
+  // shown are what they've streamed on the episodes they were active on,
+  // which can include earlier listens of the same episode. The subline
+  // says as much. All-time is exact.
   function renderStreamerShoutout(rows) {
     if (!streamersCanvas) return;
+    var range = 'all';
+    if (streamersControlsEl) {
+      streamersControlsEl.innerHTML = '';
+      streamersControlsEl.appendChild(rangeControl(range, function (key) {
+        range = key;
+        drawStreamers(rows, range);
+      }));
+    }
+    drawStreamers(rows, range);
+  }
+
+  function drawStreamers(rows, range) {
+    var start = rangeStart(range);
+    if (streamersSubEl) {
+      streamersSubEl.textContent = range === 'all'
+        ? 'All-time sats streamed per supporter, across every episode - Top 10 Streamers'
+        : 'Supporters who streamed in the ' + rangeWindow(range) +
+          ', by sats on the episodes they streamed - Top 10';
+    }
 
     var byId = Object.create(null);
     var anonIdx = 0;
     for (var i = 0; i < rows.length; i++) {
       var row = rows[i];
       if (row.kind !== 'stream') continue;
+      if (!inRange(row, start)) continue;
       if (row.sender_npub && HOST_NPUBS[row.sender_npub]) continue;
       var npub = row.sender_npub || '';
       var key = npub || row.sender_name || ('__anon__' + (anonIdx++));
@@ -1661,7 +1699,8 @@
       streamers.push(s);
     }
     if (!streamers.length) {
-      streamersCanvas.innerHTML = '<p class="stats-error">No streams yet.</p>';
+      streamersCanvas.innerHTML = '<p class="stats-error">' +
+        (range === 'all' ? 'No streams yet.' : 'No streams in the ' + rangeWindow(range) + '.') + '</p>';
       return;
     }
     streamers.sort(function (a, b) { return b.sats - a.sats; });
@@ -1772,12 +1811,32 @@
   // go to the ad budget, not back to themselves.
   function renderTopZappers(allRows) {
     if (!zappersCanvas) return;
+    var range = 'all';
+    if (zappersControlsEl) {
+      zappersControlsEl.innerHTML = '';
+      zappersControlsEl.appendChild(rangeControl(range, function (key) {
+        range = key;
+        drawZappers(allRows, range);
+      }));
+    }
+    drawZappers(allRows, range);
+  }
+
+  // Zap rows are one per receipt, so a window here is exact.
+  function drawZappers(allRows, range) {
+    var start = rangeStart(range);
+    if (zappersSubEl) {
+      zappersSubEl.textContent = range === 'all'
+        ? 'Top 10 zappers by all-time sats zapped'
+        : 'Top 10 zappers by sats zapped in the ' + rangeWindow(range);
+    }
 
     var byId = Object.create(null);
     var anonIdx = 0;
     for (var i = 0; i < allRows.length; i++) {
       var row = allRows[i];
       if (row.source !== 'zap') continue;
+      if (!inRange(row, start)) continue;
       if (typeof row.total_sats !== 'number' || row.total_sats <= 0) continue;
       var npub = row.sender_npub || '';
       var key = npub || ('__anon__' + (anonIdx++));
@@ -1792,7 +1851,8 @@
     var zappers = [];
     for (var k in byId) zappers.push(byId[k]);
     if (!zappers.length) {
-      zappersCanvas.innerHTML = '<p class="stats-error">No zaps yet.</p>';
+      zappersCanvas.innerHTML = '<p class="stats-error">' +
+        (range === 'all' ? 'No zaps yet.' : 'No zaps in the ' + rangeWindow(range) + '.') + '</p>';
       return;
     }
     zappers.sort(function (a, b) { return b.sats - a.sats; });
