@@ -310,7 +310,12 @@ def run_episodesats(rows, nsec):
 # 2/3  boost-leaders — listeners ranked by number of shows boosted
 # ===========================================================================
 
-BL_TOP_TIERS = 3
+# Number of distinct episode-count TIERS to show — not the number of
+# listeners. Everyone tied at a shown count is listed, so a note can carry
+# more than BL_TOP_TIERS names (e.g. three listeners tied at 26 episodes all
+# take the 🥇 line). Tiers past the three medals fall back to ▪️, matching
+# the episodesats and top-boosts notes.
+BL_TOP_TIERS = 5
 BL_EXCLUDED_NPUBS = {
     "npub1xgyjasdztryl9sg6nfdm2wcj0j3qjs03sq7a0an32pg0lr5l6yaqxhgu7s",  # reed
     "npub1f5pre6wl6ad87vr4hr5wppqq30sh58m4p33mthnjreh03qadcajs7gwt3z",  # rev
@@ -362,7 +367,8 @@ def bl_format_note(boosters):
             break
     top_counts = set(distinct_counts)
     top        = [(k, eps) for k, eps in ranked if len(eps) in top_counts]
-    tier_medal = {c: medals[i] for i, c in enumerate(distinct_counts)}
+    tier_medal = {c: (medals[i] if i < len(medals) else "▪️")
+                  for i, c in enumerate(distinct_counts)}
 
     lines = ["⚡ Local Bitcoiners Boost Leaders", ""]
     lines.append("Listeners who have boosted the most episodes, all-time:")
