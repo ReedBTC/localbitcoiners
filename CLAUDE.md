@@ -113,6 +113,9 @@ Sort + 1W/1M/All head. Things that fail silently if missed:
   anywhere; `supporter-set.js` unions every kind-39089 pack the show
   publishes, so a stale tier or coders pack left on relays re-adds its
   members. The bot must delete retired packs, not just stop updating them.
+  Done 2026-08-29: the four tier packs and the coders pack were published
+  empty, and `RETIRED_PACKS` in the follow-packs bot keeps re-asserting that,
+  so only `lb-supporters-all` and `lb-supporters-guests` carry members.
 - **Stream rows in `sats.json` are per-(episode, supporter) aggregates**
   stamped with last activity, not payments. A 1W/1M window on streamers
   means "who streamed in it", and their sats can include earlier listens of
@@ -125,6 +128,21 @@ Sort + 1W/1M/All head. Things that fail silently if missed:
   for module pages (boosts.html), a classic-script copy inside `stats.js`.
   The `.pcast-range` / `.pcast-sort` CSS is copied per page (feeds, stats,
   boosts, supporters) with `--accent` / `--accent-d` / `--tint` set locally.
+
+## Backfilled rows in the sats ledger
+
+Some `data/sats.csv` rows record boosts that were **sent but never arrived** —
+a value-split leg failed at the payer's wallet, so our node never saw the
+money and only Nostr proves the boost happened. They are marked by a
+`total_sats_method` beginning `nostr backfill (`, and they carry `our_sats=0`
+with the donor's Nostr note id as the `payment_hash`.
+
+Their five split columns hold the **intended** RSS split, not sats actually
+received — the columns must sum to `total_sats` (`apply_value_splits` rescales
+them otherwise, and the stats-page split chart assumes that conservation), so
+the failed recipient's bucket over-credits by the unpaid leg. Anything
+reasoning about *money received* rather than *boosts sent* should exclude
+these rows; supporter counts and episode totals are meant to include them.
 
 ## Bot infrastructure documentation
 
