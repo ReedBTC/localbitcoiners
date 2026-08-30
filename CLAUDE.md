@@ -131,6 +131,11 @@ Sort + 1W/1M/All head. Things that fail silently if missed:
   so Reed and Rev can find where they left off reading boosts on the show).
   Neither is advertised on the site; do not "fix" them or change the copy.
   Every other 1W / 1M on the site is 7 / 30 days.
+- **The top-boosts leaderboard bot uses that same 33 days**
+  (`TB_WINDOW_DAYS` in `bots/leaderboards/local_bitcoiners_leaderboards.py`,
+  measured back from the moment the bot fires). It used to rank all time.
+  The bot's weekly note and the site's Biggest Boosts section are meant to
+  show the same set — change one window and change the other.
 - **The range/sort widgets exist twice on purpose**: `assets/js/head-controls.js`
   for module pages (boosts.html), a classic-script copy inside `stats.js`.
   The `.pcast-range` / `.pcast-sort` CSS is copied per page (feeds, stats,
