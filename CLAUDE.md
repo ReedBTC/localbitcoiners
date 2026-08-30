@@ -124,6 +124,13 @@ Sort + 1W/1M/All head. Things that fail silently if missed:
 - **By App tiles are data-driven** from `row.app`; a new app appears on its
   own the first time it boosts. Colors are a fixed map (`appColorVar`);
   add one when a new app shows up grey.
+- **Two range windows are intentionally off by design, and the labels stay
+  as they are.** The 1M on the stats page's Biggest Boosts - Notes section
+  is 33 days (`MONTH_WINDOW_DAYS` in `stats-boosts.js`, an easter egg), and
+  the 1W on `boosts.html` is 8 days (`WEEK_WINDOW_DAYS`, one day of overlap
+  so Reed and Rev can find where they left off reading boosts on the show).
+  Neither is advertised on the site; do not "fix" them or change the copy.
+  Every other 1W / 1M on the site is 7 / 30 days.
 - **The range/sort widgets exist twice on purpose**: `assets/js/head-controls.js`
   for module pages (boosts.html), a classic-script copy inside `stats.js`.
   The `.pcast-range` / `.pcast-sort` CSS is copied per page (feeds, stats,

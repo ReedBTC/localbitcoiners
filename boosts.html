@@ -470,8 +470,17 @@
     return m ? parseInt(m[1].replace(/,/g, ''), 10) || 0 : 0
   }
 
+  // 1W here is deliberately the last 8 days, not 7, and the label and the
+  // "last 7 days" copy stay as they are on purpose. Reed and Rev read the
+  // week's boosts off on the show; one day of overlap with the previous
+  // week lets them see where they left off. This is not a bug and not a
+  // secret, just not advertised on the site. It applies to this page only;
+  // rangeStartMs in head-controls.js stays 7 days for everything else.
+  const WEEK_WINDOW_DAYS = 8
   function selectBoosts(all) {
-    const start = rangeStartMs(view.range) / 1000
+    const start = view.range === '1w'
+      ? Date.now() / 1000 - WEEK_WINDOW_DAYS * 86400
+      : rangeStartMs(view.range) / 1000
     const list = all.filter((ev) => (ev.created_at || 0) >= start)
     if (view.sort === 'largest') {
       list.sort((a, b) => (boostSats(b) - boostSats(a)) || ((b.created_at || 0) - (a.created_at || 0)))

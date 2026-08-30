@@ -27,10 +27,17 @@ const TOP_ALL = 5
 // 1M / All. The show reads the last month's biggest boosts off the air, so
 // that is the default; All is a click away. Applied on the note's
 // created_at, which is when the bot published the boost.
+//
+// The 1M window is deliberately 33 days, not 30. It is an easter egg
+// (33 sats, 33/33/34 split, 33-day feature life), and the page still says
+// "last 30 days" on purpose: it is not a secret, it is just not advertised
+// on the site. Do not "fix" it to 30, and do not change the visible copy.
+// This applies only to this section; every other 1M on the site is 30 days.
 const RANGES = [['1m', '1M', 'Last 30 days'], ['all', 'All', 'All time']]
+const MONTH_WINDOW_DAYS = 33
 let range = '1m'
 function topN() { return range === '1m' ? TOP_MONTH : TOP_ALL }
-function rangeStart() { return range === '1m' ? Date.now() / 1000 - 30 * 86400 : -Infinity }
+function rangeStart() { return range === '1m' ? Date.now() / 1000 - MONTH_WINDOW_DAYS * 86400 : -Infinity }
 
 function mountRangeControl(onPick) {
   const host = document.querySelector('[data-boosts-controls]')
