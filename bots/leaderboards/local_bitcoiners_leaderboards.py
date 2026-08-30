@@ -9,7 +9,7 @@ Alby Hub access.
 Order:
     1. episodesats     — top episodes by all-time sats
     2. boost-leaders   — listeners ranked by number of shows boosted
-    3. top-boosts      — single largest boosts of all time
+    3. top-boosts      — single largest boosts of the last 33 days
 """
 
 import csv
@@ -18,6 +18,7 @@ import os
 import re
 import sys
 import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from pynostr.key import PrivateKey
@@ -428,10 +429,13 @@ def run_boostleaders(rows, nsec):
 
 
 # ===========================================================================
-# 3/3  top-boosts — single largest boosts of all time
+# 3/3  top-boosts — single largest boosts of a trailing window
 # ===========================================================================
 
 TB_TOP_N = 5
+# Trailing window, in days, measured back from the moment the bot fires.
+# Matches the site's 33-day feature TTL.
+TB_WINDOW_DAYS = 33
 TB_SENDER_OVERRIDES_FILE = Path.home() / ".config/nostr-bots/sender_overrides.json"
 
 
@@ -443,13 +447,24 @@ def tb_load_sender_overrides():
 TB_SENDER_OVERRIDES = tb_load_sender_overrides()
 
 
-def tb_aggregate(rows):
-    """Return all boost rows sorted by total_sats desc. Includes show-level
-    boosts (matches old-bot behavior + the website's biggest-boosts view);
-    excludes streams."""
+def tb_window_start():
+    """UTC cutoff for the trailing window, as an ISO-Z string that sorts
+    against sats.csv's settled_at column."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=TB_WINDOW_DAYS)
+    return cutoff.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
+def tb_aggregate(rows, since):
+    """Return boost rows settled on/after `since`, sorted by total_sats desc.
+    Includes show-level boosts (matches old-bot behavior + the website's
+    biggest-boosts view); excludes streams. Rows with no settled_at can't be
+    placed in the window, so they're dropped."""
     boosts = []
     for r in rows:
         if r.get('kind') != 'boost':
+            continue
+        settled = r.get('settled_at') or ''
+        if not settled or settled < since:
             continue
         try:
             sats = int(r.get('total_sats') or 0)
@@ -466,7 +481,7 @@ def tb_aggregate(rows):
             'episode_num':   r.get('episode_num') or '',
             'episode_title': r.get('episode_title') or '',
             'show_level':    is_show_level(r),
-            'settled_at':    r.get('settled_at') or '',
+            'settled_at':    settled,
         })
     boosts.sort(key=lambda b: -b['sats'])
     return boosts
@@ -496,8 +511,8 @@ def tb_episode_label(b):
 
 def tb_format_note(ranked):
     medals = ["🥇", "🥈", "🥉"]
-    lines  = ["⚡ Local Bitcoiners Top Boosts of All Time", ""]
-    lines.append("The biggest single boosts ever sent to the show:")
+    lines  = [f"⚡ Local Bitcoiners Top Boosts — Last {TB_WINDOW_DAYS} Days", ""]
+    lines.append(f"The biggest single boosts sent to the show in the past {TB_WINDOW_DAYS} days:")
     lines.append("")
 
     for i, b in enumerate(ranked):
@@ -546,14 +561,16 @@ def tb_resolve_event_ids(ranked, published_events, donation_events):
 def run_topboosts(rows, nsec):
     print()
     print("==============================================================")
-    print("  3/3  top-boosts — largest boosts of all time")
+    print(f"  3/3  top-boosts — largest boosts of the last {TB_WINDOW_DAYS} days")
     print("==============================================================")
 
-    boosts = tb_aggregate(rows)
+    since  = tb_window_start()
+    boosts = tb_aggregate(rows, since)
+    print(f"Window: {since} → now ({TB_WINDOW_DAYS} days)")
     print(f"Aggregated {len(boosts)} boosts from sats.csv\n")
 
     if not boosts:
-        print("[warn] No boosts found; nothing to publish.")
+        print(f"[warn] No boosts in the last {TB_WINDOW_DAYS} days; nothing to publish.")
         return
 
     ranked = boosts[:TB_TOP_N]
