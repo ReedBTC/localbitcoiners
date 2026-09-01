@@ -426,23 +426,32 @@ function buildEventActions(parsed, actionsLeft = null, bech32 = '', { promote = 
 
 // "Featured by (pfp) Name" credit for a featured card, shown where the Promote
 // button sits on non-featured cards. `info` is { pubkey (hex), name, picture }
-// for whoever boosted the event into the Featured section. Click-to-copy-npub,
-// mirroring the author-id control.
+// for whoever boosted the event into the Featured section; an anonymous boost
+// arrives with an empty pubkey and the name typed in the boost form.
+// Click-to-copy-npub, mirroring the author-id control.
 function buildFeaturedBy(info) {
   if (!info) return document.createElement('span')
-  // No booster known (an anonymous feature): just "Featured · 3d ago".
+  // No npub on the feature (an anonymous boost): credit the name the booster
+  // typed in the boost form, or the form's own default. Plain text with no
+  // avatar, since there is no profile to open — the pfp + name are clickable
+  // everywhere else, so giving this one a face would imply a page behind it.
   if (!info.pubkey) {
     const anon = document.createElement('span')
     anon.className = 'featured-by featured-by--anon'
-    if (!info.when) return anon
     const lbl = document.createElement('span')
     lbl.className = 'featured-by-label'
-    lbl.textContent = 'Featured'
+    lbl.textContent = 'Featured by'
     anon.appendChild(lbl)
-    const when = document.createElement('span')
-    when.className = 'featured-by-when'
-    when.textContent = '· ' + info.when
-    anon.appendChild(when)
+    const nm = document.createElement('span')
+    nm.className = 'featured-by-name'
+    nm.textContent = anonBoosterName(info.name)
+    anon.appendChild(nm)
+    if (info.when) {
+      const when = document.createElement('span')
+      when.className = 'featured-by-when'
+      when.textContent = '· ' + info.when
+      anon.appendChild(when)
+    }
     return anon
   }
   const hasPubkey = /^[0-9a-f]{64}$/i.test(info.pubkey)
@@ -510,6 +519,21 @@ const PROMOTE_TEMPLATE = 'Boosting my meetup from https://localbitcoiners.com/fe
 // refresh catches up. One slot (boosts are sequential) with a short TTL.
 export const PENDING_PROMOTE_KEY = 'lb_pending_promote'
 const PENDING_PROMOTE_TTL = 10 * 60 * 1000
+
+// Who an anonymous feature is credited to. A boost paid without a Nostr
+// identity reaches the ledger with `sender_npub` empty and `sender_name`
+// carrying whatever the booster typed in the boost form — the form stamps this
+// same string when the field is left blank (sanitizeShowSender in
+// login-widget/src/lib/boostagram.js), and the sats-log side keeps the two
+// columns mutually exclusive (bots/shared/boost_formatter.py). Rows written
+// before the sender_name tag existed carry neither, so they fall back to the
+// literal and read exactly like a fresh anonymous boost.
+export const ANON_BOOSTER_NAME = 'A Local Bitcoiner'
+
+export function anonBoosterName(senderName) {
+  const s = typeof senderName === 'string' ? senderName.trim() : ''
+  return s || ANON_BOOSTER_NAME
+}
 
 export function readPendingPromote() {
   try {

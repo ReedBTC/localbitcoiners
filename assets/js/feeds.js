@@ -41,6 +41,7 @@ import {
   parseSettledAt,
   relAge,
   currentBooster,
+  anonBoosterName,
 } from '/assets/js/featured-shared.js'
 
 // Hourly events snapshot (Cloudflare Pages Function proxying the file
@@ -350,7 +351,7 @@ function isCalendarCoord(coordinate) {
 async function fetchBoostedSet() {
   const coords = new Set()
   const hints = new Set()
-  const by = new Map()  // coord -> { pubkey, name, picture }
+  const by = new Map()  // coord -> { pubkey, name, picture } (pubkey '' when anon)
   const at = new Map()  // coord -> ms of the most recent boost
   try {
     const res = await fetch(MEETUPS_JSON, { cache: 'no-cache' })
@@ -362,13 +363,19 @@ async function fetchBoostedSet() {
       if (!isCalendarCoord(r.coordinate)) continue
       coords.add(r.coordinate)
       const ts = parseSettledAt(r.settled_at)
-      if (ts > (at.get(r.coordinate) || 0)) at.set(r.coordinate, ts)
       if (typeof r.naddr === 'string') {
         for (const h of relayHintsFromNaddr(r.naddr)) hints.add(h)
       }
-      if (!by.has(r.coordinate)) {
+      // Rows arrive newest-first, but don't rely on it: the most recent boost
+      // is the one credited, and the one that sets the event's featured-at.
+      // An anonymous boost still carries a credit — the name typed in the boost
+      // form, with an empty pubkey so the card renders it as plain text.
+      if (!at.has(r.coordinate) || ts > at.get(r.coordinate)) {
+        at.set(r.coordinate, ts)
         const pubkey = npubToHex(r.sender_npub)
-        if (pubkey) by.set(r.coordinate, { pubkey, name: r.sender_name || '', picture: '' })
+        by.set(r.coordinate, pubkey
+          ? { pubkey, name: r.sender_name || '', picture: '' }
+          : { pubkey: '', name: anonBoosterName(r.sender_name), picture: '' })
       }
     }
   } catch (e) {
@@ -702,7 +709,8 @@ function renderEvents(panel, allItems, range = '1m', type = 'inperson', featured
     return 0
   }
   // The credit gets the relative age beside the name, like the other tabs'
-  // boxes; a feature with no known booster still says "Featured · 3d ago".
+  // boxes; a feature with no npub is credited to the name typed in the boost
+  // form ("A Local Bitcoiner" when that was left blank).
   const credits = new Map()
   const creditFor = (coord) => {
     const by = featuredBy && featuredBy.get(coord)

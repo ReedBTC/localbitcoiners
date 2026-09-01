@@ -22,9 +22,15 @@
 import { SimplePool, verifyEvent, nip19 } from '/assets/widgets/nostr-tools.js'
 import { STATIC_RELAYS, fetchProfilesFromPrimal } from '/assets/js/boosts-thread.js'
 import { ensureLoginWidget } from '/assets/js/widget-loader.js'
-import { PENDING_PROMOTE_KEY, readPendingPromote, clearPendingPromote } from '/assets/js/calendar-events.js'
+import {
+  PENDING_PROMOTE_KEY, readPendingPromote, clearPendingPromote,
+  ANON_BOOSTER_NAME, anonBoosterName,
+} from '/assets/js/calendar-events.js'
 
 export { PENDING_PROMOTE_KEY, readPendingPromote, clearPendingPromote }
+// One definition of the anonymous credit name for all four tabs; it lives in
+// calendar-events.js because the Events card's credit builder is over there.
+export { ANON_BOOSTER_NAME, anonBoosterName }
 
 const FEATURED_LOG = '/api/meetups'
 
@@ -69,7 +75,7 @@ export function relayHintsFromNaddr(naddr) {
 
 /**
  * Read the boosted-item log and keep the rows `keep(row)` accepts. Returns a
- * coord → { featuredAt, by, sats, naddr } map (newest boost per coordinate
+ * coord → { featuredAt, by, byName, sats, naddr } map (newest boost per coordinate
  * wins) plus any relay hints seen on the rows' naddrs. Best-effort: an
  * unreachable log means "nothing featured", never a hard error on a tab.
  */
@@ -93,6 +99,9 @@ export async function fetchFeaturedSet(keep, { tag = 'featured' } = {}) {
       featured.set(r.coordinate, {
         featuredAt,
         by: pubkey ? { pubkey, name: r.sender_name || '', picture: '' } : null,
+        // An anonymous feature has no pubkey to resolve a profile from, so the
+        // credit falls back to the name typed in the boost form.
+        byName: pubkey ? '' : anonBoosterName(r.sender_name),
         sats: parseInt(r.total_sats, 10) || 0,
         naddr: typeof r.naddr === 'string' ? r.naddr : '',
       })
@@ -234,8 +243,9 @@ export async function openFeatureBoost({ prefillMessage, feature }, onFail) {
 }
 
 // The signed-in booster, for the immediate "Featured by …" credit a settle
-// listener paints before the log catches up. Null when signed out (the log
-// will still credit an anonymous feature as "Featured · just now").
+// listener paints before the log catches up. Null when signed out, which paints
+// the anonymous credit ("Featured by A Local Bitcoiner · just now") until the
+// log lands with whatever name the booster actually typed.
 export function currentBooster() {
   try {
     const u = window.LBLogin?.getUser?.()
@@ -378,11 +388,18 @@ export const FEATURE_BOLT_SVG =
  */
 export function featuredByEl(info, { avatar, name, link, onCopy, cls = 'feat-by' }) {
   const when = relAge(info?.featuredAt)
-  if (!info || !info.by || !info.by.pubkey) {
-    return when ? h('span', { class: `${cls} ${cls}--anon` }, [
-      h('span', { class: `${cls}-label`, text: 'Featured' }),
-      h('span', { class: `${cls}-when`, text: when }),
-    ]) : null
+  if (!info) return null
+  // An anonymous feature: credit the name the booster typed in the boost form,
+  // or the form's own default. Plain text with no avatar, since there is no
+  // profile to open — everywhere else the pfp + name are the clickable part, so
+  // giving this credit a face would imply a page behind it.
+  if (!info.by || !info.by.pubkey) {
+    const el = h('span', { class: `${cls} ${cls}--anon` }, [
+      h('span', { class: `${cls}-label`, text: 'Featured by' }),
+      h('span', { class: `${cls}-name`, text: anonBoosterName(info.byName) }),
+    ])
+    if (when) el.appendChild(h('span', { class: `${cls}-when`, text: '· ' + when }))
+    return el
   }
   const pk = info.by.pubkey
   const who = name(pk)

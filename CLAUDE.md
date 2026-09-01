@@ -93,6 +93,14 @@ filters that one file to its kind (`assets/js/featured-*.js`, shared parts in
   from the OnlyBoosts URL path *whole* — item guids are opaque, some contain
   slashes, some are full URLs. Split on `/` or treat a blank `event_kind` as
   malformed and the Podcasts tab silently empties.
+- **An anonymous feature is credited by name, not by profile.** A boost paid
+  without a Nostr identity reaches the log with `sender_npub` empty and
+  `sender_name` carrying whatever the booster typed (the boost form stamps
+  "A Local Bitcoiner" when that field is blank, and the sats-log side keeps the
+  two columns mutually exclusive). Both credit builders render that name as
+  plain text with no avatar, falling back to the literal for rows written
+  before the `sender_name` tag existed; `ANON_BOOSTER_NAME` in
+  `calendar-events.js` is the single definition.
 - **A feature lives 33 days** (`FEATURE_TTL_DAYS` in `featured-shared.js`,
   enforced by `inFeaturedRange`), then the item rejoins its feed with the
   Feature button back; re-boosting renews. Events are exempt (`ttlDays: 0` in
