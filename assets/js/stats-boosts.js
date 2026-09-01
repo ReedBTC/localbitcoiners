@@ -2,9 +2,10 @@
  *
  * Fetches the show-wide boost mega-thread (same fetch + render path as
  * /boosts.html and the episode pages) and renders the biggest bot boost
- * notes largest-first: the top TOP_MONTH of the last 30 days, or the top
- * TOP_ALL of all time. Replies to those boosts are not shown. The sat
- * amount is parsed from the bot's "💰 N sats" line in the note content.
+ * notes largest-first: the top TOP_MONTH of the last MONTH_WINDOW_DAYS days
+ * (33, not 30 — see the range comment below), or the top TOP_ALL of all
+ * time. Replies to those boosts are not shown. The sat amount is parsed
+ * from the bot's "💰 N sats" line in the note content.
  *
  * Hooks the shared boost-actions module in so every card gets the same
  * Reply/Repost/Like/Zap bar /boosts.html shows.
@@ -28,11 +29,12 @@ const TOP_ALL = 5
 // that is the default; All is a click away. Applied on the note's
 // created_at, which is when the bot published the boost.
 //
-// The 1M window is deliberately 33 days, not 30. It is an easter egg
-// (33 sats, 33/33/34 split, 33-day feature life), and the page still says
-// "last 30 days" on purpose: it is not a secret, it is just not advertised
-// on the site. Do not "fix" it to 30, and do not change the visible copy.
-// This applies only to this section; every other 1M on the site is 30 days.
+// The 1M window is deliberately 33 days, not 30 — an easter egg (33 sats,
+// 33/33/34 split, 33-day feature life). Do not "fix" it to 30. The subline
+// states the real 33 days (Reed's call, 2026-09-01); the range pill's own
+// label and tooltip still read "Last 30 days", which is the pill's shorthand
+// for the 1M bucket and is intentionally left alone. This applies only to
+// this section; every other 1M on the site is 30 days.
 const RANGES = [['1m', '1M', 'Last 30 days'], ['all', 'All', 'All time']]
 const MONTH_WINDOW_DAYS = 33
 let range = '1m'
@@ -72,7 +74,7 @@ function updateSub() {
   const sub = document.querySelector('[data-boosts-sub]')
   if (!sub) return
   sub.textContent = range === '1m'
-    ? 'The ' + TOP_MONTH + ' biggest Nostr Boost Bot Notes of the last 30 days'
+    ? 'The ' + TOP_MONTH + ' biggest Nostr Boost Bot Notes of the last ' + MONTH_WINDOW_DAYS + ' days'
     : 'The ' + TOP_ALL + ' biggest Nostr Boost Bot Notes of all time'
 }
 

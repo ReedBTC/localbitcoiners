@@ -132,13 +132,15 @@ Sort + 1W/1M/All head. Things that fail silently if missed:
 - **By App tiles are data-driven** from `row.app`; a new app appears on its
   own the first time it boosts. Colors are a fixed map (`appColorVar`);
   add one when a new app shows up grey.
-- **Two range windows are intentionally off by design, and the labels stay
-  as they are.** The 1M on the stats page's Biggest Boosts - Notes section
-  is 33 days (`MONTH_WINDOW_DAYS` in `stats-boosts.js`, an easter egg), and
-  the 1W on `boosts.html` is 8 days (`WEEK_WINDOW_DAYS`, one day of overlap
-  so Reed and Rev can find where they left off reading boosts on the show).
-  Neither is advertised on the site; do not "fix" them or change the copy.
-  Every other 1W / 1M on the site is 7 / 30 days.
+- **Two range windows are intentionally off by design; do not "fix" them.**
+  The 1M on the stats page's Biggest Boosts - Notes section is 33 days
+  (`MONTH_WINDOW_DAYS` in `stats-boosts.js`, an easter egg), and the 1W on
+  `boosts.html` is 8 days (`WEEK_WINDOW_DAYS`, one day of overlap so Reed and
+  Rev can find where they left off reading boosts on the show). Every other
+  1W / 1M on the site is 7 / 30 days. The 33-day subline is now stated on the
+  page, in `stats.html`'s static copy and in `updateSub` (Reed's call,
+  2026-09-01) — keep both in step; the 1M pill's own "Last 30 days" label is
+  the bucket's shorthand and stays. The 8-day 1W is still unadvertised.
 - **The top-boosts leaderboard bot uses that same 33 days**
   (`TB_WINDOW_DAYS` in `bots/leaderboards/local_bitcoiners_leaderboards.py`,
   measured back from the moment the bot fires). It used to rank all time.
