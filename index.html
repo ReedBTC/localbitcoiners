@@ -1988,20 +1988,37 @@
        a label. Gold is #e0a92e — the same accent as boosted event cards
        and top-tier supporter rings — deliberately not the tab's purple
        accent, which belongs to page-level chrome. */
+    /* ⚠️ THE GOLD BOX IS GONE (Reed, 2026-09-06): the Featured view is its
+       own sub-tab, so the container that used to mark "the featured slot"
+       inside the feed marked nothing. .feat-box stays as the structural
+       wrapper the view switch keys on, unstyled; its head keeps only the
+       Find button, pinned right, since the sub-tab already says "Featured".
+       The gold itself survives on the cards (hairlines, credit, buttons). */
     .feat-box {
       --gold: #e0a92e;
       --gold-d: #a9761a;
       margin: 0 0 1.5rem;
-      padding: 0.85rem 0.9rem 0.9rem;
-      border: 1px solid var(--gold);
-      border-radius: 12px;
-      background: rgba(224,169,46,0.05);
-      box-shadow: 0 0 0 3px rgba(224,169,46,0.07);
+      padding: 0;
+      min-width: 0;
+      max-width: 100%;
     }
     .feat-head {
-      display: flex; align-items: center; justify-content: space-between;
+      display: flex; align-items: center; justify-content: flex-end;
       flex-wrap: wrap; gap: 0.5rem 0.9rem; margin-bottom: 0.8rem;
     }
+    .feat-head .feat-title { display: none; }
+    /* Nothing inside a panel may be wider than its column: on a phone the
+       shell clips at its own edge (overflow: clip), so a card that outgrows
+       the column reads as spilling out of the card. Grid children default to
+       min-content width unless told otherwise, and a long unbroken word in
+       a title or a boost message can still push past that. */
+    .feed-panel, [data-feed-list], [data-feed-list] > *, [class*="featured-mount"],
+    .feat-list, .feat-list > *, .pcast-list > *, .art-list > *, .market-grid > * {
+      min-width: 0; max-width: 100%;
+    }
+    .pcast-card, .art-card, .market-card, .feat-box { overflow-wrap: anywhere; }
+    .pcast-player { max-width: 100%; }
+    .pcast-details { min-width: 0; }
     .feat-title {
       display: inline-flex; align-items: center; gap: 0.4rem;
       font-family: 'Playfair Display', Georgia, serif;
@@ -2407,10 +2424,6 @@
       .art-card-media { width: 72px; height: 72px; }
       .art-reader-title { font-size: 1.5rem; }
       .art-prose { font-size: 1rem; }
-      /* Featured box: the title can't share a row with both the range pills
-         and the Find button here, so the actions wrap onto their own line and
-         pin right (still inside the gold border, which is the whole point). */
-      .feat-box { padding: 0.75rem 0.7rem 0.8rem; }
       .feat-actions { margin-left: auto; }
       .feat-find { font-size: 0.74rem; padding: 0.3rem 0.6rem; }
       /* The card foot runs out of room for "Read Full Article" plus a booster
