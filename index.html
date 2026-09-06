@@ -6,7 +6,15 @@
 
   <!-- Mark JS-capable before paint so the reveal-on-scroll hidden state
        (scoped under html.js) only applies when JS can un-hide it. No-JS
-       visitors + crawlers see all content. -->
+       visitors + crawlers see all content.
+
+       THIS PAGE IS THE COMMUNITY FEEDS PAGE (feeds-homepage, lb-v80). The
+       former /feeds became the homepage: a compact hero, the latest episode
+       with its drawers, a row of links into Supporters / Boosts / Stats, then
+       the four community feeds exactly as /feeds carried them, and the
+       Explore grid above the footer. /feeds 301s here; the feed tabs still
+       deep-link by hash (/#events, /#market, /#podcasts, /#articles,
+       /#market-cart). -->
   <script>document.documentElement.classList.add('js');</script>
 
   <!-- Pragmatic baseline CSP. `unsafe-inline` for script/style is
@@ -121,14 +129,11 @@
   <link rel="preload" as="font" type="font/woff2" href="assets/fonts/source-serif-4.woff2" crossorigin />
   <link rel="preload" as="font" type="font/woff2" href="assets/fonts/playfair-display.woff2" crossorigin />
 
-  <!-- Styles the real boost note cards in the "Recent Boosts" marquee
-       (same cards as /boosts and /stats). Read-only here — no action-bar
-       CSS (boost-actions.css) needed. -->
+  <!-- Shared note / card styles (.embed-note etc.) for the feeds' cards. -->
   <link rel="stylesheet" href="/assets/css/boosts-thread.css" />
-  <!-- Merch marquee cards reuse the storefront card classes, and clicking one
-       opens the same product detail modal as /merch (home-merch.js), so the
-       full merch storefront CSS is needed here too. -->
-  <link rel="stylesheet" href="/assets/css/merch.css" />
+  <!-- Action-bar, toast, and zap-modal styles for the event cards' Renote
+       + Zap buttons (renderer reuses boost-actions.js). -->
+  <link rel="stylesheet" href="/assets/css/boost-actions.css" />
 
   <style>
     @font-face {
@@ -160,6 +165,7 @@
       src: url('assets/fonts/source-serif-4-italic.woff2') format('woff2');
     }
 
+
     /* ── Reset & Base ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -183,7 +189,30 @@
       --muted:   #6b5a3e;
       --border:  #d4c4a0;
       --white:   #fffdf7;
+      --bg:      #ede3c8;   /* used by a few reused merch.css rules */
+
+      /* ── Per-feed theme palette ──────────────────────────────────
+         Each of the four feeds owns an accent (used for its tab, the
+         active-panel wash, and its cards). The active feed's trio is
+         mirrored into --accent / --accent-d / --tint by the
+         [data-active-feed] rules below so the shared chrome (panel,
+         toolbar) can just read --accent. */
+      --podcasts-accent: #5e7d3a;  --podcasts-accent-d: #46602c;  --podcasts-tint: #eef3e2;
+      --market-accent:   #d97b0e;  --market-accent-d:   #b8640a;  --market-tint:   #fbefda;
+      --events-accent:   #2f6f8f;  --events-accent-d:   #245a75;  --events-tint:   #e6f0f5;
+      --articles-accent: #7150a6;  --articles-accent-d: #573c86;  --articles-tint: #efe9f6;
+
+      /* Defaults (Events is the default tab) — overridden per active feed. */
+      --accent:   var(--events-accent);
+      --accent-d: var(--events-accent-d);
+      --tint:     var(--events-tint);
     }
+
+    /* Active-feed → accent mapping. Set on <body data-active-feed>. */
+    body[data-active-feed="events"]   { --accent: var(--events-accent);   --accent-d: var(--events-accent-d);   --tint: var(--events-tint); }
+    body[data-active-feed="market"]   { --accent: var(--market-accent);   --accent-d: var(--market-accent-d);   --tint: var(--market-tint); }
+    body[data-active-feed="podcasts"] { --accent: var(--podcasts-accent); --accent-d: var(--podcasts-accent-d); --tint: var(--podcasts-tint); }
+    body[data-active-feed="articles"] { --accent: var(--articles-accent); --accent-d: var(--articles-accent-d); --tint: var(--articles-tint); }
 
     html { scroll-behavior: smooth; }
 
@@ -193,6 +222,7 @@
       color: var(--text);
       line-height: 1.65;
       font-size: 17px;
+      color-scheme: light;
     }
 
     a { color: var(--green-d); text-decoration: underline; text-underline-offset: 3px; }
@@ -200,24 +230,37 @@
 
     img { display: block; max-width: 100%; }
 
+    @keyframes skeleton-shimmer {
+      0% { background-position: 100% 0; }
+      100% { background-position: -100% 0; }
+    }
+
     /* Nav styles are shared — see /assets/css/nav.css. */
 
     /* ── Hero ── */
+    /* A compact brand band (feeds-homepage): the banner is capped at 680px
+       and centred on the navy ground instead of running edge to edge, and
+       the tagline band under it is tighter. The banner is 5:1, so this is
+       ~136px of image plus one line of tagline on desktop; on phones the
+       image is already viewport-wide and shows uncropped, as before. */
     #hero {
       width: 100%;
       background: var(--navy);
+      padding-top: 0.9rem;
     }
     #hero img {
       width: 100%;
+      max-width: 680px;
       height: auto;
       display: block;
+      margin: 0 auto;
     }
     /* Tagline band: sits directly below the banner image (no longer an
        overlay), so it never lands on top of the banner's own lettering
        — especially on mobile where the full banner shows uncropped. */
     .hero-overlay {
       background: var(--navy);
-      padding: 1.1rem 2rem 1.4rem;
+      padding: 0.55rem 2rem 0.9rem;
       text-align: center;
     }
     .hero-text {
@@ -248,46 +291,6 @@
       clip: rect(0, 0, 0, 0);
       white-space: nowrap;
       border: 0;
-    }
-
-    /* ── Section wrapper ── */
-    .section {
-      max-width: 860px;
-      margin: 0 auto;
-      padding: 4rem 1.5rem;
-    }
-    .section-wide {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 4rem 1.5rem;
-    }
-
-    .section-title {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 1.9rem;
-      font-weight: 700;
-      color: var(--navy);
-      margin-bottom: 0.4rem;
-      position: relative;
-      padding-bottom: 0.6rem;
-    }
-    .section-title::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 52px;
-      height: 3px;
-      background: var(--green);
-      border-radius: 2px;
-    }
-
-    /* ── Divider ── */
-    .divider {
-      border: none;
-      border-top: 1px solid var(--border);
-      max-width: 860px;
-      margin: 0 auto;
     }
 
     /* ── Episodes ── */
@@ -591,11 +594,11 @@
       .episode-card:not(.featured) .episode-actions > .ep-subscribe .btn-subscribe { width: 100%; justify-content: center; }
     }
 
-    /* ════════════════════ HOMEPAGE HUB (redesign) ════════════════════
-       The homepage is a hub: a boost-forward featured episode, a live
-       "by the numbers" strip, the episode list, a recent-boosts ticker,
-       and teaser cards into the rest of the site. About / Hosts / links
-       fold into the rich footer below. */
+    /* ════════════════════ HOMEPAGE TOP BLOCK ════════════════════
+       What sits above the community feeds: the featured latest episode
+       (with its More Episodes / Subscribe drawers) and the quick-links row
+       into Supporters / Boosts / Stats. About / Hosts / links fold into
+       the rich footer below. */
 
     /* Eyebrow label above module titles + on the featured hero. */
     .home-eyebrow {
@@ -650,7 +653,47 @@
       .episode-card.featured .btn-boost { width: 100%; justify-content: center; }
     }
 
-    /* ── Shared module scaffold (numbers / boosts / explore) ── */
+    /* ── Quick links (Supporters / Boosts / Stats) ── Three equal pills
+       under the featured episode, on the same white ground so the top of the
+       page reads as one block before the navy Community Feeds band. */
+    #quick-links { background: var(--white); }
+    .quick-links {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0.25rem 1.5rem 2.5rem;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.9rem;
+    }
+    .quick-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.55rem;
+      padding: 0.95rem 1rem;
+      background: var(--cream);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--navy);
+      text-decoration: none;
+      transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s, color 0.15s;
+    }
+    .quick-link:hover {
+      box-shadow: 0 8px 26px rgba(30,58,95,0.10);
+      transform: translateY(-2px);
+      border-color: var(--green);
+      color: var(--green-d);
+    }
+    .quick-link-icon { font-size: 1.25em; line-height: 1; }
+    @media (max-width: 600px) {
+      .quick-links { gap: 0.6rem; padding: 0 1.1rem 1.8rem; }
+      .quick-link { padding: 0.8rem 0.4rem; font-size: 0.98rem; gap: 0.4rem; }
+    }
+
+    /* ── Shared module scaffold (explore) ── */
     .home-module { max-width: 1100px; margin: 0 auto; padding: 3rem 1.5rem; }
     .home-module-head {
       display: flex;
@@ -682,487 +725,6 @@
       transition: border-color 0.15s;
     }
     .home-module-link:hover { border-color: var(--green-d); }
-
-    /* ── Leaderboards ── A swipeable carousel: one board per view (Top
-       Episodes, Top Listeners, then Biggest Boosts), auto-rotating with dots.
-       White section (the lb-cards carry their own border + shadow) — sits
-       below the community section, keeping the cream/white stripe alternating. */
-    #leaderboards { background: var(--white); }
-    .lb-carousel-hint {
-      font-size: 0.82rem;
-      color: var(--muted);
-      font-style: italic;
-      margin: -0.6rem 0 1.1rem;
-      text-align: center;
-    }
-    .lb-carousel { position: relative; }
-    /* Horizontal scroll-snap track — native swipe + JS auto-advance share the
-       same scroll position; one slide fills the view and snaps to center. */
-    .lb-track {
-      display: flex;
-      align-items: stretch;
-      overflow-x: auto;
-      scroll-snap-type: x mandatory;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
-      outline: none;
-    }
-    .lb-track::-webkit-scrollbar { display: none; }
-    .lb-slide {
-      flex: 0 0 100%;
-      scroll-snap-align: center;
-      display: flex;
-      justify-content: center;
-      padding: 0.4rem 0.5rem 0.6rem;   /* breathing room for the card shadow */
-      box-sizing: border-box;
-    }
-    /* Fixed card height keeps the carousel from jumping between boards and caps
-       the Biggest Boosts feed (which would otherwise grow to its full list). */
-    .lb-slide .lb-card {
-      width: min(620px, 100%);
-      height: clamp(440px, 64vh, 480px);
-      margin: 0;
-    }
-    .lb-dots { display: flex; justify-content: center; gap: 0.5rem; margin-top: 0.9rem; }
-    .lb-dot {
-      width: 9px; height: 9px;
-      padding: 0;
-      border: none;
-      border-radius: 50%;
-      background: var(--border);
-      cursor: pointer;
-      transition: background 0.2s, transform 0.2s;
-    }
-    .lb-dot:hover { background: var(--muted); }
-    .lb-dot.is-active { background: var(--orange-d); transform: scale(1.3); }
-    /* Nostr-note-ish card: titled header band, then a ranked list. */
-    .lb-card {
-      background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.25rem 1.25rem 1rem;
-      box-shadow: 0 2px 10px rgba(30,58,95,0.06);
-      display: flex;
-      flex-direction: column;
-    }
-    .lb-card-head { display: flex; align-items: center; gap: 0.55rem; }
-    .lb-card-icon { font-size: 1.25rem; line-height: 1; }
-    .lb-card-head h3 {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: var(--navy);
-    }
-    .lb-card-sub {
-      font-size: 0.8rem;
-      color: var(--muted);
-      font-style: italic;
-      margin: 0.2rem 0 1rem;
-    }
-    .lb-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.7rem; }
-    /* minmax(0,1fr) — not plain 1fr — so the name/meta column can actually
-       shrink and ellipsize instead of overflowing into the figure. */
-    .lb-row {
-      display: grid;
-      grid-template-columns: 1.4rem auto minmax(0, 1fr) auto;
-      align-items: center;
-      gap: 0.55rem;
-    }
-    /* Episode rows have no avatar column → collapse it. */
-    .lb-row.lb-row--noavatar { grid-template-columns: 1.4rem minmax(0, 1fr) auto; }
-    .lb-rank {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-weight: 700;
-      font-size: 0.95rem;
-      text-align: center;
-      color: var(--muted);
-    }
-    .lb-rank.is-medal { font-size: 1.1rem; }
-    .lb-avatar {
-      width: 30px; height: 30px;
-      border-radius: 50%;
-      overflow: hidden;
-      background: var(--cream-d);
-      border: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-    .lb-avatar img { width: 100%; height: 100%; object-fit: cover; }
-    .lb-main { min-width: 0; }
-    .lb-name {
-      display: block;            /* ellipsis needs a block, not an inline <a>/<span> */
-      font-weight: 700;
-      color: var(--navy);
-      font-size: 0.9rem;
-      line-height: 1.25;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .lb-meta {
-      display: block;
-      font-size: 0.76rem;
-      color: var(--muted);
-      line-height: 1.3;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .lb-figure {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-weight: 700;
-      font-size: 0.86rem;
-      color: var(--orange-d);
-      white-space: nowrap;
-      text-align: right;
-      font-variant-numeric: tabular-nums;
-    }
-    .lb-loading, .lb-empty { color: var(--muted); font-style: italic; font-size: 0.88rem; }
-    /* Episode title becomes a link to /ep###; guest mentions are nostrized. */
-    a.lb-name { text-decoration: none; color: var(--navy); }
-    a.lb-name:hover { color: var(--green-d); text-decoration: underline; text-underline-offset: 2px; }
-    .lb-mention { color: var(--green-d); text-decoration: none; }
-    .lb-mention:hover { text-decoration: underline; text-underline-offset: 2px; }
-
-    /* Biggest Boosts (wide card): each row is rank + avatar + a body with a
-       name/amount line and the full boost message (the "ad read"). */
-    .lb-list--boosts { gap: 0.7rem; }
-    .lb-boost-item {
-      display: grid;
-      grid-template-columns: 1.5rem 36px minmax(0, 1fr);
-      gap: 0.6rem;
-      align-items: start;
-      padding-bottom: 0.7rem;
-      border-bottom: 1px solid var(--border);
-    }
-    .lb-boost-item:last-child { padding-bottom: 0; border-bottom: none; }
-    .lb-boost-item .lb-rank { font-size: 1.1rem; padding-top: 0.05rem; }
-    .lb-boost-item .lb-avatar { width: 36px; height: 36px; }
-    .lb-boost-body { min-width: 0; }
-    .lb-boost-top {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-    }
-    .lb-boost-top .lb-name { white-space: normal; overflow: visible; font-size: 0.95rem; }
-    .lb-boost-amt {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-weight: 700;
-      color: var(--orange-d);
-      font-size: 0.85rem;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    .lb-boost-msg {
-      margin-top: 0.15rem;
-      color: var(--text);
-      font-size: 0.86rem;
-      line-height: 1.42;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-    .lb-boost-msg .lb-mention { font-weight: 600; }
-    .lb-boost-msg .lb-url {
-      color: var(--green-d);
-      text-decoration: underline;
-      text-underline-offset: 2px;
-      word-break: break-all;
-    }
-    .lb-boost-msg .lb-url:hover { text-decoration: none; }
-
-    /* Biggest Boosts as a fixed-height, vertically auto-scrolling feed:
-       top-5 rows on a gentle loop, but a real scroll container so the reader
-       can hover/scroll/drag to take over (home-leaderboards.js). Edge fade +
-       hidden scrollbar keep it reading like a ticker, not a scrollbox. */
-    .lb-list--feed {
-      flex: 1 1 auto;
-      min-height: 0;            /* fill the fixed-height card; lets the flex child clip */
-      overflow-y: auto;
-      overflow-x: hidden;
-      /* Leave touch-action at the default `auto` so the browser routes by
-         gesture direction: a vertical swipe scrolls this feed, a horizontal
-         swipe bubbles to the carousel track (this feed is overflow-x:hidden,
-         so it can't consume horizontal). An explicit `pan-y` here would be
-         WRONG — it intersects with the track's auto to `pan-y` and blocks
-         sideways swipes that start on the Biggest Boosts card. */
-      overscroll-behavior: contain;
-      scrollbar-width: none;
-      cursor: grab;
-      -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
-              mask-image: linear-gradient(to bottom, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
-    }
-    .lb-list--feed::-webkit-scrollbar { width: 0; height: 0; }
-    .lb-list--feed.is-grabbing { cursor: grabbing; }
-    .lb-list--feed.is-grabbing * { user-select: none; }
-    .lb-feed-hint {
-      font-size: 0.8rem;
-      color: var(--muted);
-      font-style: italic;
-      margin: -0.35rem 0 1.1rem;
-    }
-    @media (max-width: 760px) { .lb-slide { padding: 0.4rem 0.35rem 0.6rem; } }
-
-    /* ── Recent boosts ticker (top 20, ~4 visible, scrolls; pfp + name) ── */
-    #boosts-preview { background: var(--white); }
-    .boost-marquee-hint {
-      font-size: 0.82rem;
-      color: var(--muted);
-      font-style: italic;
-      margin: -0.6rem 0 1.1rem;
-    }
-    /* Horizontal marquee — a real scroll container (overflow-x:auto) so it
-       can be auto-scrolled by JS AND dragged/swiped manually; both share
-       one scroll position. Side mask fades cards in/out at the edges. */
-    .boost-marquee {
-      display: flex;
-      align-items: stretch;
-      overflow-x: auto;
-      overflow-y: hidden;
-      height: clamp(300px, 42vh, 380px);
-      cursor: grab;
-      scrollbar-width: none;            /* drag/auto are the controls */
-      -ms-overflow-style: none;
-      -webkit-mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent);
-      mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent);
-    }
-    .boost-marquee::-webkit-scrollbar { display: none; }
-    .boost-marquee.is-grabbing { cursor: grabbing; }
-    /* Fixed-width, full-height cards sitting side by side. Spacing lives on
-       the item margin (not container gap) so the two cloned sets stay
-       exactly equal width → the scrollLeft wrap is seamless. */
-    .boost-marquee-item {
-      flex: 0 0 auto;
-      width: min(560px, 88vw);
-      height: 100%;
-      margin-right: 1rem;
-    }
-    .boost-marquee .note-card {
-      height: 100%;
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      background: var(--white);          /* contrast on the cream section */
-      overflow: hidden;
-      cursor: pointer;                   /* click opens the full note modal */
-    }
-    /* Body flexes + clips long boosts; a fade hints there's more (full text
-       via "View on Nostr"). min-height:0 lets the flex child actually clip. */
-    .boost-marquee .note-card .note-body {
-      flex: 1 1 auto;
-      min-height: 0;
-      overflow: hidden;
-      position: relative;
-    }
-    .boost-marquee .note-card .note-body::after {
-      content: '';
-      position: absolute;
-      left: 0; right: 0; bottom: 0;
-      height: 2.4rem;
-      background: linear-gradient(to bottom, rgba(255,253,247,0), var(--white));
-    }
-    .boost-empty { color: var(--muted); font-style: italic; padding: 1.5rem 0; align-self: center; }
-
-    /* Read modal — full, un-clipped note opened by clicking a card. */
-    .lb-boost-read-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 300;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 1.5rem;
-      background: rgba(43,35,26,0.55);
-      opacity: 0;
-      transition: opacity 0.15s ease;
-    }
-    .lb-boost-read-overlay.open { opacity: 1; }
-    .lb-boost-read-modal {
-      position: relative;
-      width: 100%;
-      max-width: 560px;
-      max-height: 85vh;
-      overflow-y: auto;
-      background: var(--white);
-      border-radius: 12px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-      padding: 1.5rem 1.5rem 1.25rem;
-    }
-    .lb-boost-read-modal .note-card {
-      background: transparent;
-      border: none;
-      box-shadow: none;
-      padding: 0;
-      margin: 0;
-    }
-    .lb-boost-read-close {
-      position: absolute;
-      top: 0.7rem;
-      right: 0.7rem;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      border: none;
-      background: var(--cream-d);
-      color: var(--navy);
-      font-size: 0.95rem;
-      line-height: 1;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    .lb-boost-read-close:hover { background: var(--border); }
-    /* Reduced motion: no JS auto-scroll (handled in JS); hide the duplicate
-       set so it's just a normal, manually-scrollable strip. */
-    @media (prefers-reduced-motion: reduce) {
-      .boost-marquee { -webkit-mask-image: none; mask-image: none; scrollbar-width: auto; }
-      .boost-marquee::-webkit-scrollbar { display: initial; height: 8px; }
-      .boost-marquee-item.is-dupe { display: none; }
-    }
-
-    /* ── Merch marquee (same engine as the boosts marquee, scrolls the
-       opposite direction; simplified cards → open the /merch detail modal) ── */
-    #merch-preview { background: var(--cream); }
-    .merch-marquee {
-      display: flex;
-      align-items: stretch;
-      overflow-x: auto;
-      overflow-y: hidden;
-      cursor: grab;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
-      -webkit-mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent);
-      mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent);
-    }
-    .merch-marquee::-webkit-scrollbar { display: none; }
-    .merch-marquee.is-grabbing { cursor: grabbing; }
-    /* Fixed-width cards side by side. Spacing on the item margin (not container
-       gap) so the two cloned sets stay exactly equal width → seamless wrap. */
-    .merch-marquee-item {
-      flex: 0 0 auto;
-      width: min(240px, 70vw);
-      margin-right: 1.5rem;
-    }
-    .merch-marquee .merch-card { height: 100%; }
-    .merch-marquee-empty { color: var(--muted); font-style: italic; padding: 1.5rem 0; align-self: center; }
-    @media (prefers-reduced-motion: reduce) {
-      .merch-marquee { -webkit-mask-image: none; mask-image: none; scrollbar-width: auto; }
-      .merch-marquee::-webkit-scrollbar { display: initial; height: 8px; }
-      .merch-marquee-item.is-dupe { display: none; }
-    }
-
-    /* ── Community Feeds teaser (Events + Marketplace tabs → /feeds) ──
-       Two segmented tabs over an auto-scrolling strip; Events flows right,
-       Marketplace flows left (echoing boosts↔merch below). Event cards reuse
-       .embed-note.is-event (boosts-thread.css); market cards reuse .merch-card
-       (merch.css); the strip mechanics mirror the marquees above. */
-    #community-feeds { background: var(--cream); }
-    .cf-tabs {
-      display: inline-flex;
-      gap: 0.25rem;
-      padding: 0.25rem;
-      margin-bottom: 1rem;
-      background: var(--cream-d);
-      border: 1px solid var(--border);
-      border-radius: 999px;
-    }
-    .cf-tab {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      padding: 0.4rem 0.95rem;
-      border: none;
-      border-radius: 999px;
-      background: transparent;
-      color: var(--muted);
-      font: inherit;
-      font-size: 0.9rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.15s, color 0.15s;
-    }
-    .cf-tab svg { width: 16px; height: 16px; }
-    .cf-tab:hover { color: var(--text); }
-    .cf-tab.is-active {
-      background: var(--white);
-      color: var(--orange-d);
-      box-shadow: 0 1px 3px rgba(45,32,16,0.12);
-    }
-    .cf-panel { display: none; }
-    .cf-panel.is-active { display: block; }
-    .cf-strip {
-      display: flex;
-      align-items: stretch;
-      overflow-x: auto;
-      overflow-y: hidden;
-      cursor: grab;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
-      -webkit-mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent);
-      mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent);
-    }
-    .cf-strip::-webkit-scrollbar { display: none; }
-    .cf-strip.is-grabbing { cursor: grabbing; }
-    /* Spacing on the item margin (not container gap) so the two cloned sets
-       stay exactly equal width → seamless wrap. */
-    .cf-item { flex: 0 0 auto; margin-right: 1.25rem; cursor: pointer; }
-    .cf-item--event { width: min(340px, 84vw); }
-    .cf-item--event .embed-note {
-      margin: 0;
-      height: 100%;
-      max-height: 220px;
-      overflow: hidden;
-    }
-    .cf-item--market { width: min(220px, 66vw); }
-    .cf-item--market .merch-card { height: 100%; }
-    .cf-item--podcast { width: min(220px, 66vw); }
-    .cf-item--podcast .merch-card { height: 100%; }
-    .cf-item--article { width: min(240px, 70vw); }
-    .cf-item--article .merch-card { height: 100%; }
-    /* Boost tally under a podcast card (⚡ sats · N boosters). */
-    .cf-item-meta {
-      font-size: 0.78rem;
-      color: var(--muted);
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    /* Seller identity chip on a market card: pfp (or initial) + display name. */
-    .cf-item-seller {
-      display: flex;
-      align-items: center;
-      gap: 0.35rem;
-      font-size: 0.78rem;
-      color: var(--muted);
-      min-width: 0;
-    }
-    .cf-seller-pfp {
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      object-fit: cover;
-      flex: 0 0 auto;
-      background: var(--cream-d);
-    }
-    .cf-seller-pfp--none {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.62rem;
-      font-weight: 700;
-      color: var(--muted);
-    }
-    .cf-seller-name {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .cf-empty { color: var(--muted); font-style: italic; padding: 1.5rem 0; align-self: center; }
-    @media (prefers-reduced-motion: reduce) {
-      .cf-strip { -webkit-mask-image: none; mask-image: none; scrollbar-width: auto; }
-      .cf-strip::-webkit-scrollbar { display: initial; height: 8px; }
-      .cf-item.is-dupe { display: none; }
-    }
 
     /* ── Explore grid (a card per page) ── 4 across on desktop, 2 on mobile. */
     #explore { background: var(--white); }
@@ -1301,179 +863,6 @@
       color: var(--green-d);
     }
 
-    /* ── People section (Guests + Supporters, two tight rows) ── */
-    #people { background: var(--cream); }
-    /* Tighter than a default module — this is two rows in one frame, kept
-       close to the top per the homepage's "less distance" goal. */
-    #people .home-module { padding-top: 2.5rem; padding-bottom: 2.25rem; }
-    #people .home-module-head { margin-bottom: 1.1rem; }
-    .people-row + .people-row { margin-top: 1.1rem; }
-    .people-row-label {
-      display: inline-block;
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--green-d);
-      background: rgba(94,125,58,0.12);
-      border-radius: 999px;
-      padding: 0.18rem 0.75rem;
-      margin-left: 0.1rem;
-    }
-    .carousel-wrap { position: relative; }
-    .people-carousel {
-      display: flex;
-      gap: 1rem;
-      overflow-x: auto;
-      scroll-snap-type: x proximity;
-      -webkit-overflow-scrolling: touch;
-      scroll-behavior: smooth;
-      /* Generous vertical padding so the tier-ring halo (~16px glow)
-         isn't clipped by the scroll container's overflow. */
-      padding: 1rem 0.6rem 0.9rem;
-      scrollbar-width: thin;
-      scrollbar-color: var(--border) transparent;
-    }
-    .people-carousel::-webkit-scrollbar { height: 8px; }
-    .people-carousel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-    .people-carousel::-webkit-scrollbar-track { background: transparent; }
-    .people-card {
-      flex: 0 0 auto;
-      width: 108px;
-      scroll-snap-align: start;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.55rem;
-      background: none;
-      border: none;
-      padding: 0.25rem;
-      font: inherit;
-      color: var(--text);
-      text-align: center;
-      cursor: pointer;
-    }
-    .people-avatar {
-      width: 72px;
-      height: 72px;
-      border-radius: 50%;
-      overflow: hidden;
-      background: var(--cream-d);
-      border: 2px solid var(--border);
-      display: block;
-      transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
-    }
-    .people-card:hover .people-avatar { border-color: var(--green); transform: translateY(-2px); }
-    .people-avatar img { width: 100%; height: 100%; object-fit: cover; }
-    .people-avatar.is-blank {
-      background: radial-gradient(circle at 50% 38%, var(--cream-d), var(--border));
-    }
-    .people-rank {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 0.7rem;
-      font-weight: 700;
-      color: var(--orange-d);
-      letter-spacing: 0.04em;
-    }
-    .people-name {
-      font-size: 0.82rem;
-      font-weight: 600;
-      color: var(--navy);
-      line-height: 1.3;
-      max-width: 100%;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      word-break: break-word;
-    }
-    .people-sats { font-size: 0.74rem; color: var(--muted); }
-    /* Guest episode link(s) under the name (e.g. EP001 → /ep001). */
-    .people-eps {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 0.25rem 0.4rem;
-      margin-top: 0.1rem;
-    }
-    .people-eps a {
-      font-size: 0.68rem;
-      font-weight: 700;
-      letter-spacing: 0.03em;
-      color: var(--green-d);
-      text-decoration: none;
-    }
-    .people-eps a:hover { text-decoration: underline; text-underline-offset: 2px; }
-    .people-empty { color: var(--muted); font-style: italic; padding: 0.5rem 0; }
-    /* Skeleton avatar shimmer. */
-    .people-card.is-skeleton { cursor: default; }
-    .people-card.is-skeleton .people-avatar {
-      background: linear-gradient(90deg, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.10) 50%, rgba(0,0,0,0.04) 100%);
-      background-size: 200% 100%;
-      animation: skeleton-shimmer 1.4s ease-in-out infinite;
-    }
-    .people-card.is-skeleton .people-name {
-      width: 70%;
-      height: 0.82rem;
-      border-radius: 4px;
-      background: linear-gradient(90deg, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.10) 50%, rgba(0,0,0,0.04) 100%);
-      background-size: 200% 100%;
-      animation: skeleton-shimmer 1.4s ease-in-out infinite;
-    }
-    /* Desktop scroll arrows — hidden on touch/narrow where native swipe wins. */
-    .carousel-arrow {
-      position: absolute;
-      top: calc(50% - 18px);
-      transform: translateY(-50%);
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      border: 1px solid var(--border);
-      background: var(--white);
-      color: var(--navy);
-      font-size: 1.3rem;
-      line-height: 1;
-      cursor: pointer;
-      box-shadow: 0 2px 10px rgba(30,58,95,0.12);
-      z-index: 3;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.15s, opacity 0.15s;
-    }
-    .carousel-arrow:hover { background: var(--cream-d); }
-    .carousel-arrow.prev { left: -8px; }
-    .carousel-arrow.next { right: -8px; }
-    .carousel-arrow[hidden] { display: none; }
-    /* On touch/narrow screens keep the arrows visible (the clearest cue that
-       the row scrolls) but pull them onto the edges with a translucent bg so
-       a card still peeks behind. */
-    @media (hover: none), (max-width: 640px) {
-      .carousel-arrow { width: 30px; height: 30px; font-size: 1.1rem; background: rgba(255,253,247,0.92); }
-      .carousel-arrow.prev { left: 0; }
-      .carousel-arrow.next { right: 0; }
-    }
-    /* npub-copied toast (shared by the people carousels). */
-    .lb-people-toast {
-      position: fixed;
-      left: 50%;
-      bottom: 28px;
-      transform: translate(-50%, 12px);
-      background: var(--navy);
-      color: var(--cream);
-      font-size: 0.88rem;
-      font-weight: 600;
-      padding: 0.55rem 1.1rem;
-      border-radius: 999px;
-      box-shadow: 0 6px 22px rgba(0,0,0,0.28);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s ease, transform 0.2s ease;
-      z-index: 200;
-    }
-    .lb-people-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
-
     /* ── Reveal-on-scroll ── Hidden state is scoped under `html.js` so
        no-JS visitors and crawlers always see the content; the class is
        set synchronously in <head> before paint. */
@@ -1483,14 +872,1505 @@
       html.js .reveal { opacity: 1; transform: none; transition: none; }
     }
 
-    /* Rich footer styles are shared — see /assets/css/footer.css. */
+
+    /* ── Community Feeds band ── The former /feeds page header, now the
+       divider between the top block and the feeds. An h2 (the page's h1 is
+       the show, in the hero). scroll-margin-top clears the sticky nav when a
+       feed deep link (/#market) scrolls the band into view. */
+    .page-header {
+      background: var(--navy);
+      color: var(--cream);
+      padding: 2.25rem 1.5rem 1.9rem;
+      text-align: center;
+      scroll-margin-top: 64px;
+    }
+    .page-header h2 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      font-weight: 700;
+      color: var(--white);
+      line-height: 1.2;
+    }
+    .page-header p {
+      max-width: 640px;
+      margin: 0.6rem auto 0;
+      font-size: clamp(0.95rem, 2vw, 1.1rem);
+      color: var(--cream);
+      font-style: italic;
+    }
+
+    /* ── Feed tabs ──────────────────────────────────────────────────
+       Desktop: a row of four equal-width tabs, each carrying its own
+       feed color. The active tab fills with its accent; inactive tabs
+       show a colored icon + a thin colored top rule. The whole bar is
+       sticky under the nav so the tabs stay reachable while scrolling
+       a long feed.
+       Mobile: the bar collapses into a horizontally-scrollable row of
+       colored chips (icon + short name). */
+    .feed-tabs-wrap {
+      position: sticky;
+      top: 64px; /* height of #top-nav */
+      z-index: 40;
+      background: var(--cream);
+      border-bottom: 1px solid var(--border);
+    }
+    .feed-tabs {
+      max-width: 1000px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+    }
+    .feed-tab {
+      --tab: var(--muted);
+      appearance: none;
+      background: transparent;
+      border: 0;
+      border-top: 3px solid transparent;
+      font: inherit;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      padding: 0.95rem 0.75rem 0.85rem;
+      color: var(--muted);
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .feed-tab--events   { --tab: var(--events-accent); }
+    .feed-tab--market   { --tab: var(--market-accent); }
+    .feed-tab--podcasts { --tab: var(--podcasts-accent); }
+    .feed-tab--articles { --tab: var(--articles-accent); }
+
+    .feed-tab-icon {
+      width: 26px;
+      height: 26px;
+      color: var(--tab);
+      transition: color 0.15s;
+    }
+    .feed-tab-icon svg { width: 100%; height: 100%; display: block; }
+    .feed-tab-label {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: 0.01em;
+    }
+    .feed-tab-sub {
+      font-size: 0.72rem;
+      color: var(--muted);
+      opacity: 0.85;
+    }
+    .feed-tab:hover { background: rgba(0,0,0,0.03); }
+    .feed-tab:focus-visible {
+      outline: 2px solid var(--tab);
+      outline-offset: -2px;
+    }
+    .feed-tab[aria-selected="true"] {
+      background: var(--tab);
+      border-top-color: var(--tab);
+      color: var(--white);
+    }
+    .feed-tab[aria-selected="true"] .feed-tab-icon,
+    .feed-tab[aria-selected="true"] .feed-tab-sub { color: #fff; opacity: 0.95; }
+
+    /* ── Panels ── */
+    .feed-panels {
+      background: var(--tint);
+      transition: background 0.25s ease;
+      min-height: 60vh;
+    }
+    .feed-panels-inner {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+    }
+    .feed-panel { display: none; }
+    .feed-panel.is-active { display: block; }
+
+    /* Panel intro row — feed name + a short "what am I looking at" line,
+       plus a right-aligned live count once feeds hydrate. */
+    .feed-panel-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .feed-panel-head h2 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--accent-d);
+    }
+    .feed-panel-head p {
+      margin-top: 0.15rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+      font-style: italic;
+    }
+    .feed-count {
+      flex-shrink: 0;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--accent-d);
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.15rem 0.7rem;
+      white-space: nowrap;
+    }
+
+    /* Loading skeletons + states (feed content wired up in a later phase). */
+    .feed-list { display: grid; gap: 0.6rem; }
+    /* The shared .embed-note card carries its own vertical margin; drop it
+       inside a feed list so the grid gap is the only spacing between cards. */
+    .feed-list .embed-note { margin: 0; }
+    .feed-skeleton {
+      height: 104px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: linear-gradient(90deg,
+        rgba(0,0,0,0.03) 0%,
+        rgba(0,0,0,0.08) 50%,
+        rgba(0,0,0,0.03) 100%);
+      background-size: 200% 100%;
+      animation: skeleton-shimmer 1.4s ease-in-out infinite;
+    }
+    .feed-placeholder {
+      background: var(--white);
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      padding: 2.25rem 1.5rem;
+      text-align: center;
+      color: var(--muted);
+    }
+    .feed-placeholder strong {
+      display: block;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.1rem;
+      color: var(--accent-d);
+      margin-bottom: 0.35rem;
+    }
+
+    /* Collapsed "Past events / older posts" section under a feed's list. */
+    .feed-past {
+      margin-top: 1.75rem;
+      border-top: 1px solid var(--border);
+      padding-top: 1.1rem;
+    }
+    .feed-past > summary {
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: var(--accent-d);
+      padding: 0.3rem 0;
+    }
+    .feed-past > summary::-webkit-details-marker { display: none; }
+    .feed-past > summary::marker { content: ''; }
+    .feed-past > summary::before {
+      content: '▸';
+      font-size: 0.85em;
+      transition: transform 0.15s;
+    }
+    .feed-past[open] > summary::before { transform: rotate(90deg); }
+    .feed-past .feed-list { margin-top: 1rem; }
+
+    /* ── Featured / Events section headers (Events tab) ──
+       Non-collapsible labels that sit above the Featured and normal grids
+       once an event has been boosted into the Featured section. */
+    .feed-section-head {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: var(--accent-d);
+      padding: 0.3rem 0;
+    }
+    /* The Featured Events box is the shared .feat-box (see Featured Articles);
+       its Find button is the shared .feat-find, opened by the delegated
+       .feed-find-btn click in the Find-modal controller below. The gap after
+       the box comes from the box's own margin. */
+    .feat-box .feed-list { margin-top: 0; }
+    .featured-by-when { color: var(--muted); white-space: nowrap; }
+    .featured-by--anon { cursor: default; color: var(--muted); font-size: 0.75rem; display: inline-flex; gap: 0.35rem; }
+    /* The normal "Events" header, when present, follows the featured grid —
+       give it breathing room from the cards above. */
+    .feed-list + .feed-section-head { margin-top: 1.6rem; }
+    .feed-section-head + .feed-list { margin-top: 0.8rem; }
+    /* Same spacing when a section renders its empty/sold-out box instead of a
+       grid (Show Merch with an empty house catalog). */
+    .feed-section-head + .feed-placeholder { margin-top: 0.8rem; }
+    .feed-section-count {
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 0.8rem;
+      color: var(--muted);
+      background: rgba(0,0,0,0.05);
+      border-radius: 999px;
+      padding: 0.05rem 0.5rem;
+    }
+    .feed-section-head--featured { color: #a9761a; }
+    .feed-section-head--featured .feed-section-count {
+      color: #a9761a;
+      background: rgba(224,169,46,0.16);
+    }
+    .feed-section-star { font-size: 0.95em; line-height: 1; }
+
+    /* Featured Past Events collapsible — gold summary to match. */
+    .feed-past--featured > summary { color: #a9761a; }
+
+    /* ── Create / Find buttons (replace the Events panel title) ──
+       Tight rectangles (not pills) so the pair packs small on mobile. Secondary
+       style — orange is reserved for Boost/Promote, so these read as utility
+       actions, not another boost CTA. */
+    .event-composer-btns { display: flex; gap: 0.4rem; }
+    .event-composer-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font: inherit;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 700;
+      font-size: 0.92rem;
+      color: var(--accent-d);
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 0.34rem 0.7rem;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .event-composer-btn:hover {
+      background: var(--cream);
+      border-color: var(--accent);
+    }
+    .event-composer-btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+    .event-composer-btn .ecb-icon { font-size: 1em; line-height: 1; }
+
+    /* ── Find modal ──
+       z-index sits above the sticky nav (100) but below the widget's meetup
+       flow modals (200) — the modal closes as those open, so any overlap is
+       brief and the flow modal always wins. */
+    .event-composer-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 150;
+      background: rgba(0,0,0,0.6);
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .event-composer-backdrop[hidden] { display: none; }
+    .event-composer-backdrop:not([hidden]) { display: flex; }
+    .event-composer-card {
+      position: relative;
+      width: 100%;
+      max-width: 560px;
+      background: var(--cream-d, #f6edd8);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem 1.5rem 1.6rem;
+      box-shadow: 0 25px 60px -12px rgba(0,0,0,0.45);
+      max-height: calc(100vh - 2rem);
+      overflow-y: auto;
+    }
+    .event-composer-close {
+      position: absolute;
+      top: 0.7rem;
+      right: 0.8rem;
+      background: transparent;
+      border: none;
+      font-size: 1.6rem;
+      line-height: 1;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0.15rem 0.4rem;
+      border-radius: 6px;
+    }
+    .event-composer-close:hover { color: var(--accent-d); background: rgba(0,0,0,0.05); }
+    .event-composer-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--accent-d);
+      margin-right: 1.5rem;
+    }
+    .event-composer-sub {
+      margin-top: 0.3rem;
+      margin-bottom: 1.1rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+    /* ── Accordion of "find" flows (each expands a drawer inside the modal) ── */
+    .ec-accordion { display: flex; flex-direction: column; gap: 0.5rem; }
+    .ec-acc-item {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--cream);
+      overflow: hidden;
+    }
+    .ec-acc-head {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: transparent;
+      border: none;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      padding: 0.7rem 0.85rem;
+      transition: background 0.15s;
+    }
+    .ec-acc-head:hover { background: #ffffff; }
+    .ec-acc-text { display: flex; flex-direction: column; gap: 0.1rem; flex: 1; min-width: 0; }
+    .ec-acc-title { font-weight: 700; color: var(--navy); font-size: 0.95rem; }
+    .ec-acc-sub { font-size: 0.78rem; color: var(--muted); line-height: 1.3; }
+    .ec-acc-caret {
+      flex-shrink: 0;
+      color: var(--muted);
+      font-size: 0.85rem;
+      transition: transform 0.15s;
+    }
+    .ec-acc-head[aria-expanded="true"] .ec-acc-caret { transform: rotate(90deg); }
+    .ec-acc-head[aria-expanded="true"] { background: #ffffff; }
+    .ec-acc-drawer {
+      padding: 0.85rem;
+      border-top: 1px solid var(--border);
+      background: var(--white);
+    }
+    .ec-acc-placeholder { font-size: 0.85rem; color: var(--muted); font-style: italic; }
+
+    /* "See other versions of this event" — collapses re-posted duplicates.
+       The toggle lives at the left of the card's action row (styled by
+       .note-actions button); the panel of version cards drops in below,
+       accent-ruled to tie it to the active feed. */
+    .versions-toggle .versions-caret {
+      display: inline-block;
+      font-size: 0.85em;
+      transition: transform 0.15s;
+    }
+    .versions-toggle.is-open .versions-caret { transform: rotate(90deg); }
+    .event-versions-panel {
+      margin-top: 0.7rem;
+      padding-left: 0.8rem;
+      border-left: 2px solid var(--accent);
+      display: grid;
+      gap: 0.6rem;
+    }
+    .event-versions-panel[hidden] { display: none; }
+
+    /* ── Marketplace cards ───────────────────────────────────────────
+       A responsive grid of listing cards. The whole card is clickable →
+       the /merch product modal (carousel + description + shipping).
+       Classifieds carry an amber badge over the image naming what's
+       missing to be checkout-ready (from the shared Gamma grader);
+       Buy-Now items carry none — the "Add to cart" button says it all.
+       The card image is the shared merch carousel (arrows via merch.css).
+       Rendered by feeds-market.js. */
+    /* ── Show Merch box ──
+       The house store, boxed so it reads as its own storefront and not as the
+       first few cards of the community list. Deliberately the tab's own orange
+       rather than the gold used by Featured Events / Featured Articles: gold
+       means "boosted into a featured slot" everywhere else on this page, and
+       the show's own merch was not boosted there. */
+    .market-house {
+      margin: 0 0 1.5rem;
+      padding: 0.85rem 0.9rem 0.9rem;
+      border: 1px solid var(--market-accent);
+      border-radius: 12px;
+      background: rgba(217,123,14,0.05);
+      box-shadow: 0 0 0 3px rgba(217,123,14,0.07);
+    }
+    /* The header is already inside the box's padding, so it doesn't need the
+       leading space a standalone section header carries. */
+    .market-house .feed-section-head { padding-top: 0; }
+
+    /* "Community" in the Community Marketplace header links to /supporters —
+       that page answers "whose listings are these?". Inherits the header's
+       colour so it reads as part of the title, not as a stray link. */
+    .feed-section-link {
+      color: inherit; text-decoration: underline;
+      text-underline-offset: 3px; text-decoration-thickness: 1px;
+      transition: color 0.12s;
+    }
+    .feed-section-link:hover { color: var(--accent); }
+
+    /* "Manage / List Items" — shown in the Community Marketplace header for
+       logged-in users, deep-links to their MyNostr marketplace. Pushed to the
+       right edge of that header row; wraps on narrow screens. */
+    .market-manage-btn {
+      margin-left: auto;
+      flex-shrink: 0;
+      display: inline-flex; align-items: center;
+      padding: 0.4rem 0.85rem;
+      font-size: 0.82rem; font-weight: 700;
+      color: #fff; background: var(--accent-d);
+      border-radius: 999px; text-decoration: none;
+      white-space: nowrap;
+      transition: background 0.12s;
+    }
+    .market-manage-btn:hover { background: var(--accent); }
+
+    .market-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+      gap: 1rem;
+    }
+    .market-card {
+      display: flex;
+      flex-direction: column;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.12s, box-shadow 0.12s;
+    }
+    .market-card:hover, .market-card:focus-visible {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 22px rgba(0,0,0,0.12);
+      outline: none;
+    }
+    /* contain (not cover) so the whole product image shows on a neutral
+       backdrop — matches the merch storefront cards. Targets the plain
+       <img> and the carousel's <img> alike. */
+    .market-card-media { position: relative; aspect-ratio: 1 / 1; background: var(--white); }
+    .market-card-media img { width: 100%; height: 100%; object-fit: contain; padding: 0.4rem; box-sizing: border-box; display: block; }
+    .market-card-noimg {
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.1rem; opacity: 0.5;
+    }
+    .market-badge {
+      position: absolute; top: 0.45rem; left: 0.45rem;
+      max-width: calc(100% - 0.9rem);
+      padding: 0.15rem 0.45rem;
+      font-size: 0.66rem; font-weight: 600;
+      border-radius: 999px;
+      color: #fff; background: var(--market-accent-d);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .market-card-body { display: flex; flex-direction: column; gap: 0.2rem; padding: 0.6rem 0.65rem 0.65rem; flex: 1; }
+    .market-card-title { margin: 0; font-size: 0.9rem; line-height: 1.25; color: var(--text); }
+    .market-seller { display: flex; align-items: center; gap: 0.35rem; min-width: 0; }
+    .market-seller-pfp { width: 18px; height: 18px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+    .market-seller-pfp--none {
+      display: flex; align-items: center; justify-content: center;
+      background: var(--cream-d); color: var(--muted); font-size: 0.62rem; font-weight: 700;
+    }
+    .market-seller-name { font-size: 0.72rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .market-card-price { font-size: 0.9rem; font-weight: 700; color: var(--accent-d); }
+    .market-card-sats { font-weight: 500; color: var(--muted); font-size: 0.8em; }
+    .market-card-summary {
+      margin: 0.1rem 0 0; font-size: 0.78rem; color: var(--muted); line-height: 1.3;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .market-card-actions { margin-top: auto; padding-top: 0.45rem; }
+    .market-btn {
+      width: 100%;
+      padding: 0.4rem 0.6rem;
+      font-size: 0.82rem; font-weight: 700;
+      border: 1px solid transparent; border-radius: 7px;
+      cursor: pointer;
+    }
+    .market-btn--buy { background: var(--green-d); color: #fff; }
+    .market-btn--buy:hover { background: var(--green); }
+    .market-btn--buy:disabled { opacity: 0.6; cursor: default; }
+    .market-btn--contact { background: transparent; color: var(--accent-d); border-color: var(--border); }
+    .market-btn--contact:hover { background: var(--tint); }
+
+    /* ⋮ menu inside the product detail modal (copy naddr + view elsewhere).
+       Pinned top-right, just left of the modal's ✕ close button. */
+    .market-menu-wrap { position: absolute; top: 0.75rem; right: 3.25rem; z-index: 4; }
+    .market-menu-btn {
+      width: 34px; height: 34px; border-radius: 50%;
+      border: none; background: rgba(0,0,0,0.55); color: #fff; cursor: pointer;
+      font-size: 1.1rem; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .market-menu-btn:hover { background: rgba(0,0,0,0.75); }
+    .market-menu {
+      display: none;
+      position: absolute; top: 40px; right: 0;
+      min-width: 190px;
+      background: var(--white);
+      border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+      padding: 0.35rem;
+    }
+    .market-menu-wrap.open .market-menu { display: block; }
+    .market-menu-item {
+      display: block; width: 100%; box-sizing: border-box;
+      text-align: left; padding: 0.45rem 0.6rem;
+      font: inherit; font-size: 0.85rem; color: var(--text);
+      background: transparent; border: none; border-radius: 6px;
+      cursor: pointer; text-decoration: none;
+    }
+    .market-menu-item:hover { background: var(--tint); }
+    .market-menu-label {
+      padding: 0.4rem 0.6rem 0.2rem;
+      font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--muted);
+    }
+
+    /* Contact-seller DM modal */
+    .market-modal-overlay {
+      position: fixed; inset: 0; z-index: 1000;
+      background: rgba(30, 22, 10, 0.55);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .market-modal {
+      position: relative;
+      width: 100%; max-width: 420px;
+      background: var(--white);
+      border: 1px solid var(--border); border-radius: 14px;
+      padding: 1.2rem 1.2rem 1rem;
+    }
+    .market-modal-close {
+      position: absolute; top: 0.6rem; right: 0.6rem;
+      width: 2rem; height: 2rem;
+      background: transparent; border: none; cursor: pointer;
+      font-size: 1rem; color: var(--muted); line-height: 1;
+    }
+    .market-modal-title { margin: 0 1.6rem 0.3rem 0; font-size: 1.1rem; color: var(--text); }
+    .market-modal-sub { margin: 0 0 0.7rem; font-size: 0.82rem; color: var(--muted); }
+    .market-dm-input {
+      width: 100%; box-sizing: border-box;
+      padding: 0.6rem; font: inherit; font-size: 0.9rem;
+      border: 1px solid var(--border); border-radius: 8px;
+      resize: vertical;
+    }
+    .market-dm-status { min-height: 1.2rem; margin: 0.5rem 0; font-size: 0.82rem; color: var(--muted); }
+    .market-modal-actions { display: flex; justify-content: flex-end; }
+    .market-modal-actions .market-btn { width: auto; padding-left: 1.2rem; padding-right: 1.2rem; }
+
+    /* ── Podcast Boosts cards ─────────────────────────────────────────
+       Episodes the community has boosted on Nostr. The card head shows the
+       art, show name, the episode title (a link to the Fountain episode), a
+       meta row of booster avatars / recency / sats, and a ⋮ menu of
+       show-level subscribe links. A low-profile drawer bar under the head
+       toggles the inline boost thread. Rendered by feeds-podcasts.js. */
+    /* Air-date range buttons + sort dropdown in the panel head (they replace
+       the episode-count pill). */
+    .pcast-controls {
+      display: flex; align-items: center; gap: 0.5rem;
+      flex-shrink: 0; align-self: center;
+    }
+    /* 1W / 1M / All — deliberately borderless and touching: the faint tint on
+       the selected segment is the only chrome, and it's what reveals that the
+       neighbours are buttons with the same footprint. */
+    .pcast-range { display: flex; flex-shrink: 0; }
+    .pcast-range-btn {
+      /* Near-square: the min-width and the vertical padding are tuned to land
+         the box at roughly 32x30, so the three read as one tight block. */
+      min-width: 2rem; padding: 0.5rem 0.35rem;
+      font: inherit; font-size: 0.72rem; font-weight: 700; line-height: 1.2;
+      color: var(--muted); background: transparent;
+      border: none; border-radius: 6px; cursor: pointer;
+      transition: background 0.12s, color 0.12s;
+    }
+    /* Tint of the active feed's accent. The solid --tint is the fallback for
+       engines without color-mix; it lands in the same place visually. */
+    .pcast-range-btn:hover {
+      color: var(--accent-d);
+      background: var(--tint);
+      background: color-mix(in srgb, var(--accent) 7%, transparent);
+    }
+    .pcast-range-btn.is-active {
+      color: var(--accent-d);
+      background: var(--tint);
+      background: color-mix(in srgb, var(--accent) 14%, transparent);
+    }
+
+    .pcast-sort { position: relative; flex-shrink: 0; align-self: center; }
+    .pcast-sort-btn {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      padding: 0.3rem 0.7rem; font: inherit; font-size: 0.78rem; font-weight: 600;
+      color: var(--text); background: var(--white);
+      border: 1px solid var(--border); border-radius: 999px; cursor: pointer;
+      white-space: nowrap; transition: border-color 0.12s, background 0.12s;
+    }
+    .pcast-sort-btn:hover { border-color: var(--accent); background: var(--tint); }
+    .pcast-sort-tag { color: var(--muted); }
+    .pcast-sort-cur { color: var(--accent-d); font-weight: 700; }
+    .pcast-sort-caret { color: var(--muted); font-size: 0.85em; }
+    .pcast-sort-menu {
+      position: absolute; top: calc(100% + 4px); right: 0; z-index: 6;
+      min-width: 175px; background: var(--white);
+      border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18); padding: 0.35rem;
+    }
+    .pcast-sort-menu[hidden] { display: none; }
+    .pcast-sort-item {
+      display: block; width: 100%; text-align: left;
+      padding: 0.45rem 0.6rem; font: inherit; font-size: 0.85rem; font-weight: 600;
+      color: var(--text); background: transparent; border: none; border-radius: 6px; cursor: pointer;
+    }
+    .pcast-sort-item:hover { background: var(--tint); color: var(--accent-d); }
+    .pcast-sort-item.is-active { color: var(--accent-d); background: var(--tint); }
+    .pcast-sort-item.is-active::after { content: ' ✓'; float: right; }
+    /* Events type dropdown — squarer corners than the podcast sort pill. */
+    .feed-type-sort .pcast-sort-btn { border-radius: 7px; }
+    .feed-type-sort .pcast-sort-menu { border-radius: 8px; }
+
+    /* minmax(0,1fr) — without the 0 min, a grid item's min-width is its
+       content, so long shownotes/URLs would blow the column (and card) far
+       wider than the container. */
+    .pcast-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem; }
+    .pcast-card {
+      min-width: 0;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      /* No overflow:hidden here — it would clip the ⋮ subscribe dropdown when
+         it opens past the bottom of the card. The media clips its own corners,
+         and the drawer rounds its bottom corners when it's the last child. */
+      transition: box-shadow 0.12s, border-color 0.12s;
+    }
+    .pcast-card:hover { box-shadow: 0 6px 18px rgba(0,0,0,0.08); }
+    .pcast-card.is-open { border-color: var(--accent); box-shadow: 0 6px 18px rgba(0,0,0,0.10); }
+    .pcast-card-head {
+      display: flex;
+      gap: 0.7rem;
+      align-items: flex-start;
+      /* tight right padding so the ⋮ menu hugs the corner */
+      padding: 0.7rem 0.4rem 0.5rem 0.7rem;
+    }
+    .pcast-card-media {
+      display: block; /* also correct when the media is an <a> link */
+      flex-shrink: 0;
+      width: 68px; height: 68px;
+      border-radius: 8px; overflow: hidden;
+      background: var(--tint);
+    }
+    a.pcast-card-media { cursor: pointer; }
+    a.pcast-card-media:hover { box-shadow: 0 0 0 2px var(--podcasts-accent); }
+    .pcast-card-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .pcast-card-media--none {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.7rem; opacity: 0.55;
+    }
+    .pcast-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; justify-content: center; }
+    .pcast-show {
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em;
+      text-transform: uppercase; color: var(--accent-d);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    a.pcast-show-link { text-decoration: none; cursor: pointer; display: block; }
+    a.pcast-show-link:hover { text-decoration: underline; }
+    .pcast-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 0.98rem; font-weight: 700; line-height: 1.25; color: var(--text);
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .pcast-meta {
+      display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;
+      margin-top: 0.25rem; font-size: 0.78rem; color: var(--muted);
+    }
+
+    /* Shownotes teaser (first ~2 lines) + a links row ("see full description"
+       and a compact "Listen on Fountain") beneath it. */
+    .pcast-desc {
+      margin: 0.35rem 0 0; font-size: 0.82rem; line-height: 1.4; color: var(--muted);
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+      overflow-wrap: anywhere; word-break: break-word;
+    }
+    .pcast-links { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.35rem; }
+    .pcast-fountain-link {
+      font-size: 0.78rem; font-weight: 700; color: var(--accent-d); text-decoration: none; white-space: nowrap;
+    }
+    .pcast-fountain-link:hover { text-decoration: underline; }
+
+    /* Inline audio player. */
+    .pcast-player-row { padding: 0.1rem 0.7rem 0.2rem; }
+    .pcast-player { width: 100%; display: block; }
+
+    /* Download + Boost action buttons. */
+    .pcast-card-buttons {
+      display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+      padding: 0.4rem 0.7rem 0.65rem;
+    }
+    .pcast-btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.5rem 0.95rem;
+      font: inherit; font-size: 0.85rem; font-weight: 700;
+      border: 1px solid transparent; border-radius: 999px; cursor: pointer;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+    }
+    .pcast-btn-boost { color: #fff; background: #f7931a; border-color: #f7931a; }
+    .pcast-btn-boost:hover { background: #d97b0e; border-color: #d97b0e; }
+    .pcast-btn-bolt { display: inline-flex; width: 15px; height: 15px; }
+    .pcast-btn-bolt svg { width: 100%; height: 100%; display: block; }
+    .pcast-btn-download { color: var(--accent-d); background: var(--white); border-color: var(--border); }
+    .pcast-btn-download:hover { background: var(--tint); border-color: var(--accent); }
+    .pcast-btn-download:disabled { opacity: 0.6; cursor: default; }
+    .pcast-dot { opacity: 0.6; }
+    .pcast-sats { font-weight: 700; color: var(--accent-d); white-space: nowrap; }
+    .pcast-bolt { font-size: 0.85em; }
+
+    /* Avatars — stacked on cards, single on modal rows. Size via --pcast-av. */
+    .pcast-avatars { display: inline-flex; align-items: center; }
+    .pcast-avatars .pcast-avatar + .pcast-avatar { margin-left: -8px; }
+    .pcast-avatar {
+      width: var(--pcast-av, 26px); height: var(--pcast-av, 26px);
+      border-radius: 50%; object-fit: cover; flex-shrink: 0;
+      border: 2px solid var(--white); background: var(--tint);
+      box-sizing: border-box;
+    }
+    .pcast-avatar--none {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--cream-d); color: var(--muted);
+      font-size: 0.6rem; font-weight: 700;
+    }
+    .pcast-avatar.is-interactive { cursor: pointer; }
+    .pcast-avatar.is-interactive:hover { border-color: var(--accent); }
+    .pcast-avatar.is-interactive:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+    .pcast-more-wrap { display: flex; justify-content: center; margin-top: 1.1rem; }
+    .pcast-more-group { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; }
+    .pcast-more-count { font-size: 0.75rem; color: var(--muted); }
+    .pcast-showmore {
+      padding: 0.5rem 1.4rem;
+      font: inherit; font-size: 0.85rem; font-weight: 700;
+      color: var(--accent-d); background: var(--white);
+      border: 1px solid var(--border); border-radius: 999px; cursor: pointer;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .pcast-showmore:hover { background: var(--tint); border-color: var(--accent); }
+
+    /* Episode title links out to the Fountain episode. */
+    .pcast-title-link { color: var(--text); text-decoration: none; }
+    .pcast-title-link:hover { color: var(--accent-d); text-decoration: underline; }
+
+    /* Media column: episode art with the air date tucked directly beneath it. */
+    .pcast-media-col { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; flex-shrink: 0; }
+    .pcast-card-aired { font-size: 0.66rem; color: var(--muted); white-space: nowrap; text-align: center; }
+
+    /* ⋮ subscribe menu on the card head (top-right) — show-level app links. */
+    .pcast-cardmenu { position: relative; flex-shrink: 0; align-self: flex-start; }
+    .pcast-cardmenu-btn {
+      width: 30px; height: 30px; border-radius: 50%;
+      border: none; background: transparent; color: var(--muted); cursor: pointer;
+      font-size: 1.2rem; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .pcast-cardmenu-btn:hover { background: var(--tint); color: var(--text); }
+    .pcast-cardmenu-menu {
+      position: absolute; top: 34px; right: 0; z-index: 6;
+      min-width: 190px;
+      background: var(--white);
+      border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+      padding: 0.35rem;
+    }
+    .pcast-cardmenu-menu[hidden] { display: none; }
+    .pcast-cardmenu-label {
+      padding: 0.4rem 0.6rem 0.25rem;
+      font-size: 0.66rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--muted);
+    }
+    .pcast-cardmenu-item {
+      display: block; padding: 0.45rem 0.6rem;
+      font-size: 0.85rem; font-weight: 600; color: var(--text);
+      text-decoration: none; border-radius: 6px;
+    }
+    .pcast-cardmenu-item:hover { background: var(--tint); color: var(--accent-d); }
+
+    /* ── Boost drawer — a low-profile full-width toggle under the head. ── */
+    .pcast-drawer {
+      display: flex; align-items: center; gap: 0.4rem; width: 100%;
+      padding: 0.45rem 0.7rem 0.5rem;
+      font: inherit; font-size: 0.78rem; font-weight: 600;
+      color: var(--muted); background: transparent;
+      border: none; border-top: 1px solid var(--border);
+      cursor: pointer; text-align: left;
+      transition: color 0.12s, background 0.12s;
+    }
+    .pcast-drawer:hover { color: var(--accent-d); background: rgba(0,0,0,0.02); }
+    .pcast-drawer:last-child { border-radius: 0 0 10px 10px; }
+    .pcast-drawer-caret { font-size: 0.85em; transition: transform 0.18s; }
+    /* Booster faces + total sats, sitting just after the "N boosts" label. */
+    .pcast-drawer-meta { display: inline-flex; align-items: center; gap: 0.5rem; }
+    .pcast-drawer-meta .pcast-sats { font-weight: 700; color: var(--accent-d); white-space: nowrap; }
+    .pcast-card.is-open .pcast-drawer > .pcast-drawer-caret { transform: rotate(180deg); }
+
+    /* "Hide boosts" control at the bottom of a card's thread. */
+    .pcast-drawer-close {
+      justify-self: start;
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.35rem 0;
+      font: inherit; font-size: 0.8rem; font-weight: 700;
+      color: var(--muted); background: transparent; border: none; cursor: pointer;
+    }
+    .pcast-drawer-close:hover { text-decoration: underline; color: var(--accent-d); }
+
+    /* Thread footer: "see all boosts" (Boost Me Bitch) on the left, hide on the right. */
+    .pcast-details-foot {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.75rem; flex-wrap: wrap;
+    }
+    .pcast-seeall {
+      font-size: 0.8rem; font-weight: 700; color: var(--accent-d); text-decoration: none;
+    }
+    .pcast-seeall:hover { text-decoration: underline; }
+
+    /* ── Inline boost details — indented under the card like a child/thread,
+       marked by a left accent rule and kept tight vertically. ── */
+    .pcast-details {
+      display: grid; gap: 0.6rem;
+      margin: 0 0.7rem 0.85rem 3.3rem;
+      padding: 0.15rem 0 0.15rem 0.95rem;
+      border-left: 2px solid var(--accent);
+    }
+    .pcast-details[hidden] { display: none; }
+    .pcast-boost { border-top: 1px solid var(--border); padding-top: 0.6rem; }
+    .pcast-boost:first-child { border-top: none; padding-top: 0; }
+    .pcast-boost-head { display: flex; align-items: center; gap: 0.55rem; }
+    .pcast-boost-who { min-width: 0; flex: 1; display: flex; flex-direction: column; }
+    .pcast-boost-name {
+      align-self: flex-start;
+      font: inherit; font-size: 0.9rem; font-weight: 700; color: var(--text);
+      background: transparent; border: none; padding: 0; cursor: pointer;
+      max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .pcast-boost-name:hover { color: var(--accent-d); text-decoration: underline; }
+    .pcast-boost-when { font-size: 0.74rem; color: var(--muted); }
+    .pcast-boost-sats { flex-shrink: 0; font-size: 0.88rem; font-weight: 700; color: var(--accent-d); white-space: nowrap; }
+    .pcast-boost-msg {
+      margin-top: 0.3rem; font-size: 0.88rem; line-height: 1.35; color: var(--text);
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .pcast-boost-msg a { color: var(--accent-d); }
+    /* Shared reply/repost/like/zap bar (boost-actions.css) under each comment —
+       scoped-down here: no divider line, smaller + tighter than the boosts page. */
+    .pcast-boost .note-actions {
+      margin-top: 0.15rem; padding-top: 0; border-top: none; gap: 0.05rem;
+    }
+    .pcast-boost .note-actions button { font-size: 0.72rem; padding: 0.2rem 0.4rem; gap: 0.25rem; }
+    .pcast-boost .note-actions .lb-icon { font-size: 0.82rem; }
+
+    /* Per-boost ⋮ overflow menu */
+    .pcast-more { position: relative; flex-shrink: 0; }
+    .pcast-more-btn {
+      width: 30px; height: 30px; border-radius: 50%;
+      border: none; background: transparent; color: var(--muted); cursor: pointer;
+      font-size: 1.1rem; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .pcast-more-btn:hover { background: var(--tint); color: var(--text); }
+    .pcast-more-menu {
+      position: absolute; top: 34px; right: 0; z-index: 5;
+      min-width: 160px;
+      background: var(--white);
+      border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+      padding: 0.35rem;
+    }
+    .pcast-more-menu[hidden] { display: none; }
+    .pcast-more-item {
+      display: block; width: 100%; box-sizing: border-box; text-align: left;
+      padding: 0.45rem 0.6rem; font: inherit; font-size: 0.85rem; color: var(--text);
+      background: transparent; border: none; border-radius: 6px; cursor: pointer;
+    }
+    .pcast-more-item:hover { background: var(--tint); }
+
+    /* Copy toast */
+    .pcast-toast {
+      position: fixed; left: 50%; bottom: 1.5rem; transform: translate(-50%, 1rem);
+      z-index: 1100;
+      background: var(--text, #1e160a); color: #fff;
+      padding: 0.55rem 1.1rem; border-radius: 999px;
+      font-size: 0.85rem; font-weight: 600;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.18s, transform 0.18s;
+    }
+    .pcast-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+    .pcast-toast.is-error { background: #9b2c2c; }
+
+    /* ── Articles cards ───────────────────────────────────────────────
+       NIP-23 long-form articles. Each card shows the cover, title, an
+       author byline (clickable avatar + name → copy npub), a one-line
+       summary, and a foot row with a "Read Full Article" link + a ⋮ menu
+       (copy naddr). Rendered by feeds-articles.js. */
+    .art-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem; }
+    .art-card {
+      position: relative;
+      display: flex; gap: 0.85rem; align-items: flex-start;
+      min-width: 0; padding: 0.8rem;
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 10px;
+      transition: box-shadow 0.12s, border-color 0.12s;
+    }
+    .art-card:hover { box-shadow: 0 6px 18px rgba(0,0,0,0.08); }
+    .art-card-media {
+      flex-shrink: 0; width: 92px; height: 92px;
+      border-radius: 8px; overflow: hidden; background: var(--tint);
+    }
+    .art-card-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .art-card-media--none {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.9rem; opacity: 0.5;
+    }
+    .art-card-media--link { cursor: pointer; }
+    .art-card-media--link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .art-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+    .art-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.05rem; font-weight: 700; line-height: 1.25; color: var(--text);
+      padding-right: 1.6rem; /* clear the corner ⋮ menu */
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .art-title-link { cursor: pointer; }
+    .art-title-link:hover { text-decoration: underline; }
+    .art-title-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .art-byline { display: flex; align-items: center; gap: 0.45rem; font-size: 0.78rem; color: var(--muted); }
+    .art-byline-name {
+      font: inherit; font-weight: 600; color: var(--accent-d);
+      background: none; border: none; padding: 0; cursor: pointer;
+      max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .art-byline-name:hover { text-decoration: underline; }
+    .art-dot { opacity: 0.6; }
+    .art-byline-when { white-space: nowrap; }
+    .art-summary {
+      margin: 0; font-size: 0.85rem; line-height: 1.4; color: var(--muted);
+      display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+      overflow-wrap: anywhere;
+    }
+
+    /* Foot row: Read link (left) + ⋮ menu (right). */
+    .art-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-top: 0.15rem; }
+    .art-read {
+      font: inherit; font-size: 0.82rem; font-weight: 700; color: var(--accent-d);
+      background: none; border: none; padding: 0; cursor: pointer;
+    }
+    .art-read:hover { text-decoration: underline; }
+    .art-more { position: absolute; top: 0.5rem; right: 0.5rem; }
+    .art-more-btn {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: none; background: transparent; color: var(--muted); cursor: pointer;
+      font-size: 1.1rem; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .art-more-btn:hover { background: var(--tint); color: var(--text); }
+    .art-more-menu {
+      position: absolute; top: 32px; right: 0; z-index: 6; min-width: 180px;
+      background: var(--white); border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18); padding: 0.35rem;
+    }
+    .art-more-menu[hidden] { display: none; }
+    .art-more-item {
+      display: block; width: 100%; box-sizing: border-box; text-align: left;
+      padding: 0.45rem 0.6rem; font: inherit; font-size: 0.85rem; color: var(--text);
+      background: transparent; border: none; border-radius: 6px; cursor: pointer;
+    }
+    .art-more-item:hover { background: var(--tint); }
+
+    /* Author avatar — sized via --art-av on the element. */
+    .art-avatar {
+      width: var(--art-av, 26px); height: var(--art-av, 26px);
+      border-radius: 50%; object-fit: cover; flex-shrink: 0;
+      background: var(--tint); box-sizing: border-box;
+    }
+    .art-avatar--none {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--cream-d); color: var(--muted);
+      font-size: 0.62rem; font-weight: 700; line-height: 1;
+    }
+    .art-avatar--btn { cursor: pointer; transition: box-shadow 0.12s; }
+    .art-avatar--btn:hover { box-shadow: 0 0 0 2px var(--accent); }
+
+    /* Copy toast (self-contained; mirrors the podcasts feed's toast). */
+    .art-toast, .market-toast {
+      position: fixed; left: 50%; bottom: 1.5rem; transform: translate(-50%, 1rem);
+      z-index: 1100; background: var(--text, #1e160a); color: #fff;
+      padding: 0.55rem 1.1rem; border-radius: 999px;
+      font-size: 0.85rem; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+      opacity: 0; pointer-events: none; transition: opacity 0.18s, transform 0.18s;
+    }
+    .art-toast.is-visible, .market-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+    .art-toast.is-error, .market-toast.is-error { background: #9b2c2c; }
+
+    /* Load-more (shared shape with the podcasts feed's control). */
+    .art-more-wrap { margin-top: 0.6rem; }
+    .art-more-group { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; }
+    .art-showmore {
+      padding: 0.5rem 1.3rem; font: inherit; font-size: 0.85rem; font-weight: 700;
+      color: var(--accent-d); background: var(--white);
+      border: 1px solid var(--border); border-radius: 999px; cursor: pointer;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .art-showmore:hover { background: var(--tint); border-color: var(--accent); }
+    .art-more-count { font-size: 0.75rem; color: var(--muted); }
+
+    /* ── Featured Articles ────────────────────────────────────────────
+       Featured Events is a bare header over a grid; this section is a
+       bounded gold container instead, because it owns a range filter the
+       feed below it does not obey. The 1W/1M/All control sits INSIDE the
+       border, so the filter's scope is stated by the layout rather than by
+       a label. Gold is #e0a92e — the same accent as boosted event cards
+       and top-tier supporter rings — deliberately not the tab's purple
+       accent, which belongs to page-level chrome. */
+    .feat-box {
+      --gold: #e0a92e;
+      --gold-d: #a9761a;
+      margin: 0 0 1.5rem;
+      padding: 0.85rem 0.9rem 0.9rem;
+      border: 1px solid var(--gold);
+      border-radius: 12px;
+      background: rgba(224,169,46,0.05);
+      box-shadow: 0 0 0 3px rgba(224,169,46,0.07);
+    }
+    .feat-head {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 0.5rem 0.9rem; margin-bottom: 0.8rem;
+    }
+    .feat-title {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.02rem; font-weight: 700; color: var(--gold-d);
+    }
+    .feat-count {
+      font-family: var(--sans, inherit); font-size: 0.72rem; font-weight: 700;
+      color: var(--gold-d); background: rgba(224,169,46,0.18);
+      padding: 0.05rem 0.42rem; border-radius: 999px;
+    }
+    .feat-actions {
+      display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+    }
+
+    /* Range pills — same near-square shape as the page-level .pcast-range
+       control, but gold-on-gold so they read as part of the box. */
+    .feat-range { display: flex; flex-shrink: 0; }
+    .feat-range-btn {
+      min-width: 2rem; padding: 0.5rem 0.35rem;
+      font: inherit; font-size: 0.72rem; font-weight: 700; line-height: 1.2;
+      color: var(--gold-d); background: transparent;
+      border: none; border-radius: 6px; cursor: pointer; opacity: 0.6;
+      transition: background 0.12s, opacity 0.12s;
+    }
+    .feat-range-btn:hover { opacity: 1; background: rgba(224,169,46,0.14); }
+    .feat-range-btn.is-active {
+      opacity: 1; background: rgba(224,169,46,0.28);
+    }
+
+    .feat-find {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.35rem 0.7rem; font: inherit; font-size: 0.78rem; font-weight: 600;
+      color: var(--gold-d); background: var(--white);
+      border: 1px solid var(--gold); border-radius: 999px; cursor: pointer;
+      white-space: nowrap; transition: background 0.12s;
+    }
+    .feat-find:hover { background: rgba(224,169,46,0.14); }
+
+    .feat-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem; }
+    .feat-empty { margin: 0; font-size: 0.85rem; color: var(--muted); }
+    .feat-more {
+      display: block; margin: 0.7rem auto 0;
+      padding: 0.42rem 1.1rem; font: inherit; font-size: 0.8rem; font-weight: 700;
+      color: var(--gold-d); background: var(--white);
+      border: 1px solid var(--gold); border-radius: 999px; cursor: pointer;
+      transition: background 0.12s;
+    }
+    .feat-more:hover { background: rgba(224,169,46,0.14); }
+
+    /* A featured card inside the box gets a static gold hairline, not the
+       pulsing halo the Events tab puts on boosted cards — the container is
+       already carrying the gold, and five pulsing cards is noise. */
+    .art-card--featured { border-color: var(--gold); }
+    .art-card--featured:hover { box-shadow: 0 6px 18px rgba(224,169,46,0.22); }
+
+    /* "Feature" — the boost-this-into-Featured action, in the card foot where
+       the featured cards carry their booster credit. Orange fill + white bolt
+       SVG (house convention for orange-background buttons; never the ⚡
+       emoji). */
+    .art-feature {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      padding: 0.3rem 0.7rem; font: inherit; font-size: 0.78rem; font-weight: 700;
+      color: #fff; background: var(--orange);
+      border: none; border-radius: 999px; cursor: pointer;
+      transition: background 0.12s;
+    }
+    .art-feature:hover { background: var(--orange-d); }
+    .art-feature:disabled { opacity: 0.6; cursor: default; }
+    .feat-bolt { width: 0.9em; height: 0.9em; flex-shrink: 0; }
+
+    /* "Featured by (pfp) Name · 3d ago" — sits where the Feature button is on
+       an unfeatured card. Muted so it reads as a credit, not an action; the
+       relative age is what makes the range filter legible. */
+    .feat-by {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      max-width: 60%; padding: 0; font: inherit; font-size: 0.75rem;
+      color: var(--muted); background: none; border: none;
+    }
+    .feat-by-label { flex-shrink: 0; }
+    /* Only the person is the link / copy button; the label and age are text. */
+    .feat-by-who {
+      display: inline-flex; align-items: center; gap: 0.35rem; min-width: 0;
+      padding: 0; font: inherit; color: inherit; background: none; border: none;
+      cursor: pointer; text-decoration: none;
+    }
+    .feat-by-name {
+      font-weight: 600; color: var(--text);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .feat-by-who:hover .feat-by-name { color: var(--gold-d); }
+    .feat-by-when { flex-shrink: 0; white-space: nowrap; }
+
+    /* ── "Find an Article to Feature" modal ───────────────────────────
+       Reuses the event composer's backdrop/card chrome so both Find modals
+       are one thing; the body is a single paste box, since an article is
+       always addressable by naddr. */
+    .ffind-help { margin: 0 0 0.8rem; font-size: 0.85rem; color: var(--muted); line-height: 1.45; }
+    .ffind-row { display: flex; gap: 0.5rem; }
+    .ffind-input {
+      flex: 1; min-width: 0; padding: 0.55rem 0.7rem;
+      font: inherit; font-size: 0.85rem; color: var(--text);
+      background: var(--white); border: 1px solid var(--border); border-radius: 8px;
+    }
+    .ffind-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .ffind-go {
+      padding: 0.55rem 1.1rem; font: inherit; font-size: 0.82rem; font-weight: 700;
+      color: #fff; background: var(--accent); border: none; border-radius: 8px;
+      cursor: pointer; white-space: nowrap;
+    }
+    .ffind-go:disabled { opacity: 0.6; cursor: default; }
+    .ffind-status { margin: 0.7rem 0 0; font-size: 0.82rem; color: var(--muted); }
+    .ffind-status:empty { display: none; }
+    .ffind-result:not(:empty) { margin-top: 0.9rem; }
+    .ffind-preview {
+      display: flex; gap: 0.75rem; align-items: flex-start;
+      padding: 0.7rem; border: 1px solid var(--gold, #e0a92e); border-radius: 10px;
+      background: rgba(224,169,46,0.05);
+    }
+    .ffind-preview-media {
+      flex-shrink: 0; width: 68px; height: 68px; border-radius: 8px;
+      overflow: hidden; background: var(--tint);
+    }
+    .ffind-preview-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .ffind-preview-media--none {
+      display: flex; align-items: center; justify-content: center; font-size: 1.5rem; opacity: 0.5;
+    }
+    .ffind-preview-body { min-width: 0; }
+    .ffind-preview-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 0.98rem; font-weight: 700; line-height: 1.25; color: var(--text);
+    }
+    .ffind-preview-meta {
+      display: flex; align-items: center; gap: 0.35rem; margin-top: 0.2rem;
+      font-size: 0.76rem; color: var(--muted);
+    }
+    .ffind-preview-summary {
+      margin: 0.35rem 0 0; font-size: 0.82rem; line-height: 1.4; color: var(--muted);
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+      overflow-wrap: anywhere;
+    }
+    .ffind-feature { margin-top: 0.8rem; padding: 0.5rem 1.1rem; font-size: 0.85rem; }
+
+    /* ── Featured Listings (Marketplace tab) ──────────────────────────
+       Same gold box as Featured Articles; the cards are the market grid's
+       own tiles with a gold hairline. The Feature button sits under the
+       Add-to-cart / Contact button, full width like it. */
+    .market-featured-mount .feat-box { margin-bottom: 1.2rem; }
+    .market-card--featured { border-color: var(--gold, #e0a92e); }
+    .market-card--featured:hover { box-shadow: 0 8px 22px rgba(224,169,46,0.24); }
+    .market-card-actions { display: flex; flex-direction: column; gap: 0.35rem; }
+    .market-btn--feature {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem;
+      color: #fff; background: var(--orange); border-color: var(--orange);
+    }
+    .market-btn--feature:hover { background: var(--orange-d); border-color: var(--orange-d); }
+    .market-btn--feature:disabled { opacity: 0.6; cursor: default; }
+    .market-btn--feature .feat-bolt { width: 0.9em; height: 0.9em; flex-shrink: 0; }
+    .market-btn--feature.ffind-feature { width: auto; }
+    .market-card-actions .feat-by { max-width: 100%; justify-content: center; }
+    .market-card-actions .feat-by .market-seller-pfp { width: 16px; height: 16px; }
+
+    /* ── Featured Episodes (Podcast Boosts tab) ───────────────────────
+       The gold box again; featured episode cards keep their full layout
+       (player, drawer) with a gold hairline. The Feature button is gold
+       rather than orange here because it sits beside the orange "Boost
+       episode" button: on this page gold means "the featured slot", and
+       two orange bolts side by side would read as one action twice. */
+    .pcast-featured-mount .feat-box { margin-bottom: 1.2rem; }
+    .pcast-featured-mount .feat-list { gap: 0.9rem; }
+    .pcast-card--featured { border-color: var(--gold, #e0a92e); box-shadow: 0 0 0 1px rgba(224,169,46,0.18); }
+    .pcast-btn-feature { color: #fff; background: #e0a92e; border-color: #e0a92e; }
+    .pcast-btn-feature:hover { background: #c9931f; border-color: #c9931f; }
+    .pcast-btn-feature:disabled { opacity: 0.6; cursor: default; }
+    .pcast-btn-feature .feat-bolt { width: 15px; height: 15px; }
+    .pcast-card-buttons .feat-by { margin-left: auto; max-width: 55%; }
+    .pcast-card-buttons .feat-by img,
+    .pcast-card-buttons .feat-by .pcast-avatar { width: 18px; height: 18px; border-radius: 50%; object-fit: cover; }
+
+    /* "Find an Episode to Feature": a Podcast Index search. Shows come back
+       as a list; picking one lists its recent episodes; each episode row
+       carries its own Feature button. */
+    .ffind-list { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.9rem; max-height: 50vh; overflow-y: auto; }
+    .ffind-row-item {
+      display: flex; align-items: center; gap: 0.65rem; width: 100%; text-align: left;
+      padding: 0.5rem 0.6rem; font: inherit; color: var(--text);
+      background: var(--white); border: 1px solid var(--border); border-radius: 10px; cursor: pointer;
+      transition: border-color 0.12s, background 0.12s;
+    }
+    .ffind-row-item:hover { border-color: var(--gold, #e0a92e); background: rgba(224,169,46,0.05); }
+    .ffind-row-item--static { cursor: default; }
+    .ffind-row-item--static:hover { border-color: var(--border); background: var(--white); }
+    .ffind-row-media {
+      flex-shrink: 0; width: 44px; height: 44px; border-radius: 8px; overflow: hidden; background: var(--tint);
+      display: flex; align-items: center; justify-content: center; font-size: 1.2rem; opacity: 0.9;
+    }
+    .ffind-row-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .ffind-row-body { min-width: 0; flex: 1; }
+    .ffind-row-title { font-size: 0.88rem; font-weight: 700; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .ffind-row-meta { font-size: 0.74rem; color: var(--muted); margin-top: 0.15rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ffind-row-action { flex-shrink: 0; padding: 0.4rem 0.75rem; font-size: 0.78rem; }
+    .ffind-back {
+      display: inline-flex; align-items: center; gap: 0.3rem; margin: 0.8rem 0 0;
+      padding: 0; font: inherit; font-size: 0.8rem; font-weight: 600; color: var(--muted);
+      background: none; border: none; cursor: pointer;
+    }
+    .ffind-back:hover { color: var(--text); }
+
+    /* ── Shared feed toggle pill (panel head) ─────────────────────────
+       A default-off switch that widens a feed. Used by the Articles tab
+       ("Include short articles") and the Events tab ("Include virtual
+       events"). Accent is contextual via body[data-active-feed]. */
+    .art-toolbar { display: flex; align-items: center; align-self: center; }
+    .feed-head-controls { display: flex; align-items: center; gap: 0.85rem; flex-shrink: 0; flex-wrap: wrap; }
+    .feed-toggle {
+      display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer;
+      user-select: none;
+    }
+    .feed-toggle-input {
+      position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;
+    }
+    .feed-toggle-track {
+      position: relative; flex-shrink: 0;
+      width: 38px; height: 22px; border-radius: 999px;
+      background: var(--border); transition: background 0.15s;
+    }
+    .feed-toggle-thumb {
+      position: absolute; top: 2px; left: 2px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: var(--white); box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+      transition: transform 0.15s;
+    }
+    .feed-toggle-input:checked + .feed-toggle-track { background: var(--accent); }
+    .feed-toggle-input:checked + .feed-toggle-track .feed-toggle-thumb { transform: translateX(16px); }
+    .feed-toggle-input:focus-visible + .feed-toggle-track { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .feed-toggle-label { font-size: 0.82rem; font-weight: 600; color: var(--text); white-space: nowrap; }
+
+    /* ── Article reader (full-width in-panel takeover) ────────────────
+       When a card is opened, the list + panel head hide and this renders
+       in their place: a back bar, cover, title, byline, summary, then the
+       sanitized markdown body (.art-prose). Mirrors MyNostr's reader. */
+    .art-reader {
+      position: relative;
+      max-width: 720px; margin: 0 auto; padding: 0.25rem 0 2rem;
+      animation: art-fade 0.16s ease-out;
+    }
+    @keyframes art-fade { from { opacity: 0; } to { opacity: 1; } }
+    /* Floating back pill (left) + ⋮ (right). position:fixed, NOT sticky: a
+       global `overflow-x:hidden` on <body> makes it a non-scrolling scroll-
+       container, which breaks position:sticky for its descendants. JS
+       (positionFloatingControls) sets top/left each scroll so they hug the
+       article column's gutters and never rise above the article top. */
+    .art-reader-back {
+      position: fixed; z-index: 45;
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.45rem 0.9rem; font: inherit; font-size: 0.82rem; font-weight: 700;
+      color: var(--accent-d); background: var(--white);
+      border: 1px solid var(--border); border-radius: 999px; cursor: pointer;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.14);
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .art-reader-back:hover { border-color: var(--accent); background: var(--tint); }
+    /* ⋮ is pinned to the article's top-right (absolute, scrolls away with the
+       article) — not floating like the back pill. */
+    .art-reader-more { position: absolute; top: 0.5rem; right: 0.5rem; z-index: 5; }
+    .art-reader-more .art-more-btn {
+      width: 34px; height: 34px; color: var(--accent-d);
+      background: var(--white); border: 1px solid var(--border);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.14);
+    }
+    .art-reader-more .art-more-btn:hover { background: var(--tint); }
+    .art-reader-cover {
+      width: 100%; aspect-ratio: 16 / 9; margin-bottom: 1.1rem;
+      border-radius: 12px; overflow: hidden; background: var(--tint);
+      border: 1px solid var(--border);
+    }
+    .art-reader-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .art-reader-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.9rem; font-weight: 800; line-height: 1.15; color: var(--text);
+      margin: 0 0 0.7rem;
+    }
+    .art-reader-byline { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.9rem; }
+    .art-reader-who { display: flex; flex-direction: column; }
+    .art-reader-name {
+      align-self: flex-start; font: inherit; font-size: 0.92rem; font-weight: 700; color: var(--text);
+      background: none; border: none; padding: 0; cursor: pointer;
+    }
+    .art-reader-name:hover { text-decoration: underline; }
+    .art-reader-when { font-size: 0.78rem; color: var(--muted); }
+    .art-reader-summary {
+      margin: 0 0 1.4rem; padding: 0 0 1.1rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 1.05rem; line-height: 1.55; color: var(--muted); font-style: italic;
+    }
+    /* Interaction bar (reply / repost / like / zap) at the foot — the shared
+       .note-actions bar from boost-actions.css, left-aligned, no divider line. */
+    .art-reader-foot { margin-top: 2rem; }
+    .art-reader-foot .note-actions {
+      justify-content: flex-start; gap: 0.4rem;
+      margin-top: 0; padding-top: 0; border-top: none;
+    }
+
+    /* ── Prose typography for the markdown body ──
+       Light-theme reimplementation of MyNostr's `prose prose-invert` look:
+       comfortable measure, generous vertical rhythm, styled headings /
+       lists / quotes / code / tables. */
+    .art-prose { font-size: 1.02rem; line-height: 1.7; color: var(--text); overflow-wrap: anywhere; }
+    .art-prose > :first-child { margin-top: 0; }
+    .art-prose p { margin: 0 0 1.15rem; }
+    .art-prose h1, .art-prose h2, .art-prose h3, .art-prose h4 {
+      font-family: 'Playfair Display', Georgia, serif;
+      line-height: 1.25; color: var(--text); margin: 2rem 0 0.8rem; font-weight: 700;
+    }
+    .art-prose h1 { font-size: 1.6rem; }
+    .art-prose h2 { font-size: 1.35rem; }
+    .art-prose h3 { font-size: 1.15rem; }
+    .art-prose h4 { font-size: 1.02rem; }
+    .art-prose a { color: var(--accent-d); text-decoration: underline; text-underline-offset: 2px; }
+    .art-prose a:hover { color: var(--accent); }
+    /* Inline nostr @-mentions (npub/nprofile) — match the note-body chip look. */
+    .art-prose a.nostr-mention { color: var(--orange); font-weight: 600; text-decoration: none; }
+    .art-prose a.nostr-mention:hover { text-decoration: underline; }
+    .art-prose ul, .art-prose ol { margin: 0 0 1.15rem; padding-left: 1.4rem; }
+    .art-prose li { margin: 0.3rem 0; }
+    .art-prose li > ul, .art-prose li > ol { margin: 0.3rem 0; }
+    .art-prose blockquote {
+      margin: 0 0 1.15rem; padding: 0.35rem 0 0.35rem 1rem;
+      border-left: 3px solid var(--accent); color: var(--muted); font-style: italic;
+    }
+    .art-prose img {
+      display: block; max-width: 100%; height: auto;
+      margin: 1.2rem auto; border-radius: 8px; max-height: 70vh; object-fit: contain;
+    }
+    .art-prose hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    .art-prose code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.88em; background: var(--tint); color: var(--accent-d);
+      padding: 0.1em 0.35em; border-radius: 5px;
+    }
+    .art-prose pre {
+      margin: 0 0 1.15rem; padding: 0.9rem 1rem; overflow-x: auto;
+      background: var(--tint); border: 1px solid var(--border); border-radius: 8px;
+    }
+    .art-prose pre code { background: none; color: var(--text); padding: 0; font-size: 0.85rem; }
+    .art-prose table {
+      width: 100%; border-collapse: collapse; margin: 0 0 1.15rem; font-size: 0.92rem;
+      display: block; overflow-x: auto;
+    }
+    .art-prose th, .art-prose td { border: 1px solid var(--border); padding: 0.45rem 0.7rem; text-align: left; }
+    .art-prose th { background: var(--tint); font-weight: 700; }
+    .art-prose-fallback { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+    /* ── Mobile: tabs become a scrollable chip row ── */
+    @media (max-width: 640px) {
+      .feed-tabs-wrap { top: 56px; } /* nav shrinks on mobile */
+      /* Icon-only chips that all fit across the row (no horizontal scroll). */
+      .feed-tabs {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.5rem;
+        padding: 0.6rem 0.85rem;
+      }
+      .feed-tab {
+        flex-direction: row;
+        justify-content: center;
+        gap: 0;
+        border-top: 0;
+        border: 1px solid var(--tab);
+        border-radius: 999px;
+        padding: 0.5rem 0;
+        color: var(--tab);
+      }
+      .feed-tab-icon { width: 22px; height: 22px; }
+      /* Hide the text visually but keep it for screen readers (the icon is
+         aria-hidden, so this stays the tab's accessible name). */
+      .feed-tab-label {
+        position: absolute;
+        width: 1px; height: 1px;
+        padding: 0; margin: -1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+        border: 0;
+      }
+      .feed-tab-sub { display: none; }
+      .feed-tab[aria-selected="true"] { border-color: var(--tab); }
+      .feed-panels-inner { padding: 1.5rem 1rem 2.5rem; }
+      /* Shallower child indent on narrow screens. */
+      .pcast-details { margin-left: 2.1rem; padding-left: 0.7rem; }
+      /* Articles: smaller cover thumb + tighter reader headings. */
+      .art-card-media { width: 72px; height: 72px; }
+      .art-reader-title { font-size: 1.5rem; }
+      .art-prose { font-size: 1rem; }
+      /* Featured box: the title can't share a row with both the range pills
+         and the Find button here, so the actions wrap onto their own line and
+         pin right (still inside the gold border, which is the whole point). */
+      .feat-box { padding: 0.75rem 0.7rem 0.8rem; }
+      .feat-actions { margin-left: auto; }
+      .feat-find { font-size: 0.74rem; padding: 0.3rem 0.6rem; }
+      /* The card foot runs out of room for "Read Full Article" plus a booster
+         credit, so let the two stack rather than squeezing the name to nothing. */
+      .art-card-foot { flex-wrap: wrap; gap: 0.35rem 0.5rem; }
+      .feat-by { max-width: 100%; }
+      /* Events head: keep the range buttons + type dropdown at the top-right
+         beside the Create button (align-items:flex-start top-aligns them).
+         flex-wrap is a safety net for very narrow screens where the controls
+         can't fit beside the title. */
+      .feed-panel-head { flex-wrap: wrap; align-items: flex-start; }
+      .feed-head-controls {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.55rem;
+      }
+      /* Podcast Boosts: the title block is too wide to share a row here, so the
+         range buttons + sort pill wrap onto their own line together. Left-
+         aligned they'd sit at the panel's left edge, and the sort menu's
+         right-anchored popover (min-width 175px) would open past the left edge
+         of the screen — so pin the group right. */
+      .pcast-controls { margin-left: auto; }
+    }
   </style>
   <link rel="stylesheet" href="/assets/css/nav.css" />
   <link rel="stylesheet" href="/assets/css/theme.css" />
   <link rel="stylesheet" href="/assets/css/footer.css" />
+  <!-- Marketplace "Buy Now" reuses merch.js's cart + checkout modal, which is
+       styled here — so the reused modal looks right on the homepage too. -->
+  <link rel="stylesheet" href="/assets/css/merch.css" />
+  <link rel="stylesheet" href="/assets/css/community-status.css" />
   <link rel="stylesheet" href="/assets/css/onlyboosts.css" />
 </head>
-<body>
+<body data-active-feed="events">
 
 <!-- ══════════════════════════════ NAV ══════════════════════════════ -->
 <!-- NAV:START (generated by scripts/sync-partials.js — edit the partial) -->
@@ -1525,11 +2405,11 @@
               <h4>Show</h4>
               <a href="/episodes.html"><span aria-hidden="true">🎧</span> Episodes</a>
               <a href="/stats.html"><span aria-hidden="true">📊</span> Stats</a>
-              <a href="/feeds#market"><span aria-hidden="true">👕</span> Merch</a>
+              <a href="/#market"><span aria-hidden="true">👕</span> Merch</a>
             </div>
             <div class="nav-explore-group">
               <h4>Community</h4>
-              <a href="/feeds"><span aria-hidden="true">🗞️</span> Feeds</a>
+              <a href="/#events"><span aria-hidden="true">🗞️</span> Feeds</a>
               <a href="/supporters"><span aria-hidden="true">🟧</span> Supporters</a>
               <a href="/boosts.html"><span aria-hidden="true">⚡</span> Boosts</a>
             </div>
@@ -1558,11 +2438,11 @@
       </button>
     </div>
     <!-- Cart icon → merch checkout cart. Hidden by nav.js until the cart
-         (sessionStorage 'lb_merch_cart') has items, except on the /feeds
+         (sessionStorage 'lb_merch_cart') has items, except on the homepage's
          Marketplace tab where it always shows. Click opens the cart modal in
          place once that tab has hydrated (feeds-market.js exposes
-         window.openMerchCart) or navigates to /feeds#market-cart. -->
-    <a id="nav-cart-link" class="nav-cart" href="/feeds#market-cart" aria-label="View cart" style="display:none">
+         window.openMerchCart) or navigates to /#market-cart. -->
+    <a id="nav-cart-link" class="nav-cart" href="/#market-cart" aria-label="View cart" style="display:none">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
         <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
@@ -1666,198 +2546,241 @@
   </div>
 </section>
 
-<!-- ════════════════ MEET THE COMMUNITY (guests + supporters) ════════════════
-     One section, two labeled rows (Guests / Supporters) — one frame, tighter
-     vertical footprint, both groups still distinct. Carousels render via
-     home-people.js (IDs unchanged). -->
-<section id="people" class="reveal" aria-label="The community">
-  <div class="home-module">
-    <div class="home-module-head">
-      <div>
-        <h2 class="home-module-title"><a href="/supporters">Local Bitcoiners Community</a></h2>
-      </div>
-      <a class="home-module-link" href="/supporters">See full Community →</a>
-    </div>
+<!-- ══════════════════════════════ QUICK LINKS ══════════════════════════════
+     Three doors into the rest of the show: the supporter wall, the boost
+     wall, and the stats page. Everything else the old Explore grid offered
+     is still in the grid above the footer. -->
+<section id="quick-links" aria-label="Supporters, boosts and stats">
+  <div class="quick-links">
+    <a class="quick-link" href="/supporters"><span class="quick-link-icon" aria-hidden="true">🟧</span> Supporters</a>
+    <a class="quick-link" href="/boosts.html"><span class="quick-link-icon" aria-hidden="true">⚡</span> Boosts</a>
+    <a class="quick-link" href="/stats.html"><span class="quick-link-icon" aria-hidden="true">📊</span> Stats</a>
+  </div>
+</section>
 
-    <div class="people-row">
-      <span class="people-row-label">Show Guests</span>
-      <div class="carousel-wrap">
-        <button type="button" class="carousel-arrow prev" data-carousel-prev="guests-carousel" aria-label="Scroll left" hidden>‹</button>
-        <div class="people-carousel" id="guests-carousel" data-people="guests"></div>
-        <button type="button" class="carousel-arrow next" data-carousel-next="guests-carousel" aria-label="Scroll right" hidden>›</button>
-      </div>
-    </div>
-
-    <div class="people-row">
-      <span class="people-row-label">Supporters</span>
-      <div class="carousel-wrap">
-        <button type="button" class="carousel-arrow prev" data-carousel-prev="supporters-carousel" aria-label="Scroll left" hidden>‹</button>
-        <div class="people-carousel" id="supporters-carousel" data-people="supporters"></div>
-        <button type="button" class="carousel-arrow next" data-carousel-next="supporters-carousel" aria-label="Scroll right" hidden>›</button>
-      </div>
+<!-- ══════════════════════════════ COMMUNITY FEEDS ══════════════════════════════
+     The whole former /feeds page from here to the Find modal: the navy band
+     with the community-status chip, the four sticky tabs, and the panels
+     feeds.js hydrates by hash. Unchanged apart from the h1 → h2. -->
+<section class="page-header" id="community-feeds">
+  <h2>Community Feeds</h2>
+  <p>Notes from the Local Bitcoiners <a href="/supporters">Community</a></p>
+  <!-- Community-status chip (community-status.js swaps this default for the
+       right state once login + follow-pack membership resolve). The static
+       "Checking…" chip reserves the space so there's no layout shift. -->
+  <div id="lb-community-status">
+    <div class="lb-cstat lb-cstat--checking" role="status">
+      <span class="lb-cstat__spinner"></span>Checking membership…
     </div>
   </div>
 </section>
 
-<!-- ══════════════════════════════ LEADERBOARDS ══════════════════════════════
-     Live leaderboards computed from /data/sats.json (same definitions as the
-     weekly bot note in bots/leaderboards/). A swipeable, auto-rotating carousel
-     of three boards (one per view, dot-navigable), in order: Top Episodes,
-     Top Listeners (the "ride or dies" metric — distinct episodes boosted;
-     matches the bot, id stays #lb-rideordies), and Biggest Boosts (whose boost
-     "ad reads" keep their own vertical auto-scroll feed). Episode guests come
-     from the RSS shownotes ([guests: …]). Carousel + hydration in
-     home-leaderboards.js. -->
-<section id="leaderboards" class="reveal" aria-label="Leaderboards">
-  <div class="home-module">
-    <div class="home-module-head">
-      <div>
-        <h2 class="home-module-title"><a href="/stats.html">Leaderboards</a></h2>
-      </div>
-      <a class="home-module-link" href="/stats.html">Full stats &amp; charts →</a>
-    </div>
-
-    <p class="lb-carousel-hint">Auto-rotates · swipe, or tap a dot, to switch boards.</p>
-    <div class="lb-carousel">
-      <div class="lb-track" id="lb-track" tabindex="0" role="group" aria-roledescription="carousel" aria-label="Leaderboards">
-        <article class="lb-slide">
-          <div class="lb-card">
-            <div class="lb-card-head"><span class="lb-card-icon" aria-hidden="true">🏆</span><h3>Top Episodes</h3></div>
-            <p class="lb-card-sub">Most-boosted episodes, all-time</p>
-            <ol class="lb-list" id="lb-episodes"><li class="lb-loading">Loading…</li></ol>
-          </div>
-        </article>
-        <article class="lb-slide">
-          <div class="lb-card">
-            <div class="lb-card-head"><span class="lb-card-icon" aria-hidden="true">⚡</span><h3>Top Listeners</h3></div>
-            <p class="lb-card-sub">Most episodes boosted — this is our core group</p>
-            <ol class="lb-list" id="lb-rideordies"><li class="lb-loading">Loading…</li></ol>
-          </div>
-        </article>
-        <article class="lb-slide">
-          <div class="lb-card lb-card--boosts">
-            <div class="lb-card-head"><span class="lb-card-icon" aria-hidden="true">💰</span><h3>Biggest Boosts</h3></div>
-            <p class="lb-feed-hint">Top 5 biggest boosts of all time</p>
-            <ol class="lb-list lb-list--boosts lb-list--feed" id="lb-bigboosts"><li class="lb-loading">Loading…</li></ol>
-          </div>
-        </article>
-      </div>
-      <div class="lb-dots" id="lb-dots" role="tablist" aria-label="Choose a leaderboard"></div>
-    </div>
-  </div>
-</section>
-
-<!-- ════════════════════════════ COMMUNITY FEEDS ════════════════════════════
-     A two-tab teaser of the /feeds page: Events (default) + Marketplace,
-     each an auto-scrolling strip of real content scoped to the show's
-     supporter follow packs. Cards click through to /feeds#<tab>. Data +
-     supporter resolution reuse the /feeds modules (see home-feeds.js). -->
-<section id="community-feeds" class="reveal" aria-label="Community feeds">
-  <div class="home-module">
-    <div class="home-module-head">
-      <div>
-        <h2 class="home-module-title"><a href="/feeds">Community Feeds</a></h2>
-      </div>
-      <a class="home-module-link" href="/feeds#events" data-cf-seeall>See all Community Events →</a>
-    </div>
-
-    <div class="cf-tabs" role="tablist" aria-label="Community feeds">
-      <button type="button" class="cf-tab is-active" role="tab" data-cf-tab="events" aria-selected="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+<!-- ══════════════════════════════ FEED TABS ══════════════════════════════ -->
+<div class="feed-tabs-wrap">
+  <div class="feed-tabs" role="tablist" aria-label="Community feeds">
+    <button
+      type="button"
+      class="feed-tab feed-tab--events"
+      role="tab"
+      id="tab-events"
+      aria-controls="panel-events"
+      aria-selected="true"
+      data-feed="events"
+    >
+      <span class="feed-tab-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
           <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
           <line x1="3" y1="10" x2="21" y2="10"/>
         </svg>
-        <span>Events</span>
-      </button>
-      <button type="button" class="cf-tab" role="tab" data-cf-tab="market" aria-selected="false">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      </span>
+      <span class="feed-tab-label">Events</span>
+    </button>
+
+    <button
+      type="button"
+      class="feed-tab feed-tab--market"
+      role="tab"
+      id="tab-market"
+      aria-controls="panel-market"
+      aria-selected="false"
+      data-feed="market"
+    >
+      <span class="feed-tab-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
           <line x1="7" y1="7" x2="7.01" y2="7"/>
         </svg>
-        <span>Marketplace</span>
-      </button>
-      <button type="button" class="cf-tab" role="tab" data-cf-tab="podcasts" aria-selected="false">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      </span>
+      <span class="feed-tab-label">Marketplace</span>
+    </button>
+
+    <button
+      type="button"
+      class="feed-tab feed-tab--podcasts"
+      role="tab"
+      id="tab-podcasts"
+      aria-controls="panel-podcasts"
+      aria-selected="false"
+      data-feed="podcasts"
+    >
+      <span class="feed-tab-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <rect x="9" y="2" width="6" height="12" rx="3"/>
           <path d="M5 10a7 7 0 0 0 14 0"/>
           <line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/>
         </svg>
-        <span>Podcast Boosts</span>
-      </button>
-      <button type="button" class="cf-tab" role="tab" data-cf-tab="articles" aria-selected="false">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      </span>
+      <span class="feed-tab-label">Podcast Boosts</span>
+    </button>
+
+    <button
+      type="button"
+      class="feed-tab feed-tab--articles"
+      role="tab"
+      id="tab-articles"
+      aria-controls="panel-articles"
+      aria-selected="false"
+      data-feed="articles"
+    >
+      <span class="feed-tab-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
           <line x1="9" y1="7" x2="16" y2="7"/><line x1="9" y1="11" x2="14" y2="11"/>
         </svg>
-        <span>Articles</span>
-      </button>
-    </div>
+      </span>
+      <span class="feed-tab-label">Articles</span>
+    </button>
+  </div>
+</div>
 
-    <div class="cf-panel is-active" data-cf-panel="events">
-      <div class="cf-strip" id="cf-strip-events" data-cf-strip="events">
-        <p class="cf-empty">Loading community events…</p>
+<!-- ══════════════════════════════ PANELS ══════════════════════════════ -->
+<main class="feed-panels">
+  <div class="feed-panels-inner">
+
+    <section class="feed-panel is-active" id="panel-events" role="tabpanel" aria-labelledby="tab-events" data-feed="events" data-kinds="31922,31923" tabindex="0">
+      <div class="feed-panel-head">
+        <div>
+          <!-- Replaces the old "Events" panel title (redundant now the list
+               carries its own Featured / Events / Past section headers). Create
+               publishes a new meetup (widget modal as-is); the "Find Event to
+               Feature" action lives in the Featured Events header row (rendered
+               by feeds.js), so it isn't here. -->
+          <div class="event-composer-btns">
+            <button type="button" class="event-composer-btn" id="event-create-trigger">
+              <span class="ecb-icon" aria-hidden="true">＋</span>
+              <span>Create Event</span>
+            </button>
+          </div>
+        </div>
+        <!-- Forward 1W/1M/All range buttons + In-Person/Virtual/All-Types
+             dropdown (mounted by feeds.js, reusing the podcast feed's
+             .pcast-controls chrome). -->
+        <div class="feed-head-controls" data-events-controls></div>
       </div>
-    </div>
-    <div class="cf-panel" data-cf-panel="market" hidden>
-      <div class="cf-strip" id="cf-strip-market" data-cf-strip="market">
-        <p class="cf-empty">Loading community listings…</p>
+      <div class="feed-list" data-feed-list>
+        <div class="feed-placeholder">
+          <strong>Events feed coming online</strong>
+          The layout is ready — NIP-52 calendar events will load here in the next phase.
+        </div>
       </div>
-    </div>
-    <div class="cf-panel" data-cf-panel="podcasts" hidden>
-      <div class="cf-strip" id="cf-strip-podcasts" data-cf-strip="podcasts">
-        <p class="cf-empty">Loading podcast boosts…</p>
+    </section>
+
+    <section class="feed-panel" id="panel-market" role="tabpanel" aria-labelledby="tab-market" data-feed="market" data-kinds="30402,30403" tabindex="0" hidden>
+      <div class="feed-panel-head">
+        <div>
+          <h2>Marketplace</h2>
+        </div>
+        <span class="feed-count" hidden></span>
       </div>
-    </div>
-    <div class="cf-panel" data-cf-panel="articles" hidden>
-      <div class="cf-strip" id="cf-strip-articles" data-cf-strip="articles">
-        <p class="cf-empty">Loading community articles…</p>
+      <div class="feed-list" data-feed-list>
+        <div class="feed-placeholder">
+          <strong>Marketplace feed coming online</strong>
+          The layout is ready — NIP-99 listings will load here in the next phase.
+        </div>
+      </div>
+    </section>
+
+    <!-- Podcast Boosts — episodes the LB community has boosted on Nostr.
+         Unlike the other tabs, this feed is not a live relay subscription:
+         it's driven by /api/community-boosts (see functions/api and the
+         bots/community-boosts collector), so it has no data-kinds. -->
+    <section class="feed-panel" id="panel-podcasts" role="tabpanel" aria-labelledby="tab-podcasts" data-feed="podcasts" data-source="community-boosts" tabindex="0" hidden>
+      <div class="feed-panel-head">
+        <div>
+          <h2>Podcast Boosts</h2>
+          <p>Podcasts Boosted w/Nostr by the Local Bitcoiners <a href="/supporters">Community</a></p>
+        </div>
+        <span class="feed-count" hidden></span>
+      </div>
+      <div class="feed-list" data-feed-list>
+        <div class="feed-placeholder">
+          <strong>Podcast Boosts feed coming online</strong>
+          The layout is ready — boosted episodes will load here in the next phase.
+        </div>
+      </div>
+    </section>
+
+    <section class="feed-panel" id="panel-articles" role="tabpanel" aria-labelledby="tab-articles" data-feed="articles" data-kinds="30023" tabindex="0" hidden>
+      <div class="feed-panel-head">
+        <div>
+          <h2>Articles</h2>
+        </div>
+        <span class="feed-count" hidden></span>
+      </div>
+      <div class="feed-list" data-feed-list>
+        <div class="feed-placeholder">
+          <strong>Articles feed coming online</strong>
+          The layout is ready — NIP-23 long-form articles will load here in the next phase.
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<!-- ══════════════════════════════ "FIND AN EVENT" MODAL ══════════════════════════════
+     Opened by the Events tab's "Find" button. Three "boost an existing meetup"
+     flows stacked as an accordion — each expands a drawer INSIDE this modal
+     (no secondary modal). "Paste naddr / URL" is wired inline here; My meetups
+     and Search render their bodies in the next pass. (Create is its own button
+     and opens the widget's create modal directly.) -->
+<div class="event-composer-backdrop" id="event-find-modal" hidden role="dialog" aria-modal="true" aria-labelledby="efm-title">
+  <div class="event-composer-card" role="document">
+    <button type="button" class="event-composer-close" id="event-find-close" aria-label="Close">×</button>
+    <h2 class="event-composer-title" id="efm-title">Find an Event to Feature</h2>
+
+    <div class="ec-accordion">
+      <div class="ec-acc-item">
+        <button type="button" class="ec-acc-head" aria-expanded="false" data-acc="my">
+          <span class="ec-acc-text">
+            <span class="ec-acc-title">My Meetups</span>
+            <span class="ec-acc-sub">Feature a meetup published from your npub</span>
+          </span>
+          <span class="ec-acc-caret" aria-hidden="true">▸</span>
+        </button>
+        <div class="ec-acc-drawer" hidden data-acc-body="my">
+          <p class="ec-acc-placeholder">Your published meetups will load here.</p>
+        </div>
+      </div>
+
+      <div class="ec-acc-item">
+        <button type="button" class="ec-acc-head" aria-expanded="false" data-acc="search">
+          <span class="ec-acc-text">
+            <span class="ec-acc-title">Search by Profile or Event Address</span>
+            <span class="ec-acc-sub">Find a meetup by profile, npub, or event address (naddr1…)</span>
+          </span>
+          <span class="ec-acc-caret" aria-hidden="true">▸</span>
+        </button>
+        <div class="ec-acc-drawer" hidden data-acc-body="search">
+          <p class="ec-acc-placeholder">Search will load here.</p>
+        </div>
       </div>
     </div>
   </div>
-</section>
+</div>
 
-<!-- ══════════════════════════════ RECENT BOOSTS ══════════════════════════════
-     Continuous marquee of the real Nostr boost notes (same cards as
-     /boosts), flowing by like a wall of reviews. Hover/focus or tap to
-     pause and read. Built lazily on scroll-into-view by home-boosts.js. -->
-<section id="boosts-preview" class="reveal" aria-label="Recent boosts">
-  <div class="home-module">
-    <div class="home-module-head">
-      <div>
-        <h2 class="home-module-title"><a href="/boosts.html">Recent Boosts</a></h2>
-      </div>
-      <a class="home-module-link" href="/boosts.html">See all boosts →</a>
-    </div>
-    <div class="boost-marquee" id="boost-marquee">
-      <p class="boost-empty">Loading recent boosts…</p>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════ MERCH ══════════════════════════════
-     Continuous marquee of the store's products (simplified cards: image +
-     title + sats price), scrolling the OPPOSITE direction to Recent Boosts.
-     Clicking a card opens the same product detail modal as the Show Merch
-     section of /feeds#market. Built by home-merch.js, which reuses merch.js's
-     catalog + modal. -->
-<section id="merch-preview" class="reveal" aria-label="Merch">
-  <div class="home-module">
-    <div class="home-module-head">
-      <div>
-        <h2 class="home-module-title"><a href="/feeds#market">Merch</a></h2>
-      </div>
-      <a class="home-module-link" href="/feeds#market">Shop all →</a>
-    </div>
-    <div class="merch-marquee" id="merch-marquee">
-      <p class="merch-marquee-empty">Loading merch…</p>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════ EXPLORE ══════════════════════════════
-     Teaser cards into the rest of the site (the "cool but extra" areas). -->
 <section id="explore" class="reveal" aria-label="Explore the rest of the site">
   <div class="home-module">
     <div class="home-module-head">
@@ -1890,13 +2813,13 @@
         <p class="explore-desc">Every boost &amp; message.</p>
         <span class="explore-go">Read them →</span>
       </a>
-      <a class="explore-card" href="/feeds#events">
+      <a class="explore-card" href="/#events">
         <div class="explore-icon">📍</div>
         <div class="explore-title">Meetups</div>
         <p class="explore-desc"><span id="explore-meetups-count">Listener-boosted</span> meetups near you.</p>
         <span class="explore-go">Find one →</span>
       </a>
-      <a class="explore-card" href="/feeds#market">
+      <a class="explore-card" href="/#market">
         <div class="explore-icon">👕</div>
         <div class="explore-title">Merch</div>
         <p class="explore-desc">Tees &amp; stickers. Pay in sats.</p>
@@ -1920,7 +2843,7 @@
 
 <!-- ══════════════════════════════ RICH FOOTER ══════════════════════════════
      Folds the former About / Hosts / Resources / Links sections so the
-     page itself stays tight and preview-focused. -->
+     page itself stays tight. -->
 <!-- FOOTER:START (generated by scripts/sync-partials.js — edit the partial) -->
 <!-- ══════════════════════════════ FOOTER ══════════════════════════════
      SHARED FOOTER — single source of truth. Do NOT edit the copies inside
@@ -2568,30 +3491,126 @@
 })();
 </script>
 
-<!-- ══════════════════════════════ NOSTR LOGIN WIDGET (lazy) ═══════════
-     The widget is ~250KB gzipped — bigger than everything else on the
-     page combined. Most homepage visits never need it, so we delay
-     downloading it until the user actually clicks a boost-related
-     button. The placeholder in #lb-boost-slot and the per-episode
-     buttons all funnel through ensureWidgetLoaded() below. ════════ -->
+<!-- ═══════════════ FEED TABS — switching + hash routing ═══════════════
+     Pure shell logic: swap the active tab / panel and repaint the panel
+     wash by setting <body data-active-feed>. The actual feed fetching is
+     a later phase (a feeds.js module will read each panel's data-kinds
+     and hydrate [data-feed-list]). Kept inline so tab switching works
+     with zero network dependency. -->
+<script>
+(function () {
+  'use strict';
+  const FEEDS = ['events', 'market', 'podcasts', 'articles'];
+  const tablist = document.querySelector('.feed-tabs');
+  if (!tablist) return;
+  const tabs = Array.from(tablist.querySelectorAll('[role="tab"]'));
+
+  function panelFor(feed) { return document.getElementById('panel-' + feed); }
+
+  // #market-cart is the sitewide nav cart icon's target (the cart modal has no
+  // page of its own since /merch was folded in). It routes to the Marketplace
+  // tab and raises a flag feeds-market.js consumes once the catalog is merged,
+  // so cart lines from any seller resolve to products before the modal opens.
+  function routeFeed(raw) {
+    if (raw === 'market-cart') {
+      window.__lbOpenCartOnMarket = true;
+      return 'market';
+    }
+    return raw;
+  }
+
+  // The feeds sit below the hero, the latest episode and the quick links, so
+  // a feed deep link (/#market, the nav cart's /#market-cart, the Explore
+  // cards, the 301s from the old /feeds URLs) has to bring them into view as
+  // well as select the tab. The band above the tabs is the scroll target; its
+  // scroll-margin-top clears the sticky nav.
+  function revealFeeds(instant) {
+    const band = document.getElementById('community-feeds');
+    if (!band) return;
+    try { band.scrollIntoView({ block: 'start', behavior: instant ? 'instant' : 'smooth' }); }
+    catch { band.scrollIntoView(true); }
+  }
+
+  function activate(feed, { focus = false, updateHash = true } = {}) {
+    if (!FEEDS.includes(feed)) feed = 'events';
+    document.body.setAttribute('data-active-feed', feed);
+    tabs.forEach((tab) => {
+      const isActive = tab.dataset.feed === feed;
+      tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      tab.tabIndex = isActive ? 0 : -1;
+      const panel = panelFor(tab.dataset.feed);
+      if (panel) {
+        panel.classList.toggle('is-active', isActive);
+        panel.hidden = !isActive;
+      }
+      if (isActive && focus) tab.focus();
+    });
+    if (updateHash && ('#' + feed) !== location.hash) {
+      history.replaceState(null, '', '#' + feed);
+    }
+    // Tell feeds.js (if loaded) to lazily hydrate this feed on first view.
+    document.dispatchEvent(new CustomEvent('lb:feed-activate', { detail: { feed } }));
+  }
+
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => activate(tab.dataset.feed));
+  });
+
+  // Roving-tabindex arrow-key navigation across the tablist.
+  tablist.addEventListener('keydown', (e) => {
+    const idx = tabs.findIndex((t) => t.dataset.feed === document.body.dataset.activeFeed);
+    if (idx < 0) return;
+    let next = null;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (idx + 1) % tabs.length;
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (idx - 1 + tabs.length) % tabs.length;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = tabs.length - 1;
+    if (next === null) return;
+    e.preventDefault();
+    activate(tabs[next].dataset.feed, { focus: true });
+  });
+
+  window.addEventListener('hashchange', () => {
+    const raw = (location.hash || '').replace('#', '');
+    const feed = routeFeed(raw);
+    // Normalize the hash back to the plain tab (#market-cart -> #market) so a
+    // reload doesn't reopen the cart.
+    activate(feed, { updateHash: feed !== raw });
+    if (FEEDS.includes(feed)) revealFeeds(false);
+  });
+
+  // Deep-link support: /#events lands on the Events tab, scrolled into view.
+  // No hash (a plain visit to the homepage) stays at the top with Events
+  // selected but not scrolled to.
+  const rawInitial = (location.hash || '').replace('#', '');
+  const initial = routeFeed(rawInitial);
+  activate(FEEDS.includes(initial) ? initial : 'events', { updateHash: initial !== rawInitial });
+  if (FEEDS.includes(initial)) requestAnimationFrame(() => revealFeeds(true));
+})();
+</script>
+
+<!-- ───────────────── NOSTR LOGIN WIDGET (lazy) ─────────────────
+     Same lazy-load pattern as the other pages: the ~250KB bundle is
+     deferred until a returning user's session restore or a nav
+     boost / sign-in click actually needs it. -->
 <script>
 (function () {
   'use strict';
 
   // Shares one promise (window.__lbWidgetLoad) with every other trigger on
-  // the page — nav.js's bug-report item, and any module going through
-  // assets/js/widget-loader.js. A private per-trigger promise isn't enough:
-  // window.LBLogin stays undefined for the whole ~1MB download, so two
-  // triggers firing inside that window each append a <script> for a bundle
-  // already in flight — the HTTP cache serves the duplicate, but the ~1MB
-  // parse+execute is paid twice, on the click where the user is waiting. Keep in sync with widget-loader.js.
+  // this page — assets/js/widget-loader.js for the module-side callers,
+  // nav.js for the bug-report item. This page has the most competing
+  // triggers of any, and the bundle is 1MB: without a shared promise, a
+  // podcast-boost click (which awaits /api/value before injecting) racing a
+  // nav Boost click appends a second <script> for a bundle already in flight.
+  // The HTTP cache serves that duplicate, but the ~1MB parse+execute is paid
+  // twice — on the click where the user is waiting on the modal. Keep this in
+  // sync with widget-loader.js.
   function ensureWidgetLoaded() {
     if (window.LBLogin) return Promise.resolve();
     if (window.__lbWidgetLoad) return window.__lbWidgetLoad;
 
     window.__lbWidgetLoad = new Promise((resolve, reject) => {
-      // Another loader may already have a tag in flight — wait on it
-      // instead of injecting (and re-evaluating) the bundle a second time.
       const existing = document.querySelector('script[src*="login-widget.js"]');
       if (existing) {
         const started = Date.now();
@@ -2608,83 +3627,150 @@
       const s = document.createElement('script');
       s.src = 'assets/widgets/login-widget.js';
       s.async = true;
-      s.onload = () => {
-        // window.LBLogin is populated synchronously when the IIFE runs;
-        // mount() also runs synchronously since DOMContentLoaded has
-        // long since fired. By the time onload calls back, the React
-        // render has been scheduled — wait one microtask so the new
-        // BoostButton has actually mounted before resolving.
-        Promise.resolve().then(resolve);
-      };
+      s.onload = () => { Promise.resolve().then(resolve); };
       s.onerror = () => {
         window.__lbWidgetLoad = null;
-        reject(new Error('Failed to load boost widget'));
+        reject(new Error('Failed to load login widget'));
       };
       document.head.appendChild(s);
     });
     return window.__lbWidgetLoad;
   }
 
-  // Show-boost placeholder — clicked, the widget loads, then we open
-  // the modal directly via the LBLogin API. The widget's mount() also
-  // replaces this placeholder with the real React-rendered button, so
-  // subsequent clicks go through the real button.
-  const placeholder = document.querySelector('[data-lb-boost-trigger="show"]');
-  if (placeholder) {
-    placeholder.addEventListener('click', async () => {
-      placeholder.disabled = true;
-      const long = placeholder.querySelector('.lb-label-long');
-      const short = placeholder.querySelector('.lb-label-short');
+  const boostPh = document.querySelector('[data-lb-boost-trigger="show"]');
+  if (boostPh) {
+    boostPh.addEventListener('click', async () => {
+      boostPh.disabled = true;
+      const long = boostPh.querySelector('.lb-label-long');
+      const short = boostPh.querySelector('.lb-label-short');
       const prevLong = long ? long.textContent : '';
       const prevShort = short ? short.textContent : '';
       if (long) long.textContent = 'Loading…';
       if (short) short.textContent = '…';
       try {
         await ensureWidgetLoaded();
-        if (window.LBLogin?.openShowBoost) {
-          window.LBLogin.openShowBoost();
-        }
+        if (window.LBLogin?.openShowBoost) window.LBLogin.openShowBoost();
       } catch (e) {
-        // Restore label on failure so the user can retry.
         if (long) long.textContent = prevLong;
         if (short) short.textContent = prevShort;
-        placeholder.disabled = false;
+        boostPh.disabled = false;
         console.error('[lb] widget load failed', e);
       }
     });
   }
 
-  // Per-episode boost buttons in renderCard fall through to LBLogin
-  // via this same loader. We re-export ensureWidgetLoaded on a global
-  // so the inline RSS script (which wires the per-card click handlers)
-  // can await it without re-implementing the loader.
+  // ── Create button → widget "create meetup" modal (as-is) ──
+  (function () {
+    const createBtn = document.getElementById('event-create-trigger');
+    if (!createBtn) return;
+    createBtn.addEventListener('click', async () => {
+      const label = createBtn.querySelector('span:last-child');
+      const prev = label ? label.textContent : '';
+      createBtn.disabled = true;
+      if (label) label.textContent = 'Loading…';
+      try {
+        await ensureWidgetLoaded();
+        if (window.LBLogin?.openMeetupModal) await window.LBLogin.openMeetupModal('create');
+      } catch (e) {
+        console.error('[lb] create meetup load failed', e);
+      } finally {
+        createBtn.disabled = false;
+        if (label) label.textContent = prev;
+      }
+    });
+  })();
+
+  // ── Find modal — accordion of "boost an existing meetup" flows ──
+  // Each row expands a drawer INSIDE the modal (no secondary modal). Paste is
+  // wired inline here; My meetups + Search render their bodies in the next pass.
+  (function () {
+    const modal = document.getElementById('event-find-modal');
+    if (!modal) return;
+    const closeBtn = document.getElementById('event-find-close');
+    let prewarmed = false;
+    // The "Find Event to Feature" button is rendered inside the Featured Events
+    // header by feeds.js and re-created on every repaint, so we open the modal
+    // via a delegated click rather than binding a single element. Remember which
+    // button opened it so focus can return there on close.
+    let lastTrigger = null;
+
+    function onKey(e) { if (e.key === 'Escape') closeModal(); }
+    function openModal() {
+      modal.hidden = false;
+      document.addEventListener('keydown', onKey);
+      // Prewarm the bundle — the my/search bodies need window.LBLogin ready.
+      if (!prewarmed) {
+        prewarmed = true;
+        ensureWidgetLoaded().catch((e) => console.warn('[lb] find prewarm failed', e));
+      }
+      if (closeBtn) closeBtn.focus();
+    }
+    function closeModal() {
+      modal.hidden = true;
+      document.removeEventListener('keydown', onKey);
+      if (lastTrigger && document.contains(lastTrigger)) lastTrigger.focus();
+    }
+
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('.feed-find-btn');
+      if (!btn) return;
+      lastTrigger = btn;
+      openModal();
+    });
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+    // My Meetups + Search render the widget's real flow bodies inline (no
+    // secondary modal) via window.LBLogin.mountFindFlow, lazily on first open.
+    // Boosting from either closes this modal and opens the show-boost modal.
+    const findRoots = {};  // kind -> unmount fn (truthy once mounted)
+    async function ensureFlowMounted(kind, body) {
+      if ((kind !== 'my' && kind !== 'search') || findRoots[kind] || !body) return;
+      findRoots[kind] = true;  // reserve so a rapid re-open doesn't double-mount
+      try {
+        await ensureWidgetLoaded();
+        if (window.LBLogin?.mountFindFlow) {
+          body.innerHTML = '';  // drop the placeholder
+          findRoots[kind] = window.LBLogin.mountFindFlow(kind, body, { onBoosted: closeModal });
+        } else {
+          findRoots[kind] = null;
+        }
+      } catch (e) {
+        findRoots[kind] = null;
+        console.error('[lb] mount find flow failed', e);
+        if (body && !body.childNodes.length) {
+          body.innerHTML = '<p class="ec-acc-placeholder">Couldn’t load — please try again.</p>';
+        }
+      }
+    }
+
+    // Single-open accordion: opening one row collapses the others.
+    const heads = Array.from(modal.querySelectorAll('.ec-acc-head'));
+    heads.forEach((head) => {
+      head.addEventListener('click', () => {
+        const body = modal.querySelector('[data-acc-body="' + head.dataset.acc + '"]');
+        const willOpen = head.getAttribute('aria-expanded') !== 'true';
+        heads.forEach((h) => {
+          const b = modal.querySelector('[data-acc-body="' + h.dataset.acc + '"]');
+          const open = h === head && willOpen;
+          h.setAttribute('aria-expanded', open ? 'true' : 'false');
+          if (b) b.hidden = !open;
+        });
+        if (willOpen && body) {
+          ensureFlowMounted(head.dataset.acc, body);
+          const input = body.querySelector('input');
+          if (input) input.focus();
+        }
+      });
+    });
+  })();
+
+  // Per-episode boost buttons in the episode script's renderCard fall through
+  // to LBLogin via this same loader; the global is how that inline script
+  // awaits it without re-implementing the loader.
   window.__lbEnsureWidgetLoaded = ensureWidgetLoaded;
 
-  // Identity slot — populated based on whether a saved Nostr session
-  // record exists in localStorage. Returning users get the shimmer
-  // placeholder + an eager bundle load so their avatar appears as soon
-  // as session restore completes. New users get a static "Sign in"
-  // pill that lazy-loads the bundle on click.
   const identitySlot = document.getElementById('lb-identity-slot');
-  if (identitySlot) {
-    let hasSession = false;
-    try { hasSession = !!localStorage.getItem('lb_nostr_session'); } catch {}
-
-    if (hasSession) {
-      identitySlot.innerHTML = '<div class="lb-identity-restoring" aria-label="Loading account"></div>';
-      // Eager-load — don't wait for user interaction, the avatar should
-      // appear within a second of the bundle landing.
-      ensureWidgetLoaded().catch((e) => {
-        console.warn('[lb] eager widget load failed', e);
-        // Fall back to the sign-in pill so the user has something to
-        // interact with even if the load fails.
-        renderIdentitySignIn();
-      });
-    } else {
-      renderIdentitySignIn();
-    }
-  }
-
   function renderIdentitySignIn() {
     if (!identitySlot) return;
     identitySlot.innerHTML =
@@ -2696,18 +3782,26 @@
       btn.textContent = '…';
       try {
         await ensureWidgetLoaded();
-        // After load, IdentityWidget has replaced the placeholder. The
-        // user clicked "Sign in" — open the login modal so the action
-        // they expected actually happens.
-        if (window.LBLogin?.requestLogin) {
-          window.LBLogin.requestLogin();
-        }
+        if (window.LBLogin?.requestLogin) window.LBLogin.requestLogin();
       } catch (e) {
         btn.textContent = prev;
         btn.disabled = false;
         console.error('[lb] widget load failed', e);
       }
     });
+  }
+  if (identitySlot) {
+    let hasSession = false;
+    try { hasSession = !!localStorage.getItem('lb_nostr_session'); } catch {}
+    if (hasSession) {
+      identitySlot.innerHTML = '<div class="lb-identity-restoring" aria-label="Loading account"></div>';
+      ensureWidgetLoaded().catch((e) => {
+        console.warn('[lb] eager widget load failed', e);
+        renderIdentitySignIn();
+      });
+    } else {
+      renderIdentitySignIn();
+    }
   }
 })();
 </script>
@@ -2721,26 +3815,12 @@
      and after a recent dismiss. -->
 <script src="assets/widgets/pwa-install.js" defer></script>
 <script src="assets/js/nav.js" defer></script>
-<!-- Homepage hub: live numbers, recent-boosts ticker, reveal-on-scroll -->
+<!-- Explore-card counts + reveal-on-scroll (static JSON, no relays). -->
 <script src="assets/js/home.js" defer></script>
-<!-- People modules (guests + supporters carousels, recent-boosts ticker).
-     episode-enhance.js first so the shared profile resolver
-     (window.LBEpisodeEnhance) is ready. home-people.js is an ES module
-     (imports nostr-tools for the guest follow-pack fetch). -->
-<script src="/assets/js/episode-enhance.js" defer></script>
-<script type="module" src="/assets/js/home-people.js"></script>
-<!-- Leaderboards (top episodes / ride-or-dies / biggest boosts) computed
-     live from /data/sats.json; uses window.LBEpisodeEnhance for names+avatars. -->
-<script src="/assets/js/home-leaderboards.js" defer></script>
-<!-- Recent Boosts marquee — real Nostr note cards (boosts-thread.js),
-     lazy-fetched on scroll-into-view. -->
-<script type="module" src="/assets/js/home-boosts.js"></script>
-<!-- Merch marquee — simplified product cards; reuses merch.js's catalog +
-     detail modal. Scrolls opposite the boosts marquee above. -->
-<script type="module" src="/assets/js/home-merch.js"></script>
 
-<!-- Community Feeds teaser — Events + Marketplace strips; reuses the /feeds
-     modules' supporter resolution + data (see home-feeds.js). -->
-<script type="module" src="/assets/js/home-feeds.js"></script>
+<!-- Community feeds — lazily hydrates the active feed by hash (Events,
+     Marketplace, Podcast Boosts, Articles) and the Featured boxes. -->
+<script type="module" src="/assets/js/feeds.js"></script>
+<script type="module" src="/assets/js/community-status.js"></script>
 </body>
 </html>

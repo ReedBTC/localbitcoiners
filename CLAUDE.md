@@ -88,7 +88,39 @@ runner (`payAllLegs.js`) restates the keysend leg rather than importing it:
   asked when it returns null. `leg.recipient.address` stays as published.
   `test-keysend-upgrade.mjs` scans the call sites.
 
-## Featured sections on /feeds (lb-v71 → lb-v75)
+## The homepage is the community feeds page (feeds-homepage, lb-v80)
+
+`index.html` is the former `feeds.html` with a top block above the tabs:
+a compact hero (banner capped at 680px), the latest-episode section with its
+More Episodes / Subscribe drawers and the inline RSS episode script, a
+Supporters / Boosts / Stats row, then the navy Community Feeds band (an h2;
+the page's h1 is the show, in the hero), the four sticky tabs and panels,
+the Find modal, and the Explore grid above the footer. Things that fail
+silently if missed:
+
+- **The feeds deep-link by hash on `/`**: `/#events`, `/#market`,
+  `/#podcasts`, `/#articles`, and the nav cart's `/#market-cart`. The tab
+  shell scrolls the Community Feeds band into view whenever the hash names a
+  feed (initial load and hashchange), and stays at the top on a plain visit.
+  `_redirects` sends `/feeds` and `/feeds.html` to `/` (the browser carries
+  the fragment across), and the meetups / merch redirects point at `/#…`.
+  Note templates that print `localbitcoiners.com/feeds` (feature and promote
+  boosts, the widget's meetup announcement) were left alone on purpose: the
+  URL still resolves, and the sign-boost oracle restates those constants.
+- **`nav.js`'s cart rule keys on the path**: the empty cart shows only on the
+  Marketplace tab of `/` (or a cached `/feeds`). Change the homepage's path
+  and change that regex.
+- **Two lazy widget loaders were merged into one.** The homepage carries the
+  feeds page's loader (Create button, Find modal accordion) plus the
+  `window.__lbEnsureWidgetLoaded` global the inline episode script's
+  per-card Boost buttons await. Drop either half and a button silently does
+  nothing.
+- **The old hub modules are gone**: `home-people.js`, `home-leaderboards.js`,
+  `home-boosts.js`, `home-merch.js`, `home-feeds.js`. `home.js` stays for the
+  Explore-card counts and reveal-on-scroll. The data-only loaders those
+  teasers imported from `feeds-*.js` and `merch.js` are still exported.
+
+## Featured sections on the feeds (lb-v71 → lb-v75)
 
 Every tab has the same gold Featured box (`featuredHead()` and the credit
 builders in `featured-shared.js` are the only place its chrome lives; the

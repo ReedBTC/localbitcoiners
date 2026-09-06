@@ -1,11 +1,18 @@
-# The "Submit a Meetup" / "Meetups" page was folded into the Events tab on
-# /feeds (lb-v37). Old URLs land there directly.
-/newevent       /feeds#events   301
-/newevent.html  /feeds#events   301
-/meetups        /feeds#events   301
-/meetups.html   /feeds#events   301
+# The community feeds page became the homepage (feeds-homepage, lb-v80). The
+# tabs still deep-link by hash. A browser carries a request's own fragment
+# across a redirect whose Location has none, so /feeds#market lands on
+# /#market and the nav cart's /feeds#market-cart on /#market-cart.
+/feeds          /               301
+/feeds.html     /               301
 
-# The merch storefront was folded into the Marketplace tab on /feeds as its
-# "Show Merch" section (lb-v48). /merch is a spoken URL, so it keeps working.
-/merch          /feeds#market   301
-/merch.html     /feeds#market   301
+# The "Submit a Meetup" / "Meetups" page was folded into the Events tab
+# (lb-v37). Old URLs land there directly.
+/newevent       /#events        301
+/newevent.html  /#events        301
+/meetups        /#events        301
+/meetups.html   /#events        301
+
+# The merch storefront was folded into the Marketplace tab as its "Show
+# Merch" section (lb-v48). /merch is a spoken URL, so it keeps working.
+/merch          /#market        301
+/merch.html     /#market        301

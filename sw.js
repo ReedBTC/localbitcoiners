@@ -196,7 +196,14 @@
 // bot reads to decide whether the boost still needs a note published on the
 // donor's behalf, and that decision is worth getting right on the first boost
 // rather than the second.
-const VERSION = 'lb-v79';
+// lb-v80: feeds-homepage. The community feeds page IS the homepage now: a
+// compact hero, the latest episode, a Supporters / Boosts / Stats row, the
+// four feed tabs, the Explore grid. /feeds 301s to /, feeds.html and the five
+// home-*.js teaser modules are gone, and the nav partial's Feeds / Merch /
+// cart links point at /#events, /#market, /#market-cart. index.html and nav.js
+// are precached, and every page carries the regenerated nav, so a returning
+// visitor otherwise keeps the old hub and links that 301 on every click.
+const VERSION = 'lb-v80';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
