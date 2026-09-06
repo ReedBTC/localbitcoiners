@@ -672,6 +672,153 @@
       .quick-link { padding: 0.8rem 0.4rem; font-size: 0.98rem; gap: 0.4rem; }
     }
 
+    /* ── Community wall ── The supporters page's wall (supporters.js in its
+       homepage mode: podium of 5, 21 visible, "Show N more"), under a
+       "Community" title that links to /supporters. The rules are the
+       supporters page's, minus its page column (the wall sits inside
+       .home-module here) and its section heading. --brand comes from
+       theme.css; the fallbacks are the same orange. */
+    #community { background: var(--white); }
+    .community-module { padding-top: 0; }
+    .sup-section { scroll-margin-top: 5rem; }
+    .sup-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(5.75rem, 1fr));
+      gap: 1.4rem 0.75rem;
+    }
+    .sup-podium {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1.6rem 1.3rem;
+      margin-bottom: 1.9rem;
+    }
+    .sup-card--podium { width: calc((100% - 4 * 1.3rem) / 5); }
+    .sup-card--podium .sup-avatar {
+      width: 96px;
+      height: 96px;
+      border-width: 3px;
+      border-color: var(--brand, #f7931a);
+      box-shadow: 0 0 0 2px var(--brand-ring, rgba(247,147,26,0.28));
+    }
+    .sup-card.is-copyable:hover .sup-avatar.sup-avatar { border-color: var(--green-d); }
+    .sup-card--podium .sup-name { font-size: 0.88rem; }
+    .sup-card[hidden] { display: none; }
+    .sup-sats {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--brand-d, #d97b0e);
+      font-variant-numeric: tabular-nums;
+    }
+    .sup-card--podium .sup-sats { font-size: 0.78rem; }
+    .sup-show-more {
+      display: block;
+      margin: 1.6rem auto 0;
+      padding: 0.5rem 1.2rem;
+      font: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--green-d);
+      background: var(--white);
+      border: 1px solid var(--green-d);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .sup-show-more:hover { background: var(--green-d); color: #fff; }
+    .sup-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 0.55rem;
+      text-decoration: none;
+      color: var(--text);
+      background: none;
+      border: none;
+      padding: 0;
+      font: inherit;
+    }
+    .sup-card.is-copyable { cursor: pointer; }
+    .sup-card.is-copyable:hover { color: var(--green-d); }
+    .sup-card.is-copyable:hover .sup-avatar {
+      border-color: var(--green-d);
+      transform: translateY(-2px);
+    }
+    .sup-toast {
+      position: fixed;
+      left: 50%;
+      bottom: 1.5rem;
+      transform: translateX(-50%) translateY(0.75rem);
+      background: var(--navy);
+      color: var(--white);
+      padding: 0.5rem 1.05rem;
+      border-radius: 7px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s ease, transform 0.18s ease;
+      z-index: 200;
+    }
+    .sup-toast.is-visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .sup-avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      overflow: hidden;
+      background: var(--cream-d);
+      border: 2px solid var(--border);
+      flex-shrink: 0;
+      display: block;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    .sup-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .sup-avatar.is-blank {
+      background:
+        radial-gradient(circle at 50% 38%, var(--border) 0 22%, transparent 23%),
+        radial-gradient(circle at 50% 92%, var(--border) 0 40%, transparent 41%),
+        var(--cream-d);
+    }
+    .sup-name {
+      font-size: 0.82rem;
+      font-weight: 600;
+      line-height: 1.25;
+      word-break: break-word;
+      max-width: 100%;
+    }
+    .supporters-loading {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(5.75rem, 1fr));
+      gap: 1.4rem 0.75rem;
+    }
+    .sup-skeleton {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      margin: 0 auto;
+      background: linear-gradient(90deg,
+        rgba(30,58,95,0.05) 0%,
+        rgba(30,58,95,0.12) 50%,
+        rgba(30,58,95,0.05) 100%);
+      background-size: 200% 100%;
+      animation: skeleton-shimmer 1.4s ease-in-out infinite;
+    }
+    .supporters-error { color: var(--muted); font-style: italic; }
+    @media (max-width: 640px) {
+      .sup-podium { gap: 1.1rem 0.7rem; margin-bottom: 1.5rem; }
+      .sup-card--podium { width: calc((100% - 2 * 0.7rem) / 3); }
+      .sup-card--podium .sup-avatar { width: 74px; height: 74px; }
+      .sup-card--podium .sup-name { font-size: 0.82rem; }
+      .sup-grid, .supporters-loading {
+        grid-template-columns: repeat(auto-fill, minmax(4.75rem, 1fr));
+        gap: 1.15rem 0.6rem;
+      }
+      .sup-avatar, .sup-skeleton { width: 56px; height: 56px; }
+      .sup-name { font-size: 0.76rem; }
+      .sup-sats { font-size: 0.68rem; }
+    }
+
     /* ── Section title scaffold (Latest Episode, Community Feeds) ── */
     .home-module { max-width: 1100px; margin: 0 auto; padding: 3rem 1.5rem; }
     .home-module-head {
@@ -714,11 +861,28 @@
        Reed 2026-09-06), then the tab chrome, then the tinted panels. #feeds
        is the URL's name for the section; scroll-margin-top clears the sticky
        nav when a feeds link scrolls it into view. */
-    /* One white ground from the latest episode to the footer (Reed,
-       2026-09-06): no cream band behind the chrome and no per-feed tint
-       behind the panels. The feed's accent still arrives through the tabs,
-       the sub-row and the cards' own controls. */
+    /* The section sits on the same white as the latest episode; inside it,
+       the tab chrome and the panels share ONE SHELL — a cream card with a
+       border at the column's width (Reed, 2026-09-06: "some container or
+       shell that makes it clear the tabs contain the filters and listings
+       below them, not page-wide, almost like a really big card"). No
+       per-feed tint: the feed's accent arrives through the tabs, the sub-row
+       and the cards' own controls, and the white cards sit on the cream. */
     #feeds { scroll-margin-top: 64px; background: var(--white); }
+    .feeds-shell-wrap {
+      max-width: var(--feed-track);
+      margin: 0 auto;
+      padding: 0 1.5rem 3rem;
+    }
+    /* overflow: clip (not hidden) rounds the chrome's corners into the card
+       without making the shell a scroll container, so the sticky chrome
+       inside it still sticks to the nav. */
+    .feeds-shell {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--cream);
+      overflow: clip;
+    }
     .feeds-title { padding-bottom: 0.9rem; }
     .feeds-title .home-module-head { margin-bottom: 0; }
 
@@ -737,23 +901,22 @@
        (border-box), so `.feed-bar-inner` restates exactly that box and the
        chrome fills it; the three edges line up by the same arithmetic. */
     :root { --feed-track: 1100px; }
+    /* The chrome is the shell's lid: it fills the shell's width, keeps only
+       the hairline under the sub-row, and stays cream so that when it sticks
+       under the nav it covers the panel scrolling beneath it. */
     .feed-bar-wrap {
       position: sticky;
       top: 64px; /* height of #top-nav */
       z-index: 40;
-      background: var(--white);
-      padding: 0.25rem 0 0.75rem;
+      background: var(--cream);
+      padding: 0;
     }
-    .feed-bar-inner {
-      max-width: var(--feed-track);
-      margin: 0 auto;
-      padding: 0 1.5rem;
-    }
+    .feed-bar-inner { max-width: none; margin: 0; padding: 0; }
     .feed-chrome {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-      background: var(--white);
+      border: 0;
+      border-bottom: 1px solid var(--border);
+      border-radius: 0;
+      background: var(--cream);
     }
     .feed-tabs {
       display: grid;
@@ -881,13 +1044,13 @@
 
     /* ── Panels ── */
     .feed-panels {
-      background: var(--white);
+      background: transparent;
       min-height: 60vh;
     }
     .feed-panels-inner {
-      max-width: var(--feed-track);
-      margin: 0 auto;
-      padding: 2rem 1.5rem 3rem;
+      max-width: none;
+      margin: 0;
+      padding: 1.5rem 1.5rem 2rem;
     }
     .feed-panel { display: none; }
     .feed-panel.is-active { display: block; }
@@ -2184,12 +2347,11 @@
 
     /* ── Mobile: tabs become a scrollable chip row ── */
     @media (max-width: 640px) {
-      .feed-bar-wrap { top: 56px; padding-bottom: 0.5rem; } /* nav shrinks on mobile */
-      /* The box loses its sides and radius on a phone: the tabs are chips
-         there, with room around them already, and only the hairline under
-         the sub-row stays. */
-      .feed-bar-inner { padding: 0; }
-      .feed-chrome { border-left: 0; border-right: 0; border-top: 0; border-radius: 0; }
+      .feed-bar-wrap { top: 56px; } /* nav shrinks on mobile */
+      /* The shell loses its sides and radius on a phone: the tabs are chips
+         there, with room around them already. */
+      .feeds-shell-wrap { padding: 0 0 2rem; }
+      .feeds-shell { border-left: 0; border-right: 0; border-radius: 0; }
       /* Icon-only chips that all fit across the row (no horizontal scroll):
          four tabs and four words do not fit in 375px. */
       .feed-tabs {
@@ -2425,6 +2587,32 @@
   </div>
 </section>
 
+<!-- ══════════════════════════════ COMMUNITY ══════════════════════════════
+     The supporters wall, as the supporters page draws it (supporters.js,
+     homepage mode: podium of 5, 21 visible, "Show N more"), under a title
+     that links to the full page. Reed, 2026-09-06. -->
+<section id="community" aria-label="Community">
+  <div class="home-module community-module">
+    <div class="home-module-head">
+      <div>
+        <h2 class="home-module-title"><a href="/supporters">Community</a></h2>
+      </div>
+    </div>
+    <div id="community-loading" class="supporters-loading" aria-live="polite">
+      <div class="sup-skeleton"></div>
+      <div class="sup-skeleton"></div>
+      <div class="sup-skeleton"></div>
+      <div class="sup-skeleton"></div>
+      <div class="sup-skeleton"></div>
+      <div class="sup-skeleton"></div>
+    </div>
+    <p id="community-error" class="supporters-error" style="display:none">
+      Couldn't load the community right now — please try again later.
+    </p>
+    <div id="community-root"></div>
+  </div>
+</section>
+
 <!-- ══════════════════════════════ COMMUNITY FEEDS ══════════════════════════════
      The former /feeds page, under a section title in the Explore section's
      style: the boxed tab chrome (four tabs, and the active tab's Featured /
@@ -2443,6 +2631,8 @@
 <!-- ══════════════════════════════ FEED CHROME ══════════════════════════════
      Static markup, wired by the controller: the tabs are above the fold of
      the section on every visit, so they shouldn't wait on script to exist. -->
+<div class="feeds-shell-wrap">
+<div class="feeds-shell">
 <div class="feed-bar-wrap">
 <div class="feed-bar-inner">
 <div class="feed-chrome">
@@ -2634,6 +2824,8 @@
 
   </div>
 </main>
+</div>
+</div>
 </section>
 
 <!-- ══════════════════════════════ "FIND AN EVENT" MODAL ══════════════════════════════
@@ -3775,6 +3967,15 @@
      and after a recent dismiss. -->
 <script src="assets/widgets/pwa-install.js" defer></script>
 <script src="assets/js/nav.js" defer></script>
+
+<!-- The Community wall: the OnlyBoosts booster index (module; sets
+     window.LBOnlyBoosts) decides link-vs-copy per card, episode-enhance.js
+     is the shared profile resolver (window.LBEpisodeEnhance), and
+     supporters.js paints the wall in its homepage mode. Deferred scripts run
+     in order, so the resolver is up before the wall asks for it. -->
+<script type="module" src="/assets/js/onlyboosts.js"></script>
+<script src="/assets/js/episode-enhance.js" defer></script>
+<script src="/assets/js/supporters.js" defer></script>
 
 <!-- Community feeds — lazily hydrates the active feed by hash (Events,
      Marketplace, Podcast Boosts, Articles) and the Featured boxes. -->

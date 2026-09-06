@@ -25,6 +25,19 @@
   var SATS_URL = '/api/sats';
   var GUESTS_URL = '/api/guests';
 
+  // ── Two pages, one wall ──
+  // This script also paints the homepage's Community section (feeds-homepage,
+  // 2026-09-06): the same podium + ranked grid + "Show N more" wall, and
+  // nothing else — no section heading (the page supplies its own "Community"
+  // title), no Show Guests. Which page it is on is decided by which root the
+  // markup carries: #supporters-root is the full page, #community-root the
+  // homepage. The same PODIUM / WALL_VISIBLE shape both places, so the two
+  // walls always agree on who is above the fold.
+  var HOME = !document.getElementById('supporters-root') && !!document.getElementById('community-root');
+  var IDS = HOME
+    ? { root: 'community-root', loading: 'community-loading', error: 'community-error' }
+    : { root: 'supporters-root', loading: 'supporters-loading', error: 'supporters-error' };
+
   // Co-hosts — Reed + Rev. Injected into the Show Guests section right before
   // the earliest-episode (EP002) guests and labelled "co-host" instead of an
   // episode (they aren't in the RSS [guests:] roster, so we add them by hand).
@@ -359,6 +372,9 @@
   function makeSection(title, sub, count, packSlug) {
     var section = document.createElement('section');
     section.className = 'sup-section';
+    // The homepage wall has no heading of its own: the page's "Community"
+    // title is directly above it.
+    if (title == null) return section;
     var head = document.createElement('div');
     head.className = 'sup-section-head';
     head.appendChild(makeHeadRow('h2', title, count, packSlug));
@@ -469,8 +485,8 @@
   }
 
   function render(people, guestNpubs, cache, epMap) {
-    var root = document.getElementById('supporters-root');
-    var loading = document.getElementById('supporters-loading');
+    var root = document.getElementById(IDS.root);
+    var loading = document.getElementById(IDS.loading);
     if (loading) loading.style.display = 'none';
     epMap = epMap || Object.create(null);
 
@@ -487,6 +503,11 @@
     var wallCards = people.map(function (p, i) {
       return cardFor(p.npub, p.name, { sats: p.sats, podium: i < PODIUM });
     });
+    if (HOME) {
+      // The homepage: the wall alone, under the page's own title.
+      renderWall(root, null, null, wallCards, null);
+      return;
+    }
     renderWall(root, 'Supporters',
       'Lifetime sats sent via boosts + streams, most first. Anonymous supporters aren’t shown.',
       wallCards, ALL_PACK);
@@ -545,21 +566,23 @@
   }
 
   function init() {
-    var errEl = document.getElementById('supporters-error');
+    if (!document.getElementById(IDS.root)) return;
+    var errEl = document.getElementById(IDS.error);
 
     var satsP = fetch(SATS_URL, { cache: 'no-cache' })
       .then(function (r) { if (!r.ok) throw new Error('sats ' + r.status); return r.json(); })
       .then(function (d) { return Array.isArray(d.rows) ? d.rows : []; });
 
     // Guests are non-critical — fall back to an empty roster if the
-    // feed endpoint is down so the supporters wall still renders.
-    var guestsP = fetch(GUESTS_URL)
+    // feed endpoint is down so the supporters wall still renders. The
+    // homepage wall has no guests section, so it never asks.
+    var guestsP = HOME ? Promise.resolve([]) : fetch(GUESTS_URL)
       .then(function (r) { return r.ok ? r.json() : { guests: [] }; })
       .then(function (d) { return Array.isArray(d.guests) ? d.guests : []; })
       .catch(function () { return []; });
 
     // Guest → episode-number map from the RSS shownotes ([guests: …]).
-    var epP = guestEpisodeMap();
+    var epP = HOME ? Promise.resolve(Object.create(null)) : guestEpisodeMap();
 
     Promise.all([satsP, guestsP, epP, obReady()]).then(function (res) {
       var people = aggregate(res[0]);
@@ -583,7 +606,7 @@
       }
     }).catch(function (e) {
       console.error('[supporters] load failed', e);
-      var loading = document.getElementById('supporters-loading');
+      var loading = document.getElementById(IDS.loading);
       if (loading) loading.style.display = 'none';
       if (errEl) errEl.style.display = 'block';
     });
