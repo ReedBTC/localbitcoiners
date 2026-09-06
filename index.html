@@ -714,7 +714,11 @@
        Reed 2026-09-06), then the tab chrome, then the tinted panels. #feeds
        is the URL's name for the section; scroll-margin-top clears the sticky
        nav when a feeds link scrolls it into view. */
-    #feeds { scroll-margin-top: 64px; }
+    /* One white ground from the latest episode to the footer (Reed,
+       2026-09-06): no cream band behind the chrome and no per-feed tint
+       behind the panels. The feed's accent still arrives through the tabs,
+       the sub-row and the cards' own controls. */
+    #feeds { scroll-margin-top: 64px; background: var(--white); }
     .feeds-title { padding-bottom: 0.9rem; }
     .feeds-title .home-module-head { margin-bottom: 0; }
 
@@ -737,7 +741,7 @@
       position: sticky;
       top: 64px; /* height of #top-nav */
       z-index: 40;
-      background: var(--cream);
+      background: var(--white);
       padding: 0.25rem 0 0.75rem;
     }
     .feed-bar-inner {
@@ -749,7 +753,7 @@
       border: 1px solid var(--border);
       border-radius: 12px;
       overflow: hidden;
-      background: var(--cream);
+      background: var(--white);
     }
     .feed-tabs {
       display: grid;
@@ -877,8 +881,7 @@
 
     /* ── Panels ── */
     .feed-panels {
-      background: var(--tint);
-      transition: background 0.25s ease;
+      background: var(--white);
       min-height: 60vh;
     }
     .feed-panels-inner {
