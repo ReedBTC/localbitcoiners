@@ -606,7 +606,7 @@
     /* ── Featured latest episode (the lead hero card) ──
        White bg so the cream episode card pops; the quick links share the
        ground, then the feeds sit on cream. */
-    #featured { background: var(--white); padding-top: 2.5rem; }
+    #featured { background: var(--white); padding-top: 1.75rem; }
     .featured-wrap { max-width: var(--feed-track); margin: 0 auto; padding: 0 1.25rem 1rem; }
     /* The featured episode is rendered by the episode script with the
        `featured` modifier — a louder version of a normal episode card:
@@ -639,7 +639,7 @@
     .quick-links {
       max-width: var(--feed-track);
       margin: 0 auto;
-      padding: 1rem 1.25rem 2.5rem;
+      padding: 1rem 1.25rem 1.5rem;
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 0.9rem;
@@ -668,7 +668,7 @@
     }
     .quick-link-icon { font-size: 1.25em; line-height: 1; }
     @media (max-width: 600px) {
-      .quick-links { gap: 0.6rem; padding: 0 1.1rem 1.8rem; }
+      .quick-links { gap: 0.6rem; padding: 0 1.1rem 1.2rem; }
       .quick-link { padding: 0.8rem 0.4rem; font-size: 0.98rem; gap: 0.4rem; }
     }
 
@@ -820,7 +820,9 @@
     }
 
     /* ── Section title scaffold (Latest Episode, Community Feeds) ── */
-    .home-module { max-width: var(--feed-track); margin: 0 auto; padding: 3rem 1.25rem; }
+    /* 1.5rem top and bottom: two adjacent sections meet 3rem apart, half
+       the old gap (Reed, 2026-09-06: "pretty far apart"). */
+    .home-module { max-width: var(--feed-track); margin: 0 auto; padding: 1.5rem 1.25rem; }
     .home-module-head {
       display: flex;
       align-items: flex-end;
@@ -872,7 +874,7 @@
     .feeds-shell-wrap {
       max-width: var(--feed-track);
       margin: 0 auto;
-      padding: 0 1.25rem 3rem;
+      padding: 0 1.25rem 2rem;
     }
     /* overflow: clip (not hidden) rounds the chrome's corners into the card
        without making the shell a scroll container, so the sticky chrome
