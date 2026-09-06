@@ -91,25 +91,48 @@ runner (`payAllLegs.js`) restates the keysend leg rather than importing it:
 ## The homepage is the community feeds page (feeds-homepage, lb-v80)
 
 `index.html` is the former `feeds.html` with a top block above the tabs:
-a compact hero (banner capped at 680px), the latest-episode section with its
-More Episodes / Subscribe drawers and the inline RSS episode script, a
-Supporters / Boosts / Stats row, then the navy Community Feeds band (an h2;
-the page's h1 is the show, in the hero), the four sticky tabs and panels,
-the Find modal, and the Explore grid above the footer. Things that fail
-silently if missed:
+a compact hero (the transparent banner cut, capped at 680px), the
+latest-episode section with its More Episodes / Subscribe drawers and the
+inline RSS episode script, a Supporters / Boosts / Stats row, then
+`<section id="feeds">`: a "Community Feeds" title in the Explore section's
+style (the navy band and the membership chip are gone from the homepage),
+the sticky boxed tab chrome (four tabs, and under the active one a Featured
+/ All sub-row, the OnlyBoosts homepage's chrome carried back), the tinted
+panels, the Find modal; then the Explore grid above the footer. Things that
+fail silently if missed:
 
-- **The feeds deep-link by hash on `/`**: `/#events`, `/#market`,
-  `/#podcasts`, `/#articles`, and the nav cart's `/#market-cart`. The tab
-  shell scrolls the Community Feeds band into view whenever the hash names a
-  feed (initial load and hashchange), and stays at the top on a plain visit.
-  `_redirects` sends `/feeds` and `/feeds.html` to `/` (the browser carries
-  the fragment across), and the meetups / merch redirects point at `/#…`.
-  Note templates that print `localbitcoiners.com/feeds` (feature and promote
-  boosts, the widget's meetup announcement) were left alone on purpose: the
-  URL still resolves, and the sign-boost oracle restates those constants.
+- **The URL spells out the feeds**: `/?feed=<tab>&view=<featured|all>
+  [&range&sort&type&short]#feeds`. `#feeds` is the section (the controller
+  scrolls to it); the query is the tab, sub-tab and the active feed's All-view
+  controls (`range`, `sort`, `type` for events, `short` for articles; an
+  absent key is the feed's default). The inline controller owns the URL and
+  keeps params per feed; renderers only read their opening params once
+  (`initialFeedParams`) and announce a reader's change (`publishFeedParams`),
+  both in `assets/js/feed-url.js`, a NEW module on purpose (a named export
+  added to a cached shared module is a link-time error on every feed). A
+  plain visit keeps a plain `/`; the URL starts tracking the moment the
+  reader touches the feeds or arrives by a feeds link. The old hashes
+  (`#events` … `#articles`, `#market-cart`) still route, and in-page feeds
+  links (nav Feeds / Merch / cart, Explore cards) are handled in place rather
+  than reloading. `_redirects`: `/feeds` → `/#feeds`, meetups → `/?feed=
+  events#feeds`, merch → `/?feed=market#feeds`. Note templates that print
+  `localbitcoiners.com/feeds` (feature and promote boosts, the widget's
+  meetup announcement) were left alone on purpose: the URL still resolves,
+  and the sign-boost oracle restates those constants.
+- **Featured / All is a CSS switch off `body[data-feed-view]`**, not two
+  renders. Each renderer still paints one panel (gold `.feat-box` first, in
+  a `*-featured-mount` wrapper on three tabs, then the list); Featured shows
+  the box alone plus skeletons and placeholders and hides the head's
+  controls (Events keeps its Create button), All hides the box. Since
+  2026-09-06 **All includes the featured items** (the `!visible.has(...)`
+  exclusions in all four renderers are gone), and the box has **no range
+  pills** (`featuredHead` ignores `range`); every box runs at the 33-day
+  default. Featured is the landing view on every tab.
 - **`nav.js`'s cart rule keys on the path**: the empty cart shows only on the
   Marketplace tab of `/` (or a cached `/feeds`). Change the homepage's path
-  and change that regex.
+  and change that regex. The cart link is `/?feed=market&cart=1#feeds`; the
+  controller consumes `cart=1` into `window.__lbOpenCartOnMarket` and drops
+  it from the URL.
 - **Two lazy widget loaders were merged into one.** The homepage carries the
   feeds page's loader (Create button, Find modal accordion) plus the
   `window.__lbEnsureWidgetLoaded` global the inline episode script's

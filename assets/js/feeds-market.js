@@ -1036,18 +1036,18 @@ export async function renderMarket({ panel, list, relays, members } = {}) {
   const featuredMount = h('div', { class: 'market-featured-mount' })
   const communityMount = h('div', { class: 'market-community-mount' })
 
-  // Repaints the gold box and the community grid together: which listings the
-  // box holds depends on the active range, and the grid is "everything not in
-  // the box right now". A listing that drops out of the window rejoins the
-  // grid, Feature button restored, so a lapsed feature can be renewed.
+  // Repaints the gold box and the community grid together. The grid is every
+  // community listing, featured ones included: the box and the grid became
+  // the Featured and All sub-tabs of the tab (2026-09-06), and "All" has to
+  // mean all. A featured listing's card in the grid keeps its Feature button;
+  // boosting it again renews the feature.
   function rerender() {
     const visible = new Set()
     featuredMount.innerHTML = ''
     featuredMount.appendChild(buildFeaturedSection(state, byCoord, rate, onContact, visible, rerender))
-    const rest = community.filter((it) => !visible.has(it.product.coord))
     communityMount.innerHTML = ''
-    communityMount.appendChild(rest.length
-      ? grid(rest)
+    communityMount.appendChild(community.length
+      ? grid(community)
       : placeholder('No listings yet', ' No marketplace listings from supporters right now — check back soon.'))
   }
 

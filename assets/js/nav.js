@@ -94,7 +94,7 @@
   // merch.js). The nav shows a running item-count badge on every page and
   // routes clicks to the cart modal in place once the homepage's Marketplace
   // tab has hydrated (feeds-market.js exposes window.openMerchCart), or to
-  // /#market-cart from anywhere else. The badge refreshes on a
+  // /?feed=market&cart=1#feeds from anywhere else. The badge refreshes on a
   // 'lb-cart-changed' event merch.js fires when the cart mutates, plus on
   // tab-focus / bfcache restore.
   function cartItemCount() {
@@ -130,8 +130,9 @@
       e.preventDefault()
       window.openMerchCart()
     }
-    // Otherwise let the anchor navigate to /#market-cart (the homepage's tab
-    // shell routes that to the Marketplace tab and opens the cart on arrival).
+    // Otherwise let the anchor navigate to /?feed=market&cart=1#feeds (the
+    // homepage's feeds controller routes that to the Marketplace tab and opens
+    // the cart on arrival; on the homepage itself it handles the click in place).
   })
   window.addEventListener('lb-cart-changed', updateNavCart)
   // Switching to/from the Marketplace tab changes whether an empty cart shows.

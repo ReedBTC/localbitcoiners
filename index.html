@@ -11,10 +11,11 @@
        THIS PAGE IS THE COMMUNITY FEEDS PAGE (feeds-homepage, lb-v80). The
        former /feeds became the homepage: a compact hero, the latest episode
        with its drawers, a row of links into Supporters / Boosts / Stats, then
-       the four community feeds exactly as /feeds carried them, and the
-       Explore grid above the footer. /feeds 301s here; the feed tabs still
-       deep-link by hash (/#events, /#market, /#podcasts, /#articles,
-       /#market-cart). -->
+       the four community feeds under a Community Feeds title, each tab with a
+       Featured / All sub-row, and the Explore grid above the footer. /feeds
+       301s to /#feeds; what a reader is looking at is spelled out as
+       /?feed=<tab>&view=<featured|all>[&range&sort&type&short]#feeds (see the
+       feed chrome controller below the footer and assets/js/feed-url.js). -->
   <script>document.documentElement.classList.add('js');</script>
 
   <!-- Pragmatic baseline CSP. `unsafe-inline` for script/style is
@@ -52,7 +53,7 @@
 
   <!-- Preload above-the-fold banner so it lands in parallel with fonts +
        CSS rather than waiting for the parser to discover the <img> tag. -->
-  <link rel="preload" as="image" href="assets/LocalBitcoiners_banner.png" fetchpriority="high" />
+  <link rel="preload" as="image" href="assets/LocalBitcoiners_banner_clear.png" fetchpriority="high" />
 
   <!-- PWA -->
   <link rel="manifest" href="/manifest.webmanifest" />
@@ -240,7 +241,9 @@
     /* ── Hero ── */
     /* A compact brand band (feeds-homepage): the banner is capped at 680px
        and centred on the navy ground instead of running edge to edge, and
-       the tagline band under it is tighter. The banner is 5:1, so this is
+       the tagline band under it is tighter. The image is the transparent cut
+       of the banner (Reed, 2026-09-06), so it sits on the navy rather than
+       carrying its own ground; link previews keep the opaque one. The banner is 5:1, so this is
        ~136px of image plus one line of tagline on desktop; on phones the
        image is already viewport-wide and shows uncropped, as before. */
     #hero {
@@ -873,50 +876,47 @@
     }
 
 
-    /* ── Community Feeds band ── The former /feeds page header, now the
-       divider between the top block and the feeds. An h2 (the page's h1 is
-       the show, in the hero). scroll-margin-top clears the sticky nav when a
-       feed deep link (/#market) scrolls the band into view. */
-    .page-header {
-      background: var(--navy);
-      color: var(--cream);
-      padding: 2.25rem 1.5rem 1.9rem;
-      text-align: center;
-      scroll-margin-top: 64px;
-    }
-    .page-header h2 {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: clamp(1.8rem, 4vw, 2.6rem);
-      font-weight: 700;
-      color: var(--white);
-      line-height: 1.2;
-    }
-    .page-header p {
-      max-width: 640px;
-      margin: 0.6rem auto 0;
-      font-size: clamp(0.95rem, 2vw, 1.1rem);
-      color: var(--cream);
-      font-style: italic;
-    }
+    /* ── Community Feeds section ── A title in the Explore section's style
+       (the navy band and the membership chip that /feeds carried are gone,
+       Reed 2026-09-06), then the tab chrome, then the tinted panels. #feeds
+       is the URL's name for the section; scroll-margin-top clears the sticky
+       nav when a feeds link scrolls it into view. */
+    #feeds { scroll-margin-top: 64px; }
+    .feeds-title { padding-bottom: 0.9rem; }
+    .feeds-title .home-module-head { margin-bottom: 0; }
 
-    /* ── Feed tabs ──────────────────────────────────────────────────
-       Desktop: a row of four equal-width tabs, each carrying its own
-       feed color. The active tab fills with its accent; inactive tabs
-       show a colored icon + a thin colored top rule. The whole bar is
-       sticky under the nav so the tabs stay reachable while scrolling
-       a long feed.
-       Mobile: the bar collapses into a horizontally-scrollable row of
-       colored chips (icon + short name). */
-    .feed-tabs-wrap {
+    /* ── Feed chrome ────────────────────────────────────────────────
+       The four tabs and, under them, the active tab's Featured / All
+       sub-row, inside one bordered box at the panel column's width — the
+       OnlyBoosts homepage's chrome (its index.html, 2026-09-03), carried
+       back here: the box replaces the two full-bleed cream bands the tabs
+       used to sit in. Sticky under the nav so the tabs stay reachable
+       while scrolling a long feed.
+
+       ⚠️ THE BOX IS AS WIDE AS THE PANEL COLUMN. `.feed-panels-inner` is
+       --feed-track wide INCLUDING its 1.25rem side padding (border-box),
+       so `.feed-bar-inner` restates exactly that box and the chrome fills
+       it; the two edges line up by the same arithmetic. */
+    :root { --feed-track: 720px; }
+    .feed-bar-wrap {
       position: sticky;
       top: 64px; /* height of #top-nav */
       z-index: 40;
       background: var(--cream);
-      border-bottom: 1px solid var(--border);
+      padding: 0.25rem 0 0.75rem;
+    }
+    .feed-bar-inner {
+      max-width: var(--feed-track);
+      margin: 0 auto;
+      padding: 0 1.25rem;
+    }
+    .feed-chrome {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--cream);
     }
     .feed-tabs {
-      max-width: 1000px;
-      margin: 0 auto;
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 0;
@@ -927,14 +927,19 @@
       background: transparent;
       border: 0;
       border-top: 3px solid transparent;
+      /* The seam runs all the way across, including under the selected tab:
+         the tab and the selected sub-block below it are the same fill and
+         touch, so without it the two tiers merge into one slab. Inside the
+         accent column it is one step darker, a fold rather than a cut. */
+      border-bottom: 1px solid var(--border);
       font: inherit;
       cursor: pointer;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 0.35rem;
-      padding: 0.95rem 0.75rem 0.85rem;
+      gap: 0.3rem;
+      padding: 0.7rem 0.5rem 0.6rem;
       color: var(--muted);
       transition: background 0.15s, color 0.15s, border-color 0.15s;
     }
@@ -944,8 +949,8 @@
     .feed-tab--articles { --tab: var(--articles-accent); }
 
     .feed-tab-icon {
-      width: 26px;
-      height: 26px;
+      width: 22px;
+      height: 22px;
       color: var(--tab);
       transition: color 0.15s;
     }
@@ -953,8 +958,9 @@
     .feed-tab-label {
       font-family: 'Playfair Display', Georgia, serif;
       font-weight: 700;
-      font-size: 1rem;
+      font-size: 0.95rem;
       letter-spacing: 0.01em;
+      white-space: nowrap;
     }
     .feed-tab-sub {
       font-size: 0.72rem;
@@ -969,10 +975,70 @@
     .feed-tab[aria-selected="true"] {
       background: var(--tab);
       border-top-color: var(--tab);
+      border-bottom-color: var(--accent-d);
       color: var(--white);
     }
     .feed-tab[aria-selected="true"] .feed-tab-icon,
     .feed-tab[aria-selected="true"] .feed-tab-sub { color: #fff; opacity: 0.95; }
+
+    /* ══ THE SUB-ROW: Featured / All ══
+       Which view of the tab, as blocks rather than as text. The same
+       four-column grid as .feed-tabs, each group pinned to its own column,
+       so the pair sits exactly under its tab and adds up to one tab's width
+       whatever the gap at any breakpoint. Which group is on screen is CSS
+       off body[data-active-feed], not JS, so a tab you come back to can
+       never show another tab's pair. No gap and no per-block border: the
+       blocks touch each other and the tab above, and the boundary between
+       the pair is carried by the fill. */
+    .feed-subs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+    }
+    .feed-sub-group { display: none; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 0; }
+    .feed-sub-group[data-feed="events"]   { grid-column: 1; }
+    .feed-sub-group[data-feed="market"]   { grid-column: 2; }
+    .feed-sub-group[data-feed="podcasts"] { grid-column: 3; }
+    .feed-sub-group[data-feed="articles"] { grid-column: 4; }
+    body[data-active-feed="events"]   .feed-subs > [data-feed="events"],
+    body[data-active-feed="market"]   .feed-subs > [data-feed="market"],
+    body[data-active-feed="podcasts"] .feed-subs > [data-feed="podcasts"],
+    body[data-active-feed="articles"] .feed-subs > [data-feed="articles"] { display: grid; }
+    .feed-sub {
+      appearance: none;
+      border: 0;
+      border-radius: 0;
+      font: inherit;
+      font-size: 0.82rem;
+      font-weight: 700;
+      background: var(--cream-d);
+      color: var(--muted);
+      padding: 0.36rem 0.4rem 0.4rem;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .feed-sub:hover { color: var(--accent-d); }
+    .feed-sub:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+    /* The selected block continues the tab's fill downward, so the tab and
+       the view under it read as one column. */
+    .feed-sub[aria-selected="true"] { background: var(--accent); color: var(--white); }
+    .feed-sub[aria-selected="true"]:hover { color: var(--white); }
+
+    /* ══ THE TWO VIEWS ══
+       Each renderer still paints one panel: the gold Featured box first,
+       then the list and whatever controls it owns. The sub-row is a CSS
+       switch over that DOM off body[data-feed-view], the same call the
+       sub-row itself makes: Featured shows the box alone (plus loading
+       skeletons and empty/error placeholders) and hides the head's
+       controls; All hides the box. The Events head keeps its Create button
+       in both views — only its range/type controls are the All view's. The
+       other heads (title, count, sort, range, toggle) belong to All. A
+       renderer's featured mount is a `*-featured-mount` wrapper around the
+       box, which is why the selector reads the class substring. */
+    body[data-feed-view="featured"] .feed-panel [data-feed-list] > :not(.feat-box):not([class*="featured-mount"]):not(.feed-skeleton):not(.feed-placeholder) { display: none; }
+    body[data-feed-view="featured"] .feed-panel:not(#panel-events) > .feed-panel-head { display: none; }
+    body[data-feed-view="featured"] #panel-events .feed-head-controls { display: none; }
+    body[data-feed-view="all"] .feed-panel .feat-box { display: none; }
 
     /* ── Panels ── */
     .feed-panels {
@@ -2295,12 +2361,17 @@
 
     /* ── Mobile: tabs become a scrollable chip row ── */
     @media (max-width: 640px) {
-      .feed-tabs-wrap { top: 56px; } /* nav shrinks on mobile */
-      /* Icon-only chips that all fit across the row (no horizontal scroll). */
+      .feed-bar-wrap { top: 56px; padding-bottom: 0.5rem; } /* nav shrinks on mobile */
+      /* The box loses its sides and radius on a phone: the tabs are chips
+         there, with room around them already, and only the hairline under
+         the sub-row stays. */
+      .feed-bar-inner { padding: 0; }
+      .feed-chrome { border-left: 0; border-right: 0; border-top: 0; border-radius: 0; }
+      /* Icon-only chips that all fit across the row (no horizontal scroll):
+         four tabs and four words do not fit in 375px. */
       .feed-tabs {
-        grid-template-columns: repeat(4, 1fr);
         gap: 0.5rem;
-        padding: 0.6rem 0.85rem;
+        padding: 0.6rem 0.85rem 0.5rem;
       }
       .feed-tab {
         flex-direction: row;
@@ -2326,6 +2397,12 @@
       }
       .feed-tab-sub { display: none; }
       .feed-tab[aria-selected="true"] { border-color: var(--tab); }
+      /* With icon-only chips the "under its tab" alignment has nothing to
+         align with, and a pair squeezed into a quarter of the row is two
+         unreadable blocks, so the active group spans the whole row. */
+      .feed-subs { padding: 0 0.85rem 0.5rem; }
+      .feed-sub-group[data-feed] { grid-column: 1 / -1; }
+      .feed-sub { font-size: 0.8rem; padding: 0.4rem 0.2rem 0.44rem; }
       .feed-panels-inner { padding: 1.5rem 1rem 2.5rem; }
       /* Shallower child indent on narrow screens. */
       .pcast-details { margin-left: 2.1rem; padding-left: 0.7rem; }
@@ -2367,10 +2444,9 @@
   <!-- Marketplace "Buy Now" reuses merch.js's cart + checkout modal, which is
        styled here — so the reused modal looks right on the homepage too. -->
   <link rel="stylesheet" href="/assets/css/merch.css" />
-  <link rel="stylesheet" href="/assets/css/community-status.css" />
   <link rel="stylesheet" href="/assets/css/onlyboosts.css" />
 </head>
-<body data-active-feed="events">
+<body data-active-feed="events" data-feed-view="featured">
 
 <!-- ══════════════════════════════ NAV ══════════════════════════════ -->
 <!-- NAV:START (generated by scripts/sync-partials.js — edit the partial) -->
@@ -2405,11 +2481,11 @@
               <h4>Show</h4>
               <a href="/episodes.html"><span aria-hidden="true">🎧</span> Episodes</a>
               <a href="/stats.html"><span aria-hidden="true">📊</span> Stats</a>
-              <a href="/#market"><span aria-hidden="true">👕</span> Merch</a>
+              <a href="/?feed=market#feeds"><span aria-hidden="true">👕</span> Merch</a>
             </div>
             <div class="nav-explore-group">
               <h4>Community</h4>
-              <a href="/#events"><span aria-hidden="true">🗞️</span> Feeds</a>
+              <a href="/#feeds"><span aria-hidden="true">🗞️</span> Feeds</a>
               <a href="/supporters"><span aria-hidden="true">🟧</span> Supporters</a>
               <a href="/boosts.html"><span aria-hidden="true">⚡</span> Boosts</a>
             </div>
@@ -2441,8 +2517,9 @@
          (sessionStorage 'lb_merch_cart') has items, except on the homepage's
          Marketplace tab where it always shows. Click opens the cart modal in
          place once that tab has hydrated (feeds-market.js exposes
-         window.openMerchCart) or navigates to /#market-cart. -->
-    <a id="nav-cart-link" class="nav-cart" href="/#market-cart" aria-label="View cart" style="display:none">
+         window.openMerchCart) or navigates to the homepage's Marketplace tab
+         with cart=1, which the feeds controller consumes on arrival. -->
+    <a id="nav-cart-link" class="nav-cart" href="/?feed=market&amp;cart=1#feeds" aria-label="View cart" style="display:none">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
         <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
@@ -2460,7 +2537,7 @@
 
 <!-- ══════════════════════════════ HERO (brand) ══════════════════════════════ -->
 <section id="hero" aria-label="Hero">
-  <img src="assets/LocalBitcoiners_banner.png" alt="Local Bitcoiners — a Bitcoin meetup culture podcast hosted by Reed and Rev Hodl" />
+  <img src="assets/LocalBitcoiners_banner_clear.png" alt="Local Bitcoiners — a Bitcoin meetup culture podcast hosted by Reed and Rev Hodl" />
   <div class="hero-overlay">
     <div class="hero-text">
       <h1 class="sr-only">Local Bitcoiners Podcast</h1>
@@ -2559,24 +2636,26 @@
 </section>
 
 <!-- ══════════════════════════════ COMMUNITY FEEDS ══════════════════════════════
-     The whole former /feeds page from here to the Find modal: the navy band
-     with the community-status chip, the four sticky tabs, and the panels
-     feeds.js hydrates by hash. Unchanged apart from the h1 → h2. -->
-<section class="page-header" id="community-feeds">
-  <h2>Community Feeds</h2>
-  <p>Notes from the Local Bitcoiners <a href="/supporters">Community</a></p>
-  <!-- Community-status chip (community-status.js swaps this default for the
-       right state once login + follow-pack membership resolve). The static
-       "Checking…" chip reserves the space so there's no layout shift. -->
-  <div id="lb-community-status">
-    <div class="lb-cstat lb-cstat--checking" role="status">
-      <span class="lb-cstat__spinner"></span>Checking membership…
+     The former /feeds page, under a section title in the Explore section's
+     style: the boxed tab chrome (four tabs, and the active tab's Featured /
+     All sub-row), the tinted panels feeds.js hydrates, and the Find modal.
+     The section is the URL's #feeds; the inline controller below the footer
+     owns which tab, which view and which controls the URL spells out. -->
+<section id="feeds" aria-label="Community feeds">
+  <div class="home-module feeds-title">
+    <div class="home-module-head">
+      <div>
+        <h2 class="home-module-title">Community Feeds</h2>
+      </div>
     </div>
   </div>
-</section>
 
-<!-- ══════════════════════════════ FEED TABS ══════════════════════════════ -->
-<div class="feed-tabs-wrap">
+<!-- ══════════════════════════════ FEED CHROME ══════════════════════════════
+     Static markup, wired by the controller: the tabs are above the fold of
+     the section on every visit, so they shouldn't wait on script to exist. -->
+<div class="feed-bar-wrap">
+<div class="feed-bar-inner">
+<div class="feed-chrome">
   <div class="feed-tabs" role="tablist" aria-label="Community feeds">
     <button
       type="button"
@@ -2653,6 +2732,32 @@
       <span class="feed-tab-label">Articles</span>
     </button>
   </div>
+
+  <!-- Which view of the tab. Every group ships; CSS shows the active tab's,
+       pinned under it. The controller rewrites aria-selected from the URL
+       during parse, so what a reader with no JavaScript sees is the default:
+       Featured, which is also where every tab lands. -->
+  <div class="feed-subs" data-feed-subs>
+    <div class="feed-sub-group" data-feed="events" role="tablist" aria-label="Events view">
+      <button type="button" class="feed-sub" role="tab" data-view="featured" aria-selected="true">Featured</button>
+      <button type="button" class="feed-sub" role="tab" data-view="all" aria-selected="false">All</button>
+    </div>
+    <div class="feed-sub-group" data-feed="market" role="tablist" aria-label="Marketplace view">
+      <button type="button" class="feed-sub" role="tab" data-view="featured" aria-selected="true">Featured</button>
+      <button type="button" class="feed-sub" role="tab" data-view="all" aria-selected="false">All</button>
+    </div>
+    <div class="feed-sub-group" data-feed="podcasts" role="tablist" aria-label="Podcast Boosts view">
+      <button type="button" class="feed-sub" role="tab" data-view="featured" aria-selected="true">Featured</button>
+      <button type="button" class="feed-sub" role="tab" data-view="all" aria-selected="false">All</button>
+    </div>
+    <div class="feed-sub-group" data-feed="articles" role="tablist" aria-label="Articles view">
+      <button type="button" class="feed-sub" role="tab" data-view="featured" aria-selected="true">Featured</button>
+      <button type="button" class="feed-sub" role="tab" data-view="all" aria-selected="false">All</button>
+    </div>
+  </div>
+
+</div>
+</div>
 </div>
 
 <!-- ══════════════════════════════ PANELS ══════════════════════════════ -->
@@ -2739,6 +2844,7 @@
 
   </div>
 </main>
+</section>
 
 <!-- ══════════════════════════════ "FIND AN EVENT" MODAL ══════════════════════════════
      Opened by the Events tab's "Find" button. Three "boost an existing meetup"
@@ -2813,13 +2919,13 @@
         <p class="explore-desc">Every boost &amp; message.</p>
         <span class="explore-go">Read them →</span>
       </a>
-      <a class="explore-card" href="/#events">
+      <a class="explore-card" href="/?feed=events#feeds">
         <div class="explore-icon">📍</div>
         <div class="explore-title">Meetups</div>
         <p class="explore-desc"><span id="explore-meetups-count">Listener-boosted</span> meetups near you.</p>
         <span class="explore-go">Find one →</span>
       </a>
-      <a class="explore-card" href="/#market">
+      <a class="explore-card" href="/?feed=market#feeds">
         <div class="explore-icon">👕</div>
         <div class="explore-title">Merch</div>
         <p class="explore-desc">Tees &amp; stickers. Pay in sats.</p>
@@ -3491,48 +3597,108 @@
 })();
 </script>
 
-<!-- ═══════════════ FEED TABS — switching + hash routing ═══════════════
-     Pure shell logic: swap the active tab / panel and repaint the panel
-     wash by setting <body data-active-feed>. The actual feed fetching is
-     a later phase (a feeds.js module will read each panel's data-kinds
-     and hydrate [data-feed-list]). Kept inline so tab switching works
-     with zero network dependency. -->
+<!-- ═══════════════ FEED CHROME — tabs, sub-row, and the URL ═══════════════
+     Pure shell logic: swap the active tab / panel, the active view, and
+     repaint the panel wash by setting <body data-active-feed data-feed-view>.
+     The feed fetching is feeds.js, which reads each panel's data attributes
+     and hydrates [data-feed-list] on the first lb:feed-activate for a feed.
+     Kept inline so tab switching works with zero network dependency.
+
+     THE URL. The feeds share the homepage, so what a reader is looking at is
+     spelled out as  /?feed=<tab>&view=<featured|all>[&range&sort&type&short]#feeds
+     — the section by hash, the rest by query (Reed, 2026-09-06: shareable
+     links to a feed and to a particular filter/sort). A plain visit to / is
+     left alone; the URL starts tracking the feeds the moment the reader
+     touches them or arrives by a feeds link. The per-feed params come from
+     the renderers over lb:feed-params (assets/js/feed-url.js) and are kept
+     per feed, so switching tabs and back restores a feed's own state in the
+     URL. The old hashes (#events … #articles, #market-cart) and the
+     /feeds 301 (which lands on #feeds) still route. -->
 <script>
 (function () {
   'use strict';
   const FEEDS = ['events', 'market', 'podcasts', 'articles'];
+  const VIEWS = ['featured', 'all'];
+  const DEFAULT_VIEW = 'featured';
+  const PARAM_KEYS = ['range', 'sort', 'type', 'short'];
+  const section = document.getElementById('feeds');
   const tablist = document.querySelector('.feed-tabs');
-  if (!tablist) return;
+  if (!section || !tablist) return;
   const tabs = Array.from(tablist.querySelectorAll('[role="tab"]'));
+  const subs = Array.from(document.querySelectorAll('.feed-sub'));
+
+  const viewByFeed = {};    // feed -> 'featured' | 'all'
+  const paramsByFeed = {};  // feed -> { range, sort, type, short }
+  let activeFeed = null;
+  // Once true, the URL is rewritten to describe the feeds on every change.
+  // False until the reader touches the feeds or arrives by a feeds link, so a
+  // plain visit to the homepage keeps a plain URL.
+  let urlOwned = false;
 
   function panelFor(feed) { return document.getElementById('panel-' + feed); }
 
-  // #market-cart is the sitewide nav cart icon's target (the cart modal has no
-  // page of its own since /merch was folded in). It routes to the Marketplace
-  // tab and raises a flag feeds-market.js consumes once the catalog is merged,
-  // so cart lines from any seller resolve to products before the modal opens.
-  function routeFeed(raw) {
-    if (raw === 'market-cart') {
-      window.__lbOpenCartOnMarket = true;
-      return 'market';
-    }
-    return raw;
+  // ── The URL ──
+  function feedsUrl() {
+    const q = new URLSearchParams();
+    q.set('feed', activeFeed);
+    q.set('view', viewByFeed[activeFeed] || DEFAULT_VIEW);
+    const p = paramsByFeed[activeFeed] || {};
+    for (const k of PARAM_KEYS) if (p[k]) q.set(k, p[k]);
+    return location.pathname + '?' + q.toString() + '#feeds';
+  }
+  function writeUrl() {
+    if (!urlOwned || !activeFeed) return;
+    const next = feedsUrl();
+    if (next === location.pathname + location.search + location.hash) return;
+    try { history.replaceState(null, '', next); } catch {}
+  }
+
+  // Read a URL (the page's own, or a clicked link's) as a feeds destination:
+  // { feed, view, params, cart } or null if it names no feed and no #feeds.
+  function parseFeedsUrl(url) {
+    let u;
+    try { u = new URL(url, location.href); } catch { return null; }
+    const hash = (u.hash || '').replace('#', '');
+    let feed = u.searchParams.get('feed') || '';
+    let cart = u.searchParams.get('cart') === '1';
+    let wants = hash === 'feeds' || !!feed;
+    // The pre-lb-v80 hashes: /feeds#market, and the nav cart's #market-cart.
+    if (hash === 'market-cart') { feed = feed || 'market'; cart = true; wants = true; }
+    else if (FEEDS.includes(hash)) { feed = feed || hash; wants = true; }
+    if (!wants) return null;
+    const params = {};
+    for (const k of PARAM_KEYS) { const v = u.searchParams.get(k); if (v) params[k] = v; }
+    return { feed: FEEDS.includes(feed) ? feed : null, view: u.searchParams.get('view') || '', params, cart };
   }
 
   // The feeds sit below the hero, the latest episode and the quick links, so
-  // a feed deep link (/#market, the nav cart's /#market-cart, the Explore
-  // cards, the 301s from the old /feeds URLs) has to bring them into view as
-  // well as select the tab. The band above the tabs is the scroll target; its
-  // scroll-margin-top clears the sticky nav.
+  // a feeds link has to bring the section into view as well as select the
+  // tab. Its scroll-margin-top clears the sticky nav.
   function revealFeeds(instant) {
-    const band = document.getElementById('community-feeds');
-    if (!band) return;
-    try { band.scrollIntoView({ block: 'start', behavior: instant ? 'instant' : 'smooth' }); }
-    catch { band.scrollIntoView(true); }
+    try { section.scrollIntoView({ block: 'start', behavior: instant ? 'instant' : 'smooth' }); }
+    catch { section.scrollIntoView(true); }
   }
 
-  function activate(feed, { focus = false, updateHash = true } = {}) {
+  // ── Views ──
+  function setView(feed, view, { focus = false } = {}) {
+    if (!VIEWS.includes(view)) view = DEFAULT_VIEW;
+    viewByFeed[feed] = view;
+    if (feed !== activeFeed) return;
+    document.body.setAttribute('data-feed-view', view);
+    subs.forEach((b) => {
+      const group = b.closest('.feed-sub-group');
+      const on = !!group && group.dataset.feed === feed && b.dataset.view === view;
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+      b.tabIndex = on ? 0 : -1;
+      if (on && focus) b.focus();
+    });
+    writeUrl();
+  }
+
+  // ── Tabs ──
+  function activate(feed, { focus = false } = {}) {
     if (!FEEDS.includes(feed)) feed = 'events';
+    activeFeed = feed;
     document.body.setAttribute('data-active-feed', feed);
     tabs.forEach((tab) => {
       const isActive = tab.dataset.feed === feed;
@@ -3545,15 +3711,37 @@
       }
       if (isActive && focus) tab.focus();
     });
-    if (updateHash && ('#' + feed) !== location.hash) {
-      history.replaceState(null, '', '#' + feed);
-    }
+    setView(feed, viewByFeed[feed] || DEFAULT_VIEW);
     // Tell feeds.js (if loaded) to lazily hydrate this feed on first view.
-    document.dispatchEvent(new CustomEvent('lb:feed-activate', { detail: { feed } }));
+    document.dispatchEvent(new CustomEvent('lb:feed-activate', { detail: { feed, view: viewByFeed[feed] } }));
+  }
+
+  // Land on a feeds destination: tab, view, params, cart, and the scroll.
+  function go(dest, { instant = false, scroll = true } = {}) {
+    urlOwned = true;
+    const feed = dest.feed || activeFeed || 'events';
+    if (dest.view) viewByFeed[feed] = VIEWS.includes(dest.view) ? dest.view : DEFAULT_VIEW;
+    // Only the URL's own params for the feed it names; a renderer reads the
+    // same ones through initialFeedParams on its first hydration.
+    if (dest.feed && Object.keys(dest.params || {}).length) paramsByFeed[feed] = Object.assign({}, dest.params);
+    // The nav cart icon's destination: the Marketplace tab, cart open on
+    // arrival once the catalog is merged (feeds-market.js consumes the flag).
+    // Consumed here rather than kept in the URL, so a reload doesn't reopen it.
+    if (dest.cart) window.__lbOpenCartOnMarket = true;
+    activate(feed);
+    if (scroll) revealFeeds(instant);
   }
 
   tabs.forEach((tab) => {
-    tab.addEventListener('click', () => activate(tab.dataset.feed));
+    tab.addEventListener('click', () => { urlOwned = true; activate(tab.dataset.feed); });
+  });
+  subs.forEach((b) => {
+    b.addEventListener('click', () => {
+      const group = b.closest('.feed-sub-group');
+      if (!group) return;
+      urlOwned = true;
+      setView(group.dataset.feed, b.dataset.view);
+    });
   });
 
   // Roving-tabindex arrow-key navigation across the tablist.
@@ -3567,25 +3755,66 @@
     else if (e.key === 'End') next = tabs.length - 1;
     if (next === null) return;
     e.preventDefault();
+    urlOwned = true;
     activate(tabs[next].dataset.feed, { focus: true });
   });
-
-  window.addEventListener('hashchange', () => {
-    const raw = (location.hash || '').replace('#', '');
-    const feed = routeFeed(raw);
-    // Normalize the hash back to the plain tab (#market-cart -> #market) so a
-    // reload doesn't reopen the cart.
-    activate(feed, { updateHash: feed !== raw });
-    if (FEEDS.includes(feed)) revealFeeds(false);
+  // And across the active sub-row.
+  document.querySelectorAll('.feed-sub-group').forEach((group) => {
+    group.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      const feed = group.dataset.feed;
+      const cur = viewByFeed[feed] || DEFAULT_VIEW;
+      const idx = VIEWS.indexOf(cur);
+      const next = VIEWS[(idx + (e.key === 'ArrowRight' ? 1 : VIEWS.length - 1)) % VIEWS.length];
+      e.preventDefault();
+      urlOwned = true;
+      setView(feed, next, { focus: true });
+    });
   });
 
-  // Deep-link support: /#events lands on the Events tab, scrolled into view.
-  // No hash (a plain visit to the homepage) stays at the top with Events
-  // selected but not scrolled to.
-  const rawInitial = (location.hash || '').replace('#', '');
-  const initial = routeFeed(rawInitial);
-  activate(FEEDS.includes(initial) ? initial : 'events', { updateHash: initial !== rawInitial });
-  if (FEEDS.includes(initial)) requestAnimationFrame(() => revealFeeds(true));
+  // A renderer reporting that the reader changed one of its controls. An
+  // empty value drops the key (back to that feed's default).
+  document.addEventListener('lb:feed-params', (e) => {
+    const d = (e && e.detail) || {};
+    if (!FEEDS.includes(d.feed)) return;
+    const merged = Object.assign({}, paramsByFeed[d.feed], d.params || {});
+    for (const k of Object.keys(merged)) if (!merged[k]) delete merged[k];
+    paramsByFeed[d.feed] = merged;
+    urlOwned = true;
+    if (d.feed === activeFeed) writeUrl();
+  });
+
+  // In-page feeds links (the nav's Feeds / Merch / cart, the Explore cards):
+  // the same path with a different query would otherwise reload the page to
+  // switch a tab. Anything that isn't a feeds destination is left alone.
+  document.addEventListener('click', (e) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const a = e.target && e.target.closest && e.target.closest('a[href]');
+    if (!a || a.target === '_blank') return;
+    let u;
+    try { u = new URL(a.getAttribute('href'), location.href); } catch { return; }
+    if (u.origin !== location.origin || u.pathname !== location.pathname) return;
+    const dest = parseFeedsUrl(u.href);
+    if (!dest) return;
+    e.preventDefault();
+    go(dest);
+  });
+
+  // Back/forward and a hash typed by hand.
+  window.addEventListener('hashchange', () => {
+    const dest = parseFeedsUrl(location.href);
+    if (dest) go(dest);
+  });
+
+  // Boot. A feeds URL (shared link, the /feeds 301, an old hash) lands on the
+  // feeds; a plain visit selects Events and stays at the top of the page.
+  const initial = parseFeedsUrl(location.href);
+  if (initial) {
+    go(initial, { instant: true, scroll: false });
+    requestAnimationFrame(() => revealFeeds(true));
+  } else {
+    activate('events');
+  }
 })();
 </script>
 
@@ -3821,6 +4050,5 @@
 <!-- Community feeds — lazily hydrates the active feed by hash (Events,
      Marketplace, Podcast Boosts, Articles) and the Featured boxes. -->
 <script type="module" src="/assets/js/feeds.js"></script>
-<script type="module" src="/assets/js/community-status.js"></script>
 </body>
 </html>

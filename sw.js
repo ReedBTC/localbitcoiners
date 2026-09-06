@@ -197,12 +197,18 @@
 // donor's behalf, and that decision is worth getting right on the first boost
 // rather than the second.
 // lb-v80: feeds-homepage. The community feeds page IS the homepage now: a
-// compact hero, the latest episode, a Supporters / Boosts / Stats row, the
-// four feed tabs, the Explore grid. /feeds 301s to /, feeds.html and the five
-// home-*.js teaser modules are gone, and the nav partial's Feeds / Merch /
-// cart links point at /#events, /#market, /#market-cart. index.html and nav.js
-// are precached, and every page carries the regenerated nav, so a returning
-// visitor otherwise keeps the old hub and links that 301 on every click.
+// compact hero on the transparent banner, the latest episode, a Supporters /
+// Boosts / Stats row, a Community Feeds title, the four feed tabs in a boxed
+// chrome with a Featured / All sub-row under each, the Explore grid. /feeds
+// 301s to /#feeds; the tab, view and controls are query params
+// (/?feed=market&view=all#feeds, assets/js/feed-url.js). feeds.html, the
+// five home-*.js teaser modules and the membership chip are gone from the
+// homepage, and the nav partial's Feeds / Merch / cart links point at the new
+// URLs. index.html and nav.js are precached, and every page carries the
+// regenerated nav, so a returning visitor otherwise keeps the old hub and
+// links that 301 on every click. The feed renderers (feeds.js, feeds-*.js,
+// featured-shared.js) changed too: they are stale-while-revalidate, and an
+// old copy against the new page would still exclude featured items from All.
 const VERSION = 'lb-v80';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
