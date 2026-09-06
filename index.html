@@ -2031,9 +2031,13 @@
       color: var(--gold-d); background: rgba(224,169,46,0.18);
       padding: 0.05rem 0.42rem; border-radius: 999px;
     }
+    /* The row fills the width; Create Event sits at the left, Find at the
+       right (Reed, 2026-09-06). */
     .feat-actions {
       display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+      flex: 1 1 auto;
     }
+    .feat-actions > .feat-find { margin-left: auto; }
 
     /* Range pills — same near-square shape as the page-level .pcast-range
        control, but gold-on-gold so they read as part of the box. */
