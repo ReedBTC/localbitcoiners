@@ -342,8 +342,11 @@ def load_community_npubs(followpacks_state_file):
     """Union of every member across every follow pack in the follow-packs bot's
     state file — the single source of truth for 'the community'. Same set
     community-boosts uses and feeds.js resolves live from kind-39089."""
-    packs = json.loads(Path(followpacks_state_file).read_text())
-    return sorted({h for pack in packs.values() for h in pack.get("members", [])})
+    state = json.loads(Path(followpacks_state_file).read_text())
+    # The file also carries non-pack bookkeeping (e.g. the follow-packs bot's
+    # `entry_grandfathered` roster, a plain list) — only dict values are packs.
+    packs = [v for v in state.values() if isinstance(v, dict)]
+    return sorted({h for pack in packs for h in pack.get("members", [])})
 
 
 def _is_ws_url(u):
