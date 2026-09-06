@@ -1047,8 +1047,10 @@
        renderer's featured mount is a `*-featured-mount` wrapper around the
        box, which is why the selector reads the class substring. */
     body[data-feed-view="featured"] .feed-panel [data-feed-list] > :not(.feat-box):not([class*="featured-mount"]):not(.feed-skeleton):not(.feed-placeholder) { display: none; }
-    body[data-feed-view="featured"] .feed-panel:not(#panel-events) > .feed-panel-head { display: none; }
-    body[data-feed-view="featured"] #panel-events .feed-head-controls { display: none; }
+    /* Every panel head belongs to the All view, the Events one included since
+       its Create button also sits beside Find in the Featured row (feeds.js
+       featuredBox, Reed 2026-09-06). */
+    body[data-feed-view="featured"] .feed-panel > .feed-panel-head { display: none; }
     body[data-feed-view="all"] .feed-panel .feat-box { display: none; }
 
     /* ── Panels ── */
@@ -2780,7 +2782,7 @@
                Feature" action lives in the Featured Events header row (rendered
                by feeds.js), so it isn't here. -->
           <div class="event-composer-btns">
-            <button type="button" class="event-composer-btn" id="event-create-trigger">
+            <button type="button" class="event-composer-btn event-create-btn" id="event-create-trigger">
               <span class="ecb-icon" aria-hidden="true">＋</span>
               <span>Create Event</span>
             </button>
@@ -3839,25 +3841,26 @@
   }
 
   // ── Create button → widget "create meetup" modal (as-is) ──
-  (function () {
-    const createBtn = document.getElementById('event-create-trigger');
-    if (!createBtn) return;
-    createBtn.addEventListener('click', async () => {
-      const label = createBtn.querySelector('span:last-child');
-      const prev = label ? label.textContent : '';
-      createBtn.disabled = true;
-      if (label) label.textContent = 'Loading…';
-      try {
-        await ensureWidgetLoaded();
-        if (window.LBLogin?.openMeetupModal) await window.LBLogin.openMeetupModal('create');
-      } catch (e) {
-        console.error('[lb] create meetup load failed', e);
-      } finally {
-        createBtn.disabled = false;
-        if (label) label.textContent = prev;
-      }
-    });
-  })();
+  // Delegated: there are two Create Event buttons (the panel head's, for the
+  // All view, and the one feeds.js paints beside Find in the Featured view,
+  // rebuilt on every repaint), so the listener lives on the document.
+  document.addEventListener('click', async (e) => {
+    const createBtn = e.target && e.target.closest && e.target.closest('.event-create-btn');
+    if (!createBtn || createBtn.disabled) return;
+    const label = createBtn.querySelector('span:last-child');
+    const prev = label ? label.textContent : '';
+    createBtn.disabled = true;
+    if (label) label.textContent = 'Loading…';
+    try {
+      await ensureWidgetLoaded();
+      if (window.LBLogin?.openMeetupModal) await window.LBLogin.openMeetupModal('create');
+    } catch (err) {
+      console.error('[lb] create meetup load failed', err);
+    } finally {
+      createBtn.disabled = false;
+      if (label) label.textContent = prev;
+    }
+  });
 
   // ── Find modal — accordion of "boost an existing meetup" flows ──
   // Each row expands a drawer INSIDE the modal (no secondary modal). Paste is

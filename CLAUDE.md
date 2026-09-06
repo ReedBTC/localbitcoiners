@@ -125,8 +125,10 @@ that fail silently if missed:
 - **Featured / All is a CSS switch off `body[data-feed-view]`**, not two
   renders. Each renderer still paints one panel (gold `.feat-box` first, in
   a `*-featured-mount` wrapper on three tabs, then the list); Featured shows
-  the box alone plus skeletons and placeholders and hides the head's
-  controls (Events keeps its Create button), All hides the box. Since
+  the box alone plus skeletons and placeholders and hides every panel head
+  (the Events Create button is painted a second time beside Find in the
+  Featured row by `featuredBox`; both are wired by one delegated click on
+  `.event-create-btn` in the inline loader), All hides the box. Since
   2026-09-06 **All includes the featured items** (the `!visible.has(...)`
   exclusions in all four renderers are gone), and the box has **no range
   pills** (`featuredHead` ignores `range`); every box runs at the 33-day

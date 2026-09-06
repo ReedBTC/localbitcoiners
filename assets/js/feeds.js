@@ -666,6 +666,25 @@ function featuredBox({ count, featRange, onFeatRange }) {
     find.classList.add('feed-find-btn')
     find.setAttribute('aria-controls', 'event-find-modal')
   }
+  // Create Event sits on the same row as Find in the Featured view (Reed,
+  // 2026-09-06). Like Find it carries no listener of its own: the inline
+  // loader opens the widget's create modal via a delegated click on
+  // `.event-create-btn`, so the button survives every repaint. The All view
+  // keeps its own copy in the panel head.
+  const actions = head.querySelector('.feat-actions')
+  if (actions) {
+    const create = document.createElement('button')
+    create.type = 'button'
+    create.className = 'event-composer-btn event-create-btn'
+    const icon = document.createElement('span')
+    icon.className = 'ecb-icon'
+    icon.setAttribute('aria-hidden', 'true')
+    icon.textContent = '＋'
+    const label = document.createElement('span')
+    label.textContent = 'Create Event'
+    create.append(icon, label)
+    actions.prepend(create)
+  }
   box.appendChild(head)
   return box
 }
