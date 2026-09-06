@@ -196,7 +196,7 @@
 // bot reads to decide whether the boost still needs a note published on the
 // donor's behalf, and that decision is worth getting right on the first boost
 // rather than the second.
-const VERSION = 'lb-v78';
+const VERSION = 'lb-v79';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

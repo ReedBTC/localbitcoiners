@@ -28,6 +28,12 @@
  *   4. **The wallet gate.** An lnaddress leg pays over BOLT11, which every
  *      rail speaks; a keysend leg does not. Upgrading a leg a wallet cannot
  *      pay trades a payment for metadata, which is the wrong way round.
+ *   5. **A node address is not always a pubkey** (`nodePubkeyOf`, 2026-09-04).
+ *      A value block may carry the node's whole connection string,
+ *      `<pubkey>@<host>:<port>`; handed to a wallet as the keysend
+ *      destination it is refused outright, and the show gets nothing while
+ *      its fee leg pays. Every keysend call site — both boost paths, NWC and
+ *      WebLN — is scanned for the rule.
  */
 import assert from 'node:assert/strict'
 import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs'
@@ -76,7 +82,7 @@ writeFileSync(
   readFileSync(join(ROOT, 'login-widget/src/lib/keysendLookup.js'), 'utf8'),
 )
 const {
-  isLnurlOnlyAddress, parseKeysendResponse, lookupKeysendTarget,
+  isLnurlOnlyAddress, parseKeysendResponse, lookupKeysendTarget, nodePubkeyOf,
   walletCanKeysend, noteKeysendUnsupported, clearKeysendLookupCache,
 } = await import(pathToFileURL(join(dir, 'keysendLookup.js')).href)
 
@@ -142,6 +148,39 @@ try {
   })
   await ok('tag: "keysend" is deliberately not required', () => {
     assert.equal(parseKeysendResponse({ pubkey: PUBKEY }).pubkey, PUBKEY)
+  })
+
+  console.log('\nnodePubkeyOf — a value block\'s node address, as published')
+  await ok('a bare pubkey passes, lowercased', () => {
+    assert.equal(nodePubkeyOf(PUBKEY), PUBKEY)
+    assert.equal(nodePubkeyOf(` ${PUBKEY.toUpperCase()} `), PUBKEY)
+  })
+  await ok('⚠️ a connection string yields the pubkey before the @ (the 2026-09-04 failure)', () => {
+    assert.equal(nodePubkeyOf(`${PUBKEY}@obxevbeocz3rv2wgeallmgl2luzaog5obo3j625tdbgb2jmbkmz3a6id.onion:9735`), PUBKEY)
+    assert.equal(nodePubkeyOf(`${PUBKEY}@203.0.113.9:9735`), PUBKEY)
+    assert.equal(nodePubkeyOf(`${PUBKEY}@node.example`), PUBKEY)
+  })
+  await ok('anything that is not a compressed pubkey is null', () => {
+    assert.equal(nodePubkeyOf('bob@getalby.com'), null, 'a lightning address under the wrong type')
+    assert.equal(nodePubkeyOf(PUBKEY.slice(0, 65)), null, 'truncated')
+    assert.equal(nodePubkeyOf('04' + 'a'.repeat(64)), null, 'uncompressed prefix')
+    assert.equal(nodePubkeyOf(''), null)
+    assert.equal(nodePubkeyOf(null), null)
+    assert.equal(nodePubkeyOf(`@${PUBKEY}`), null, 'the pubkey is the head, never the tail')
+  })
+  await ok('every keysend call site hands the wallet nodePubkeyOf\'s answer, never the published string (source scan)', () => {
+    // Two boost paths, four call sites (NWC + WebLN in each). The show's own
+    // path restates the keysend leg rather than importing it, so nothing but
+    // this keeps the rule on both.
+    for (const rel of ['login-widget/src/lib/externalBoost.js', 'login-widget/src/lib/payAllLegs.js']) {
+      const text = readFileSync(join(ROOT, rel), 'utf8')
+      assert.ok(text.includes('nodePubkeyOf('), `${rel} does not call nodePubkeyOf`)
+      for (const bad of ['pubkey: dest.address', 'pubkey: leg.recipient.address', 'destination: dest.address', 'destination: leg.recipient.address']) {
+        assert.ok(!text.includes(bad), `${rel} still hands the wallet \`${bad}\``)
+      }
+      assert.ok(/pubkey,\s+\/\//.test(text) || text.includes('pubkey,\n'), `${rel}: NWC path pays the bare pubkey`)
+      assert.ok(text.includes('destination: pubkey'), `${rel}: WebLN path pays the bare pubkey`)
+    }
   })
   await ok('⚠️ a pubkey that is not a compressed node id is refused', () => {
     assert.equal(parseKeysendResponse({ pubkey: '04' + 'a'.repeat(64) }), null, 'wrong prefix')

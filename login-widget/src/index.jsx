@@ -26,7 +26,8 @@ import {
 import { markStubUser, isStubUser } from './lib/stubUser.js'
 import { getNDK, resetNDK, connectAndWait, signWithTimeout } from './lib/ndk.js'
 import * as wallet from './lib/wallet.js'
-import { bolt11PaymentHash, confirmInvoiceSettled, RECIPIENT_LUD16 } from './lib/boostagram.js'
+import { bolt11PaymentHash, RECIPIENT_LUD16 } from './lib/boostagram.js'
+import { confirmLegSettled } from './lib/externalBoost.js'
 import { isCleanPaymentDecline } from './lib/utils.js'
 import { applyRecipientOverrides } from './lib/recipientOverrides.js'
 import { normalizeFeature, resolveFeatureAddress } from './lib/featureSplit.js'
@@ -1335,11 +1336,17 @@ const api = {
     if (isCleanPaymentDecline(payMsg)) return { status: 'unsettled', preimage: null, kind: active.kind, error: payMsg }
 
     // Ambiguous (timeout, lost reply, no preimage). Confirm out-of-band
-    // via LUD-21 before deciding anything.
-    const settlement = await confirmInvoiceSettled(verify, paymentHash)
+    // before deciding anything: the wallet's own record by payment hash
+    // (NIP-47 lookup, paymentLookup.js) and LUD-21, under one deadline.
+    const settlement = await confirmLegSettled(
+      { paymentHash, verifyUrl: verify },
+      { deadlineMs: 8000, intervalMs: 1500, lookup: typeof active.lookupPayment === 'function' ? active.lookupPayment : null },
+    )
     if (settlement === 'settled') return { status: 'paid', preimage: null, kind: active.kind }
-    if (settlement === 'unsettled') return { status: 'unsettled', preimage: null, kind: active.kind, error: payMsg }
-    // 'unknown' — verify URL missing/unreachable. We genuinely can't tell.
+    // Only the wallet says 'failed', and only with an explicit state — the one
+    // answer that makes a retry safe. LUD-21 never produces it.
+    if (settlement === 'failed') return { status: 'unsettled', preimage: null, kind: active.kind, error: payMsg || 'Your wallet reports this payment failed.' }
+    // 'unknown' — no verify URL, no lookup, or neither answered. We genuinely can't tell.
     return { status: 'uncertain', preimage: null, kind: active.kind, error: payMsg }
   },
 

@@ -47,6 +47,7 @@ import {
   lookupKeysendTarget,
   walletCanKeysend,
   noteKeysendUnsupported,
+  nodePubkeyOf,
 } from './keysendLookup.js'
 import {
   buildBoostagram,
@@ -56,6 +57,7 @@ import {
   randomPreimageHex,
   MAX_MESSAGE_CHARS,
 } from './externalBoostagram.js'
+import { confirmViaWallet, keysendPaymentHash } from './paymentLookup.js'
 
 export const STATUS = {
   PENDING: 'pending',
@@ -375,6 +377,72 @@ async function resolveKeysendUpgrade(leg, timer) {
   }
 }
 
+/**
+ * Can this unconfirmed leg be checked at all? Two sources, either suffices:
+ * the wallet (NIP-47 lookup by payment hash — every NWC leg that got as far
+ * as a pay call has one, keysend included), or the recipient's LUD-21 verify
+ * URL. A WebLN keysend has neither and stays what it always was.
+ *
+ * Reads the live wallet rather than the leg's `kind` because the modal asks
+ * this on every render, and a wallet that was swapped since the run is the
+ * one a Check would actually ask.
+ *
+ * Shared with the show-boost path (MultiLegBoostForm's retry guard): a leg
+ * there is `{ paymentHash, verifyUrl }` too.
+ */
+export function legIsCheckable(leg) {
+  if (!leg?.paymentHash) return false
+  if (typeof leg.verifyUrl === 'string' && leg.verifyUrl.startsWith('https://')) return true
+  try { return typeof wallet.getActiveWallet().lookupPayment === 'function' } catch { return false }
+}
+
+/**
+ * Did this leg settle? Asks the WALLET first (paymentLookup.js — the source
+ * this widget went without until 2026-09-04) and LUD-21 alongside it, both
+ * bounded by the same deadline; the first definite answer wins.
+ *
+ * @returns {Promise<'settled'|'failed'|'unknown'>}
+ *   `settled` — one source proved it; flip the leg to PAID.
+ *   `failed`  — ⚠️ ONLY the wallet can say this, and only with an explicit
+ *               `state: "failed"` (see classifyLookup). It is the one answer
+ *               that hands the donor a Retry that re-pays, so it is never
+ *               inferred. LUD-21 has no negative signal and contributes none.
+ *   `unknown` — the deadline passed; the leg stays UNCERTAIN.
+ *
+ * `lookup` is injectable: `scripts/test-payment-lookup.mjs` drives it, and
+ * the show-boost path (payAllLegs.js, payInvoiceVerified) passes the adapter
+ * it was handed. The default is the active wallet's, or nothing on WebLN.
+ */
+export async function confirmLegSettled(leg, { deadlineMs = 0, intervalMs = 3000, signal = null, lookup } = {}) {
+  if (!leg?.paymentHash) return 'unknown'
+  let walletLookup = lookup
+  if (walletLookup === undefined) {
+    try { walletLookup = wallet.getActiveWallet().lookupPayment || null } catch { walletLookup = null }
+  }
+  const ctrl = new AbortController()
+  const abort = () => { try { ctrl.abort() } catch {} }
+  signal?.addEventListener?.('abort', abort, { once: true })
+
+  const viaWallet = walletLookup
+    ? confirmViaWallet({ lookup: walletLookup, paymentHash: leg.paymentHash, deadlineMs, intervalMs, signal: ctrl.signal })
+    : Promise.resolve('unknown')
+  const viaVerify = leg.verifyUrl
+    ? confirmInvoiceSettled(leg.verifyUrl, leg.paymentHash, { attempts: 0, deadlineMs, intervalMs, signal: ctrl.signal })
+        .then((r) => (r === 'settled' ? 'settled' : 'unknown'))
+    : Promise.resolve('unknown')
+
+  // Resolve on the first DEFINITE answer from either side; otherwise wait for
+  // both to give up. `unsupported` from the wallet is "ask the other side".
+  const definite = await new Promise((resolve) => {
+    let pending = 2
+    const done = (r) => { if (r === 'settled' || r === 'failed') resolve(r); else if (--pending === 0) resolve('unknown') }
+    viaWallet.then(done, () => done('unknown'))
+    viaVerify.then(done, () => done('unknown'))
+  })
+  abort()
+  return definite
+}
+
 async function payLnaddressLeg(leg, ctx, update, timer) {
   // Prefer the modal's prefetched metadata over a fresh fetch. The modal
   // resolves every lnaddress recipient in parallel on mount, so by boost time
@@ -435,16 +503,20 @@ async function payLnaddressLeg(leg, ctx, update, timer) {
   if (isCleanDecline(msg)) return { status: STATUS.FAILED, error: friendlyError(msg) }
 
   // Ambiguous — never blind-fail an NWC leg (the reply can be lost while the
-  // payment settles). Confirm via LUD-21 before deciding.
+  // payment settles). Ask the wallet and LUD-21 before deciding.
   //
   // ⚠️ A NON-SETTLEMENT IS NOT A FAILURE. Once the wallet has been handed this
-  // invoice there is no observation that proves it did not pay, so the only
-  // outcomes here are PAID and UNCERTAIN. The modal keeps polling this leg in
-  // the background and flips it to PAID if it lands late; until then it offers
-  // "Check again" and NOT a re-pay. See confirmInvoiceSettled.
-  const settled = await confirmInvoiceSettled(verify, paymentHash)
+  // invoice there is no observation by the RECIPIENT that proves it did not
+  // pay, so from LUD-21 the only outcomes are PAID and UNCERTAIN. The wallet
+  // is the one party that can say more (paymentLookup.js): a settled answer is
+  // PAID, and an explicit failed answer — the wallet stating the sats never
+  // left — is FAILED, the same standing a clean decline has. The modal keeps
+  // checking this leg in the background and flips it if it lands late; until
+  // then it offers "Check again" and NOT a re-pay.
+  const settled = await confirmLegSettled({ paymentHash, verifyUrl: verify }, { deadlineMs: 8000, intervalMs: 1500 })
   timer?.mark('verify')
   if (settled === 'settled') return { status: STATUS.PAID }
+  if (settled === 'failed') return { status: STATUS.FAILED, error: 'Your wallet reports this payment failed.' }
   // ⚠️ This is the leg's RESTING message, not its waiting message. The modal
   // starts a background watch on every checkable leg and suppresses this text
   // for as long as that runs (see CHECK_STAGES in ExternalBoostModal), so what
@@ -466,6 +538,16 @@ async function payKeysendLeg(leg, ctx, update, timer, upgraded) {
   // is issued against, and what the boostagram credits — while `dest` is where
   // the sats are actually addressed.
   const dest = upgraded || leg.recipient
+  // ⚠️ THE WALLET GETS A PUBKEY, NEVER THE PUBLISHED STRING. A value block's
+  // node address may be the node's whole connection string; see nodePubkeyOf.
+  // Nothing has been asked of a wallet yet, so an unreadable one is a clean
+  // FAILED — the same standing a pre-payment error has — and carries a Retry
+  // that will fail the same way, which is honest: the block, not the donor's
+  // wallet, is what is wrong.
+  const pubkey = nodePubkeyOf(dest.address)
+  if (!pubkey) {
+    return { status: STATUS.FAILED, error: `This recipient’s node address isn’t a valid pubkey (${String(dest.address || '').slice(0, 24)}…).` }
+  }
   const boostagram = buildBoostagram({
     legMsats: leg.sats * 1000,
     totalMsats: ctx.totalSats * 1000,
@@ -481,16 +563,39 @@ async function payKeysendLeg(leg, ctx, update, timer, upgraded) {
   try {
     if (ctx.kind === 'nwc') {
       const client = nwc.getClient()
-      const res = await client.payKeysend({
-        amount: leg.sats * 1000,           // msats
-        pubkey: dest.address,              // node pubkey
-        preimage: randomPreimageHex(),
-        tlv_records: toTlvHex(boostagram, dest),
-      })
+      // ⚠️ THE PAYMENT HASH IS KNOWN BEFORE THE WALLET IS ASKED, because the
+      // widget chooses the preimage. Stamped onto the leg here so that a reply
+      // that never arrives (the SDK's 60s window against a payment that takes
+      // longer — 2026-09-04) still leaves something to look up: the wallet's
+      // own record, by this hash, through NIP-47 lookup_invoice. Before this a
+      // keysend with no reply was unconfirmable for good.
+      const preimage = randomPreimageHex()
+      const paymentHash = await keysendPaymentHash(preimage)
+      if (paymentHash) update({ paymentHash })
+      let res = null
+      let payError = null
+      try {
+        res = await client.payKeysend({
+          amount: leg.sats * 1000,           // msats
+          pubkey,                            // node pubkey, bare
+          preimage,
+          tlv_records: toTlvHex(boostagram, dest),
+        })
+      } catch (e) { payError = e }
       if (res?.preimage) return { status: STATUS.PAID }
-      // No preimage but no throw — we supplied one, so it likely settled, but
-      // there's no verify URL for keysend. Don't claim success we can't prove.
-      return { status: STATUS.UNCERTAIN, error: 'Couldn’t confirm this keysend — check your wallet.' }
+      if (payError) {
+        const msg = String(payError?.message || payError)
+        if (KEYSEND_UNSUPPORTED_RE.test(msg)) noteKeysendUnsupported()
+        if (isCleanDecline(msg)) return { status: STATUS.FAILED, error: friendlyError(msg) }
+      }
+      // No preimage in hand — a reply timeout, an unreadable reply, or none at
+      // all. Ask the wallet: it settled it, it failed it, or it is still going.
+      const settled = paymentHash
+        ? await confirmLegSettled({ paymentHash }, { deadlineMs: 8000, intervalMs: 1500 })
+        : 'unknown'
+      if (settled === 'settled') return { status: STATUS.PAID }
+      if (settled === 'failed') return { status: STATUS.FAILED, error: 'Your wallet reports this payment failed.' }
+      return { status: STATUS.UNCERTAIN, error: payError ? friendlyError(String(payError?.message || payError)) : 'Couldn’t confirm this keysend — check your wallet.' }
     }
     // WebLN keysend — amount in SATS, plain-string custom records.
     // Bounded like webln.payInvoice: a wedged extension (broken worker,
@@ -502,7 +607,7 @@ async function payKeysendLeg(leg, ctx, update, timer, upgraded) {
     if (!window.webln) throw new Error('No WebLN provider')
     const res = await withTimeout(
       Promise.resolve(window.webln.keysend({
-        destination: dest.address,
+        destination: pubkey,
         amount: leg.sats,
         customRecords: toWeblnRecords(boostagram, dest),
       })),

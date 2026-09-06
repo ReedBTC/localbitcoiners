@@ -31,9 +31,9 @@ import {
   buildEpisodeBoostShareTemplate,
   buildShowSiteNoteTemplate,
   signKindOneShareWithUser,
-  confirmInvoiceSettled,
   SHOW_SENDER_NAME_CHARS,
 } from '../lib/boostagram.js'
+import { confirmLegSettled, legIsCheckable } from '../lib/externalBoost.js'
 import { signKindOneWithSite } from '../lib/siteSign.js'
 import LoginButton from './LoginButton.jsx'
 import * as wallet from '../lib/wallet.js'
@@ -488,17 +488,21 @@ export default function MultiLegBoostForm({
     //   - 'failed' legs are already confirmed not-paid, so re-pay is safe; we
     //     still verify when we can, as a bonus catch.
     //   - 'uncertain' legs MUST be confirmed unpaid before re-paying. If we
-    //     can't confirm (no verify URL, or it stays unknown), we refuse to
+    //     can't confirm (nothing to ask, or it stays unknown), we refuse to
     //     re-pay and tell the donor to check their wallet.
-    const canVerify = !!(current.verifyUrl && current.paymentHash)
+    // Two things can be asked (legIsCheckable): the wallet, by payment hash,
+    // and the invoice's LUD-21 verify URL. Only the wallet can answer
+    // 'failed', and only in so many words — that is the one answer that makes
+    // re-paying an uncertain leg safe.
+    const canVerify = legIsCheckable(current)
     if (canVerify) {
-      const settlement = await confirmInvoiceSettled(current.verifyUrl, current.paymentHash)
+      const settlement = await confirmLegSettled(current, { deadlineMs: 8000, intervalMs: 1500 })
       if (cancelledRef.current) return
       if (settlement === 'settled') {
         handleLegStatus(index, { ...current, status: 'paid', error: null })
         return
       }
-      if (settlement !== 'unsettled' && current.status === 'uncertain') {
+      if (settlement !== 'failed' && current.status === 'uncertain') {
         handleLegStatus(index, {
           ...current,
           status: 'uncertain',
@@ -506,7 +510,7 @@ export default function MultiLegBoostForm({
         })
         return
       }
-      // 'unsettled', or unknown on a confirmed-failed leg → safe to re-pay.
+      // 'failed' (the wallet's own word), or unknown on a confirmed-failed leg → safe to re-pay.
     } else if (current.status === 'uncertain') {
       // No way to confirm an unconfirmed leg — never auto re-pay it.
       handleLegStatus(index, {

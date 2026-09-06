@@ -118,6 +118,31 @@ function firstCustomPair(data) {
 }
 
 /**
+ * The node pubkey a value block's `type: "node"` recipient names, or null.
+ *
+ * ⚠️ A NODE ADDRESS IN THE WILD IS NOT ALWAYS A BARE PUBKEY. Podcasters paste
+ * their node's CONNECTION STRING — `<pubkey>@<host>:<port>`, the shape `lncli
+ * connect` takes — into `<podcast:valueRecipient address>`, and Podcast Index
+ * relays it as published. Handed to a wallet as the keysend destination it is
+ * refused outright: Alby Hub answered `encoding/hex: invalid byte: '@'` on a
+ * 2,200-sat OnlyBoosts leg to a `.onion:9735` address on 2026-09-04, three
+ * times, and the show got nothing while its fee leg paid. The pubkey is the
+ * part before the `@`; the host is how peers connect to the node and is not
+ * part of a payment.
+ *
+ * Same strict rule as parseKeysendResponse: 33-byte compressed secp256k1,
+ * lowercased. Anything else — a lightning address that landed under the wrong
+ * type, a truncated key, an empty string — is null, and the caller fails the
+ * leg before asking a wallet to pay to it. Every keysend call site in this
+ * widget (externalBoost.js and payAllLegs.js, NWC and WebLN) goes through it.
+ */
+export function nodePubkeyOf(address) {
+  if (typeof address !== 'string') return null
+  const head = address.trim().split('@')[0].trim()
+  return NODE_PUBKEY.test(head) ? head.toLowerCase() : null
+}
+
+/**
  * A keysend document → a target, or null.
  *
  * `pubkey` is the documented field; `destination` and `nodeId` appear in the

@@ -1,5 +1,6 @@
 import { nip19 } from 'nostr-tools'
 import { getNDK } from './ndk.js'
+import { nodePubkeyOf } from './keysendLookup.js'
 
 /**
  * Per-host substitutions applied to RSS-derived split recipients before
@@ -228,7 +229,9 @@ export async function resolveNodeRecipients(recipients, guestNpubs = []) {
     if (!r || r.type !== 'node') { out.push(r); continue }
     // Curated map first; else auto-match only when the episode has exactly
     // one guest (unambiguous). Multi-guest + unmapped → unpayable.
-    const npub = NODE_RECIPIENT_NPUBS[r.address] || (guests.length === 1 ? guests[0] : null)
+    // Keyed by bare pubkey; a published connection string (see nodePubkeyOf)
+    // still finds its entry.
+    const npub = NODE_RECIPIENT_NPUBS[nodePubkeyOf(r.address) || r.address] || (guests.length === 1 ? guests[0] : null)
     const lud16 = npub ? await resolveLud16ForNpub(npub) : null
     if (lud16) {
       out.push({ ...r, type: 'lnaddress', address: lud16, name: r.name || lud16,

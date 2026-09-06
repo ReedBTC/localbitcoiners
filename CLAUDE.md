@@ -39,10 +39,11 @@ The boost flow was ported back from the OnlyBoosts fork in 2026-08 (merge
 - **Every widget change ends the same way**: `cd login-widget && npm run build`
   (three vite targets, including the edge signer
   `functions/_shared/nostr-sign.js`), bump `VERSION` in `sw.js`, commit the
-  rebuilt bundle, then run the four test scripts from the repo root:
+  rebuilt bundle, then run the five test scripts from the repo root:
   `node scripts/test-sign-boost.mjs`, `test-boost-modal-render.mjs`,
-  `test-keysend-upgrade.mjs`, `test-boostbox.mjs`. They prove shapes, not
-  rendering — after a structural change, open a modal in a browser.
+  `test-keysend-upgrade.mjs`, `test-boostbox.mjs`, `test-payment-lookup.mjs`.
+  They prove shapes, not rendering — after a structural change, open a modal
+  in a browser.
 - **`assets/css/theme.css` and the widget's `var()` fallbacks are mirrors.**
   Every `var()` in `login-widget/src` carries a literal fallback equal to its
   token (a stale cached theme.css against a fresh bundle otherwise renders the
@@ -61,6 +62,31 @@ The boost flow was ported back from the OnlyBoosts fork in 2026-08 (merge
   site's note is theirs. Change the bot's note format and
   `buildShowSiteNoteTemplate` in `login-widget/src/lib/boostagram.js`
   together, or the texts drift apart on the show's own profile.
+
+Two payment-path rules ported from OnlyBoosts on 2026-09-04 (their 1f673bd5
+and 18d0febb), applied to BOTH boost paths here, since the show's own leg
+runner (`payAllLegs.js`) restates the keysend leg rather than importing it:
+
+- **The wallet is the second source of truth for an unconfirmed leg.**
+  `paymentLookup.js` (pure) + `nwc.js#lookupPayment` (NIP-47 `lookup_invoice`
+  by payment hash, through the raw `executeNip47Request` because the SDK's
+  `lookupInvoice` rejects a keysend's empty invoice) +
+  `externalBoost.js#confirmLegSettled` (wallet and LUD-21 under one deadline).
+  A keysend stamps sha256(preimage) on the leg *before* the pay call so a lost
+  reply still leaves something to look up. Every ambiguous-payment site goes
+  through `confirmLegSettled`: the external leg loop and its watcher / Check
+  again, `payAllLegs.js`, the retry guard in `MultiLegBoostForm.jsx`, and
+  `payInvoiceVerified`. ⚠️ Only the wallet's explicit `state: "failed"` moves
+  UNCERTAIN to FAILED (the status that offers a re-pay); it is never inferred
+  from NOT_FOUND, a missing `settled_at`, or an error. `test-payment-lookup.mjs`
+  is red on each of those inferences and scans the call sites.
+- **A node address is not always a pubkey.** A value block's `type: "node"`
+  recipient may be the whole connection string `<pubkey>@<host>:<port>`, and
+  a wallet refuses it. `keysendLookup.js#nodePubkeyOf` takes the head under
+  the strict compressed-pubkey test; all four keysend call sites (both paths,
+  NWC and WebLN) pay what it returns and fail cleanly before any wallet is
+  asked when it returns null. `leg.recipient.address` stays as published.
+  `test-keysend-upgrade.mjs` scans the call sites.
 
 ## Featured sections on /feeds (lb-v71 → lb-v75)
 

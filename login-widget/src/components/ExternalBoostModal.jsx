@@ -44,9 +44,9 @@ import { lockBodyScroll, unlockBodyScroll } from '../lib/scrollLock.js'
 import { useModalTransition } from '../lib/useModalTransition.js'
 import { isSafeUrl } from '../lib/utils.js'
 import * as wallet from '../lib/wallet.js'
-import { payExternalBoost, distributeSats, STATUS } from '../lib/externalBoost.js'
+import { payExternalBoost, distributeSats, STATUS, confirmLegSettled, legIsCheckable } from '../lib/externalBoost.js'
 import { buildExternalNoteTemplate, buildDonationNoteTemplate, sanitizeSenderName, MAX_MESSAGE_CHARS, MAX_SENDER_NAME_CHARS } from '../lib/externalBoostagram.js'
-import { signKindOneShareWithUser, publishSignedKindOne, confirmInvoiceSettled, fetchLnurlMeta } from '../lib/boostagram.js'
+import { signKindOneShareWithUser, publishSignedKindOne, fetchLnurlMeta } from '../lib/boostagram.js'
 import { signKindOneWithSite } from '../lib/siteSign.js'
 import { setBoostModalProgressVisible } from '../lib/boostModalSignal.js'
 import { fireConfetti } from '../lib/confetti.js'
@@ -187,11 +187,23 @@ function canRepayLeg(recipient, leg) {
 }
 
 /** An unconfirmed leg can be re-checked only when there is something to check
- *  against: LUD-21 needs the invoice's own verify URL, which keysend has none
- *  of and some lnaddress providers don't return. */
+ *  against. Since 2026-09-04 that is the WALLET as well as LUD-21: an NWC
+ *  wallet answers lookup_invoice by payment hash for every leg it was asked
+ *  to pay, keysend included, so a keysend leg and an lnaddress leg whose
+ *  provider returns no verify URL (Primal) are checkable there. A WebLN
+ *  keysend still has nothing to ask. See externalBoost.js#legIsCheckable. */
 function canCheckLeg(recipient, leg) {
-  return leg?.status === STATUS.UNCERTAIN &&
-    recipient?.type === 'lnaddress' && !!leg?.verifyUrl && !!leg?.paymentHash
+  return leg?.status === STATUS.UNCERTAIN && legIsCheckable(leg)
+}
+
+/** What a check answered, applied to the leg. `failed` is the wallet's own
+ *  explicit verdict that the sats never left (paymentLookup.js), which is the
+ *  standing a clean decline has and so hands the row its Retry; it is the one
+ *  path that moves an UNCERTAIN leg to FAILED, and it moves on evidence. */
+function applyCheck(updateLeg, i, res) {
+  if (res === 'settled') updateLeg(i, { status: STATUS.PAID, error: null })
+  else if (res === 'failed') updateLeg(i, { status: STATUS.FAILED, error: 'Your wallet reports this payment failed.' })
+  else updateLeg(i, { error: 'Still unconfirmed. Check your wallet before sending anything — this may already have gone through.' })
 }
 
 // One per-recipient row in the progress list.
@@ -544,12 +556,11 @@ export default function ExternalBoostModal({ user, onClose, onRequestSignIn, onR
     setChecking(Object.fromEntries(targets.map(({ i }) => [i, true])))
     for (const { i } of targets) {
       const leg = legsRef.current[i]
-      confirmInvoiceSettled(leg.verifyUrl, leg.paymentHash, {
-        attempts: 0, deadlineMs: WATCH_MS, intervalMs: 3000, signal: ctrl.signal,
+      confirmLegSettled(leg, {
+        deadlineMs: WATCH_MS, intervalMs: 3000, signal: ctrl.signal,
       }).then((res) => {
         if (ctrl.signal.aborted || cancelledRef.current) return
-        if (res === 'settled') updateLeg(i, { status: STATUS.PAID, error: null })
-        else updateLeg(i, { error: 'Still unconfirmed. Check your wallet before sending anything — this may already have gone through.' })
+        applyCheck(updateLeg, i, res)
         setChecking((prev) => ({ ...prev, [i]: false }))
       }).catch(() => {
         if (ctrl.signal.aborted || cancelledRef.current) return
@@ -935,8 +946,8 @@ export default function ExternalBoostModal({ user, onClose, onRequestSignIn, onR
   }
 
   /** Look at an unconfirmed leg again. Pays nothing and can never pay anything;
-   *  it re-polls the ORIGINAL invoice's verify URL, so the worst outcome is
-   *  learning nothing new. */
+   *  it asks the wallet about the ORIGINAL payment hash and re-polls the
+   *  invoice's verify URL, so the worst outcome is learning nothing new. */
   async function handleCheck(index) {
     const recipient = recipients[index]
     const leg = legs[index]
@@ -944,12 +955,9 @@ export default function ExternalBoostModal({ user, onClose, onRequestSignIn, onR
     if (shareState === 'shared' || checking[index]) return
     setChecking((prev) => ({ ...prev, [index]: true }))
     try {
-      const res = await confirmInvoiceSettled(leg.verifyUrl, leg.paymentHash, {
-        attempts: 0, deadlineMs: RECHECK_MS, intervalMs: 3000,
-      })
+      const res = await confirmLegSettled(leg, { deadlineMs: RECHECK_MS, intervalMs: 3000 })
       if (cancelledRef.current) return
-      if (res === 'settled') updateLeg(index, { status: STATUS.PAID, error: null })
-      else updateLeg(index, { error: 'Still unconfirmed. Check your wallet before sending anything — this may already have gone through.' })
+      applyCheck(updateLeg, index, res)
     } finally {
       if (!cancelledRef.current) setChecking((prev) => ({ ...prev, [index]: false }))
     }

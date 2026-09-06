@@ -25,6 +25,7 @@ import {
 } from './nwcStore.js'
 import { getNDK } from './ndk.js'
 import { withTimeout, scrubSecrets } from './utils.js'
+import { classifyLookup, classifyLookupError } from './paymentLookup.js'
 
 // In-memory client + the npub it belongs to. Reset on logout or wrong
 // account. We hold the NWCClient instead of the URI so once it's open
@@ -97,6 +98,42 @@ function closeActive() {
 export function getClient() {
   if (!activeClient) throw new Error('NWC not connected')
   return activeClient
+}
+
+/**
+ * Ask the wallet whether a payment settled: NIP-47 lookup_invoice by payment
+ * hash, classified by paymentLookup.js. Never throws — every failure is a
+ * LookupState, and `unsupported` is the one that tells a caller to stop.
+ *
+ * ⚠️ NOT THROUGH THE SDK's `lookupInvoice()`. That method validates the
+ * answer with `!!result.invoice`, and an outgoing KEYSEND has no invoice —
+ * Alby Hub answers the lookup with an empty `invoice` field — so the SDK
+ * would reject exactly the answer this exists to read. The request goes
+ * through the same `executeNip47Request` every SDK method uses (private in
+ * the typings, public at runtime on @getalby/sdk 7.0.0), with a validator
+ * that accepts any transaction object.
+ *
+ * 10s, the SDK's own reply window for its read-only calls: a lookup that
+ * cannot answer in that time is not going to.
+ */
+export async function lookupPayment(paymentHash) {
+  const hash = String(paymentHash || '')
+  if (!/^[0-9a-f]{64}$/i.test(hash)) return 'unknown'
+  let client
+  try { client = getClient() } catch { return 'unknown' }
+  try {
+    const result = await client.executeNip47Request(
+      'lookup_invoice',
+      { payment_hash: hash },
+      (r) => !!r && typeof r === 'object' && (typeof r.state === 'string' || typeof r.payment_hash === 'string' || typeof r.invoice === 'string'),
+      { replyTimeout: 10000 },
+    )
+    return classifyLookup(result)
+  } catch (e) {
+    const state = classifyLookupError(e)
+    if (state === 'unsupported') console.info('[lb-nwc] lookup_invoice unsupported by this wallet:', scrubSecrets(String(e?.message || e)))
+    return state
+  }
 }
 
 /**

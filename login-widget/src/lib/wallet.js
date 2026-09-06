@@ -164,8 +164,12 @@ export function isReady() {
 
 /**
  * The active wallet adapter. Both backends expose a uniform shape:
- *   { kind, payInvoice({ invoice }) → { preimage } }
+ *   { kind, payInvoice({ invoice }) → { preimage }, lookupPayment? }
  * payAllLegs receives this and stays oblivious to which one it got.
+ *
+ * `lookupPayment(paymentHash)` asks the wallet whether it paid — NIP-47
+ * lookup_invoice, see nwc.js. WebLN has no such call, so on that backend the
+ * field is null and a leg with no reply stays where it is, as it always did.
  *
  * Throws if no wallet is active — callers should gate on isReady() first.
  */
@@ -175,12 +179,14 @@ export function getActiveWallet() {
     return {
       kind: 'nwc',
       payInvoice: (args) => client.payInvoice(args),
+      lookupPayment: (hash) => nwc.lookupPayment(hash),
     }
   }
   if (webln.isReady()) {
     return {
       kind: 'webln',
       payInvoice: (args) => webln.payInvoice(args),
+      lookupPayment: null,
     }
   }
   throw new Error('No wallet connected')
