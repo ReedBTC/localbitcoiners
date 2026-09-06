@@ -10,9 +10,9 @@
 
        THIS PAGE IS THE COMMUNITY FEEDS PAGE (feeds-homepage, lb-v80). The
        former /feeds became the homepage: a compact hero, the latest episode
-       with its drawers, a row of links into Supporters / Boosts / Stats, then
+       a row of links into Episodes / Boosts / Stats, then
        the four community feeds under a Community Feeds title, each tab with a
-       Featured / All sub-row, and the Explore grid above the footer. /feeds
+       Featured / All sub-row, then the footer. /feeds
        301s to /#feeds; what a reader is looking at is spelled out as
        /?feed=<tab>&view=<featured|all>[&range&sort&type&short]#feeds (see the
        feed chrome controller below the footer and assets/js/feed-url.js). -->
@@ -599,39 +599,15 @@
 
     /* ════════════════════ HOMEPAGE TOP BLOCK ════════════════════
        What sits above the community feeds: the featured latest episode
-       (with its More Episodes / Subscribe drawers) and the quick-links row
-       into Supporters / Boosts / Stats. About / Hosts / links fold into
-       the rich footer below. */
-
-    /* Eyebrow label above module titles + on the featured hero. */
-    .home-eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--green-d);
-    }
-    .home-eyebrow svg { width: 13px; height: 13px; flex-shrink: 0; }
+       under a section title, and the quick-links row into Episodes /
+       Boosts / Stats. About / Hosts / links fold into the rich footer
+       below. */
 
     /* ── Featured latest episode (the lead hero card) ──
-       White bg so the cream episode card pops, and so the section run
-       below alternates cleanly: featured(white) · people(cream) ·
-       numbers(white) · boosts(cream) · explore(white). */
+       White bg so the cream episode card pops; the quick links share the
+       ground, then the feeds sit on cream. */
     #featured { background: var(--white); padding-top: 2.5rem; }
     .featured-wrap { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem 1rem; }
-    .featured-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      flex-wrap: wrap;
-      margin-bottom: 1rem;
-    }
-
     /* The featured episode is rendered by the episode script with the
        `featured` modifier — a louder version of a normal episode card:
        orange accent rail, bigger title, boost CTA promoted to first. */
@@ -656,14 +632,14 @@
       .episode-card.featured .btn-boost { width: 100%; justify-content: center; }
     }
 
-    /* ── Quick links (Supporters / Boosts / Stats) ── Three equal pills
+    /* ── Quick links (Episodes / Boosts / Stats) ── Three equal pills
        under the featured episode, on the same white ground so the top of the
        page reads as one block before the navy Community Feeds band. */
     #quick-links { background: var(--white); }
     .quick-links {
       max-width: 1100px;
       margin: 0 auto;
-      padding: 0.25rem 1.5rem 2.5rem;
+      padding: 1rem 1.5rem 2.5rem;
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 0.9rem;
@@ -696,7 +672,7 @@
       .quick-link { padding: 0.8rem 0.4rem; font-size: 0.98rem; gap: 0.4rem; }
     }
 
-    /* ── Shared module scaffold (explore) ── */
+    /* ── Section title scaffold (Latest Episode, Community Feeds) ── */
     .home-module { max-width: 1100px; margin: 0 auto; padding: 3rem 1.5rem; }
     .home-module-head {
       display: flex;
@@ -716,53 +692,6 @@
     /* Section titles double as links to their full page. */
     .home-module-title a { color: inherit; text-decoration: none; }
     .home-module-title a:hover { color: var(--green-d); text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1.5px; }
-    .home-module-link {
-      flex-shrink: 0;
-      font-size: 0.9rem;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-      color: var(--green-d);
-      text-decoration: none;
-      white-space: nowrap;
-      border-bottom: 2px solid transparent;
-      transition: border-color 0.15s;
-    }
-    .home-module-link:hover { border-color: var(--green-d); }
-
-    /* ── Explore grid (a card per page) ── 4 across on desktop, 2 on mobile. */
-    #explore { background: var(--white); }
-    .explore-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 1.1rem;
-    }
-    @media (max-width: 820px) { .explore-grid { grid-template-columns: repeat(2, 1fr); } }
-    .explore-card {
-      display: block;
-      background: var(--cream);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.35rem;
-      text-decoration: none;
-      color: var(--text);
-      transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
-    }
-    .explore-card:hover {
-      box-shadow: 0 8px 26px rgba(30,58,95,0.10);
-      transform: translateY(-3px);
-      border-color: var(--green);
-    }
-    .explore-icon { font-size: 1.7rem; line-height: 1; }
-    .explore-title {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: var(--navy);
-      margin: 0.7rem 0 0.3rem;
-    }
-    .explore-desc { font-size: 0.92rem; color: var(--muted); line-height: 1.55; }
-    .explore-go { display: inline-block; margin-top: 0.8rem; font-size: 0.85rem; font-weight: 700; color: var(--green-d); }
-
     /* ── Featured episode: clamp the description to 2 lines + "see full" ── */
     .episode-desc.clamp-2 {
       display: -webkit-box;
@@ -780,102 +709,6 @@
       text-decoration: none;
     }
     .desc-more:hover { text-decoration: underline; text-underline-offset: 3px; }
-    /* "All episodes" link below the featured card. */
-    .featured-all {
-      display: inline-block;
-      margin-top: 1.25rem;
-      font-size: 0.92rem;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-      color: var(--green-d);
-      text-decoration: none;
-      border-bottom: 2px solid transparent;
-      transition: border-color 0.15s;
-    }
-    .featured-all:hover { border-color: var(--green-d); }
-
-    /* Collapsible "Recent Episodes" drawer below the featured card.
-       The summary is a self-contained bordered pill (caret hugging the
-       label) so it reads as one clickable control. */
-    /* Two pill drawers in a row; an open one grows to full width so its
-       content (episode cards / links) isn't squeezed. */
-    .featured-drawers {
-      margin-top: 0.9rem;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.6rem;
-      align-items: flex-start;
-    }
-    .featured-drawers > .recent-drawer { margin-top: 0; }
-    .featured-drawers > .recent-drawer[open] { flex-basis: 100%; }
-    .recent-drawer { margin-top: 0.9rem; }
-    .recent-drawer > summary {
-      list-style: none;
-      cursor: pointer;
-      user-select: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.45rem;
-      padding: 0.5rem 1rem;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--navy);
-      transition: color 0.15s, border-color 0.15s, background 0.15s;
-    }
-    .recent-drawer > summary::-webkit-details-marker { display: none; }
-    .recent-drawer > summary::marker { content: ''; }
-    .recent-drawer > summary:hover {
-      color: var(--green-d);
-      border-color: var(--green);
-      background: rgba(94,125,58,0.06);
-    }
-    .recent-drawer[open] > summary { border-color: var(--green); }
-    .recent-drawer .caret {
-      font-size: 0.8em;
-      color: var(--green-d);
-      transition: transform 0.2s;
-    }
-    .recent-drawer[open] > summary .caret { transform: rotate(180deg); }
-    #recent-episodes-list { margin-top: 1rem; }
-    .subscribe-drawer-links {
-      margin-top: 1rem;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.6rem;
-    }
-    .subscribe-drawer-links a {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      font-size: 0.92rem;
-      font-weight: 600;
-      color: var(--navy);
-      text-decoration: none;
-      background: var(--cream);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 0.5rem 0.9rem;
-      transition: border-color 0.15s, background 0.15s, color 0.15s;
-    }
-    .subscribe-drawer-links a:hover {
-      border-color: var(--green);
-      background: rgba(94,125,58,0.06);
-      color: var(--green-d);
-    }
-
-    /* ── Reveal-on-scroll ── Hidden state is scoped under `html.js` so
-       no-JS visitors and crawlers always see the content; the class is
-       set synchronously in <head> before paint. */
-    html.js .reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.5s ease, transform 0.5s ease; }
-    html.js .reveal.in { opacity: 1; transform: none; }
-    @media (prefers-reduced-motion: reduce) {
-      html.js .reveal { opacity: 1; transform: none; transition: none; }
-    }
-
-
     /* ── Community Feeds section ── A title in the Explore section's style
        (the navy band and the membership chip that /feeds carried are gone,
        Reed 2026-09-06), then the tab chrome, then the tinted panels. #feeds
@@ -893,11 +726,13 @@
        used to sit in. Sticky under the nav so the tabs stay reachable
        while scrolling a long feed.
 
-       ⚠️ THE BOX IS AS WIDE AS THE PANEL COLUMN. `.feed-panels-inner` is
-       --feed-track wide INCLUDING its 1.25rem side padding (border-box),
-       so `.feed-bar-inner` restates exactly that box and the chrome fills
-       it; the two edges line up by the same arithmetic. */
-    :root { --feed-track: 720px; }
+       ⚠️ THE BOX IS AS WIDE AS THE PANEL COLUMN, AND THAT COLUMN IS THE
+       LATEST EPISODE'S (Reed, 2026-09-06): --feed-track is the 1100px of
+       `.featured-wrap` and `.home-module`, with the same 1.5rem sides.
+       `.feed-panels-inner` is --feed-track wide INCLUDING its side padding
+       (border-box), so `.feed-bar-inner` restates exactly that box and the
+       chrome fills it; the three edges line up by the same arithmetic. */
+    :root { --feed-track: 1100px; }
     .feed-bar-wrap {
       position: sticky;
       top: 64px; /* height of #top-nav */
@@ -908,7 +743,7 @@
     .feed-bar-inner {
       max-width: var(--feed-track);
       margin: 0 auto;
-      padding: 0 1.25rem;
+      padding: 0 1.5rem;
     }
     .feed-chrome {
       border: 1px solid var(--border);
@@ -1047,9 +882,9 @@
       min-height: 60vh;
     }
     .feed-panels-inner {
-      max-width: 720px;
+      max-width: var(--feed-track);
       margin: 0 auto;
-      padding: 2rem 1.25rem 3rem;
+      padding: 2rem 1.5rem 3rem;
     }
     .feed-panel { display: none; }
     .feed-panel.is-active { display: block; }
@@ -1347,23 +1182,8 @@
        Buy-Now items carry none — the "Add to cart" button says it all.
        The card image is the shared merch carousel (arrows via merch.css).
        Rendered by feeds-market.js. */
-    /* ── Show Merch box ──
-       The house store, boxed so it reads as its own storefront and not as the
-       first few cards of the community list. Deliberately the tab's own orange
-       rather than the gold used by Featured Events / Featured Articles: gold
-       means "boosted into a featured slot" everywhere else on this page, and
-       the show's own merch was not boosted there. */
-    .market-house {
-      margin: 0 0 1.5rem;
-      padding: 0.85rem 0.9rem 0.9rem;
-      border: 1px solid var(--market-accent);
-      border-radius: 12px;
-      background: rgba(217,123,14,0.05);
-      box-shadow: 0 0 0 3px rgba(217,123,14,0.07);
-    }
-    /* The header is already inside the box's padding, so it doesn't need the
-       leading space a standalone section header carries. */
-    .market-house .feed-section-head { padding-top: 0; }
+    /* The Show Merch box is gone (2026-09-06): the house store's listings are
+       standing features in the gold box, see feeds-market.js. */
 
     /* "Community" in the Community Marketplace header links to /supporters —
        that page answers "whose listings are these?". Inherits the header's
@@ -2552,12 +2372,11 @@
      #featured-episode with the `featured` modifier (boost CTA promoted). -->
 <section id="featured" aria-label="Latest episode">
   <div class="featured-wrap">
-    <div class="featured-head">
-      <span class="home-eyebrow">
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M14.615 1.595a.75.75 0 0 1 .359.852L12.982 9.75h7.268a.75.75 0 0 1 .548 1.262l-10.5 11.25a.75.75 0 0 1-1.272-.71l1.992-7.302H3.75a.75.75 0 0 1-.548-1.262l10.5-11.25a.75.75 0 0 1 .913-.143Z" clip-rule="evenodd"/></svg>
-        Latest Episode
-      </span>
-      <a class="home-module-link" href="/episodes.html">Browse all episodes →</a>
+    <!-- The same title style as Community Feeds below (Reed, 2026-09-06). -->
+    <div class="home-module-head">
+      <div>
+        <h2 class="home-module-title">Latest Episode</h2>
+      </div>
     </div>
     <div id="featured-episode">
       <!-- Static skeleton until RSS resolves; replaced by the episode script. -->
@@ -2578,39 +2397,6 @@
       <p>Couldn't load the latest episode right now. Listen directly on <a href="https://fountain.fm/show/Q48WBr6nT3mrbwMZ8ydY" target="_blank" rel="noopener">Fountain →</a></p>
     </div>
 
-    <!-- Two pill drawers side by side: "More Episodes" (next 3 episodes,
-         rendered into #recent-episodes-list by the episode script) and
-         "Subscribe" (app links). An open drawer grows to full width so its
-         content isn't cramped. -->
-    <div class="featured-drawers">
-      <details class="recent-drawer">
-        <summary>
-          <span>More Episodes</span>
-          <span class="caret" aria-hidden="true">▾</span>
-        </summary>
-        <div id="recent-episodes-list"></div>
-      </details>
-
-      <details class="recent-drawer">
-        <summary>
-          <span>📡 Subscribe</span>
-          <span class="caret" aria-hidden="true">▾</span>
-        </summary>
-        <div class="subscribe-drawer-links">
-          <a href="https://fountain.fm/show/Q48WBr6nT3mrbwMZ8ydY" target="_blank" rel="noopener">🎙 Fountain</a>
-          <a href="https://podcasts.apple.com/us/podcast/local-bitcoiners/id1874589042" target="_blank" rel="noopener">🍎 Apple Podcasts</a>
-          <a href="https://open.spotify.com/show/5v5AX2C7ubaV1xjfL2EMZV" target="_blank" rel="noopener">🎵 Spotify</a>
-          <a href="https://www.youtube.com/@LocalBitcoiners" target="_blank" rel="noopener">▶️ YouTube</a>
-          <a href="https://app.podcastguru.io/podcast/local-bitcoiners-1874589042" target="_blank" rel="noopener">🎧 Podcast Guru</a>
-          <a href="https://podverse.fm/podcast/eKqrkoAVH" target="_blank" rel="noopener">🎧 Podverse</a>
-          <a href="https://curiocaster.com/podcast/pi7683299" target="_blank" rel="noopener">🎧 CurioCaster</a>
-          <a href="https://castamatic.com/guid/56fbb1aa-da79-5e4b-bebc-3b934ab8914c" target="_blank" rel="noopener">🎧 Castamatic</a>
-          <a href="https://feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU" target="_blank" rel="noopener">📡 RSS Feed</a>
-        </div>
-      </details>
-    </div>
-
-    <a class="featured-all" href="/episodes.html">Browse all episodes →</a>
 
     <!-- Static fallback for crawlers / no-JS visitors. -->
     <noscript>
@@ -2624,12 +2410,13 @@
 </section>
 
 <!-- ══════════════════════════════ QUICK LINKS ══════════════════════════════
-     Three doors into the rest of the show: the supporter wall, the boost
-     wall, and the stats page. Everything else the old Explore grid offered
-     is still in the grid above the footer. -->
-<section id="quick-links" aria-label="Supporters, boosts and stats">
+     Three doors into the rest of the show: the full episode list, the boost
+     wall, and the stats page (Reed's list, 2026-09-06; Episodes replaced
+     Supporters, which the nav and the feeds' community links still reach).
+     Everything else is in the nav's Explore menu and the footer. -->
+<section id="quick-links" aria-label="Episodes, boosts and stats">
   <div class="quick-links">
-    <a class="quick-link" href="/supporters"><span class="quick-link-icon" aria-hidden="true">🟧</span> Supporters</a>
+    <a class="quick-link" href="/episodes.html"><span class="quick-link-icon" aria-hidden="true">🎧</span> Episodes</a>
     <a class="quick-link" href="/boosts.html"><span class="quick-link-icon" aria-hidden="true">⚡</span> Boosts</a>
     <a class="quick-link" href="/stats.html"><span class="quick-link-icon" aria-hidden="true">📊</span> Stats</a>
   </div>
@@ -2887,65 +2674,6 @@
   </div>
 </div>
 
-<section id="explore" class="reveal" aria-label="Explore the rest of the site">
-  <div class="home-module">
-    <div class="home-module-head">
-      <div>
-        <h2 class="home-module-title">Explore Local Bitcoiners</h2>
-      </div>
-    </div>
-    <div class="explore-grid">
-      <a class="explore-card" href="/episodes.html">
-        <div class="explore-icon">🎧</div>
-        <div class="explore-title">Episodes</div>
-        <p class="explore-desc">Listen, boost, download.</p>
-        <span class="explore-go">Listen →</span>
-      </a>
-      <a class="explore-card" href="/supporters">
-        <div class="explore-icon">🟧</div>
-        <div class="explore-title">Supporters</div>
-        <p class="explore-desc"><span id="explore-supporters-count">The people</span> powering the show.</p>
-        <span class="explore-go">Meet them →</span>
-      </a>
-      <a class="explore-card" href="/stats.html">
-        <div class="explore-icon">📊</div>
-        <div class="explore-title">Stats</div>
-        <p class="explore-desc">Sats, charts &amp; leaderboards.</p>
-        <span class="explore-go">Dig in →</span>
-      </a>
-      <a class="explore-card" href="/boosts.html">
-        <div class="explore-icon">⚡</div>
-        <div class="explore-title">Boosts</div>
-        <p class="explore-desc">Every boost &amp; message.</p>
-        <span class="explore-go">Read them →</span>
-      </a>
-      <a class="explore-card" href="/?feed=events#feeds">
-        <div class="explore-icon">📍</div>
-        <div class="explore-title">Meetups</div>
-        <p class="explore-desc"><span id="explore-meetups-count">Listener-boosted</span> meetups near you.</p>
-        <span class="explore-go">Find one →</span>
-      </a>
-      <a class="explore-card" href="/?feed=market#feeds">
-        <div class="explore-icon">👕</div>
-        <div class="explore-title">Merch</div>
-        <p class="explore-desc">Tees &amp; stickers. Pay in sats.</p>
-        <span class="explore-go">Shop →</span>
-      </a>
-      <a class="explore-card" href="https://github.com/Reeds-Agent-Team/Bitcoin-Meetups" target="_blank" rel="noopener">
-        <div class="explore-icon">📖</div>
-        <div class="explore-title">Resources</div>
-        <p class="explore-desc">Open-source meetup playbook.</p>
-        <span class="explore-go">Browse →</span>
-      </a>
-      <a class="explore-card" href="#" data-lb-bug-trigger>
-        <div class="explore-icon">🐞</div>
-        <div class="explore-title">Report a Bug</div>
-        <p class="explore-desc">Spot something broken? Tell us.</p>
-        <span class="explore-go">Let us know →</span>
-      </a>
-    </div>
-  </div>
-</section>
 
 <!-- ══════════════════════════════ RICH FOOTER ══════════════════════════════
      Folds the former About / Hosts / Resources / Links sections so the
@@ -4044,8 +3772,6 @@
      and after a recent dismiss. -->
 <script src="assets/widgets/pwa-install.js" defer></script>
 <script src="assets/js/nav.js" defer></script>
-<!-- Explore-card counts + reveal-on-scroll (static JSON, no relays). -->
-<script src="assets/js/home.js" defer></script>
 
 <!-- Community feeds — lazily hydrates the active feed by hash (Events,
      Marketplace, Podcast Boosts, Articles) and the Featured boxes. -->

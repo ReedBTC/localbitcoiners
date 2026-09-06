@@ -92,14 +92,17 @@ runner (`payAllLegs.js`) restates the keysend leg rather than importing it:
 
 `index.html` is the former `feeds.html` with a top block above the tabs:
 a compact hero (the transparent banner cut, capped at 680px), the
-latest-episode section with its More Episodes / Subscribe drawers and the
-inline RSS episode script, a Supporters / Boosts / Stats row, then
-`<section id="feeds">`: a "Community Feeds" title in the Explore section's
-style (the navy band and the membership chip are gone from the homepage),
-the sticky boxed tab chrome (four tabs, and under the active one a Featured
-/ All sub-row, the OnlyBoosts homepage's chrome carried back), the tinted
-panels, the Find modal; then the Explore grid above the footer. Things that
-fail silently if missed:
+latest-episode card under a "Latest Episode" section title (the inline RSS
+episode script still renders it; the drawers and the Browse-all links are
+gone), an Episodes / Boosts / Stats row, then `<section id="feeds">`: a
+"Community Feeds" title in the same style (the navy band and the membership
+chip are gone from the homepage), the sticky boxed tab chrome (four tabs,
+and under the active one a Featured / All sub-row, the OnlyBoosts
+homepage's chrome carried back), the tinted panels, the Find modal; then
+the footer. The old Explore grid, the old hub modules and `home.js` are
+gone. Every column is 1100px with 1.5rem sides (`--feed-track`,
+`.featured-wrap`, `.home-module`); change one and change the others. Things
+that fail silently if missed:
 
 - **The URL spells out the feeds**: `/?feed=<tab>&view=<featured|all>
   [&range&sort&type&short]#feeds`. `#feeds` is the section (the controller
@@ -128,6 +131,15 @@ fail silently if missed:
   exclusions in all four renderers are gone), and the box has **no range
   pills** (`featuredHead` ignores `range`); every box runs at the 33-day
   default. Featured is the landing view on every tab.
+- **The show's own listings are standing features.** There is no "Show
+  Merch" section any more (Reed, 2026-09-06): every house listing (author
+  `MERCHANT_HEX`) sits in the Marketplace tab's gold box, credited "Featured
+  by Local Bitcoiners" and aged from its listing date, for as long as it is
+  listed (`houseFeatureInfo` in `feeds-market.js` marks it `permanent`,
+  which `isFeatureLive` in `featured-shared.js` honours; nothing else sets
+  that flag). A house listing someone also pays to feature keeps the paid
+  credit. The All view is one grid of every listing in the shared
+  Buy-Now-first sort.
 - **`nav.js`'s cart rule keys on the path**: the empty cart shows only on the
   Marketplace tab of `/` (or a cached `/feeds`). Change the homepage's path
   and change that regex. The cart link is `/?feed=market&cart=1#feeds`; the

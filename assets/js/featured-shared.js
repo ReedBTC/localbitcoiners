@@ -279,6 +279,9 @@ export const FEATURE_TTL_DAYS = 33
 
 export function isFeatureLive(info, ttlDays = FEATURE_TTL_DAYS) {
   if (!ttlDays) return true
+  // A standing feature: the show's own marketplace listings, which are
+  // featured by Local Bitcoiners for as long as they are listed (2026-09-06).
+  if (info?.permanent) return true
   return (info?.featuredAt || 0) >= Date.now() - ttlDays * 86400000
 }
 
