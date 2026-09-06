@@ -607,7 +607,7 @@
        White bg so the cream episode card pops; the quick links share the
        ground, then the feeds sit on cream. */
     #featured { background: var(--white); padding-top: 2.5rem; }
-    .featured-wrap { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem 1rem; }
+    .featured-wrap { max-width: var(--feed-track); margin: 0 auto; padding: 0 1.25rem 1rem; }
     /* The featured episode is rendered by the episode script with the
        `featured` modifier — a louder version of a normal episode card:
        orange accent rail, bigger title, boost CTA promoted to first. */
@@ -637,9 +637,9 @@
        page reads as one block before the navy Community Feeds band. */
     #quick-links { background: var(--white); }
     .quick-links {
-      max-width: 1100px;
+      max-width: var(--feed-track);
       margin: 0 auto;
-      padding: 1rem 1.5rem 2.5rem;
+      padding: 1rem 1.25rem 2.5rem;
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 0.9rem;
@@ -820,7 +820,7 @@
     }
 
     /* ── Section title scaffold (Latest Episode, Community Feeds) ── */
-    .home-module { max-width: 1100px; margin: 0 auto; padding: 3rem 1.5rem; }
+    .home-module { max-width: var(--feed-track); margin: 0 auto; padding: 3rem 1.25rem; }
     .home-module-head {
       display: flex;
       align-items: flex-end;
@@ -872,17 +872,21 @@
     .feeds-shell-wrap {
       max-width: var(--feed-track);
       margin: 0 auto;
-      padding: 0 1.5rem 3rem;
+      padding: 0 1.25rem 3rem;
     }
     /* overflow: clip (not hidden) rounds the chrome's corners into the card
        without making the shell a scroll container, so the sticky chrome
        inside it still sticks to the nav. */
-    .feeds-shell {
+    .feeds-shell,
+    .community-shell {
       border: 1px solid var(--border);
       border-radius: 14px;
       background: var(--cream);
       overflow: clip;
     }
+    /* The Community wall wears the same shell (Reed, 2026-09-06), with the
+       wall's own padding inside it. */
+    .community-shell { padding: 1.6rem 1.25rem 1.5rem; }
     .feeds-title { padding-bottom: 0.9rem; }
     .feeds-title .home-module-head { margin-bottom: 0; }
 
@@ -895,12 +899,15 @@
        while scrolling a long feed.
 
        ⚠️ THE BOX IS AS WIDE AS THE PANEL COLUMN, AND THAT COLUMN IS THE
-       LATEST EPISODE'S (Reed, 2026-09-06): --feed-track is the 1100px of
-       `.featured-wrap` and `.home-module`, with the same 1.5rem sides.
+       LATEST EPISODE'S (Reed, 2026-09-06): --feed-track is the one column of
+       `.featured-wrap` and `.home-module`, with the same 1.25rem sides.
        `.feed-panels-inner` is --feed-track wide INCLUDING its side padding
        (border-box), so `.feed-bar-inner` restates exactly that box and the
        chrome fills it; the three edges line up by the same arithmetic. */
-    :root { --feed-track: 1100px; }
+    /* One column for every section below the hero — the supporters page's
+       (`.supporters-wrap`: 60rem incl. 1.25rem sides). Reed, 2026-09-06: at
+       1100px the page read as too wide once the Community wall arrived. */
+    :root { --feed-track: 60rem; }
     /* The chrome is the shell's lid: it fills the shell's width, keeps only
        the hairline under the sub-row, and stays cream so that when it sticks
        under the nav it covers the panel scrolling beneath it. */
@@ -2351,7 +2358,10 @@
       /* The shell loses its sides and radius on a phone: the tabs are chips
          there, with room around them already. */
       .feeds-shell-wrap { padding: 0 0 2rem; }
-      .feeds-shell { border-left: 0; border-right: 0; border-radius: 0; }
+      .feeds-shell, .community-shell { border-left: 0; border-right: 0; border-radius: 0; }
+      .community-shell { padding: 1.25rem 1rem; }
+      .community-module { padding-left: 0; padding-right: 0; }
+      .community-module .home-module-head { padding: 0 1rem; }
       /* Icon-only chips that all fit across the row (no horizontal scroll):
          four tabs and four words do not fit in 375px. */
       .feed-tabs {
@@ -2598,6 +2608,7 @@
         <h2 class="home-module-title"><a href="/supporters">Community</a></h2>
       </div>
     </div>
+    <div class="community-shell">
     <div id="community-loading" class="supporters-loading" aria-live="polite">
       <div class="sup-skeleton"></div>
       <div class="sup-skeleton"></div>
@@ -2610,6 +2621,7 @@
       Couldn't load the community right now — please try again later.
     </p>
     <div id="community-root"></div>
+    </div>
   </div>
 </section>
 
