@@ -142,6 +142,19 @@ that fail silently if missed:
   that flag). A house listing someone also pays to feature keeps the paid
   credit. The All view is one grid of every listing in the shared
   Buy-Now-first sort.
+- **The supporters wall is ranked, on both pages, by one script.**
+  `assets/js/supporters.js` (a module since 2026-09-06) paints `/supporters`
+  and the homepage's Community section (`#community-root`), with a 1W / 1M /
+  All range over when sats were sent and a Rank pill: Chart rank (default;
+  OnlyBoosts' rule, competition rank in sats + boosts + episodes summed,
+  lowest first, ties episodes → sats → boosts), Most sats / boosts /
+  episodes. Counting rules, Reed's calls: sats include boosts, streams and
+  zaps (zaps only once a person's zaps reach 100); boosts and episodes count
+  non-zap rows only, a stream row once per episode; zaps earn no boost or
+  episode credit. The `.pcast-*` control chrome is copied into
+  `supporters.html` like the other pages, accented brand orange via
+  `.sup-controls`. Ranking is client-side over `/api/sats`; there is no
+  endpoint to change.
 - **`nav.js`'s cart rule keys on the path**: the empty cart shows only on the
   Marketplace tab of `/` (or a cached `/feeds`). Change the homepage's path
   and change that regex. The cart link is `/?feed=market&cart=1#feeds`; the

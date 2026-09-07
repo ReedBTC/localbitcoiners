@@ -1,15 +1,17 @@
 /* Supporters page — the people who power Local Bitcoiners, in two groups:
  *
- *   1. Supporters — everyone who sent sats, as one wall ordered by lifetime
- *      sats (the OnlyBoosts community wall, ported): a podium of the top
- *      PODIUM with larger brand-ringed avatars, then a ranked grid, with
- *      WALL_VISIBLE cards showing and the rest behind a "Show N more"
- *      button. Each card carries the person's sats under their name.
- *      Totals come from /data/sats.json (total_sats per sender_npub,
- *      boosts AND streams), the same ledger the Stats leaderboard uses.
- *      Truly anonymous payments (no npub and no name) are skipped. The
- *      old lifetime tiers (100k / 69k / 21k) are gone; one Follow Pack
- *      (lb-supporters-all) covers the whole wall.
+ *   1. Supporters — everyone who sent sats, as one wall (the OnlyBoosts
+ *      community wall, ported, with its members-wall controls since
+ *      2026-09-06): a 1W / 1M / All range over when the sats were sent and a
+ *      Rank pill (Chart rank, the default, or most sats / boosts / episodes),
+ *      then a podium of the top PODIUM with larger brand-ringed avatars and
+ *      a ranked grid, WALL_VISIBLE cards showing and the rest behind a
+ *      "Show N more" button. Each card carries the ranked figure under the
+ *      name, all three on hover. Rows come from /api/sats, the same ledger
+ *      the Stats leaderboard uses; see aggregate() for what counts as a
+ *      sat, a boost and an episode. Truly anonymous payments (no npub and
+ *      no name) are skipped. The old lifetime tiers (100k / 69k / 21k) are
+ *      gone; one Follow Pack (lb-supporters-all) covers the whole wall.
  *   2. Show Guests — npubs pulled live from /api/guests (the [guests:]
  *      tags in each episode's RSS shownotes).
  *
@@ -19,6 +21,13 @@
  * the relay fetch resolves. Supporters with a name but no avatar get a
  * blank circle; supporters with neither npub nor name never appear.
  */
+// ⚠️ A MODULE SINCE 2026-09-06 (it was a classic deferred script), so the
+// wall can use the site's one pair of range/sort widgets rather than a third
+// copy. Both pages load it with type="module"; module scripts are deferred and
+// run in document order, and the two globals this reads (LBOnlyBoosts,
+// LBEpisodeEnhance) are polled for regardless.
+import { rangeControl, sortControl, rangeStartMs, rangeWindow } from '/assets/js/head-controls.js'
+
 (function () {
   'use strict';
 
@@ -232,13 +241,14 @@
     card.appendChild(avatar);
     card.appendChild(nameEl);
 
-    // Supporters carry their lifetime sats under the name, compact ("412k")
-    // with the exact figure on hover. Tabular digits so a column lines up.
-    if (typeof opts.sats === 'number') {
+    // Supporters carry a figure under the name — whichever metric the wall is
+    // ordered by (figureFor), compact ("412k"), with all three figures on
+    // hover. Tabular digits so a column lines up.
+    if (opts.figure) {
       var satsEl = document.createElement('span');
       satsEl.className = 'sup-sats';
-      satsEl.textContent = compact(opts.sats) + ' sats';
-      satsEl.title = fmtInt(opts.sats) + ' sats';
+      satsEl.textContent = opts.figure.text;
+      satsEl.title = opts.figure.title;
       card.appendChild(satsEl);
     }
 
@@ -396,121 +406,236 @@
     container.appendChild(section);
   }
 
-  // The Supporters wall: podium row, ranked grid, "Show N more". `cards`
-  // arrive in rank order (largest sats first); the first PODIUM are built
-  // with opts.podium so they carry the larger avatar.
-  function renderWall(container, title, sub, cards, packSlug) {
-    if (!cards.length) return;
-    var section = makeSection(title, sub, cards.length, packSlug);
+  // ── The wall's controls ─────────────────────────────────────────────
+  // OnlyBoosts' members wall, carried over (Reed, 2026-09-06): a 1W / 1M /
+  // All range over WHEN the sats were sent, and a Rank pill. The four views
+  // are the three single axes plus the chart rank that combines them, and
+  // the chart rank is the default: a single large boost no longer buys a
+  // podium place on its own, and the people who show up across many
+  // episodes rise. "Most episodes" is the breadth axis — OnlyBoosts ranks
+  // shows boosted across a network; this is one show, so the equivalent is
+  // how many of its episodes a person has boosted or streamed.
+  var WALL_VIEWS = [
+    ['chart', 'Chart rank'],
+    ['sats', 'Most sats'],
+    ['boosts', 'Most boosts'],
+    ['episodes', 'Most episodes'],
+  ];
+  var DEFAULT_VIEW = 'chart';
+  var DEFAULT_RANGE = 'all';
 
-    var podium = document.createElement('div');
-    podium.className = 'sup-podium';
-    cards.slice(0, PODIUM).forEach(function (c) { podium.appendChild(c); });
-    section.appendChild(podium);
+  // Competition rank of every value in `vals`: 1 + the count strictly ahead,
+  // so equal values share a place (1, 2, 2, 4). OnlyBoosts' rank.js.
+  function compRanks(vals) {
+    return vals.map(function (v) {
+      var ahead = 0;
+      for (var i = 0; i < vals.length; i++) if (vals[i] > v) ahead++;
+      return 1 + ahead;
+    });
+  }
 
-    var rest = cards.slice(PODIUM);
-    var shown = Math.max(0, WALL_VISIBLE - PODIUM);
-    if (rest.length) {
-      var grid = buildGrid(rest);
-      rest.forEach(function (c, i) { if (i >= shown) c.hidden = true; });
-      section.appendChild(grid);
-    }
-
-    // One button that toggles: "Show N more" opens the fold, then reads
-    // "Show fewer" and closes it again (restoring exactly the top
-    // WALL_VISIBLE), scrolling the heading back into view so the reader
-    // isn't left partway down the guests section after the collapse.
-    var hidden = Math.max(0, rest.length - shown);
-    if (hidden > 0) {
-      var folded = rest.slice(shown);
-      var open = false;
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'sup-show-more';
-      btn.setAttribute('aria-expanded', 'false');
-      function label() {
-        btn.textContent = open
-          ? 'Show fewer supporters'
-          : 'Show ' + fmtInt(hidden) + ' more supporter' + (hidden === 1 ? '' : 's');
-        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-      }
-      label();
-      btn.addEventListener('click', function () {
-        open = !open;
-        for (var i = 0; i < folded.length; i++) folded[i].hidden = !open;
-        label();
-        if (!open) {
-          try { section.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-          catch (e) { section.scrollIntoView(); }
-        }
+  // Order the wall. `chart` is OnlyBoosts' chart rank (rank.js#chartRanks,
+  // ported verbatim in rule): each person's competition rank in sats, in
+  // boosts and in episodes, summed, lowest total first; ties break episodes →
+  // sats → boosts, then the incoming order, so a full tie is stable. The
+  // single axes break ties on sats, then boosts. O(n²) in the ranking, which
+  // is nothing at this wall's size (a few hundred people at most).
+  function orderPeople(people, view) {
+    var list = people.slice();
+    if (view === 'chart') {
+      var rS = compRanks(list.map(function (p) { return p.sats; }));
+      var rB = compRanks(list.map(function (p) { return p.boosts; }));
+      var rK = compRanks(list.map(function (p) { return p.episodes; }));
+      list.forEach(function (p, i) { p.score = rS[i] + rB[i] + rK[i]; p.i = i; });
+      list.sort(function (a, b) {
+        return a.score - b.score || b.episodes - a.episodes || b.sats - a.sats || b.boosts - a.boosts || a.i - b.i;
       });
-      section.appendChild(btn);
+      return list;
     }
+    var key = view === 'boosts' ? 'boosts' : view === 'episodes' ? 'episodes' : 'sats';
+    list.sort(function (a, b) { return b[key] - a[key] || b.sats - a.sats || b.boosts - a.boosts; });
+    return list;
+  }
+
+  // The figure under a face: the metric the wall is ordered by (sats for the
+  // chart rank, the headline figure), with all three on hover.
+  function plural(n, one, many) { return fmtInt(n) + ' ' + (n === 1 ? one : many); }
+  function figureFor(p, view) {
+    var title = fmtInt(p.sats) + ' sats · ' + plural(p.boosts, 'boost', 'boosts') + ' · ' + plural(p.episodes, 'episode', 'episodes');
+    if (view === 'boosts') return { text: compact(p.boosts) + (p.boosts === 1 ? ' boost' : ' boosts'), title: title };
+    if (view === 'episodes') return { text: compact(p.episodes) + (p.episodes === 1 ? ' episode' : ' episodes'), title: title };
+    return { text: compact(p.sats) + ' sats', title: title };
+  }
+
+  // The Supporters wall: the controls, then a podium row, a ranked grid and
+  // "Show N more", repainted from the ledger rows whenever a control changes.
+  // The first PODIUM cards carry opts.podium for the larger avatar.
+  function renderWall(container, title, sub, packSlug, ctx) {
+    var section = makeSection(title, sub, null, packSlug);
+    var range = DEFAULT_RANGE;
+    var view = DEFAULT_VIEW;
+
+    var controls = document.createElement('div');
+    controls.className = 'sup-controls';
+    var group = document.createElement('div');
+    group.className = 'pcast-controls';
+    group.appendChild(rangeControl(range, function (key) { range = key; paint(); }, {
+      label: 'Filter supporters by when they sent sats',
+    }));
+    group.appendChild(sortControl(WALL_VIEWS, view, function (key) { view = key; paint(); }, {
+      tag: 'Rank: ', title: 'Rank supporters by',
+    }));
+    controls.appendChild(group);
+    section.appendChild(controls);
+
+    var body = document.createElement('div');
+    body.className = 'sup-wall-body';
+    section.appendChild(body);
+
+    function paint() {
+      body.innerHTML = '';
+      var people = orderPeople(aggregate(ctx.rows, rangeStartMs(range)), view);
+      if (!people.length) {
+        var empty = document.createElement('p');
+        empty.className = 'sup-empty';
+        empty.textContent = 'No sats sent in the ' + rangeWindow(range) + '.';
+        body.appendChild(empty);
+        return;
+      }
+      var cards = people.map(function (p, i) {
+        return ctx.cardFor(p.npub, p.name, { figure: figureFor(p, view), podium: i < PODIUM });
+      });
+
+      var podium = document.createElement('div');
+      podium.className = 'sup-podium';
+      cards.slice(0, PODIUM).forEach(function (c) { podium.appendChild(c); });
+      body.appendChild(podium);
+
+      var rest = cards.slice(PODIUM);
+      var shown = Math.max(0, WALL_VISIBLE - PODIUM);
+      if (rest.length) {
+        var grid = buildGrid(rest);
+        rest.forEach(function (c, i) { if (i >= shown) c.hidden = true; });
+        body.appendChild(grid);
+      }
+
+      // One button that toggles: "Show N more" opens the fold, then reads
+      // "Show fewer" and closes it again (restoring exactly the top
+      // WALL_VISIBLE), scrolling the section back into view so the reader
+      // isn't left partway down the page after the collapse.
+      var hidden = Math.max(0, rest.length - shown);
+      if (hidden > 0) {
+        var folded = rest.slice(shown);
+        var open = false;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'sup-show-more';
+        btn.setAttribute('aria-expanded', 'false');
+        var label = function () {
+          btn.textContent = open
+            ? 'Show fewer supporters'
+            : 'Show ' + fmtInt(hidden) + ' more supporter' + (hidden === 1 ? '' : 's');
+          btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        };
+        label();
+        btn.addEventListener('click', function () {
+          open = !open;
+          for (var i = 0; i < folded.length; i++) folded[i].hidden = !open;
+          label();
+          if (!open) {
+            try { section.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+            catch (e) { section.scrollIntoView(); }
+          }
+        });
+        body.appendChild(btn);
+      }
+    }
+
+    paint();
     container.appendChild(section);
   }
 
   // ── Aggregate supporters from the sats ledger ──────────────────────
-  // Zap-sourced sats are held aside per supporter and only count once they
-  // aggregate to ZAP_MIN_SATS — a tiny one-off zap shouldn't put a random
-  // npub on the wall. Boosts and streams always count. Mirrors
-  // bots/follow-packs so the page and the kind-39089 pack (the "Follow
-  // Pack" button) agree.
+  // One record per person over the rows inside `sinceMs` (the wall's range;
+  // -Infinity for All), with the three figures the wall ranks on. The rules
+  // (Reed's calls, 2026-09-06):
+  //   • sats — everything: boosts, streams, and zaps once a person's zaps reach
+  //     ZAP_MIN_SATS (a tiny one-off zap shouldn't put a random npub on the
+  //     wall; mirrors bots/follow-packs so the page and the kind-39089 pack
+  //     agree on who is on it).
+  //   • boosts — every non-zap row. A boost row is one payment; a stream row is
+  //     a per-(episode, supporter) aggregate stamped with last activity, so a
+  //     streamer counts once per episode streamed, and a 1W wall means "who
+  //     boosted or streamed in it" (the stats page's own caveat).
+  //   • episodes — distinct episodes across those same non-zap rows.
+  //   Zaps are sats but not boosts: no boost credit, no episode credit.
   var ZAP_MIN_SATS = 100;
 
-  function aggregate(rows) {
+  function aggregate(rows, sinceMs) {
     var byKey = Object.create(null);
+    var windowed = sinceMs > -Infinity;
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i];
       var sats = typeof r.total_sats === 'number' ? r.total_sats : 0;
       if (sats <= 0) continue;
+      if (windowed) {
+        var t = Date.parse(r.settled_at || '');
+        if (!(t >= sinceMs)) continue;
+      }
       var npub = r.sender_npub || '';
       var key = npub || (r.sender_name ? 'name:' + r.sender_name : '');
       if (!key) continue;                                 // truly anonymous → skip
       var rec = byKey[key];
       if (!rec) {
-        rec = byKey[key] = { npub: npub || null, name: r.sender_name || null, sats: 0, zapSats: 0 };
+        rec = byKey[key] = { npub: npub || null, name: r.sender_name || null, sats: 0, zapSats: 0, boosts: 0, eps: Object.create(null), episodes: 0 };
       }
-      if (r.source === 'zap') rec.zapSats += sats;
-      else rec.sats += sats;
+      if (r.source === 'zap') {
+        rec.zapSats += sats;
+      } else {
+        rec.sats += sats;
+        rec.boosts += 1;
+        if (r.episode_id) rec.eps[r.episode_id] = true;
+      }
       if (!rec.name && r.sender_name) rec.name = r.sender_name;
     }
     var people = [];
     for (var k in byKey) {
       var p = byKey[k];
       if (p.zapSats >= ZAP_MIN_SATS) p.sats += p.zapSats;  // fold qualifying zaps in
+      p.episodes = Object.keys(p.eps).length;
       if (p.sats > 0) people.push(p);                      // sub-floor zap dust drops off
     }
-    people.sort(function (a, b) { return b.sats - a.sats; });
     return people;
   }
 
-  function render(people, guestNpubs, cache, epMap) {
+  // Profiles by npub: the localStorage cache at first paint, upgraded in
+  // place as relays answer. Module-level so a repaint (range or rank change)
+  // builds its cards from the best-known profiles rather than the cache alone.
+  var profiles = Object.create(null);
+
+  function render(rows, guestNpubs, epMap) {
     var root = document.getElementById(IDS.root);
     var loading = document.getElementById(IDS.loading);
     if (loading) loading.style.display = 'none';
     epMap = epMap || Object.create(null);
 
-    function profFor(npub) { return (npub && cache[npub]) || null; }
-
     function cardFor(npub, label, extra) {
-      var prof = profFor(npub);
+      var prof = (npub && profiles[npub]) || null;
       var opts = { npub: npub, name: (prof && prof.name) || label || null, picture: prof && prof.picture };
       if (extra) for (var k in extra) opts[k] = extra[k];
       return makeCard(opts);
     }
 
-    // 1. Supporters — one wall, ranked by lifetime sats (people arrive sorted).
-    var wallCards = people.map(function (p, i) {
-      return cardFor(p.npub, p.name, { sats: p.sats, podium: i < PODIUM });
-    });
+    // 1. Supporters — one wall over the ledger, with its own range and rank
+    //    controls (renderWall). The homepage gets the wall alone, under the
+    //    page's own "Community" title.
     if (HOME) {
-      // The homepage: the wall alone, under the page's own title.
-      renderWall(root, null, null, wallCards, null);
+      renderWall(root, null, null, null, { rows: rows, cardFor: cardFor });
       return;
     }
     renderWall(root, 'Supporters',
-      'Lifetime sats sent via boosts + streams, most first. Anonymous supporters aren’t shown.',
-      wallCards, ALL_PACK);
+      'Sats sent via boosts, streams and zaps; boosts and episodes count boosts and streams only. Anonymous supporters aren’t shown.',
+      ALL_PACK, { rows: rows, cardFor: cardFor });
 
     // 2. Show Guests — below the supporters (with their episode link(s)). The
     //    guest list runs newest-episode-first, so its oldest-aired end is the
@@ -585,22 +710,25 @@
     var epP = HOME ? Promise.resolve(Object.create(null)) : guestEpisodeMap();
 
     Promise.all([satsP, guestsP, epP, obReady()]).then(function (res) {
-      var people = aggregate(res[0]);
+      var rows = res[0];
+      var people = aggregate(rows, -Infinity);   // everyone, for the profile fetch
       var guestNpubs = res[1];
       var epMap = res[2] || Object.create(null);
       var npubs = collectNpubs(people, guestNpubs);
 
       var enhance = window.LBEpisodeEnhance || {};
-      var cache = (enhance.getCachedProfilesByNpub && enhance.getCachedProfilesByNpub(npubs)) || Object.create(null);
+      profiles = (enhance.getCachedProfilesByNpub && enhance.getCachedProfilesByNpub(npubs)) || Object.create(null);
 
-      render(people, guestNpubs, cache, epMap);
+      render(rows, guestNpubs, epMap);
 
-      // Upgrade in place once relays answer.
+      // Upgrade in place once relays answer, and remember them so a repaint
+      // (range or rank change) builds its cards from the resolved profiles.
       if (enhance.fetchProfilesByNpub) {
-        enhance.fetchProfilesByNpub(npubs).then(function (profiles) {
-          if (!profiles) return;
-          Object.keys(profiles).forEach(function (npub) {
-            applyProfile(npub, profiles[npub]);
+        enhance.fetchProfilesByNpub(npubs).then(function (resolved) {
+          if (!resolved) return;
+          Object.keys(resolved).forEach(function (npub) {
+            profiles[npub] = Object.assign({}, profiles[npub] || null, resolved[npub]);
+            applyProfile(npub, resolved[npub]);
           });
         }).catch(function () {});
       }

@@ -459,6 +459,64 @@
       .sup-name { font-size: 0.76rem; }
       .sup-sats { font-size: 0.68rem; }
     }
+    /* ── The wall's range + rank controls ── the site's .pcast-range /
+       .pcast-sort chrome (head-controls.js), copied per page as on feeds,
+       stats and boosts, with the accent set locally: brand orange, the
+       podium rings' colour. */
+    .sup-controls {
+      --accent: var(--brand, #f7931a);
+      --accent-d: var(--brand-d, #d97b0e);
+      --tint: rgba(247, 147, 26, 0.14);
+      display: flex; justify-content: flex-end; align-items: center;
+      margin: 0 0 1.4rem;
+    }
+    .pcast-controls { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+    .sup-empty { margin: 0.5rem 0 1rem; color: var(--muted); font-style: italic; text-align: center; }
+    .pcast-range { display: flex; flex-shrink: 0; }
+    .pcast-range-btn {
+      min-width: 2rem; padding: 0.5rem 0.35rem;
+      font: inherit; font-size: 0.72rem; font-weight: 700; line-height: 1.2;
+      color: var(--muted); background: transparent;
+      border: none; border-radius: 6px; cursor: pointer;
+      transition: background 0.12s, color 0.12s;
+    }
+    .pcast-range-btn:hover {
+      color: var(--accent-d);
+      background: var(--tint);
+      background: color-mix(in srgb, var(--accent) 7%, transparent);
+    }
+    .pcast-range-btn.is-active {
+      color: var(--accent-d);
+      background: var(--tint);
+      background: color-mix(in srgb, var(--accent) 14%, transparent);
+    }
+    .pcast-sort { position: relative; flex-shrink: 0; align-self: center; }
+    .pcast-sort-btn {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      padding: 0.3rem 0.7rem; font: inherit; font-size: 0.78rem; font-weight: 600;
+      color: var(--text); background: var(--white);
+      border: 1px solid var(--border); border-radius: 999px; cursor: pointer;
+      white-space: nowrap; transition: border-color 0.12s, background 0.12s;
+    }
+    .pcast-sort-btn:hover { border-color: var(--accent); background: var(--tint); }
+    .pcast-sort-tag { color: var(--muted); }
+    .pcast-sort-cur { color: var(--accent-d); font-weight: 700; }
+    .pcast-sort-caret { color: var(--muted); font-size: 0.85em; }
+    .pcast-sort-menu {
+      position: absolute; top: calc(100% + 4px); right: 0; z-index: 6;
+      min-width: 175px; background: var(--white);
+      border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18); padding: 0.35rem;
+    }
+    .pcast-sort-menu[hidden] { display: none; }
+    .pcast-sort-item {
+      display: block; width: 100%; text-align: left;
+      padding: 0.45rem 0.6rem; font: inherit; font-size: 0.85rem; font-weight: 600;
+      color: var(--text); background: transparent; border: none; border-radius: 6px; cursor: pointer;
+    }
+    .pcast-sort-item:hover { background: var(--tint); color: var(--accent-d); }
+    .pcast-sort-item.is-active { color: var(--accent-d); background: var(--tint); }
+    .pcast-sort-item.is-active::after { content: ' ✓'; float: right; }
   </style>
   <link rel="stylesheet" href="/assets/css/nav.css" />
   <link rel="stylesheet" href="/assets/css/theme.css" />
@@ -772,7 +830,7 @@
 <!-- Profile cache + resolver (window.LBEpisodeEnhance). Loaded before
      supporters.js so the grids can paint from cache on first paint. -->
 <script src="/assets/js/episode-enhance.js" defer></script>
-<script src="/assets/js/supporters.js" defer></script>
+<script type="module" src="/assets/js/supporters.js"></script>
 <script type="module" src="/assets/js/community-status.js"></script>
 
 <!-- PWA service worker -->

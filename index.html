@@ -805,6 +805,17 @@
       animation: skeleton-shimmer 1.4s ease-in-out infinite;
     }
     .supporters-error { color: var(--muted); font-style: italic; }
+    /* The wall's range + rank controls: the feeds' own .pcast-* chrome (defined
+       with the feeds CSS below), accented brand orange like the podium rings
+       rather than the active feed's colour. */
+    .sup-controls {
+      --accent: var(--brand, #f7931a);
+      --accent-d: var(--brand-d, #d97b0e);
+      --tint: rgba(247, 147, 26, 0.14);
+      display: flex; justify-content: flex-end; align-items: center;
+      margin: 0 0 1.4rem;
+    }
+    .sup-empty { margin: 0.5rem 0 1rem; color: var(--muted); font-style: italic; text-align: center; }
     @media (max-width: 640px) {
       .sup-podium { gap: 1.1rem 0.7rem; margin-bottom: 1.5rem; }
       .sup-card--podium { width: calc((100% - 2 * 0.7rem) / 3); }
@@ -4009,7 +4020,7 @@
      in order, so the resolver is up before the wall asks for it. -->
 <script type="module" src="/assets/js/onlyboosts.js"></script>
 <script src="/assets/js/episode-enhance.js" defer></script>
-<script src="/assets/js/supporters.js" defer></script>
+<script type="module" src="/assets/js/supporters.js"></script>
 
 <!-- Community feeds — lazily hydrates the active feed by hash (Events,
      Marketplace, Podcast Boosts, Articles) and the Featured boxes. -->
