@@ -35,6 +35,7 @@ import {
 import { fromApiValue, applyExternalOverrides } from '/assets/js/value-block.js'
 import { buildActionBar, configureBoostActions } from '/assets/js/boost-actions.js'
 import { ensureLoginWidget } from '/assets/js/widget-loader.js'
+import { initialFeedParams, pickParam, publishFeedParams } from '/assets/js/feed-url.js'
 import {
   episodeCoord,
   isEpisodeCoord,
@@ -1319,8 +1320,12 @@ export async function renderPodcasts({ panel, list }) {
     if (it && !byGuid.has(it.guid)) byGuid.set(it.guid, it)
   }
 
-  let sortKey = 'count'
-  let rangeKey = defaultRange(items)
+  // A shared link's ?sort= / ?range= open the feed on them (feed-url.js);
+  // otherwise most boosters, over the narrowest air-date window that has
+  // something in it.
+  const urlParams = initialFeedParams('podcasts')
+  let sortKey = pickParam(urlParams.sort, SORT_OPTIONS.map((o) => o[0]), 'count')
+  let rangeKey = pickParam(urlParams.range, RANGE_OPTIONS.map((o) => o[0]), defaultRange(items))
   let visibleFeatured = new Set()
   let sorted = []
   let shown = 0
@@ -1356,11 +1361,12 @@ export async function renderPodcasts({ panel, list }) {
     }
   }
 
-  // The feed is "everything not in the gold box right now": an episode that
-  // drops out of the featured window rejoins the feed in its sorted place,
-  // Feature button restored, so a lapsed feature can be renewed.
+  // The feed is every boosted episode in the window, featured ones included:
+  // the gold box and the list became the Featured and All sub-tabs of the tab
+  // (2026-09-06), and "All" has to mean all. A featured episode's card in the
+  // list keeps its Feature button; boosting it again renews the feature.
   function rebuild() {
-    sorted = sortItems(filterItems(items, rangeKey), sortKey).filter((it) => !visibleFeatured.has(it.guid))
+    sorted = sortItems(filterItems(items, rangeKey), sortKey)
     shown = 0
     cards.innerHTML = ''
     moreWrap.innerHTML = ''
@@ -1375,15 +1381,19 @@ export async function renderPodcasts({ panel, list }) {
     rebuild()
   }
 
+  // The URL follows the controls (feed-url.js): the default sort reads as no
+  // key; the range is always spelled out, since its default depends on data.
   function applySort(key) {
     if (key === sortKey) return
     sortKey = key
+    publishFeedParams('podcasts', { sort: key === 'count' ? '' : key })
     rebuild()
   }
 
   function applyRange(key) {
     if (key === rangeKey) return
     rangeKey = key
+    publishFeedParams('podcasts', { range: key })
     rebuild()
   }
 

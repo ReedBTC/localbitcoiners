@@ -512,7 +512,7 @@ function buildFeaturedBy(info) {
 // The same prose the /meetups "boost an existing meetup" flows send, so a
 // promote from a card is indistinguishable to the boost bot (which logs the
 // referenced event into meetups.json → the boosted set).
-const PROMOTE_TEMPLATE = 'Boosting my meetup from https://localbitcoiners.com/feeds'
+const PROMOTE_TEMPLATE = 'Boosting my meetup from https://localbitcoiners.com/?feed=events#feeds'
 
 // The most-recent promote click is stashed here so feeds.js can optimistically
 // light up the card the moment the boost settles — before the daily meetups.json

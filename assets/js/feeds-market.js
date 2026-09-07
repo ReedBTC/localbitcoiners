@@ -1,18 +1,21 @@
-/* Community marketplace feed — the Marketplace tab on /feeds.
+/* Community marketplace feed — the Marketplace tab on the homepage.
  *
  * Surfaces NIP-99 (kind 30402) listings from the show's supporter follow
- * packs PLUS the Local Bitcoiners house merchant, in two labelled sections:
+ * packs PLUS the Local Bitcoiners house merchant:
  *
- *   • "Show Merch" — the house store (MERCHANT_HEX), in its own bordered box.
- *     This is the whole of the retired /merch page: that page was folded in
- *     here (lb-v48) once the cart, checkout and product modal it owned were
- *     already shared with this tab. Sorted newest-first rather than
- *     Buy-Now-first, since every house listing is Buy Now by definition.
- *     Renders the sold-out notice when empty so an empty catalog still reads
- *     as "store, restocking" and not "no store".
+ *   • The house store (MERCHANT_HEX) has no section of its own any more
+ *     (Reed, 2026-09-06). Its listings are STANDING FEATURES: every one sits
+ *     in the gold Featured box, credited "Featured by Local Bitcoiners" and
+ *     aged from when it was listed, for as long as it is listed (see
+ *     houseFeatureInfo and `permanent` in featured-shared.js's isFeatureLive).
+ *     This was the whole of the retired /merch page, folded in here (lb-v48)
+ *     once the cart, checkout and product modal it owned were already shared
+ *     with this tab; the "Show Merch" box that held it since then is gone.
  *
- *   • "Community Marketplace" — everything else, badged as below. Its header
- *     carries the /supporters link and the "Manage / List Items" button.
+ *   • "Community Marketplace" — the All view's one grid: every listing,
+ *     house and community alike, in the shared Buy-Now-first sort, badged as
+ *     below. Its header carries the /supporters link and the "Manage / List
+ *     Items" button.
  *
  *   • "Buy Now"  — the listing is Gamma checkout-ready (structured shipping
  *     that resolves) AND the seller is payable over Lightning (their kind-0
@@ -176,10 +179,6 @@ function sectionHead(label, className) {
     h('span', { class: 'feed-section-label' }, label),
   ])
 }
-
-// Shown in place of the Show Merch grid when the house catalog is empty.
-// Same copy as the homepage merch marquee (home-merch.js).
-const SOLD_OUT_MSG = 'Sold Out — Restocking Inventory'
 
 // ── Fetch every marketplace event authored by the supporter set ──────
 // Per-relay + merge (like merch.js's fetchCatalog) so a thinly-replicated
@@ -556,15 +555,36 @@ function renderCard(item, rate, onContact, { featured = false, info = null } = {
 }
 
 // ── Featured section ─────────────────────────────────────────────────
-// The gold box, same chrome as Featured Articles: 1W/1M/All over when a
-// listing was featured, inside the border. `visible` is filled with the
-// coordinates rendered so the community grid can drop them; a listing shown
-// in the box must never also appear below it.
+// The gold box, same chrome as Featured Articles. Two kinds of entry: a
+// listing someone paid to feature (state.featured, from the boosted-item log
+// and the optimistic store), and every house listing, which is a standing
+// feature by Local Bitcoiners (Reed, 2026-09-06). A house listing someone
+// ALSO paid to feature keeps the paid credit, since that is the newer fact
+// and the one the log records.
+const HOUSE_BY = { pubkey: MERCHANT_HEX, name: 'Local Bitcoiners', picture: 'https://localbitcoiners.com/assets/LocalBitcoiners.png' }
+function houseFeatureInfo(item) {
+  const p = item.profile || {}
+  boosterProfiles.set(MERCHANT_HEX, {
+    name: (p.name && p.name.trim()) || HOUSE_BY.name,
+    picture: isHttpUrl(p.picture) ? p.picture : HOUSE_BY.picture,
+  })
+  return {
+    featuredAt: (item.product.created_at || 0) * 1000,
+    by: HOUSE_BY,
+    sats: 0,
+    naddr: '',
+    permanent: true,
+  }
+}
 function featuredEntries(state, byCoord) {
   const out = []
+  const seen = new Set()
   for (const [coord, info] of state.featured) {
     const item = byCoord.get(coord)
-    if (item) out.push({ item, info })
+    if (item) { out.push({ item, info }); seen.add(coord) }
+  }
+  for (const item of state.house || []) {
+    if (!seen.has(item.product.coord)) out.push({ item, info: houseFeatureInfo(item) })
   }
   out.sort((x, y) => (y.info.featuredAt || 0) - (x.info.featuredAt || 0))
   return out
@@ -1004,12 +1024,9 @@ export async function renderMarket({ panel, list, relays, members } = {}) {
   const [{ items, rate }] = await Promise.all([loadMarketItems({ relays, members }), obReady()])
   const onContact = (item) => openContactModal(item, feedRelays)
 
-  // Split the one classified list into the two rendered sections. Inside Show
-  // Merch the shared Buy-Now-first sort carries no information (the house store
-  // is always Buy Now), so order it newest-first instead.
+  // The house listings are the standing features (see featuredEntries); the
+  // All view is one grid of everything in the shared Buy-Now-first sort.
   const house = items.filter((it) => it.isHouse)
-    .sort((a, b) => (b.product.created_at || 0) - (a.product.created_at || 0))
-  const community = items.filter((it) => !it.isHouse)
 
   // Every listing we can render, snapshot or backfilled. The community grid
   // only ever draws from `community`; `byCoord` also holds listings pulled in
@@ -1023,6 +1040,8 @@ export async function renderMarket({ panel, list, relays, members } = {}) {
     // from this browser recently, so a fresh boost stays lit across a reload
     // until the authoritative log catches up.
     featured: readConfirmedFeaturedListings(),
+    // The house store's listings, standing features by Local Bitcoiners.
+    house,
     featuredLoading: true,
     featShown: FEATURED_INITIAL,
   }
@@ -1036,35 +1055,27 @@ export async function renderMarket({ panel, list, relays, members } = {}) {
   const featuredMount = h('div', { class: 'market-featured-mount' })
   const communityMount = h('div', { class: 'market-community-mount' })
 
-  // Repaints the gold box and the community grid together: which listings the
-  // box holds depends on the active range, and the grid is "everything not in
-  // the box right now". A listing that drops out of the window rejoins the
-  // grid, Feature button restored, so a lapsed feature can be renewed.
+  // Repaints the gold box and the grid together. The grid is EVERY listing,
+  // house and community, featured ones included: the box and the grid became
+  // the Featured and All sub-tabs of the tab (2026-09-06), and "All" has to
+  // mean all. A featured listing's card in the grid keeps its Feature button;
+  // boosting it again renews the feature.
   function rerender() {
     const visible = new Set()
     featuredMount.innerHTML = ''
     featuredMount.appendChild(buildFeaturedSection(state, byCoord, rate, onContact, visible, rerender))
-    const rest = community.filter((it) => !visible.has(it.product.coord))
     communityMount.innerHTML = ''
-    communityMount.appendChild(rest.length
-      ? grid(rest)
-      : placeholder('No listings yet', ' No marketplace listings from supporters right now — check back soon.'))
+    communityMount.appendChild(items.length
+      ? grid(items)
+      : placeholder('No listings yet', ' No marketplace listings right now — check back soon.'))
   }
 
   list.className = ''
   list.innerHTML = ''
 
-  // Featured first: it is the paid-for slot, so it leads the tab.
+  // Featured first: it is the paid-for slot (and the show's own shelf), so it
+  // leads the tab.
   list.appendChild(featuredMount)
-
-  // Show Merch is boxed so the house store reads as its own storefront rather
-  // than the first few cards of the community list.
-  list.appendChild(h('section', { class: 'market-house' }, [
-    sectionHead('Show Merch'),
-    house.length
-      ? grid(house)
-      : placeholder(SOLD_OUT_MSG, ' New show gear is on the way — check back soon.'),
-  ]))
 
   // "Community" links to /supporters: the section is scoped to the supporter
   // follow packs, so that page is the answer to "whose listings are these?".

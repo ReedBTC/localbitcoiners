@@ -33,6 +33,7 @@ import { SimplePool, verifyEvent, nip19 } from '/assets/widgets/nostr-tools.js'
 // Supporter-set resolution lives in one shared module; re-exported below so
 // home-feeds.js keeps importing resolveSupporters from feeds.js unchanged.
 import { resolveSupporters } from '/assets/js/supporter-set.js'
+import { initialFeedParams, pickParam, publishFeedParams } from '/assets/js/feed-url.js'
 import {
   FEATURED_DEFAULT_RANGE,
   inFeaturedRange,
@@ -665,6 +666,25 @@ function featuredBox({ count, featRange, onFeatRange }) {
     find.classList.add('feed-find-btn')
     find.setAttribute('aria-controls', 'event-find-modal')
   }
+  // Create Event sits on the same row as Find in the Featured view (Reed,
+  // 2026-09-06). Like Find it carries no listener of its own: the inline
+  // loader opens the widget's create modal via a delegated click on
+  // `.event-create-btn`, so the button survives every repaint. The All view
+  // keeps its own copy in the panel head.
+  const actions = head.querySelector('.feat-actions')
+  if (actions) {
+    const create = document.createElement('button')
+    create.type = 'button'
+    create.className = 'event-composer-btn event-create-btn'
+    const icon = document.createElement('span')
+    icon.className = 'ecb-icon'
+    icon.setAttribute('aria-hidden', 'true')
+    icon.textContent = '＋'
+    const label = document.createElement('span')
+    label.textContent = 'Create Event'
+    create.append(icon, label)
+    actions.prepend(create)
+  }
   box.appendChild(head)
   return box
 }
@@ -733,19 +753,18 @@ function renderEvents(panel, allItems, range = '1m', type = 'inperson', featured
     .sort((a, b) => a.startMs - b.startMs)
   const past = days ? [] : groups.filter((g) => g.endMs < now).sort((a, b) => b.startMs - a.startMs)
 
-  // Each bucket is split into featured (boosted) vs normal. A featured
-  // upcoming event floats into the gold box only while its last feature is
-  // inside the box's range; out of the window it rejoins the normal list in
-  // its chronological place, Feature button restored, so a lapsed feature can
-  // be renewed with one boost. Featured past events keep their gold in the
-  // Past drawer regardless.
+  // The gold box holds the featured (boosted) upcoming events; the Events
+  // grid holds EVERY upcoming event, featured ones included, since the two
+  // became the Featured and All sub-tabs of the Events tab (2026-09-06) and
+  // "All" that left out the featured events would be a lie. Featured past
+  // events keep their gold in the Past drawer.
   const isFeat = (g) => groupIsFeatured(g, featuredCoords)
   // ttlDays 0: an event stays featured until it happens (the forward window
   // and the Past drawer are its expiry), unlike the 33-day life of a featured
   // article, listing or episode.
   const inBox = (g) => isFeat(g) && inFeaturedRange({ featuredAt: featuredAtFor(g) }, featRange, { ttlDays: 0 })
   const featUpcoming = upcoming.filter(inBox)
-  const normUpcoming = upcoming.filter((g) => !inBox(g))
+  const normUpcoming = upcoming
   const featPast = past.filter(isFeat)
   const normPast = past.filter((g) => !isFeat(g))
   const anyFeatured = upcoming.some(isFeat) || featPast.length > 0
@@ -952,14 +971,18 @@ async function loadEvents() {
   const list = panel.querySelector('[data-feed-list]')
   if (!list) return
 
+  const urlParams = initialFeedParams('events')
   const state = {
     eventsByCoord: new Map(),
     deletedIds: new Set(),
     deletedCoords: new Map(),
     profiles: new Map(),
     relays: STATIC_RELAYS,
-    range: 'all',           // forward window: 1W / 1M / All (default All)
-    typeFilter: 'inperson', // In-Person / Virtual / All Types (default In-Person)
+    // Forward window (1W / 1M / All) and type (In-Person / Virtual / All
+    // Types). A shared link's ?range= / ?type= open the feed on them
+    // (feed-url.js); otherwise All and In-Person.
+    range: pickParam(urlParams.range, EVENT_RANGE_OPTIONS.map((o) => o[0]), 'all'),
+    typeFilter: pickParam(urlParams.type, EVENT_TYPE_OPTIONS.map((o) => o[0]), 'inperson'),
     // Boosted events that render in the Featured section. Seeded with the
     // optimistic "just promoted" coords so a fresh boost glows immediately;
     // the authoritative boosted set (meetups.json) unions in during refresh.
@@ -1018,8 +1041,9 @@ async function loadEvents() {
   buildEventControls(panel, {
     range: state.range,
     type: state.typeFilter,
-    onRange: (key) => { state.range = key; paint() },
-    onType: (key) => { state.typeFilter = key; paint() },
+    // The URL follows the controls (feed-url.js): a default reads as no key.
+    onRange: (key) => { state.range = key; publishFeedParams('events', { range: key === 'all' ? '' : key }); paint() },
+    onType: (key) => { state.typeFilter = key; publishFeedParams('events', { type: key === 'inperson' ? '' : key }); paint() },
   })
 
   // 1. Instant paint from cache (stale-while-revalidate).

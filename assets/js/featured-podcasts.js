@@ -135,7 +135,7 @@ export async function listEpisodes(feedId) {
 // ── The Feature action ───────────────────────────────────────────────
 // Same prose shape as the other tabs' Feature; the episode's OnlyBoosts URL
 // stands where their naddr does, and the bot logs it the same way.
-const FEATURE_TEMPLATE = 'Boosting this episode from https://localbitcoiners.com/feeds'
+const FEATURE_TEMPLATE = 'Boosting this episode from https://localbitcoiners.com/?feed=podcasts#feeds'
 
 /**
  * Open the show-boost modal with the episode's OnlyBoosts URL prefilled and

@@ -279,6 +279,9 @@ export const FEATURE_TTL_DAYS = 33
 
 export function isFeatureLive(info, ttlDays = FEATURE_TTL_DAYS) {
   if (!ttlDays) return true
+  // A standing feature: the show's own marketplace listings, which are
+  // featured by Local Bitcoiners for as long as they are listed (2026-09-06).
+  if (info?.permanent) return true
   return (info?.featuredAt || 0) >= Date.now() - ttlDays * 86400000
 }
 
@@ -320,17 +323,21 @@ export function featuredRangeControl(current, onPick, { noun = 'items' } = {}) {
   return wrap
 }
 
-/** The gold box's header: ⭐ title, range pills, and a Find button. (No
- *  count beside the title — Reed's call, 2026-08-27; callers may still pass
- *  one and it is ignored.) */
+/** The gold box's header: ⭐ title and a Find button. (No count beside the
+ *  title — Reed's call, 2026-08-27; callers may still pass one and it is
+ *  ignored. No range pills either since the Featured view became its own
+ *  sub-tab, Reed's call 2026-09-06: the box is the whole view there, and the
+ *  sort/filter controls belong to the All view. `range` / `onRange` are still
+ *  accepted so no caller had to change; every caller leaves the range at its
+ *  default, which is the 33-day feature life.) */
 export function featuredHead({ title, range, onRange, noun, findLabel, onFind }) {
+  void range; void onRange; void noun
   return h('div', { class: 'feat-head' }, [
     h('div', { class: 'feat-title' }, [
       h('span', { class: 'feat-star', 'aria-hidden': 'true', text: '⭐' }),
       h('span', { text: title }),
     ]),
     h('div', { class: 'feat-actions' }, [
-      featuredRangeControl(range, onRange, { noun }),
       onFind ? h('button', {
         class: 'feat-find', type: 'button', 'aria-haspopup': 'dialog', onclick: onFind,
       }, [h('span', { 'aria-hidden': 'true', text: '🔍' }), h('span', { text: findLabel })]) : null,

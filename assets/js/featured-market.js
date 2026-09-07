@@ -133,7 +133,7 @@ export function addConfirmedFeaturedListing(coord, naddr = '') {
 // Same prose shape as the other tabs' Feature, so the boost bot (which only
 // scans the message for naddrs) treats them alike. The bot appends a Shopstr
 // link for the listing when it publishes the note.
-const FEATURE_TEMPLATE = 'Boosting this listing from https://localbitcoiners.com/feeds'
+const FEATURE_TEMPLATE = 'Boosting this listing from https://localbitcoiners.com/?feed=market#feeds'
 
 export function naddrForListing(pubkey, dTag, relays = STATIC_RELAYS) {
   try {

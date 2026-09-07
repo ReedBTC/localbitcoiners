@@ -30,6 +30,7 @@ import { buildActionBar, configureBoostActions } from '/assets/js/boost-actions.
 import { marked } from '/assets/widgets/marked.esm.js'
 import DOMPurify from '/assets/widgets/dompurify.esm.js'
 import { ensureLoginWidget } from '/assets/js/widget-loader.js'
+import { initialFeedParams, publishFeedParams } from '/assets/js/feed-url.js'
 import {
   articleCoord,
   isArticleCoord,
@@ -1053,7 +1054,8 @@ export async function renderArticles({ panel, list }) {
 
   const state = {
     // Default view hides short (<SHORT_MAX) bodies; the toggle shows everything.
-    includeShort: false,
+    // A shared link's ?short=1 opens with the toggle on (feed-url.js).
+    includeShort: initialFeedParams('articles').short === '1',
     // Featured section only: 1W / 1M / All over when an article was featured.
     // Defaults to All until the section is busy enough to want a tighter window.
     range: FEATURED_DEFAULT_RANGE,
@@ -1090,22 +1092,27 @@ export async function renderArticles({ panel, list }) {
     }
   }
 
-  // Repaints the gold box and the feed together: which articles the box holds
-  // depends on the active range, and the feed is defined as "everything not in
-  // the box right now". An article that drops out of the window rejoins the
-  // feed in its chronological place, Feature button restored, so a lapsed
-  // feature can be renewed with one boost.
+  // Repaints the gold box and the feed together. The feed is every article
+  // that passes the short filter, featured ones included: the box and the
+  // list became the Featured and All sub-tabs of the tab (2026-09-06), and
+  // "All" has to mean all. A featured article's card in the list keeps its
+  // Feature button; boosting it again renews the feature.
   function rerender() {
     const visible = new Set()
     featuredMount.innerHTML = ''
     featuredMount.appendChild(buildFeaturedSection(state, byCoord, onOpen, visible, rerender))
-    view = articles.filter(matches).filter((a) => !visible.has(articleCoord(a.pubkey, a.dTag)))
+    view = articles.filter(matches)
     shown = 0
     cards.innerHTML = ''
     renderMore()
   }
 
-  mountToolbar(panel, [shortToggle(state, rerender)])
+  // The URL follows the toggle (feed-url.js): off is the default and reads as
+  // no key.
+  mountToolbar(panel, [shortToggle(state, () => {
+    publishFeedParams('articles', { short: state.includeShort ? '1' : '' })
+    rerender()
+  })])
 
   list.className = ''
   list.style.display = ''

@@ -20,17 +20,20 @@ const NADDR_PLACEHOLDER = '{naddr}'
 // publish time by interpolateNaddr (when the user hasn't kept the
 // {naddr} placeholder in their edit), so we don't need to embed
 // `nostr:{naddr}` in the template itself.
+// The feeds live on the homepage since feeds-homepage (lb-v80); the Events
+// tab's own URL is what a note points at. Notes published before that still
+// say /feeds, which 301s to the same place.
 export const DEFAULT_KIND1_TEMPLATE =
-  `I just posted a meetup on localbitcoiners.com/feeds!`
+  `I just posted a meetup on https://localbitcoiners.com/?feed=events#feeds`
 
 export const DEFAULT_BOOST_TEMPLATE =
-  `I just posted a meetup on localbitcoiners.com/feeds!`
+  `I just posted a meetup on https://localbitcoiners.com/?feed=events#feeds`
 
 // Default for the "boost an existing meetup" flows (My Meetups + Search
 // modals). Reads as "I have one already, here it comes" rather than the
 // just-published framing of DEFAULT_BOOST_TEMPLATE.
 export const BOOST_EXISTING_TEMPLATE =
-  `Boosting my meetup from https://localbitcoiners.com/feeds`
+  `Boosting my meetup from https://localbitcoiners.com/?feed=events#feeds`
 
 /**
  * Replace {naddr} placeholders with the real naddr1… string. If the
