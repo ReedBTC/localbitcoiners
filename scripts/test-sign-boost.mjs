@@ -557,7 +557,7 @@ await ok('a Feature boost’s naddr gets the bot’s web-link line, and the orac
   const meetup = nip19.naddrEncode({ kind: 31923, pubkey: pk, identifier: 'meet-1' })
   const listing = nip19.naddrEncode({ kind: 30402, pubkey: pk, identifier: 'item-1' })
   const other = nip19.naddrEncode({ kind: 30078, pubkey: pk, identifier: 'x' })
-  const message = `Boosting this article from https://localbitcoiners.com/feeds\n\nnostr:${article} nostr:${article} nostr:${meetup} nostr:${listing} nostr:${other}`
+  const message = `Boosting this article from https://localbitcoiners.com/?feed=articles#feeds\n\nnostr:${article} nostr:${article} nostr:${meetup} nostr:${listing} nostr:${other}`
   const t = showTemplate({ message })
   const lines = t.content.split('\n')
   const at = (prefix) => lines.findIndex((l) => l.startsWith(prefix))

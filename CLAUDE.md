@@ -118,10 +118,11 @@ that fail silently if missed:
   (`#events` … `#articles`, `#market-cart`) still route, and in-page feeds
   links (nav Feeds / Merch / cart, Explore cards) are handled in place rather
   than reloading. `_redirects`: `/feeds` → `/#feeds`, meetups → `/?feed=
-  events#feeds`, merch → `/?feed=market#feeds`. Note templates that print
-  `localbitcoiners.com/feeds` (feature and promote boosts, the widget's
-  meetup announcement) were left alone on purpose: the URL still resolves,
-  and the sign-boost oracle restates those constants.
+  events#feeds`, merch → `/?feed=market#feeds`. The note templates print
+  the feed's own URL (`FEATURE_TEMPLATE` in `featured-*.js`,
+  `PROMOTE_TEMPLATE` in `calendar-events.js`, the three templates in the
+  widget's `eventAnnouncement.js`): `/?feed=<tab>#feeds`. Notes published
+  before lb-v80 still say `/feeds`, which 301s to the same place.
 - **Featured / All is a CSS switch off `body[data-feed-view]`**, not two
   renders. Each renderer still paints one panel (gold `.feat-box` first, in
   a `*-featured-mount` wrapper on three tabs, then the list); Featured shows

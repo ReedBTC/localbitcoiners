@@ -146,7 +146,7 @@ export const resolveArticleAuthorSplit = resolveMakerSplit
 // only scans the message for naddrs). The bot appends the article's
 // mynostr.app link when it publishes the note — plektos.app is a calendar
 // client and has no article view.
-const FEATURE_TEMPLATE = 'Boosting this article from https://localbitcoiners.com/feeds'
+const FEATURE_TEMPLATE = 'Boosting this article from https://localbitcoiners.com/?feed=articles#feeds'
 
 export function naddrForArticle(pubkey, dTag, relays = STATIC_RELAYS) {
   try {
