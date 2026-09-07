@@ -209,7 +209,7 @@
 // links that 301 on every click. The feed renderers (feeds.js, feeds-*.js,
 // featured-shared.js) changed too: they are stale-while-revalidate, and an
 // old copy against the new page would still exclude featured items from All.
-const VERSION = 'lb-v80';
+const VERSION = 'lb-v81';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

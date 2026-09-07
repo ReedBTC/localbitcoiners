@@ -13,8 +13,9 @@ import { onBoostModalProgressChange, isBoostModalProgressVisible } from '../lib/
  * appears as soon as a boost is queued and clears once every entry has
  * settled (paid, partial, or failed).
  *
- * z-index sits above the sticky nav (which is z:100 on both pages) so
- * the banner stays visible at every scroll position; the small centered
+ * z-index sits above the sticky nav (which is z:100 on both pages), the
+ * meetup modals (z-[200/201]) and the login modal (z-[210]) so the banner
+ * stays visible at every scroll position and over any open dialog; the small centered
  * pill briefly overlaps a center-nav link during a boost, which we
  * accept since the banner is short-lived and visually ties into the
  * "do not navigate yet" message.
@@ -75,7 +76,7 @@ export default function BoostProgressBanner() {
 
   return createPortal(
     <div className="lb-w"><div
-      className="fixed top-0 inset-x-0 z-[110] flex justify-center pointer-events-none px-3 pt-3"
+      className="fixed top-0 inset-x-0 z-[220] flex justify-center pointer-events-none px-3 pt-3"
       role="status"
       aria-live="polite"
     >

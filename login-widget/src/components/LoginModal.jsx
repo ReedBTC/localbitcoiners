@@ -41,11 +41,18 @@ export default function LoginModal({ onLogin, onClose }) {
   }
 
   return (
-    // z-[80] so the login modal stacks unambiguously above the boost
-    // modal (z-[70/71]) when launched from inside it via the inline
-    // Sign-in button. Standalone use is unaffected.
+    // z-[210] so the login modal stacks unambiguously above EVERY modal
+    // that can request a sign-in while staying mounted underneath it:
+    // the boost modals (z-[70/71]), the wallet-connect modal (z-[78/79])
+    // and the meetup-flow modals (MeetupModalChrome, z-[200/201]). It sat
+    // at z-[80] when only the boost modal launched it; once the meetup
+    // chrome went to 200 to clear the sticky nav, "Sign in to publish"
+    // in the Create Meetup form opened the login behind that form and
+    // its scrim, and repeated clicks did nothing visible. The overlays
+    // that must show over a login (progress banner, toasts, identity
+    // menu) sit at 220 / 230 / 240 — keep the ladder in that order.
     <div
-      className={`fixed inset-0 bg-[var(--scrim,rgba(45,32,16,0.62))] flex items-start sm:items-center justify-center z-[80] p-3 pt-20 sm:p-4 overflow-y-auto overflow-x-hidden transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}
+      className={`fixed inset-0 bg-[var(--scrim,rgba(45,32,16,0.62))] flex items-start sm:items-center justify-center z-[210] p-3 pt-20 sm:p-4 overflow-y-auto overflow-x-hidden transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}
       onMouseDown={requestClose}
       role="dialog"
       aria-modal="true"

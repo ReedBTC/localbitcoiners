@@ -15,9 +15,10 @@ import { getInFlight, onInFlightChange } from '../lib/boostQueue.js'
  * and this menu portals to document.body, so the two compete directly at body
  * level. It sat at z-[90] and lost, which put the menu behind the very bar it
  * hangs from — the one overlay on this site where that is guaranteed to show,
- * because the trigger is *in* the nav. 120 clears the nav and also the boost
- * progress banner's z-[110], which has to stay true: clicking that banner is
- * what opens this menu. Position is computed from the trigger's bounding box
+ * because the trigger is *in* the nav. 240 clears the nav, the meetup modals
+ * (z-[200/201]), the login modal (z-[210]) and the boost progress banner
+ * (z-[220]); the banner one has to stay true: clicking that banner is what
+ * opens this menu. Position is computed from the trigger's bounding box
  * each time the dropdown opens; on resize the host re-renders and
  * recomputes. Right-edge clamp keeps the menu on-screen on phones.
  *
@@ -95,7 +96,7 @@ export default function IdentityDropdown({
       ref={menuRef}
       role="menu"
       aria-label="Account menu"
-      className="fixed z-[120] bg-[var(--modal-bg,#fbf6ea)] border border-[var(--modal-line,#d4c4a0)] rounded-lg shadow-[0_24px_60px_-12px_rgba(11,58,82,0.28),0_0_0_1px_rgba(11,58,82,0.06)] text-sm text-[var(--ink,#2d2010)] overflow-hidden"
+      className="fixed z-[240] bg-[var(--modal-bg,#fbf6ea)] border border-[var(--modal-line,#d4c4a0)] rounded-lg shadow-[0_24px_60px_-12px_rgba(11,58,82,0.28),0_0_0_1px_rgba(11,58,82,0.06)] text-sm text-[var(--ink,#2d2010)] overflow-hidden"
       style={{
         top: `${position.top}px`,
         left: `${position.left}px`,
