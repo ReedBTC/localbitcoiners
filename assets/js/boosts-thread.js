@@ -124,6 +124,12 @@ const EXCLUDED_NOTE_IDS = new Set([
   // 2026-08-22: OnlyBoosts test boost on Chad & Reed misfiled as LB (its
   // Tardbox page carried no Show row, so the feed gate saw "absent")
   'edb91c5a52cbc1fee15cd1f931f3c129c4daac7ed44efef5dcb627ffa39f9451',
+  // 2026-09-10: two Chad and Reeds Podcast boosts paged at truefans.fm
+  // misfiled as LB (the BOLT11 path gated only fountain.fm/castamatic/tardbox)
+  '54485346b694567283d3c9579e547525d2a64fefe57e435f4b1f2caab9302ecf',
+  'f4ec888b64c4448f1c39f2efe0fd17a885aa86bb80f4802498dc0f559e354d4b',
+  '5c66e1fe528a4231df9634d232d1231ace845a3b67c1407e721309fef7624613',
+  '569ec88fd2d710091dc55066569da13d2f4f54d9952f796c67a3cd0624e15368',
 ])
 
 // ── Module state ─────────────────────────────────────────────────────

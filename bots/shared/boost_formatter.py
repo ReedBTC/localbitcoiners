@@ -26,6 +26,7 @@ import requests
 import websocket
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 _BOTS_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_BOTS_ROOT / "shared"))
@@ -1180,6 +1181,73 @@ def _fountain_episode_feed(episode_url, cache):
     fc[episode_url] = verdict
     return verdict
 
+# ── Boost pages on hosts we have no dedicated reader for ─────────────────────
+# `rss::payment::boost` carries an APP-generated page URL, not a feed URL. Three
+# hosts get a dedicated extraction path with its own feed gate: fountain.fm
+# (inline in _classify_fountain_boost), castamatic.com and tardbox.com (both
+# dispatched out of it). Every other host falls through to the generic Fountain
+# flow — which ran NO feed gate at all until 2026-09-10, when two Chad and Reeds
+# Podcast boosts paged at truefans.fm were published as Local Bitcoiners.
+#
+# The node is a shared value-split recipient, so an unknown host is NOT
+# presumptively ours — that presumption is what makes fountain.fm's gate keep an
+# unreadable page (fountain.fm hosts our own feed). Here the burden is reversed:
+# a page that loads and names us nowhere is OTHER, and only a page we couldn't
+# read at all is unverified.
+KNOWN_BOOST_PAGE_HOSTS = ("fountain.fm", "castamatic.com", "tardbox.com")
+
+# Any of these appearing in a boost page's HTML positively names Local
+# Bitcoiners. Deliberately excludes LB_FEED_ID ("7683299") — a bare 7-digit
+# number matches by coincidence in a page of ids and timestamps.
+LB_PAGE_MARKERS = (LB_FEED_GUID, RSS_FEED, LB_SHOW_ID, LB_SHOW_TITLE,
+                   "localbitcoiners.com")
+
+def _boost_page_host(url):
+    """Lowercased host of a boost-page URL, "" when unparseable."""
+    try:
+        return (urlparse(url).hostname or "").lower()
+    except Exception:
+        return ""
+
+def _is_known_boost_page_host(url):
+    """True when the URL is on a host with its own extraction path + feed gate."""
+    host = _boost_page_host(url)
+    return any(host == h or host.endswith("." + h) for h in KNOWN_BOOST_PAGE_HOSTS)
+
+def _bolt11_app_name(episode_url):
+    """Display name for a `rss::payment::boost` whose page has no dedicated
+    reader. fountain.fm (and a missing URL, which is the sparse Fountain case)
+    keep the "Fountain" label the rest of the site and the note text expect;
+    anything else is credited to its own host."""
+    host = _boost_page_host(episode_url or "")
+    if not host or host.endswith("fountain.fm"):
+        return "Fountain"
+    return host
+
+def _unknown_host_feed(episode_url, cache):
+    """Positively classify a boost page on an unrecognized host by reading it.
+
+    Returns:
+      'lb'      — the page carries a Local Bitcoiners marker
+      'other'   — the page loaded and names us nowhere (positively not LB)
+      'unknown' — the page couldn't be fetched (caller must NOT reject)
+
+    Cached per-run by url, so a batch of boosts from one app costs one fetch."""
+    uc = cache.setdefault("unknown_host_feed", {})
+    if episode_url in uc:
+        return uc[episode_url]
+    verdict = "unknown"
+    try:
+        resp = requests.get(episode_url, timeout=10)
+        resp.raise_for_status()
+        html_text = resp.text
+        low = html_text.lower()
+        verdict = "lb" if any(m.lower() in low for m in LB_PAGE_MARKERS) else "other"
+    except Exception as e:
+        print(f"  [warn] boost page fetch failed for {episode_url}: {e}")
+    uc[episode_url] = verdict
+    return verdict
+
 def _extract_episode_number(title):
     """Pull a zero-padded episode number from an LB title string. None if absent.
     Matches the convention used by episodesats / topboosts."""
@@ -1596,14 +1664,31 @@ def _classify_fountain_boost(tx, desc, payment_hash, settled_at, our_msats, cach
         episode_id  = parsed.get("episode_id")
 
         # Castamatic dispatch — its URL is a public boost-metadata endpoint.
-        if episode_url and "castamatic.com" in episode_url:
+        if episode_url and _boost_page_host(episode_url).endswith("castamatic.com"):
             return _classify_castamatic_boost(tx, parsed, payment_hash, settled_at, our_msats, cache)
 
         # Tardbox / BoostMeBitch dispatch — its URL is a public HTML boost page.
-        if episode_url and "tardbox.com/boost/" in episode_url:
+        if (episode_url and _boost_page_host(episode_url).endswith("tardbox.com")
+                and "/boost/" in episode_url):
             return _classify_tardbox_boost(tx, parsed, payment_hash, settled_at, our_msats, cache)
 
         show_level  = "/show/" in (episode_url or "")
+
+        # Feed gate for a boost page on a host we have no reader for. The two
+        # branches above and the fountain.fm branch below each gate their own
+        # host; without this an unrecognized host was ungated entirely. See
+        # KNOWN_BOOST_PAGE_HOSTS for why ABSENT is OTHER here and not 'keep'.
+        if episode_url and not _is_known_boost_page_host(episode_url):
+            host = _boost_page_host(episode_url)
+            feed = _unknown_host_feed(episode_url, cache)
+            if feed == "other":
+                print(f"  [skip] BOLT11 boost {payment_hash[:12]}… page at {host} "
+                      f"names no Local Bitcoiners feed — not ours")
+                return None
+            if feed == "unknown":
+                feed_unverified = True
+                print(f"  [review] BOLT11 boost {payment_hash[:12]}… page at {host} "
+                      f"unreachable, feed unconfirmed — accepting; verify if unexpected")
 
         # Feed gate (genuine Fountain URLs only — Castamatic/Tardbox already
         # dispatched above). Show-level URLs carry the show id inline; reject a
@@ -1611,7 +1696,7 @@ def _classify_fountain_boost(tx, desc, payment_hash, settled_at, our_msats, cach
         # it's a known LB RSS episode we're done; otherwise positively check the
         # episode page's feed and reject only a confirmed OTHER show (a fresh LB
         # episode or an unreachable page is kept — never dropped on uncertainty).
-        if episode_url and "fountain.fm" in episode_url:
+        if episode_url and _boost_page_host(episode_url).endswith("fountain.fm"):
             if show_level:
                 sid = episode_url.rstrip("/").split("/show/")[-1].split("/")[0]
                 if sid and sid != LB_SHOW_ID:
@@ -1695,7 +1780,9 @@ def _classify_fountain_boost(tx, desc, payment_hash, settled_at, our_msats, cach
         "episode_number": episode_number,
         "amount_method":  amount_method,
         "guests":         guests or [],
-        "app_name":       "Fountain",
+        # This flow serves fountain.fm AND any host without a dedicated reader,
+        # so name the host rather than crediting Fountain for someone else's page.
+        "app_name":       _bolt11_app_name(episode_url),
         "show_level":     show_level,
         "fountain_comment_pending": comment_pending,
         "feed_unverified": feed_unverified,

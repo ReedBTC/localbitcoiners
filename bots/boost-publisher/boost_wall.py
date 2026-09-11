@@ -68,6 +68,14 @@ EXCLUDED_EVENT_IDS = {
     # as LB — its Tardbox page had no Show row, feed gate saw "absent".
     "edb91c5a52cbc1fee15cd1f931f3c129c4daac7ed44efef5dcb627ffa39f9451",  # ph b7d85935 reply
     "1272b59aae10a44e396257ca0c29177475f6ff4cccf5a5d9099a87c19ee86c17",  # ph b7d85935 standalone
+    # 2026-09-10: two Chad and Reeds Podcast boosts paged at truefans.fm
+    # published as LB — the BOLT11 path gated fountain.fm / castamatic /
+    # tardbox and ran no gate at all on any other host. See
+    # KNOWN_BOOST_PAGE_HOSTS in boost_formatter.
+    "54485346b694567283d3c9579e547525d2a64fefe57e435f4b1f2caab9302ecf",  # ph a1b27c20 standalone
+    "f4ec888b64c4448f1c39f2efe0fd17a885aa86bb80f4802498dc0f559e354d4b",  # ph a1b27c20 reply
+    "5c66e1fe528a4231df9634d232d1231ace845a3b67c1407e721309fef7624613",  # ph 88ed6060 standalone
+    "569ec88fd2d710091dc55066569da13d2f4f54d9952f796c67a3cd0624e15368",  # ph 88ed6060 reply
 }
 
 # Payment-side fields, in the order they're written. Anything falsy is dropped
