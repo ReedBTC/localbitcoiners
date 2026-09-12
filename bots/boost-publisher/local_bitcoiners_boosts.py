@@ -15,7 +15,8 @@ from nostr_utils import (
 from collector_common import query_relay
 from boost_formatter import (
     build_note_from_tx, load_published_events, save_published_events,
-    record_published_event, record_reply_event, make_cache, is_dry_run,
+    record_published_event, record_reply_event, published_sessions,
+    make_cache, is_dry_run,
     persist_cache, build_podcast_guid_tags, build_boost_claim_tags,
     resolve_item_guid, build_rss_item_index, fetch_event_author,
 )
@@ -233,6 +234,29 @@ def main():
 
         info = result["info"]
 
+        # A website boost settles one leg per recipient, and since 2026-09 two
+        # of those legs can land on this hub (the host leg and the lb_v4v
+        # sub-wallet). The wallet gate in classify_lb_tx keeps the second leg
+        # out of this loop; this is the backstop for the day that gate is
+        # loosened — every leg shares the parent's boost_session, and one
+        # session gets one note. The sibling is recorded under its own hash,
+        # pointing at the note already published, so it is never retried.
+        sess = info.get("boost_session")
+        if sess:
+            parent = published_sessions(published_events).get(sess)
+            if parent:
+                ph = info.get("payment_hash", "")
+                print(f"[dedupe] {ph[:12]}... is another leg of boost_session "
+                      f"{sess[:12]}... (note already published for leg {parent[:12]}...) "
+                      f"— recorded, not published")
+                if not is_dry_run(DRY_RUN, info["source"]):
+                    record_published_event(published_events, ph,
+                                           published_events[parent]["event_id"],
+                                           tx.get("settledAt", "") or "",
+                                           boost_session=sess, sibling_of=parent)
+                    save_published_events(published_events)
+                continue
+
         # Defer keysend boosts the classifier couldn't tie to a Fountain
         # episode — almost always livestream boosts (boostLink absent,
         # episode_guid → <podcast:liveItem>). Note would render with no 🔗 and
@@ -387,7 +411,8 @@ def main():
             # payment hash (the dedupe gate + what topboosts embeds) and
             # publish only the board reply, which the site's flow doesn't post.
             standalone_id = site_signed_note_id
-            record_published_event(published_events, payment_hash, standalone_id, settled_at)
+            record_published_event(published_events, payment_hash, standalone_id, settled_at,
+                                       boost_session=info.get("boost_session"))
             save_published_events(published_events)
 
             if boost_board:
@@ -429,7 +454,8 @@ def main():
             # megathread/website render it without the header).
             standalone_id = publish_to_nostr(with_header_image(note, STANDALONE_BOOST_IMAGE), nsec, extra_tags=all_tags)
             if standalone_id:
-                record_published_event(published_events, payment_hash, standalone_id, settled_at)
+                record_published_event(published_events, payment_hash, standalone_id, settled_at,
+                                       boost_session=info.get("boost_session"))
                 # Persist per-boost, not once at the end of the run. The note is
                 # already irreversibly on the relays by this line, so the record
                 # of it has to survive anything that happens to the rest of the
@@ -493,6 +519,16 @@ def main():
         save_published_events(published_events)
 
     persist_cache(cache)
+
+    # What this run refused. sats-log keeps the durable copy (unrouted.csv);
+    # here it is so a "where did that boost go?" question can be answered from
+    # the publisher's own journal.
+    unrouted = cache.get("unrouted") or []
+    if unrouted:
+        print(f"\n─── Unrouted this run (not ours; sats-log records these) ───")
+        for u in unrouted:
+            print(f"  {u['settled_at']} {u['payment_hash'][:12]}... {u['our_sats']:,} sats  "
+                  f"{u['path']:13s} {(u['feed'] or u['feed_title'] or '?'):24s} {u['reason']}")
 
     # Boost wall: one write + one push per run, not per boost. The file is the
     # whole thread (~500 KB), so a batch of 5 boosts shouldn't mean 5 rsyncs.

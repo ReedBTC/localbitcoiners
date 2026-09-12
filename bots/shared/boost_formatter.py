@@ -31,6 +31,13 @@ from urllib.parse import urlparse
 _BOTS_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_BOTS_ROOT / "shared"))
 from nostr_utils import hex_to_npub, npub_to_hex, scrape_fountain_episode
+# The feed registry: which show a payment belongs to, and which of our Alby Hub
+# wallets feed this show's pipeline. Every feed-identity constant in this module
+# is a view onto feeds.LB, so a show is described in exactly one place.
+from feeds import (  # noqa: F401 — re-exported for callers and tests
+    LB, FEEDS, feed_verdict, identify_feed, is_ingest_tx,
+    FEED_MATCH, FEED_OTHER, FEED_ABSENT, _norm_feed_url, _norm_feed_id,
+)
 
 PUBLISHED_EVENTS_FILE = _BOTS_ROOT / "boost-publisher/published_events.json"
 
@@ -101,7 +108,7 @@ V4V_RELAYS = [
 # `LocalBitcoinersShow`. The kind 30078 attached carries the rich metadata
 # (sender, message, item_guid for episodes; show name for show-level). See
 # `_classify_website` for the lookup flow.
-LB_WEBSITE_RE = re.compile(r"^LocalBitcoiners(?:Ep(\d{3})|Show)$")
+LB_WEBSITE_RE = LB.website_comment_re
 
 # Show-level website boosts route through the website's own 33/33/34 split
 # (not the RSS zap split). LB's leg is the 33% to reed@getalby.com — the
@@ -116,21 +123,21 @@ WEBSITE_SHOW_DIVISOR = 0.33
 # Fountain show URL used elsewhere in the bots; mirrored here so show-level
 # website boosts render with the same 🎙️/🔗 lines as show-level Fountain
 # boosts.
-LB_SHOW_ID    = "Q48WBr6nT3mrbwMZ8ydY"
-LB_SHOW_TITLE = "Local Bitcoiners"
+LB_SHOW_ID    = LB.fountain_show_id
+LB_SHOW_TITLE = LB.title
 LB_SHOW_URL   = f"https://fountain.fm/show/{LB_SHOW_ID}"
 
 # RSS <podcast:guid> for the Local Bitcoiners feed. Used for NIP-73
 # external-content identity tags (i/k) on the published boost note so
 # GUID-aware podcast clients (Fountain, Primal, BoostMeBitch) can associate
 # the note with the show / episode. See build_podcast_guid_tags.
-LB_FEED_GUID  = "56fbb1aa-da79-5e4b-bebc-3b934ab8914c"
+LB_FEED_GUID  = LB.guid
 
 # Podcast Index feed id for the Local Bitcoiners feed (byfeedid=7683299).
 # The most spoof-resistant of the feed-identity signals a boostagram carries.
 # Confirmed against the PI API alongside LB_FEED_GUID / RSS_FEED. See
 # LB_FEED_IDENTITY and feed_verdict for how these gate incoming boosts.
-LB_FEED_ID    = "7683299"
+LB_FEED_ID    = LB.feed_id
 
 # Production gate for the website-boost path. While True, every bot that
 # detects a `source=website` BoostInfo routes its publish through write_dry_run_event
@@ -167,10 +174,17 @@ def load_episode_id_map():
 def save_episode_id_map(m):
     EPISODE_ID_MAP_FILE.write_text(json.dumps(m, indent=2, sort_keys=True))
 
-def record_published_event(events, payment_hash, event_id, settled_at):
+def record_published_event(events, payment_hash, event_id, settled_at,
+                           boost_session=None, sibling_of=None):
     """Record the standalone boost-note event id so downstream bots (e.g.
     topboosts) can reference historical boosts as nostr:nevent embeds without
-    having to republish the note."""
+    having to republish the note.
+
+    `boost_session` (website boosts) is the key every leg of one boost shares;
+    `published_sessions` indexes it so a second leg reaching the publisher is
+    recognised as the same boost. `sibling_of` marks such a leg's record: it
+    points at the leg whose note was published, and carries that note's id so
+    a hash→event lookup still resolves."""
     if not payment_hash or not event_id:
         return
     events[payment_hash] = {
@@ -178,6 +192,21 @@ def record_published_event(events, payment_hash, event_id, settled_at):
         "settled_at":   settled_at,
         "published_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
+    if boost_session:
+        events[payment_hash]["boost_session"] = boost_session
+    if sibling_of:
+        events[payment_hash]["sibling_of"] = sibling_of
+
+def published_sessions(events):
+    """{boost_session: payment_hash of the leg whose note was published} over a
+    published_events map. Sibling records are skipped so the map always points
+    at the original leg."""
+    out = {}
+    for ph, rec in events.items():
+        sess = rec.get("boost_session")
+        if sess and not rec.get("sibling_of") and sess not in out:
+            out[sess] = ph
+    return out
 
 def record_reply_event(events, payment_hash, reply_id):
     """Patch the boost-board reply's event id onto an existing record.
@@ -196,7 +225,7 @@ def record_reply_event(events, payment_hash, reply_id):
     rec["reply_id"] = reply_id
 
 FOUNTAIN_VIEWER = "c330881e28768381dd8bdfd274341dca0c5882c29b8642ea4bc82f7563264592"
-RSS_FEED        = "https://feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU"
+RSS_FEED        = LB.feed_url
 SPLIT_CUTOFF_V2 = "2026-03-29T13:10:00Z"   # 98% → 49%
 SPLIT_CUTOFF_V3 = "2026-04-20T20:23:25Z"   # 49% → 33%
 DIVISOR_V1      = 0.98
@@ -299,83 +328,13 @@ def resolve_divisor(settled_at, cache, item_guid=None, episode_number=None,
 # ─────────────────────────────────────────────────────────────────────────────
 # Feed-identity gating
 # ─────────────────────────────────────────────────────────────────────────────
-# The node (reed@localbitcoiners.com) is a SHARED Lightning value-split
-# recipient: Reed guests on other shows that split to this address, and a new
-# podcast is spinning up on the same address. So a boost landing here is NOT
-# automatically Local Bitcoiners — it has to positively identify our feed.
-#
-# Real-world finding (surveyed off the live node): keysend boostagrams carry NO
-# podcast:guid. The signals that DO appear are `feedId`, feed `url`, and the
-# `podcast` title — and none is populated by every app (LB boosts show
-# feedId=7683299 from some apps but 0 from others; url present from some, empty
-# from others; only the title is near-universal). So identity is a multi-signal
-# bundle and the verdict treats a missing/placeholder signal as ABSENT, never as
-# a mismatch. `guid` is kept for forward-compat even though no app sends it yet.
-#
-# feed_verdict is deliberately generic (takes an `identity`) so a future bot for
-# the OTHER podcasts can reuse it with its own identity bundle rather than
-# hardcoding Local Bitcoiners.
-LB_FEED_IDENTITY = {
-    "feed_ids":  {LB_FEED_ID},                 # "7683299"
-    "feed_urls": {RSS_FEED},                    # feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU
-    "titles":    {LB_SHOW_TITLE.lower()},       # "local bitcoiners"
-    "guids":     {LB_FEED_GUID.lower()},        # 56fbb1aa-...
-}
-
-FEED_MATCH  = "match"    # a present signal positively names the target feed
-FEED_OTHER  = "other"    # a present signal positively names a DIFFERENT feed
-FEED_ABSENT = "absent"   # no usable feed signal present
-
-def _norm_feed_url(u):
-    return (u or "").strip().lower().rstrip("/")
-
-def _norm_feed_id(v):
-    """feedId of 0 / '' / None means 'not provided' — treat as absent, not a
-    mismatch. (Fountain and PodcastGuru send 0 even for real LB boosts.)"""
-    s = str(v or "").strip()
-    return "" if s in ("", "0") else s
-
-def feed_verdict(meta, identity):
-    """Decide whether a boost's feed-identity `meta` belongs to `identity`.
-
-    `meta` — loosely-typed signals pulled off a boostagram / fetched boost page:
-    any of `feed_id`, `feed_url`, `title`, `guid` (missing keys are fine).
-    `identity` — bundle of `feed_ids` / `feed_urls` / `titles` / `guids` sets
-    (titles + guids compared lowercased; urls normalized).
-
-    Each PRESENT signal votes match (names the target feed) or other (names a
-    different feed); missing / placeholder signals abstain. A single `other`
-    vote is decisive even if another signal matches — mixed signals are treated
-    as untrustworthy and rejected. If nothing names the target and nothing
-    contradicts it, the verdict is ABSENT and the caller decides what to do."""
-    saw_match = saw_other = False
-
-    def _vote(present, is_match):
-        nonlocal saw_match, saw_other
-        if not present:
-            return
-        if is_match:
-            saw_match = True
-        else:
-            saw_other = True
-
-    fid = _norm_feed_id(meta.get("feed_id"))
-    _vote(fid, fid in {str(x) for x in identity["feed_ids"]})
-
-    url = _norm_feed_url(meta.get("feed_url"))
-    _vote(url, url in {_norm_feed_url(u) for u in identity["feed_urls"]})
-
-    title = (meta.get("title") or "").strip().lower()
-    _vote(title, title in {t.lower() for t in identity["titles"]})
-
-    guid = (meta.get("guid") or "").strip().lower()
-    _vote(guid, guid in {g.lower() for g in identity["guids"]})
-
-    if saw_other:
-        return FEED_OTHER
-    if saw_match:
-        return FEED_MATCH
-    return FEED_ABSENT
+# The node is a SHARED Lightning value-split recipient, so a boost landing here
+# is NOT automatically Local Bitcoiners — it has to positively identify our
+# feed. The decision function (`feed_verdict`), the show's identity (`LB`) and
+# the wallet allowlist (`is_ingest_tx`) all live in shared/feeds.py; see its
+# docstring for the signal semantics. What stays here is the LB-specialised
+# convenience the classifier paths call.
+LB_FEED_IDENTITY = LB.identity()
 
 def lb_feed_verdict(meta):
     """feed_verdict specialized to the Local Bitcoiners feed."""
@@ -671,6 +630,7 @@ def make_cache():
         "episode_id_map_dirty":  False,
         "castamatic_boosts":     {},    # boost url -> Castamatic JSON metadata
         "tardbox_boosts":        {},    # boost url -> parsed Tardbox HTML fields
+        "unrouted":              [],    # boost-shaped payments no feed claimed (see record_unrouted)
     }
 
 def _ensure_episode_id_map(cache):
@@ -1199,8 +1159,7 @@ KNOWN_BOOST_PAGE_HOSTS = ("fountain.fm", "castamatic.com", "tardbox.com")
 # Any of these appearing in a boost page's HTML positively names Local
 # Bitcoiners. Deliberately excludes LB_FEED_ID ("7683299") — a bare 7-digit
 # number matches by coincidence in a page of ids and timestamps.
-LB_PAGE_MARKERS = (LB_FEED_GUID, RSS_FEED, LB_SHOW_ID, LB_SHOW_TITLE,
-                   "localbitcoiners.com")
+LB_PAGE_MARKERS = LB.page_markers
 
 def _boost_page_host(url):
     """Lowercased host of a boost-page URL, "" when unparseable."""
@@ -1260,6 +1219,55 @@ def _extract_episode_number(title):
         return m.group(1).zfill(3)
     return None
 
+# ── Unrouted payments ────────────────────────────────────────────────────────
+# Every path that decides a payment is NOT ours used to say so only as a
+# [skip] line in the systemd journal. With a second show on the node that
+# answer has to be durable: "did we miss a boost?" is a question about the
+# payments nobody claimed. The classifier appends one record per dropped
+# boost-shaped payment to cache["unrouted"]; sats-log persists the list to
+# bots/sats-log/unrouted.csv (deduped by payment hash), the publisher prints it.
+UNROUTED_COLUMNS = ("settled_at", "payment_hash", "app_id", "our_sats", "path",
+                    "feed", "feed_title", "reason", "description")
+
+def is_boost_shaped(tx):
+    """A payment that carries podcasting metadata at all — a boostagram, an
+    `rss::payment::` comment, or a website LNURL comment. Plain invoices (a
+    zap to the sub-wallet, a transfer, a Stacker News withdrawal) are not
+    worth a line in the unrouted log."""
+    desc = (tx.get("description") or "").strip()
+    return bool(tx.get("boostagram")
+                or desc.startswith("rss::payment::")
+                or LB_WEBSITE_RE.match(desc))
+
+def _tx_feed_meta(tx):
+    """Best-effort feed signals straight off a raw transaction: a keysend's
+    boostagram names its feed; a BOLT11 comment names only a boost page."""
+    bg = tx.get("boostagram") or {}
+    return _keysend_feed_meta(bg) if bg else {}
+
+def record_unrouted(cache, tx, path, reason, feed_meta=None, feed=None):
+    """Append an unrouted record for `tx` to the run cache. `feed` names the
+    registered feed that claimed it, if known; otherwise `feed_meta` (the
+    signals the path had) is asked. Returns the record."""
+    if cache is None:
+        return None
+    meta = feed_meta if feed_meta is not None else _tx_feed_meta(tx)
+    slug = feed or identify_feed(meta)
+    amount = int(tx.get("amount", 0) or 0)
+    rec = {
+        "settled_at":   tx.get("settledAt", "") or "",
+        "payment_hash": tx.get("paymentHash", "") or "",
+        "app_id":       "" if tx.get("appId") is None else str(tx.get("appId")),
+        "our_sats":     round(amount / 1000),
+        "path":         path,
+        "feed":         slug or "",
+        "feed_title":   (meta.get("title") or "") if meta else "",
+        "reason":       reason,
+        "description":  " ".join((tx.get("description") or "").split())[:200],
+    }
+    cache.setdefault("unrouted", []).append(rec)
+    return rec
+
 def classify_lb_tx(tx, cache=None):
     """Examine an Alby Hub transaction and return a normalized BoostInfo dict
     if it's a Local Bitcoiners boost or stream payment, or None otherwise.
@@ -1317,6 +1325,22 @@ def classify_lb_tx(tx, cache=None):
     payment_hash = tx.get("paymentHash", "") or ""
     settled_at   = tx.get("settledAt", "") or ""
     our_msats    = int(tx.get("amount", 0) or 0)
+
+    # Wallet gate. The hub API is node-wide, so a sub-wallet's incoming payments
+    # arrive in the same list as ours. Since 2026-09 the show's V4V leg
+    # (lb_v4v@getalby.com) IS such a sub-wallet: one boost settles twice on
+    # this hub, once per leg, each with its own payment hash. Only the wallets
+    # in LB.ingest_app_ids feed this pipeline, so the second leg is invisible
+    # here and can neither publish a second note nor double a total. Anything
+    # else boost-shaped is logged as unrouted — a new wallet has to be
+    # registered before it counts, never absorbed by default.
+    if not is_ingest_tx(tx, LB):
+        if is_boost_shaped(tx):
+            print(f"  [skip] {payment_hash[:12]}… landed in wallet appId="
+                  f"{tx.get('appId')!r}, not an ingest wallet for {LB.slug} — ignored")
+            record_unrouted(cache, tx, "wallet",
+                            f"appId {tx.get('appId')!r} is not an ingest wallet for {LB.slug}")
+        return None
 
     m = LB_WEBSITE_RE.match(desc.strip())
     if m:
@@ -1560,6 +1584,7 @@ def _classify_website(tx, ep_num_padded, payment_hash, settled_at, our_msats, ca
             "episode_url":   LB_SHOW_URL,
             "guests":        [],
             "app_name":      "localbitcoiners.com",
+            "boost_session": boost_session or None,
             "show_level":    True,
             "share_status":  share_status,
             "share_note_id": share_note_id,
@@ -1626,6 +1651,7 @@ def _classify_website(tx, ep_num_padded, payment_hash, settled_at, our_msats, ca
         "item_guid":      item_guid or None,
         "guests":         guests,
         "app_name":       "localbitcoiners.com",
+        "boost_session":  boost_session or None,
         "share_status":   share_status,
         "share_note_id":  share_note_id,
         "intended_sats":  round(intended_msats / 1000),
@@ -1684,6 +1710,8 @@ def _classify_fountain_boost(tx, desc, payment_hash, settled_at, our_msats, cach
             if feed == "other":
                 print(f"  [skip] BOLT11 boost {payment_hash[:12]}… page at {host} "
                       f"names no Local Bitcoiners feed — not ours")
+                record_unrouted(cache, tx, "bolt11",
+                                f"boost page at {host} names no Local Bitcoiners marker")
                 return None
             if feed == "unknown":
                 feed_unverified = True
@@ -1702,6 +1730,7 @@ def _classify_fountain_boost(tx, desc, payment_hash, settled_at, our_msats, cach
                 if sid and sid != LB_SHOW_ID:
                     print(f"  [skip] Fountain show boost {payment_hash[:12]}… "
                           f"not Local Bitcoiners (show={sid!r})")
+                    record_unrouted(cache, tx, "bolt11", f"Fountain show {sid} is not ours")
                     return None
             elif episode_id:
                 _lb_ids = {v.get("fountain_id") for v in build_rss_item_index(cache).values()
@@ -1711,6 +1740,8 @@ def _classify_fountain_boost(tx, desc, payment_hash, settled_at, our_msats, cach
                     if feed == "other":
                         print(f"  [skip] Fountain boost {payment_hash[:12]}… episode "
                               f"{episode_id!r} belongs to another show — not Local Bitcoiners")
+                        record_unrouted(cache, tx, "bolt11",
+                                        f"Fountain episode {episode_id} belongs to another show")
                         return None
                     if feed == "unknown":
                         feed_unverified = True
@@ -1747,10 +1778,14 @@ def _classify_fountain_boost(tx, desc, payment_hash, settled_at, our_msats, cach
             and bool((parsed.get("message") or "").strip())
         )
     else:
-        episode_url, episode_id, episode_title, guests = None, None, None, []
-        message, sender_npub = "", None
-        comment_pending = False
-        fountain_sats = None
+        # `rss::payment::boost` with no boost-page URL. There is nothing to
+        # place it on any feed — no page, no episode, no sender — so it used
+        # to pass every gate above (none of which ran) and publish as a Local
+        # Bitcoiners show boost with an empty note. Unclaimed is the default.
+        print(f"  [skip] BOLT11 boost {payment_hash[:12]}… carries no boost page URL "
+              f"— cannot be placed on any feed (desc={desc[:60]!r})")
+        record_unrouted(cache, tx, "bolt11", "rss::payment::boost with no boost page URL")
+        return None
 
     # Prefer Fountain's recorded donor intent (the matched comment's
     # `action.satoshis` — the full boost amount the donor entered, exact)
@@ -1834,7 +1869,7 @@ def _classify_castamatic_boost(tx, parsed, payment_hash, settled_at, our_msats, 
     # Castamatic's JSON uses `feed_title` + `feed_guid` (confirmed against live
     # boost payloads); the other key spellings are defensive for other apps that
     # reuse this rss::payment::boost <json-url> convention.
-    _cm_verdict = lb_feed_verdict({
+    _cm_meta = {
         "feed_id":  (boost_data.get("feed_id") or boost_data.get("feedID")
                      or boost_data.get("feedId")),
         "feed_url": (boost_data.get("feed_url") or boost_data.get("feedUrl")
@@ -1843,10 +1878,12 @@ def _classify_castamatic_boost(tx, parsed, payment_hash, settled_at, our_msats, 
                      or boost_data.get("podcast_title")),
         "guid":     (boost_data.get("feed_guid") or boost_data.get("guid")
                      or boost_data.get("podcast_guid") or boost_data.get("feedGuid")),
-    })
+    }
+    _cm_verdict = lb_feed_verdict(_cm_meta)
     if _cm_verdict == FEED_OTHER:
         print(f"  [skip] Castamatic boost {payment_hash[:12]}… not Local Bitcoiners "
-              f"(feed=other, title={boost_data.get('podcast')!r})")
+              f"(feed=other, title={_cm_meta.get('title')!r})")
+        record_unrouted(cache, tx, "castamatic", "feed names another show", feed_meta=_cm_meta)
         return None
 
     sender_name = boost_data.get("sender_name") or None
@@ -1982,15 +2019,17 @@ def _classify_tardbox_boost(tx, parsed, payment_hash, settled_at, our_msats, cac
     # resolution below is the positive-LB path.
     # Tardbox labels the feed/show name row `Show` (confirmed against live boost
     # pages); it exposes no feed URL or guid row, so title is the only signal.
-    _tb_verdict = lb_feed_verdict({
+    _tb_meta = {
         "feed_id":  None,
         "feed_url": page.get("Feed") or page.get("URL") or page.get("Feed URL"),
         "title":    page.get("Show") or page.get("Podcast"),
         "guid":     page.get("GUID") or page.get("Podcast GUID"),
-    })
+    }
+    _tb_verdict = lb_feed_verdict(_tb_meta)
     if _tb_verdict == FEED_OTHER:
         print(f"  [skip] Tardbox/BMB boost {payment_hash[:12]}… not Local Bitcoiners "
-              f"(feed=other, title={page.get('Podcast')!r})")
+              f"(feed=other, title={_tb_meta.get('title')!r})")
+        record_unrouted(cache, tx, "tardbox", "feed names another show", feed_meta=_tb_meta)
         return None
 
     sender_npub = None
@@ -2109,6 +2148,7 @@ def _classify_fountain_stream(tx, desc, payment_hash, settled_at, our_msats, cac
         if sid and sid != LB_SHOW_ID:
             print(f"  [skip] Fountain show stream {payment_hash[:12]}… "
                   f"not Local Bitcoiners (show={sid!r})")
+            record_unrouted(cache, tx, "bolt11_stream", f"Fountain show {sid} is not ours")
             return None
     elif episode_id:
         _lb_ids = {v.get("fountain_id") for v in build_rss_item_index(cache).values()
@@ -2118,6 +2158,8 @@ def _classify_fountain_stream(tx, desc, payment_hash, settled_at, our_msats, cac
             if feed == "other":
                 print(f"  [skip] Fountain stream {payment_hash[:12]}… episode "
                       f"{episode_id!r} belongs to another show — not Local Bitcoiners")
+                record_unrouted(cache, tx, "bolt11_stream",
+                                f"Fountain episode {episode_id} belongs to another show")
                 return None
             if feed == "unknown":
                 print(f"  [review] Fountain stream {payment_hash[:12]}… episode "
@@ -2155,11 +2197,13 @@ def _classify_keysend(tx, boostagram, payment_hash, settled_at, our_msats, cache
     # no feed signal is present at all — every real keysend boost observed on
     # the node carries at least the `podcast` title, so ABSENT here is a red
     # flag worth logging rather than silently trusting.
-    verdict = lb_feed_verdict(_keysend_feed_meta(boostagram))
+    meta    = _keysend_feed_meta(boostagram)
+    verdict = lb_feed_verdict(meta)
     if verdict != FEED_MATCH:
         print(f"  [skip] keysend boost {payment_hash[:12]}… not Local Bitcoiners "
               f"(feed={verdict}, podcast={boostagram.get('podcast')!r}, "
               f"feedId={boostagram.get('feedId')!r}, url={boostagram.get('url')!r})")
+        record_unrouted(cache, tx, "keysend", f"feed verdict {verdict}", feed_meta=meta)
         return None
 
     message = boostagram.get("message", "") or ""

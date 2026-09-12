@@ -87,7 +87,9 @@ from boost_formatter import (
     classify_lb_tx, make_cache, persist_cache,
     build_rss_item_index, _extract_episode_number,
     FEATURABLE_KINDS, _NADDR_RE, _OB_EPISODE_URL_RE, decode_naddr,
+    is_boost_shaped, record_unrouted, UNROUTED_COLUMNS,
 )
+from feeds import LB, identify_feed, is_ingest_tx
 from nostr_utils import (
     load_config, hex_to_npub, npub_to_hex,
     get_outbox_relays, NOSTR_RELAYS,
@@ -372,8 +374,8 @@ EP9_LIVESTREAM_END   = "2026-05-02T03:30:00Z"   # 2026-05-01 11:30pm EDT (padded
 # LB's own podcast feed identity — used to tell LB-feed streams apart from
 # crossover-feed streams (Bowl After Bowl, etc.) in keysend boostagrams and
 # Castamatic stream metadata.
-LB_FEED_GUID  = "56fbb1aa-da79-5e4b-bebc-3b934ab8914c"
-LB_FEED_TITLE = "local bitcoiners"
+LB_FEED_GUID  = LB.guid
+LB_FEED_TITLE = LB.title.lower()
 
 
 def apply_manual_overrides(row):
@@ -573,6 +575,38 @@ def write_csv_full(rows):
     _atomic_write_text(CSV_FILE, _csv_to_text(CSV_COLUMNS, sorted_rows))
 
 
+# Payments that reached the node boost-shaped but that no registered feed of
+# ours claimed: another show's boost or stream, or a leg that settled in a
+# wallet outside the ingest allowlist. Append-only, keyed by payment hash, so
+# "did we miss one?" has an answer that outlives the journal. Machine-local
+# (gitignored) like state.json — it names other shows' donors and messages.
+UNROUTED_CSV = SCRIPT_DIR / "unrouted.csv"
+
+
+def write_unrouted(records):
+    """Merge `records` (record_unrouted dicts) into UNROUTED_CSV. A hash
+    already on file keeps its first record. Returns (new, total)."""
+    existing = {}
+    if UNROUTED_CSV.exists():
+        with open(UNROUTED_CSV, newline="", encoding="utf-8") as f:
+            for r in csv.DictReader(f):
+                if r.get("payment_hash"):
+                    existing[r["payment_hash"]] = r
+    new = 0
+    for r in records:
+        ph = (r or {}).get("payment_hash") or ""
+        if not ph or ph in existing:
+            continue
+        existing[ph] = {c: ("" if r.get(c) is None else str(r.get(c))) for c in UNROUTED_COLUMNS}
+        new += 1
+    if new:
+        rows = sorted(existing.values(),
+                      key=lambda r: (r.get("settled_at") or "", r.get("payment_hash") or ""),
+                      reverse=True)
+        _atomic_write_text(UNROUTED_CSV, _csv_to_text(list(UNROUTED_COLUMNS), rows))
+    return new, len(existing)
+
+
 def _coerce_json_value(col, raw):
     """Coerce one CSV cell (always a string on read-back) to its JSON type.
 
@@ -625,7 +659,8 @@ def write_sats_json():
 # Value-split breakdown
 #
 # Each row's total_sats is apportioned into 5 recipient buckets (Reed, Rev,
-# aquafox/ad-budget, guests, Fountain). The breakdown is calculated, not
+# the show's V4V wallet — the aquafox_sats column, aquafox30 until 2026-09 and
+# lb_v4v@getalby.com since — guests, Fountain). The breakdown is calculated, not
 # measured — our node only ever sees its own leg of a payment — so we apply
 # the canonical split to the reconstructed total. The five columns sum
 # exactly to total_sats; rounding drift lands in the largest bucket. Rows
@@ -636,10 +671,10 @@ def write_sats_json():
 #   1. RSS feed (era 3, ≥ ERA3_CUTOFF) — episode/show boosts derive their
 #      split from the Fountain feed's <podcast:value> blocks (per-item for
 #      episode boosts, channel-level for show boosts). For source=="website"
-#      rows we additionally apply the boostbot@fountain.fm → aquafox override
-#      that the website client (login-widget/src/lib/recipientOverrides.js)
-#      applies before payment, so the recorded split matches what was
-#      actually routed.
+#      rows we additionally apply whatever recipient redirect the website
+#      client (login-widget/src/lib/recipientOverrides.js) applies before
+#      payment, so the recorded split matches what was actually routed —
+#      today only Ep015's per-episode redirect; see WEBSITE_RECIPIENT_OVERRIDES.
 #
 #   2. data/value-splits.csv (era 1 + era 2 history, plus lb_donation) —
 #      hand-maintained fallback for splits that predate the RSS-per-item
@@ -683,17 +718,25 @@ BUCKET_BY_ADDRESS = {
     # META_PUBLISH_ALLOWLIST in login-widget/src/lib/recipientOverrides.js —
     # an address missing here doesn't error, it silently pays out as a guest.
     "reed@localbitcoiners.com":      "reed_sats",
+    # The show's V4V wallet since 2026-09 (lb-v82): an Alby Hub sub-wallet on
+    # our own node (appId 57), replacing aquafox30 in the channel block and in
+    # the item blocks that carry no guest. Same column — it is the same budget
+    # — and the aquafox30 entry above stays for every row recorded before the
+    # swap. The wallet is deliberately NOT in OUR_VALUE_ADDRESSES or the
+    # ingest allowlist (feeds.LB): its leg is the SECOND settlement of a boost
+    # we already ingest through the host leg. See feeds.py.
+    "lb_v4v@getalby.com":            "aquafox_sats",
 }
 
 # Per-host substitutions applied to RSS-derived splits before bucket
 # mapping, only for source=="website" rows. Mirrors LNADDRESS_OVERRIDES
-# in login-widget/src/lib/recipientOverrides.js — the website client
-# redirects Fountain's 2% leg to aquafox before payment, so our stats
-# need to record where the sats actually went, not what RSS originally
-# attributed.
-WEBSITE_RECIPIENT_OVERRIDES = {
-    "boostbot@fountain.fm": "aquafox30@primal.net",
-}
+# in login-widget/src/lib/recipientOverrides.js, which is EMPTY since
+# lb-v82 (2026-09): the site used to redirect Fountain's 2% leg to
+# aquafox30 before payment, and now pays the value block as published, so
+# there is nothing to restate here. Website rows recorded before the swap
+# keep their aquafox-credited 2% through snapshot_existing_splits. If the
+# site ever redirects a leg again, the redirect goes here in the same commit.
+WEBSITE_RECIPIENT_OVERRIDES = {}
 
 # Per-episode layer over the map above, shallow-merged on top of it. Mirrors
 # EPISODE_LNADDRESS_OVERRIDES / getRecipientOverrides() in the same widget
@@ -1198,6 +1241,17 @@ def run_sats(config, state, existing_boost_hashes):
                 continue
             settled_at = tx.get("settledAt", "") or ""
 
+            # Wallet gate, ahead of the stream collectors (which bypass the
+            # classifier and its own gate). A boost-shaped payment in a wallet
+            # that isn't ours — the lb_v4v sub-wallet's second leg of a boost
+            # we already ingest, a future show's wallet — is logged as
+            # unrouted and never becomes a row. See feeds.py.
+            if not is_ingest_tx(tx, LB):
+                if is_boost_shaped(tx):
+                    record_unrouted(cache, tx, "wallet",
+                                    f"appId {tx.get('appId')!r} is not an ingest wallet for {LB.slug}")
+                continue
+
             # Non-Fountain streams — collected on every page (not cursor-gated)
             # since the stream rows are fully re-aggregated each run.
             if _is_keysend_stream(tx):
@@ -1254,6 +1308,7 @@ def run_sats(config, state, existing_boost_hashes):
         "skipped_fountain_strm":  skipped_fountain_strm,
         "keysend_stream_txs":     len(keysend_stream_txs),
         "castamatic_stream_txs":  len(castamatic_stream_txs),
+        "unrouted":               list(cache.get("unrouted") or []),
     }
     return new_rows, keysend_stream_txs, castamatic_stream_txs, newest_ts, stats
 
@@ -1300,6 +1355,7 @@ def classify_keysend_stream(tx):
         "feed_guid":   "",
         "ep_title":    bg.get("episode") or "",
         "item_guid":   "",
+        "_tx":         tx,   # for the unrouted log when the feed isn't ours
     }
 
 
@@ -1340,32 +1396,36 @@ def classify_castamatic_stream(tx, castamatic_cache):
         "feed_guid":   data.get("feed_guid") or "",
         "ep_title":    data.get("item_title") or "",
         "item_guid":   data.get("item_guid") or "",
+        "_tx":         tx,   # for the unrouted log when the feed isn't ours
     }
 
 
-def _is_lb_feed(rec):
-    """True if a stream record came in on the Local Bitcoiners feed rather than
-    a crossover feed (Bowl After Bowl, etc.)."""
-    if rec.get("feed_guid") and rec["feed_guid"] == LB_FEED_GUID:
-        return True
-    return (rec.get("feed_title") or "").strip().lower() == LB_FEED_TITLE
+def stream_feed(rec):
+    """The registered feed a stream record came in on (its slug), or None when
+    no registered feed claims it. Keysend streams carry the feed title;
+    Castamatic's JSON carries title + guid. Same verdict rules as every boost
+    path — see feeds.feed_verdict."""
+    return identify_feed({"title": rec.get("feed_title"), "guid": rec.get("feed_guid")})
 
 
 def resolve_stream_episode(rec, rss_index, ep_num_to_meta):
     """Resolve a stream record to (episode_id, episode_num, episode_title,
-    show_level).
+    show_level), or None when the stream is not ours.
 
-    - Crossover-feed streams → show-level, EXCEPT those inside the Ep 009
-      livestream window (BAB hosted that stream for us) → Ep 009.
+    - Streams on another feed are DROPPED (None) — they are that show's sats,
+      not a Local Bitcoiners show-level row. Until 2026-09-12 they were booked
+      show-level here, which put Chad and Reeds streamers on the LB supporters
+      wall. One exception stays: streams inside the Ep 009 livestream window,
+      which Bowl After Bowl hosted for us → Ep 009.
     - LB-feed streams → episode-attributed: Castamatic via item_guid against
       the RSS index, keysend via the episode number parsed from its title.
       LB-feed streams that don't resolve to a known episode fall to show-level.
     """
-    if not _is_lb_feed(rec):
+    if stream_feed(rec) != LB.slug:
         s = rec.get("settled_at", "")
         if EP9_LIVESTREAM_START <= s <= EP9_LIVESTREAM_END:
             return LIVE_EP_FOUNTAIN_ID, LIVE_EP_NUM, LIVE_EP_TITLE, False
-        return "", "", "", True
+        return None
 
     # Castamatic: item_guid → fountain id via the RSS index.
     item_guid = rec.get("item_guid")
@@ -1388,12 +1448,19 @@ def resolve_stream_episode(rec, rss_index, ep_num_to_meta):
 def build_node_stream_rows(stream_recs, ep_num_to_meta):
     """Aggregate normalized keysend/Castamatic stream records into one row per
     (episode-bucket, sender, source) — the same row shape as the Fountain
-    stream rows, but with our_sats populated."""
+    stream rows, but with our_sats populated. Returns (rows, dropped) where
+    `dropped` is every record resolve_stream_episode refused (another feed's
+    stream), for the unrouted log."""
     rss_index = build_rss_item_index(make_cache())
 
     agg = {}
+    dropped = []
     for rec in stream_recs:
-        eid, num, title, show_level = resolve_stream_episode(rec, rss_index, ep_num_to_meta)
+        resolved = resolve_stream_episode(rec, rss_index, ep_num_to_meta)
+        if resolved is None:
+            dropped.append(rec)
+            continue
+        eid, num, title, show_level = resolved
         bucket = "__show__" if show_level else eid
         npub, name = rec["sender_npub"], rec["sender_name"]
         sender_key = ("npub", npub) if npub else (("name", name) if name else ("anon", ""))
@@ -1435,7 +1502,7 @@ def build_node_stream_rows(stream_recs, ep_num_to_meta):
             "total_sats_method": a["source"].replace("_", " ") + " aggregate",
             "message":           "",
         })
-    return rows
+    return rows, dropped
 
 
 # ---------------------------------------------------------------------------
@@ -2366,10 +2433,25 @@ def main():
         rec = classify_castamatic_stream(tx, castamatic_cache)
         if rec:
             stream_recs.append(rec)
-    node_stream_rows = build_node_stream_rows(stream_recs, ep_num_to_meta)
+    node_stream_rows, dropped_streams = build_node_stream_rows(stream_recs, ep_num_to_meta)
     state["castamatic_cache"] = castamatic_cache
     print(f"  Node stream rows (→sats.csv): {len(node_stream_rows)} "
-          f"(from {len(stream_recs)} stream payments)")
+          f"(from {len(stream_recs) - len(dropped_streams)} stream payments; "
+          f"{len(dropped_streams)} on other feeds dropped)")
+
+    # Everything the run refused, in one durable place: the classifier's
+    # drops (other feeds, the sub-wallet's second legs) plus the streams above.
+    unrouted = list(sats_stats.get("unrouted") or [])
+    for rec in dropped_streams:
+        slug = stream_feed(rec)
+        unrouted.append(record_unrouted(
+            {}, rec["_tx"], rec["source"],
+            f"stream on {slug or 'an unregistered feed'}",
+            feed_meta={"title": rec.get("feed_title"), "guid": rec.get("feed_guid")},
+            feed=slug))
+    new_unrouted, total_unrouted = write_unrouted(unrouted)
+    print(f"  Unrouted payments (→bots/sats-log/unrouted.csv): "
+          f"{new_unrouted} new, {total_unrouted} on file")
 
     # ── Pass 3: Fountain Firestore for stream aggregates + full ledger ──
     print()
