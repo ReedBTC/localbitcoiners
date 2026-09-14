@@ -5,8 +5,8 @@
  * A Feature boost is an ordinary show boost whose message carries a reference
  * to the thing being featured (an naddr, or the OnlyBoosts episode URL). The
  * sats-log bot scans the message and the item lands in the tab's gold box.
- * What this module adds is the money side: the show's third split leg (34%,
- * normally aquafox30) is pointed at whoever made the thing, so the sats follow
+ * What this module adds is the money side: the show's third split leg (32%,
+ * normally the show's V4V wallet, lb_v4v@getalby.com) is pointed at whoever made the thing, so the sats follow
  * what is being promoted. The two host legs are untouched, which is what keeps
  * the bots' LB-feed-identity classifier seeing the boost as ours.
  *

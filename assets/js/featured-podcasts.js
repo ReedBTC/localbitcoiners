@@ -21,7 +21,7 @@
  * Rendering lives in feeds-podcasts.js — this module resolves data and owns
  * the Feature action itself.
  */
-import { fromApiValue, applyExternalOverrides } from '/assets/js/value-block.js'
+import { fromApiValue } from '/assets/js/value-block.js'
 import {
   fetchFeaturedSet,
   makeConfirmedStore,
@@ -101,7 +101,7 @@ export async function resolveEpisodeSplit(feedId, guid) {
   const data = await withTimeout(getJson(url), LOOKUP_TIMEOUT_MS, null)
   const parsed = fromApiValue(data)
   if (!parsed) return null
-  const recipients = applyExternalOverrides(parsed.recipients)
+  const recipients = parsed.recipients
   const totalWeight = recipients.reduce((a, r) => a + (r.splitWeight || 0), 0)
   if (!recipients.length || totalWeight <= 0) return null
   return { recipients, totalWeight }

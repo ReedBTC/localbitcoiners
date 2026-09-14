@@ -998,7 +998,7 @@ const api = {
     // Open the form. Apply LB's per-host substitutions
     // before the modal sees the recipient list. The episode number selects
     // the per-episode override layer (Ep015 reroutes the Fountain leg to
-    // the Samourai defense address rather than to aquafox30).
+    // the Samourai defense address; the global map is empty).
     const normalizedRecipients = applyRecipientOverrides(splits.recipients, episode.number)
     setEpisodeBoostState({
       episode,
@@ -1108,8 +1108,7 @@ const api = {
    * value block from the show's own RSS through `/api/value`; this one is
    * Local Bitcoiners paying Local Bitcoiners, so there is no third party's block to read
    * and nothing that could reroute it. One leg, 100%, to the address the site
-   * publishes. `applyExternalOverrides` is not in this path because there is no
-   * external recipient to override.
+   * publishes.
    */
   async openSiteDonation() {
     if (!RECIPIENT_LUD16) {

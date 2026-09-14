@@ -32,7 +32,7 @@ import {
   parseSegments,
   renderSegmentsInto,
 } from '/assets/js/boosts-thread.js'
-import { fromApiValue, applyExternalOverrides } from '/assets/js/value-block.js'
+import { fromApiValue } from '/assets/js/value-block.js'
 import { buildActionBar, configureBoostActions } from '/assets/js/boost-actions.js'
 import { ensureLoginWidget } from '/assets/js/widget-loader.js'
 import { initialFeedParams, pickParam, publishFeedParams } from '/assets/js/feed-url.js'
@@ -481,7 +481,7 @@ async function onBoostClick(item, btn) {
     const parsed = fromApiValue(data)
     if (!parsed) { showToast('This episode has no value block to boost.', true); return }
 
-    const recipients = applyExternalOverrides(parsed.recipients)
+    const recipients = parsed.recipients
     const totalWeight = recipients.reduce((a, r) => a + (r.splitWeight || 0), 0)
     if (!recipients.length || totalWeight <= 0) { showToast('This episode has no payable recipients.', true); return }
 

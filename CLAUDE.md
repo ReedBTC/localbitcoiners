@@ -184,8 +184,8 @@ messages into the boosted-item log the site reads at `/api/meetups`; each tab
 filters that one file to its kind (`assets/js/featured-*.js`, shared parts in
 `featured-shared.js`). Two things fail silently if missed:
 
-- **The Feature boost pays the maker the show's reassignable leg** (34%,
-  aquafox30) via `openShowBoost({ feature })`; see
+- **The Feature boost pays the maker the show's reassignable leg** (32%,
+  the show's V4V wallet `lb_v4v@getalby.com`) via `openShowBoost({ feature })`; see
   `login-widget/src/lib/featureSplit.js` and `BoostModal.splitsForFeature`.
   Host legs are never reassignable. A podcast episode's leg becomes the
   podcast's value block (proportional, keysend nodes included). A feature

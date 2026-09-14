@@ -252,7 +252,7 @@ The value block is lightning-address only:
 <podcast:value type="lightning" method="lnaddress">
   <podcast:valueRecipient name="reed@getalby.com" split="33" type="lnaddress" address="reed@getalby.com"/>
   <podcast:valueRecipient name="revhodl@minibits.cash" split="33" type="lnaddress" address="revhodl@minibits.cash"/>
-  <podcast:valueRecipient name="aquafox30@primal.net" split="32" type="lnaddress" address="aquafox30@primal.net"/>
+  <podcast:valueRecipient name="lb_v4v@getalby.com" split="32" type="lnaddress" address="lb_v4v@getalby.com"/>
   <podcast:valueRecipient name="Fountain" split="2" type="lnaddress" address="boostbot@fountain.fm"/>
 </podcast:value>
 ```

@@ -209,7 +209,14 @@
 // links that 301 on every click. The feed renderers (feeds.js, feeds-*.js,
 // featured-shared.js) changed too: they are stale-while-revalidate, and an
 // old copy against the new page would still exclude featured items from All.
-const VERSION = 'lb-v81';
+// lb-v82: the show's V4V wallet moved from aquafox30@primal.net to
+// lb_v4v@getalby.com, and the site no longer reroutes Fountain's 2% boostbot
+// leg to the show's own wallet (Reed, 2026-09-11: let the feed speak for
+// itself). The show boost is now the channel block as published, 33/33/32/2,
+// and the Feature leg is 32%. Payment routing lives in the widget bundle and
+// in value-block.js, both stale-while-revalidate, so without a bump a
+// returning donor would keep paying the old wallet for one more session.
+const VERSION = 'lb-v82';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

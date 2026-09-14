@@ -6,23 +6,22 @@ import { nodePubkeyOf } from './keysendLookup.js'
  * Per-host substitutions applied to RSS-derived split recipients before
  * any LNURL fetch, payment, or kind 30078 publish.
  *
- * Why this exists: the Local Bitcoiners show is self-hosting boost
- * infrastructure rather than depending on Fountain's tooling, so the
- * 2% leg the RSS feed attributes to Fountain's boostbot is rerouted to
- * aquafox30@primal.net before payment. The RSS feed itself stays
- * untouched (Fountain still generates it from the show config).
+ * The global map is EMPTY as of 2026-09-11. From 2026-04 until then the
+ * 2% leg the RSS feed attributes to Fountain's boostbot was rerouted to
+ * the show's own V4V wallet (aquafox30@primal.net) before payment; Reed
+ * ended that so the feed speaks for itself, and because the leg goes away
+ * with the next hosting change regardless. The machinery stays because the
+ * per-episode layer below still uses it.
  *
  * Keyed by source lud16; values replace the matching recipient's
  * `name` and `address` while preserving the original split weight.
  *
  * Merge semantics:
  *   When the override target address is *already* a recipient in the
- *   current splits — e.g. the channel-level fallback splits include
- *   aquafox30@primal.net at 32% AND Fountain at 2%, both of which
- *   route to aquafox30 after the override — the two legs are merged
- *   into one with combined weight (34%). Avoids paying the same
- *   address twice in one boost (extra LN fees, two kind 30078 events
- *   for the same recipient).
+ *   current splits, the two legs are merged into one with combined
+ *   weight. Avoids paying the same address twice in one boost (extra LN
+ *   fees, two kind 30078 events for the same recipient). Ep015 below
+ *   relies on this.
  *
  * Audit note: any address listed here is a *redirect at the donor's
  * client*. The kind 30078 `recipient` tag will reflect the redirected
@@ -30,12 +29,7 @@ import { nodePubkeyOf } from './keysendLookup.js'
  * normal leg with no special signaling. The original RSS recipient
  * never sees the payment.
  */
-export const LNADDRESS_OVERRIDES = {
-  'boostbot@fountain.fm': {
-    name: 'aquafox30@primal.net',
-    address: 'aquafox30@primal.net',
-  },
-}
+export const LNADDRESS_OVERRIDES = {}
 
 /**
  * Per-episode override maps, keyed by episode number. Each value has the
@@ -46,10 +40,11 @@ export const LNADDRESS_OVERRIDES = {
  * Episode 015 is donated in full to the Samourai Wallet developers' legal
  * defense: the RSS value block for that item splits 96% to
  * billandkeonne@getalby.com with 1% each to the two hosts and the usual 2%
- * to Fountain's boostbot. Sending that 2% to aquafox30 would carve a host
- * cut out of a donation episode, so for Ep015 the Fountain leg is
- * redirected to billandkeonne@getalby.com instead. It then merges with the
- * existing 96% leg (same post-override address) into a single 98% leg.
+ * to Fountain's boostbot. Reed and Rev committed the whole episode to the
+ * defense fund, so for Ep015 the Fountain leg is redirected to
+ * billandkeonne@getalby.com. It then merges with the existing 96% leg
+ * (same post-override address) into a single 98% leg. This entry predates
+ * the retirement of the global Fountain reroute and stays on purpose.
  *
  * This table is mirrored on the bot side; the two have to be changed in
  * the same window as the RSS split edit, or the site and the bot will
@@ -173,7 +168,7 @@ export function applyRecipientOverrides(recipients, episodeNumber) {
 // unpayable so the leg fails honestly without sending or crediting those sats.
 //
 // On the Local Bitcoiners feed, every value recipient other than reed/rev/
-// aquafox is a GUEST, and guests are identified by npub in the episode's
+// the V4V wallet/Fountain is a GUEST, and guests are identified by npub in the episode's
 // `[guests: npub1...]` marker. A Lightning node pubkey is NOT a Nostr pubkey,
 // so we can't derive the npub from the node pubkey — but we can either look it
 // up in the curated map below or, when an episode has exactly one guest, assume

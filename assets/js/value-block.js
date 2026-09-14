@@ -122,30 +122,3 @@ export function fromApiValue(apiResp) {
   return { recipients, totalWeight, level: apiResp.level || 'feed' }
 }
 
-// Per-address redirects applied to external recipients before payment.
-// Fountain's 2% boostbot leg is rerouted into our aquafox wallet — our cut for
-// letting boosters pay the show from here instead of going to Fountain. Mirrors
-// the LB LNADDRESS_OVERRIDES intent but is kept local to this feature.
-const EXTERNAL_OVERRIDES = {
-  'boostbot@fountain.fm': { name: 'Local Bitcoiners', address: 'aquafox30@primal.net' },
-}
-
-/**
- * Apply external recipient overrides. Pure — returns a new array. Merges by
- * weight if a redirect lands on an address that's already a recipient.
- */
-export function applyExternalOverrides(recipients) {
-  if (!Array.isArray(recipients)) return recipients
-  const out = []
-  for (const r of recipients) {
-    const ov = EXTERNAL_OVERRIDES[(r.address || '').toLowerCase()]
-    const next = ov ? { ...r, name: ov.name, address: ov.address, type: 'lnaddress' } : { ...r }
-    // Overridden legs pay a plain Lightning address, so drop any node-only
-    // custom records that no longer apply.
-    if (ov) { delete next.customKey; delete next.customValue }
-    const dup = out.find((x) => x.type === next.type && x.address.toLowerCase() === next.address.toLowerCase())
-    if (dup) dup.splitWeight += next.splitWeight
-    else out.push(next)
-  }
-  return out
-}

@@ -13,12 +13,16 @@
  *   - sat presets (100/420/3333/21000)
  *   - "Boost the Show" button label
  *
- * applyRecipientOverrides runs at module init for symmetry with the
- * episode flow — today the override map only redirects fountain.fm
- * addresses (not in the show splits), but pre-applying means a future
- * override that targets one of these addresses won't silently skip
- * the show-boost path. It is called with a null episode number, so
- * per-episode override layers never apply to a show boost.
+ * The list below is the RSS channel block as published, Fountain's 2%
+ * included. Since 2026-09-11 the site no longer reroutes that leg to the
+ * show's own wallet (Reed's call: let the feed speak for itself, and the
+ * leg disappears with the next hosting change anyway).
+ *
+ * applyRecipientOverrides still runs at module init for symmetry with the
+ * episode flow — the global override map is empty today, but pre-applying
+ * means a future override that targets one of these addresses won't
+ * silently skip the show-boost path. It is called with a null episode
+ * number, so per-episode override layers never apply to a show boost.
  *
  * `feature` reassigns the third leg. A Feature boost from any /feeds tab
  * pays whoever made the featured thing out of that leg (an article's
@@ -38,13 +42,14 @@ import MultiLegBoostForm from './MultiLegBoostForm.jsx'
 import ConfirmLeaveOverlay from './ConfirmLeaveOverlay.jsx'
 
 const SHOW_RECIPIENTS_RAW = [
-  { name: 'Reed',      address: 'reed@getalby.com',      splitWeight: 33, type: 'lnaddress' },
-  { name: 'RevHodl',   address: 'revhodl@minibits.cash', splitWeight: 33, type: 'lnaddress' },
-  { name: 'aquafox30', address: 'aquafox30@primal.net',  splitWeight: 34, type: 'lnaddress' },
+  { name: 'Reed',     address: 'reed@getalby.com',      splitWeight: 33, type: 'lnaddress' },
+  { name: 'RevHodl',  address: 'revhodl@minibits.cash', splitWeight: 33, type: 'lnaddress' },
+  { name: 'LB V4V',   address: 'lb_v4v@getalby.com',    splitWeight: 32, type: 'lnaddress' },
+  { name: 'Fountain', address: 'boostbot@fountain.fm',  splitWeight: 2,  type: 'lnaddress' },
 ]
 // The leg a feature takes over. Named rather than indexed so a future
 // reorder of the list above can't silently redirect a host's sats.
-const REASSIGNABLE_ADDRESS = 'aquafox30@primal.net'
+const REASSIGNABLE_ADDRESS = 'lb_v4v@getalby.com'
 const REASSIGNABLE_WEIGHT = SHOW_RECIPIENTS_RAW.find((r) => r.address === REASSIGNABLE_ADDRESS).splitWeight
 
 function buildSplits(recipients) {
@@ -67,14 +72,14 @@ const SHOW_SPLITS = buildSplits(SHOW_RECIPIENTS_RAW)
  * One address (author / organizer / seller): that leg is renamed and
  * re-addressed, weight unchanged. A recipients bundle (a podcast's value
  * block): the leg becomes one leg per bundle recipient, weights scaled so
- * they sum to the leg's 34, keysend nodes included — payAllLegs decides at
+ * they sum to the leg's 32, keysend nodes included — payAllLegs decides at
  * pay time whether a node leg is a real keysend or falls back to the node's
  * Lightning address, exactly as it does for the external-boost flow.
  *
  * No usable address (many long-form authors publish through RSS bridges
  * and have no lud16) → the standard splits are returned untouched, so
- * that 34% stays with aquafox30 rather than being spread across the
- * other two legs. applyRecipientOverrides deduplicates by address, so a
+ * that 32% stays with the show's V4V wallet rather than being spread across
+ * the other legs. applyRecipientOverrides deduplicates by address, so a
  * maker who is already a host gets one merged leg rather than being paid
  * twice.
  */
