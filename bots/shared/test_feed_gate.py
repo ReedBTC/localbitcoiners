@@ -291,6 +291,14 @@ def test_wallet_gate():
                            "settledAt": "2026-09-11T21:00:00Z"}, cache)
         check("a plain payment to the sub-wallet (a zap, a transfer) is not logged",
               len(cache["unrouted"]) == n)
+        # The live 2026-09-14 test boost: the website's second leg, 32 sats
+        # into the sub-wallet with the LNURL comment and nothing else.
+        bf.classify_lb_tx({"type": "incoming", "state": "settled", "appId": 57,
+                           "description": "LocalBitcoinersEp028", "amount": 32000,
+                           "paymentHash": "ef" * 32, "settledAt": "2026-09-14T12:12:48Z"}, cache)
+        rec = cache["unrouted"][-1]
+        check("a website leg in the sub-wallet is logged as OUR show's second leg",
+              rec["path"] == "wallet" and rec["feed"] == "localbitcoiners" and rec["our_sats"] == 32)
     finally:
         bf.requests.get = real_get
 

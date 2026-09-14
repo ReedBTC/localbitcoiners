@@ -1258,6 +1258,10 @@ def record_unrouted(cache, tx, path, reason, feed_meta=None, feed=None):
         return None
     meta = feed_meta if feed_meta is not None else _tx_feed_meta(tx)
     slug = feed or identify_feed(meta)
+    # A website leg names its show in the LNURL comment, not in feed signals:
+    # the sub-wallet's second leg of an LB boost should read as ours, not "?".
+    if not slug and LB_WEBSITE_RE.match((tx.get("description") or "").strip()):
+        slug = LB.slug
     amount = int(tx.get("amount", 0) or 0)
     rec = {
         "settled_at":   tx.get("settledAt", "") or "",
