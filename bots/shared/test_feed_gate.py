@@ -219,6 +219,10 @@ def test_registry():
                  "title": "Chad and Reed's Podcast"}) == "chad-and-reeds")
     check("Bowl After Bowl by guid alone",
           ident({"guid": "2d418249-453a-5714-8abc-5b657570b641"}) == "bowl-after-bowl")
+    check("a Fountain show id is decisive on its own",
+          ident({"fountain_show_id": "IFLdE3GAAG8B4knvF48F"}) == "chad-and-reeds"
+          and ident({"fountain_show_id": lb.fountain_show_id}) == "localbitcoiners"
+          and ident({"fountain_show_id": "nope"}) is None)
     check("an unregistered show is nobody's", ident({"title": "Homegrown Hits"}) is None)
     check("no signal is nobody's", ident({}) is None and ident(None) is None)
     check("mixed signals are nobody's (LB guid, Chad and Reeds title)",
@@ -318,6 +322,27 @@ def test_unrouted_records():
               and rec.get("payment_hash") == "01" * 32)
         check("record_unrouted with no cache is a harmless no-op",
               bf.record_unrouted(None, bare, "bolt11", "x") is None)
+
+        # The recurring live case: a Chad and Reeds boost that arrives through
+        # Fountain. The page gate refuses it; the record should name the show.
+        def fountain_page(url, **kw):
+            if url.startswith("https://fountain.fm/episode/"):
+                return _Resp('<a href="https://fountain.fm/show/IFLdE3GAAG8B4knvF48F">show</a>')
+            raise OSError("unreachable")
+        bf.requests.get = fountain_page
+        cr_fountain = {"type": "incoming", "state": "settled", "appId": 4, "amount": 33000,
+                       "description": "rss::payment::boost https://fountain.fm/episode/G8YZMq5ImH5H98L3BMuy hi",
+                       "paymentHash": "45" * 32, "settledAt": "2026-09-13T23:12:58Z"}
+        check("a Chad and Reeds boost arriving through Fountain is dropped",
+              bf.classify_lb_tx(cr_fountain, cache) is None)
+        rec = cache["unrouted"][-1] if cache["unrouted"] else {}
+        check("…and the record names Chad and Reeds from the page's show id",
+              rec.get("path") == "bolt11" and rec.get("feed") == "chad-and-reeds")
+        cr_stream = dict(cr_fountain, paymentHash="67" * 32,
+                         description="rss::payment::stream https://fountain.fm/episode/G8YZMq5ImH5H98L3BMuy")
+        check("the same show's Fountain stream is dropped and named too",
+              bf.classify_lb_tx(cr_stream, cache) is None
+              and cache["unrouted"][-1].get("feed") == "chad-and-reeds")
     finally:
         bf.requests.get = real_get
 

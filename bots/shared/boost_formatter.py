@@ -1133,8 +1133,13 @@ def _fountain_episode_feed(episode_url, cache):
         html = requests.get(episode_url, timeout=10).text
         if LB_SHOW_ID in html or LB_FEED_GUID in html:
             verdict = "lb"
-        elif _FOUNTAIN_SHOW_RE.search(html):
-            verdict = "other"
+        else:
+            m = _FOUNTAIN_SHOW_RE.search(html)
+            if m:
+                verdict = "other"
+                # Remember WHICH show, so the unrouted record can name it
+                # (feeds.identify_feed treats a Fountain show id as decisive).
+                cache.setdefault("fountain_episode_show", {})[episode_url] = m.group(1)
         # page loaded but carries no show marker at all → stay 'unknown'
     except Exception as e:
         print(f"  [warn] Fountain feed check failed for {episode_url}: {e}")
@@ -1730,7 +1735,8 @@ def _classify_fountain_boost(tx, desc, payment_hash, settled_at, our_msats, cach
                 if sid and sid != LB_SHOW_ID:
                     print(f"  [skip] Fountain show boost {payment_hash[:12]}… "
                           f"not Local Bitcoiners (show={sid!r})")
-                    record_unrouted(cache, tx, "bolt11", f"Fountain show {sid} is not ours")
+                    record_unrouted(cache, tx, "bolt11", f"Fountain show {sid} is not ours",
+                                    feed_meta={"fountain_show_id": sid})
                     return None
             elif episode_id:
                 _lb_ids = {v.get("fountain_id") for v in build_rss_item_index(cache).values()
@@ -1741,7 +1747,9 @@ def _classify_fountain_boost(tx, desc, payment_hash, settled_at, our_msats, cach
                         print(f"  [skip] Fountain boost {payment_hash[:12]}… episode "
                               f"{episode_id!r} belongs to another show — not Local Bitcoiners")
                         record_unrouted(cache, tx, "bolt11",
-                                        f"Fountain episode {episode_id} belongs to another show")
+                                        f"Fountain episode {episode_id} belongs to another show",
+                                        feed_meta={"fountain_show_id":
+                                                   cache.get("fountain_episode_show", {}).get(episode_url)})
                         return None
                     if feed == "unknown":
                         feed_unverified = True
@@ -2148,7 +2156,8 @@ def _classify_fountain_stream(tx, desc, payment_hash, settled_at, our_msats, cac
         if sid and sid != LB_SHOW_ID:
             print(f"  [skip] Fountain show stream {payment_hash[:12]}… "
                   f"not Local Bitcoiners (show={sid!r})")
-            record_unrouted(cache, tx, "bolt11_stream", f"Fountain show {sid} is not ours")
+            record_unrouted(cache, tx, "bolt11_stream", f"Fountain show {sid} is not ours",
+                            feed_meta={"fountain_show_id": sid})
             return None
     elif episode_id:
         _lb_ids = {v.get("fountain_id") for v in build_rss_item_index(cache).values()
@@ -2159,7 +2168,9 @@ def _classify_fountain_stream(tx, desc, payment_hash, settled_at, our_msats, cac
                 print(f"  [skip] Fountain stream {payment_hash[:12]}… episode "
                       f"{episode_id!r} belongs to another show — not Local Bitcoiners")
                 record_unrouted(cache, tx, "bolt11_stream",
-                                f"Fountain episode {episode_id} belongs to another show")
+                                f"Fountain episode {episode_id} belongs to another show",
+                                feed_meta={"fountain_show_id":
+                                           cache.get("fountain_episode_show", {}).get(episode_url)})
                 return None
             if feed == "unknown":
                 print(f"  [review] Fountain stream {payment_hash[:12]}… episode "

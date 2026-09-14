@@ -133,6 +133,10 @@ CHAD_AND_REEDS = Feed(
     # the apostrophe title. All of it is the same show for our purposes.
     titles=frozenset({"chad and reeds podcast", "chad and reed's podcast"}),
     guids=frozenset({"6ec986d8-5b37-5237-b801-30b1efb5846c"}),
+    # fountain.fm/show/<id> — the show most of its boosts and streams reach our
+    # node through (Fountain pays every value-block leg). Lets the Fountain
+    # page gate name the show it just refused instead of logging "?".
+    fountain_show_id="IFLdE3GAAG8B4knvF48F",
     ours=False,
 )
 
@@ -221,10 +225,18 @@ def feed_verdict(meta, identity):
 def identify_feed(meta):
     """The slug of the registered feed `meta` positively names, or None when
     no registered feed claims it (an unregistered show, or no usable signal).
-    Asks each feed with `feed_verdict`, so a payment whose signals disagree
-    with EVERY registry entry is nobody's."""
+
+    A `fountain_show_id` in `meta` (read off a fountain.fm page or URL) is
+    decisive on its own — it is Fountain's identifier for the show, not a
+    donor-typed field. Otherwise asks each feed with `feed_verdict`, so a
+    payment whose signals disagree with EVERY registry entry is nobody's."""
     if not meta:
         return None
+    sid = (meta.get("fountain_show_id") or "").strip()
+    if sid:
+        for feed in FEEDS.values():
+            if feed.fountain_show_id and feed.fountain_show_id == sid:
+                return feed.slug
     for feed in FEEDS.values():
         if feed_verdict(meta, feed.identity()) == FEED_MATCH:
             return feed.slug
