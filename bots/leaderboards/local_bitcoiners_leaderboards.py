@@ -118,7 +118,8 @@ def build_note_tags(note_text, nsec):
         tags.append(["p", author_hex])
         seen_hex.add(author_hex)
 
-    for ht in re.findall(r'#(\w+)', note_text):
+    # A hashtag starts with a letter; "#4" and "T#1" are rank chips, not tags.
+    for ht in re.findall(r'(?<![\w#])#([A-Za-z]\w*)', note_text):
         tags.append(["t", ht.lower()])
 
     unique_hexes = list(dict.fromkeys(mentioned_hexes))
