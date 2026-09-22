@@ -216,7 +216,12 @@
 // and the Feature leg is 32%. Payment routing lives in the widget bundle and
 // in value-block.js, both stale-while-revalidate, so without a bump a
 // returning donor would keep paying the old wallet for one more session.
-const VERSION = 'lb-v82';
+// lb-v83: the stats page's Episode Leaderboard is a ranked list with four
+// views (Overall / Most Sats / Most Boosts / Most Supporters, the OnlyBoosts
+// chart rule) instead of the bar chart, and the "My Stats" view is gone.
+// stats.js is stale-while-revalidate, and an old copy against the new
+// stats.html would look for radio values that no longer exist.
+const VERSION = 'lb-v83';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

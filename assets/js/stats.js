@@ -3,8 +3,9 @@
  *
  * 1. Sats over time — line chart, cumulative / daily toggle, with
  *    episode-release markers.
- * 2. Episode leaderboard — top 10 episodes by total sats or by unique
- *    supporters.
+ * 2. Episode leaderboard — a ranked Top 10 list by sats, boosts, unique
+ *    supporters, or Overall (the three competition ranks summed, the
+ *    OnlyBoosts Charts rule the Supporters wall also uses).
  * 3. Supporter leaderboard — top 10 identities by total sats or by
  *    episodes supported, plus an always-on bucket aggregating every
  *    anonymous payment.
@@ -104,7 +105,7 @@
     if (!rows.length) { showError(); return; }
     var episodes = rssXml ? parseEpisodes(rssXml) : [];
     renderDistribution(rows);
-    renderLeaderboard(rows);
+    renderLeaderboard(rows, episodes);
     renderEpisodeGrid(rows, episodes);
     renderBigPreNostr(rows);
     // The surfaces that render a person wait for the OnlyBoosts booster
@@ -608,22 +609,83 @@
     ensureChartTooltipEl();
   }
 
-  // ── Episode leaderboard — horizontal bar chart ─────────────────────
-  function renderLeaderboard(rows) {
+  // ── Episode leaderboard — ranked list ───────────────────────────────
+  // Four views, the OnlyBoosts Charts rule carried over (Reed, 2026-09-22),
+  // the same one the Supporters wall ranks people by (supporters.js
+  // #orderPeople): Most sats, Most boosts, Most supporters, and Overall,
+  // which is each episode's competition rank in the three summed, lowest
+  // total first. Drawn as the OnlyBoosts chart board draws a Top 10
+  // (their chart-board.js): a position, the episode title linking to its
+  // page, and at the right either the figure the view ranks on or, on
+  // Overall, the three component ranks as sats / boosts / supporters. Every
+  // rank wears a "#" (Reed's call: they are standings, not counts), and a
+  // shared place wears a T (T#4), competition style. The horizontal bars
+  // this section used to draw, and the "My Stats" view (the signed-in
+  // user's own per-episode totals), went in the same change; the Episodes
+  // You've Supported grid below covers the latter.
+  //
+  // Counting rules mirror the wall's: sats are every episode-attributed
+  // row's total_sats; boosts are every non-zap row (a stream row is a
+  // per-(episode, supporter) aggregate, so a streamer counts once per
+  // episode); supporters are distinct identities (npub, else display
+  // name), each truly anonymous row its own supporter. Zap rows carry no
+  // episode number today, so the zap exclusion is insurance.
+  var BOARD_VIEWS = {
+    overall: { sub: 'overall rank: each episode’s rank in sats, boosts and supporters summed, lowest first',
+               aria: 'Episodes ranked overall: rank in sats, boosts and supporters summed' },
+    sats: { sub: 'total sats received (boosts + streams)', aria: 'Episodes ranked by total sats received', unit: ['sat', 'sats'] },
+    boosts: { sub: 'boosts received (boosts + streams, a stream counted once per supporter)', aria: 'Episodes ranked by boosts received', unit: ['boost', 'boosts'] },
+    supporters: { sub: 'unique supporters (boosts + streams)', aria: 'Episodes ranked by unique supporters', unit: ['supporter', 'supporters'] },
+  };
+  var BOARD_DEFAULT_VIEW = 'overall';
+  var BOARD_TOP = 10;
+
+  // Competition rank of every value in `vals`: 1 + the count strictly ahead,
+  // so equal values share a place (1, 2, 2, 4). OnlyBoosts' rank.js; the
+  // same function sits in supporters.js, which is a module this classic
+  // script cannot import.
+  function compRanks(vals) {
+    return vals.map(function (v) {
+      var ahead = 0;
+      for (var i = 0; i < vals.length; i++) if (vals[i] > v) ahead++;
+      return 1 + ahead;
+    });
+  }
+
+  // `#4`, or `T#4` when the place is shared: the OnlyBoosts detail-tile
+  // form. `peers` is how many rows hold that same place.
+  function rankChip(rank, peers) {
+    return (peers > 1 ? 'T#' : '#') + rank;
+  }
+
+  // The RSS title without its "| Ep. 028" tail (or episode 1's leading
+  // "001. " form), since the number is printed beside it; "Episode 028"
+  // when the feed did not load.
+  function episodeName(num, rssTitle) {
+    var t = (rssTitle || '').replace(/\s*\|\s*Ep(?:isode)?\.?\s*\d+\s*$/i, '')
+      .replace(/^\s*\d{1,3}\.\s+/, '').trim();
+    return t || ('Episode ' + String(num).padStart(3, '0'));
+  }
+
+  function renderLeaderboard(rows, rssEpisodes) {
     if (!boardCanvas) return;
 
-    // Group episode-attributed rows by episode number. A "supporter" is
-    // keyed by npub, else display name; rows with neither (truly anon)
-    // each count as their own supporter.
+    var titles = Object.create(null);
+    for (var t = 0; t < (rssEpisodes || []).length; t++) {
+      titles[rssEpisodes[t].num] = rssEpisodes[t].title || '';
+    }
+
     var byEp = Object.create(null);
     for (var i = 0; i < rows.length; i++) {
       var row = rows[i];
-      if (row.episode_num == null) continue;  // show-level rows get no bar
+      if (row.episode_num == null) continue;  // show-level rows get no row
       var num = parseInt(row.episode_num, 10);
       if (!isFinite(num) || num <= 0) continue;
       var ep = byEp[num] ||
-        (byEp[num] = { num: num, sats: 0, keys: Object.create(null), anon: 0 });
+        (byEp[num] = { num: num, sats: 0, boosts: 0, keys: Object.create(null), anon: 0 });
       ep.sats += row.total_sats;
+      if (row.source === 'zap') continue;     // sats, not a boost, no supporter credit
+      ep.boosts += 1;
       var key = row.sender_npub || row.sender_name;
       if (key) ep.keys[key] = true;
       else ep.anon += 1;
@@ -633,7 +695,9 @@
     for (var k in byEp) {
       episodes.push({
         num: byEp[k].num,
+        name: episodeName(byEp[k].num, titles[byEp[k].num]),
         sats: byEp[k].sats,
+        boosts: byEp[k].boosts,
         supporters: Object.keys(byEp[k].keys).length + byEp[k].anon,
       });
     }
@@ -642,67 +706,111 @@
       return;
     }
 
-    function draw(metric) {
-      if (metric === 'mine') { drawMine(); return; }
-      var sorted = episodes.slice()
-        .sort(function (a, b) { return b[metric] - a[metric]; })
-        .slice(0, 10);
-      var items = sorted.map(function (e) {
-        return { label: 'Ep ' + e.num, value: e[metric], href: epHref(e.num) };
+    // How many rows share each distinct value, for the T on a shared place.
+    function peerCounts(vals) {
+      var n = Object.create(null);
+      for (var i = 0; i < vals.length; i++) n[vals[i]] = (n[vals[i]] || 0) + 1;
+      return n;
+    }
+
+    // Overall: OnlyBoosts' chartRanks over EVERY episode (component ranks
+    // are competition ranks across the whole set, not the top 10), then the
+    // top 10. Ties break supporters → sats → boosts, then episode number,
+    // so a full tie is stable; what is still equal on the whole tuple
+    // shares a place and the next distinct tuple skips the group. Each
+    // row's figure is its three component ranks, sats / boosts /
+    // supporters, each with its own T where that component is shared.
+    function orderOverall() {
+      var S = episodes.map(function (e) { return e.sats; });
+      var B = episodes.map(function (e) { return e.boosts; });
+      var K = episodes.map(function (e) { return e.supporters; });
+      var rS = compRanks(S), rB = compRanks(B), rK = compRanks(K);
+      var pS = peerCounts(S), pB = peerCounts(B), pK = peerCounts(K);
+      var scored = episodes.map(function (e, i) {
+        return { ep: e, rS: rS[i], rB: rB[i], rK: rK[i], score: rS[i] + rB[i] + rK[i] };
       });
-      boardCanvas.innerHTML = buildBarSvg(items, metric === 'sats'
-        ? 'Episodes ranked by total sats received'
-        : 'Episodes ranked by unique supporters',
-        { breakOutlier: metric === 'sats' });
+      scored.sort(function (a, b) {
+        return a.score - b.score || b.ep.supporters - a.ep.supporters ||
+          b.ep.sats - a.ep.sats || b.ep.boosts - a.ep.boosts || a.ep.num - b.ep.num;
+      });
+      function tup(x) { return x.score + '|' + x.ep.supporters + '|' + x.ep.sats + '|' + x.ep.boosts; }
+      var runRank = 1;
+      for (var i = 0; i < scored.length; i++) {
+        if (i > 0 && tup(scored[i]) !== tup(scored[i - 1])) runRank = i + 1;
+        scored[i].rank = runRank;
+        scored[i].tied = (i > 0 && tup(scored[i]) === tup(scored[i - 1])) ||
+          (i + 1 < scored.length && tup(scored[i]) === tup(scored[i + 1]));
+      }
+      return scored.map(function (s) {
+        return {
+          ep: s.ep,
+          pos: rankChip(s.rank, s.tied ? 2 : 1),
+          figure: rankChip(s.rS, pS[s.ep.sats]) + ' / ' + rankChip(s.rB, pB[s.ep.boosts]) +
+            ' / ' + rankChip(s.rK, pK[s.ep.supporters]),
+          title: 'Rank in sats ' + rankChip(s.rS, pS[s.ep.sats]) + ', boosts ' +
+            rankChip(s.rB, pB[s.ep.boosts]) + ', supporters ' + rankChip(s.rK, pK[s.ep.supporters]) +
+            ' (' + fmtSats(s.ep.sats) + ' sats, ' + s.ep.boosts +
+            (s.ep.boosts === 1 ? ' boost, ' : ' boosts, ') + s.ep.supporters +
+            (s.ep.supporters === 1 ? ' supporter)' : ' supporters)'),
+        };
+      });
+    }
+
+    // A single axis: competition rank on that figure over every episode,
+    // ties broken for display order on sats, then boosts, then number.
+    function orderBy(metric) {
+      var vals = episodes.map(function (e) { return e[metric]; });
+      var ranks = compRanks(vals), peers = peerCounts(vals);
+      var unit = BOARD_VIEWS[metric].unit;
+      return episodes.map(function (e, i) { return { ep: e, rank: ranks[i] }; })
+        .sort(function (a, b) {
+          return a.rank - b.rank || b.ep.sats - a.ep.sats || b.ep.boosts - a.ep.boosts || a.ep.num - b.ep.num;
+        })
+        .map(function (s) {
+          var v = s.ep[metric];
+          return {
+            ep: s.ep,
+            pos: rankChip(s.rank, peers[v]),
+            figure: fmtSats(v) + ' ' + (v === 1 ? unit[0] : unit[1]),
+            title: fmtSats(s.ep.sats) + ' sats, ' + s.ep.boosts + (s.ep.boosts === 1 ? ' boost, ' : ' boosts, ') +
+              s.ep.supporters + (s.ep.supporters === 1 ? ' supporter' : ' supporters'),
+          };
+        });
+    }
+
+    function rowHtml(it, isOverall) {
+      var pad = String(it.ep.num).padStart(3, '0');
+      return '<li class="stats-rank-row">' +
+        '<span class="stats-rank-pos">' + svgEsc(it.pos) + '</span>' +
+        '<span class="stats-rank-who">' +
+          '<a class="stats-rank-name" href="' + epHref(it.ep.num) + '">' + svgEsc(it.ep.name) + '</a>' +
+          '<span class="stats-rank-sub">Ep ' + pad + '</span>' +
+        '</span>' +
+        '<span class="' + (isOverall ? 'stats-rank-ranks' : 'stats-rank-fig') +
+          '" title="' + svgEsc(it.title) + '">' + svgEsc(it.figure) + '</span>' +
+        '</li>';
+    }
+
+    function draw(view) {
+      if (!BOARD_VIEWS[view]) view = BOARD_DEFAULT_VIEW;
+      var spec = BOARD_VIEWS[view];
+      var isOverall = view === 'overall';
+      var items = (isOverall ? orderOverall() : orderBy(view)).slice(0, BOARD_TOP);
+      // "rank in" is what stops the triplet reading as counts (OnlyBoosts'
+      // own column head); the single views need no head, the unit is on
+      // every figure.
+      var head = isOverall
+        ? '<div class="stats-rank-colhead">rank in sats / boosts / supporters</div>' : '';
+      boardCanvas.innerHTML = head +
+        '<ol class="stats-rank-list" aria-label="' + svgEsc(spec.aria) + '">' +
+        items.map(function (it) { return rowHtml(it, isOverall); }).join('') + '</ol>';
       if (boardSubEl) {
-        boardSubEl.textContent = metric === 'sats'
-          ? 'Top ' + sorted.length + ' episodes by total sats received (boosts + streams)'
-          : 'Top ' + sorted.length + ' episodes by unique supporters (boosts + streams)';
+        boardSubEl.textContent = 'Top ' + items.length + ' episodes by ' + spec.sub;
       }
     }
 
-    // "My Stats" — the signed-in user's own per-episode boost totals.
-    // Not logged in → show a prompt and open the login modal; the
-    // onChange hook below redraws the moment they sign in (or a session
-    // restore completes). Anonymous (burner-signed) boosts carry no
-    // sender_npub, so they correctly never show up as "yours".
-    function drawMine() {
-      if (boardSubEl) boardSubEl.textContent = 'Sats you’ve boosted to each episode';
-      var user = window.LBLogin && typeof window.LBLogin.getUser === 'function'
-        ? window.LBLogin.getUser() : null;
-      if (!user || !user.npub) {
-        boardCanvas.innerHTML = '<p class="stats-error">Sign in with Nostr to see the sats you’ve boosted to each episode.</p>';
-        if (window.LBLogin && typeof window.LBLogin.requestLogin === 'function') {
-          window.LBLogin.requestLogin();
-        }
-        return;
-      }
-      var mineByEp = Object.create(null);
-      for (var i = 0; i < rows.length; i++) {
-        var row = rows[i];
-        if (row.episode_num == null) continue;
-        if (row.sender_npub !== user.npub) continue;
-        var num = parseInt(row.episode_num, 10);
-        if (!isFinite(num) || num <= 0) continue;
-        mineByEp[num] = (mineByEp[num] || 0) + (row.total_sats || 0);
-      }
-      var mine = [];
-      for (var k in mineByEp) mine.push({ num: parseInt(k, 10), sats: mineByEp[k] });
-      if (!mine.length) {
-        boardCanvas.innerHTML = '<p class="stats-error">You haven’t boosted any episodes yet — boost one and it’ll show up here.</p>';
-        return;
-      }
-      mine.sort(function (a, b) { return b.sats - a.sats; });
-      var items = mine.map(function (e) {
-        return { label: 'Ep ' + e.num, value: e.sats, href: epHref(e.num) };
-      });
-      boardCanvas.innerHTML = buildBarSvg(items, 'Sats you have boosted to each episode');
-      if (boardSubEl) {
-        boardSubEl.textContent = 'You’ve boosted ' + items.length +
-          (items.length === 1 ? ' episode' : ' episodes');
-      }
-    }
-    draw('sats');
+    var checked = document.querySelector('input[name="stats-board-view"]:checked');
+    draw(checked ? checked.value : BOARD_DEFAULT_VIEW);
 
     var radios = document.querySelectorAll('input[name="stats-board-view"]');
     for (var r = 0; r < radios.length; r++) {
@@ -710,61 +818,21 @@
         if (e.target.checked) draw(e.target.value);
       });
     }
-
-    // Show the signed-in user's pfp inside the "My Stats" toggle. Pulls the
-    // image straight off the live LBLogin user (profile.image); hides the
-    // <img> when logged out or when no avatar is set, and on a broken URL so
-    // the pill never shows a busted-image glyph.
-    var mineAvatarEl = document.querySelector('[data-mine-avatar]');
-    if (mineAvatarEl) {
-      mineAvatarEl.addEventListener('error', function () { mineAvatarEl.hidden = true; });
-    }
-    function updateMineAvatar() {
-      if (!mineAvatarEl) return;
-      var u = window.LBLogin && typeof window.LBLogin.getUser === 'function'
-        ? window.LBLogin.getUser() : null;
-      var img = u && u.profile && u.profile.image;
-      if (img) {
-        mineAvatarEl.src = img;
-        mineAvatarEl.hidden = false;
-      } else {
-        mineAvatarEl.removeAttribute('src');
-        mineAvatarEl.hidden = true;
-      }
-    }
-    updateMineAvatar();
-
-    // Redraw the "My Stats" view on login/logout so it reflects the
-    // current user as soon as a sign-in (or session restore) lands, and
-    // refresh the toggle's avatar to match.
-    if (window.LBLogin && typeof window.LBLogin.onChange === 'function') {
-      window.LBLogin.onChange(function () {
-        updateMineAvatar();
-        var sel = document.querySelector('input[name="stats-board-view"]:checked');
-        if (sel && sel.value === 'mine') drawMine();
-      });
-    }
   }
 
-  // Horizontal bar chart. `items` is a pre-sorted [{ label, value,
-  // isAnon?, href? }] array, drawn top to bottom; the left margin auto-fits
-  // the longest label. Used by the episode leaderboard (the supporter board
-  // renders HTML rows, see buildBarRows). A label with `href` links there;
-  // plain labels stay plain.
+  // Broken-axis geometry for the supporter board's HTML bar rows
+  // (buildBarRows). When breaking: normal bars scale so the largest
+  // NON-outlier fills NORM_FRAC of the track; each outlier's main segment
+  // runs to OUT_MAIN, a GAP_W tear, then a short tip staggered by
+  // OUT_STAGGER per rank so a bigger outlier still reads as the longer bar.
   // opts.breakOutlier: when the top bar(s) dwarf the rest, draw the other
   // bars to scale against the largest NON-outlier value so they stay
   // readable, and render each outlier as a fixed-length "torn" bar (a broken
   // axis) rather than to scale. How many bars get torn is data-driven: we
   // break at the single biggest relative cliff among the first MAX_BREAK
-  // rows — so one giant episode (Ep 015's donated 2.1M) breaks just the top
-  // bar, while two whales atop the supporter board (adminpacman + sovreign,
+  // rows — so two whales atop the supporter board (adminpacman + sovreign,
   // both dwarfing #3) break the top two. The true value still labels each
   // bar's end, so the number tells the real story even off-scale.
-  // Broken-axis geometry shared by the SVG bars (episode board) and the
-  // HTML rows (supporter board). When breaking: normal bars scale so the
-  // largest NON-outlier fills NORM_FRAC of the track; each outlier's main
-  // segment runs to OUT_MAIN, a GAP_W tear, then a short tip staggered by
-  // OUT_STAGGER per rank so a bigger outlier still reads as the longer bar.
   var BAR_LAYOUT = { NORM_FRAC: 0.70, OUT_MAIN: 0.80, OUT_END: 0.90, OUT_STAGGER: 0.04, GAP_W: 14 };
 
   // Rank the rows by value (descending) to find the "outlier group": the
@@ -795,76 +863,9 @@
     return { doBreak: doBreak, breakRank: breakRank, scaleMax: scaleMax };
   }
 
-  function buildBarSvg(items, ariaLabel, opts) {
-    opts = opts || {};
-    var W = 720;
-    var rowH = 30, barH = 18, mT = 14, mB = 14, mR = 92;
-    var longest = 0;
-    for (var i = 0; i < items.length; i++) {
-      if (items[i].label.length > longest) longest = items[i].label.length;
-    }
-    var mL = Math.min(Math.max(longest * 7 + 16, 58), 180);
-    var H = mT + mB + items.length * rowH;
-    var tw = W - mL - mR;
-
-    var plan = barPlan(items.map(function (it) { return it.value; }), opts.breakOutlier);
-    var doBreak = plan.doBreak, breakRank = plan.breakRank, scaleMax = plan.scaleMax;
-    var OUT_MAIN = BAR_LAYOUT.OUT_MAIN, OUT_END = BAR_LAYOUT.OUT_END,
-        OUT_STAGGER = BAR_LAYOUT.OUT_STAGGER, GAP_W = BAR_LAYOUT.GAP_W;
-    var normFullW = doBreak ? tw * BAR_LAYOUT.NORM_FRAC : tw;
-
-    var parts = [];
-    for (var k = 0; k < items.length; k++) {
-      var it = items[k];
-      var cy = mT + k * rowH + rowH / 2;
-      var cls = it.isAnon ? 'stats-bar stats-bar-anon' : 'stats-bar';
-      var labelEl = '<text class="stats-bar-label" x="' + (mL - 8) + '" y="' +
-        (cy + 4) + '">' + svgEsc(it.label) + '</text>';
-      if (it.href) {
-        parts.push('<a class="stats-bar-link" href="' + svgEsc(it.href) + '">' +
-          labelEl + '</a>');
-      } else {
-        parts.push(labelEl);
-      }
-
-      if (doBreak && k in breakRank) {
-        // Torn outlier bar: main segment + staggered tip, two break slashes between.
-        var r = breakRank[k];
-        var mainW = tw * OUT_MAIN;
-        var gapStart = mL + mainW;
-        var gapEnd = gapStart + GAP_W;
-        var tipEnd = mL + tw * (OUT_END - r * OUT_STAGGER);
-        var top = cy - barH / 2;
-        parts.push('<rect class="' + cls + '" x="' + mL + '" y="' + top +
-          '" width="' + mainW + '" height="' + barH + '" rx="3"/>');
-        parts.push('<rect class="' + cls + '" x="' + gapEnd + '" y="' + top +
-          '" width="' + (tipEnd - gapEnd) + '" height="' + barH + '" rx="3"/>');
-        parts.push('<path class="stats-bar-break" d="M' + (gapStart + 2) + ',' +
-          (cy + barH / 2 + 3) + ' L' + (gapStart + 8) + ',' + (cy - barH / 2 - 3) +
-          ' M' + (gapStart + 8) + ',' + (cy + barH / 2 + 3) + ' L' +
-          (gapStart + 14) + ',' + (cy - barH / 2 - 3) + '"/>');
-        parts.push('<text class="stats-bar-value" x="' + (tipEnd + 8) + '" y="' +
-          (cy + 4) + '">' + fmtSats(it.value) + '</text>');
-        continue;
-      }
-
-      var bw = Math.max((it.value / scaleMax) * normFullW, 2);
-      if (bw > normFullW) bw = normFullW;   // guard rounding past the cap
-      parts.push('<rect class="' + cls + '" x="' + mL + '" y="' + (cy - barH / 2) +
-        '" width="' + bw + '" height="' + barH + '" rx="3"/>');
-      parts.push('<text class="stats-bar-value" x="' + (mL + bw + 8) + '" y="' +
-        (cy + 4) + '">' + fmtSats(it.value) + '</text>');
-    }
-    // role="group", not "img": the labels are links and buttons, and an
-    // image role would hide them from assistive tech.
-    return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="stats-bar-svg" ' +
-      'role="group" preserveAspectRatio="xMidYMid meet" aria-label="' +
-      svgEsc(ariaLabel) + '">' + parts.join('') + '</svg>';
-  }
-
   // Horizontal bars as HTML rows, one identity chip (avatar + name, the
   // same chip the Streamers and Top Zappers cards use) per row with the
-  // bar beside it. Same broken-axis treatment as buildBarSvg, expressed in
+  // bar beside it. Broken-axis treatment per barPlan, expressed in
   // percentages of the track. `items` is a pre-sorted [{ label, value,
   // isAnon?, npub?, picture? }] array. Chips with an npub open the person's
   // OnlyBoosts page or copy the npub (wireIdentity); the rest stay plain.
