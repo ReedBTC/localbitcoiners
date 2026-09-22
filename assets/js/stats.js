@@ -3,7 +3,7 @@
  *
  * 1. Sats over time — line chart, cumulative / daily toggle, with
  *    episode-release markers.
- * 2. Episode leaderboard — top 10 episodes by sats, boosts, unique
+ * 2. Episode leaderboard — a ranked Top 10 list by sats, boosts, unique
  *    supporters, or Overall (the three competition ranks summed, the
  *    OnlyBoosts Charts rule the Supporters wall also uses).
  * 3. Supporter leaderboard — top 10 identities by total sats or by
@@ -105,7 +105,7 @@
     if (!rows.length) { showError(); return; }
     var episodes = rssXml ? parseEpisodes(rssXml) : [];
     renderDistribution(rows);
-    renderLeaderboard(rows);
+    renderLeaderboard(rows, episodes);
     renderEpisodeGrid(rows, episodes);
     renderBigPreNostr(rows);
     // The surfaces that render a person wait for the OnlyBoosts booster
@@ -609,14 +609,20 @@
     ensureChartTooltipEl();
   }
 
-  // ── Episode leaderboard — horizontal bar chart ─────────────────────
+  // ── Episode leaderboard — ranked list ───────────────────────────────
   // Four views, the OnlyBoosts Charts rule carried over (Reed, 2026-09-22),
   // the same one the Supporters wall ranks people by (supporters.js
   // #orderPeople): Most sats, Most boosts, Most supporters, and Overall,
   // which is each episode's competition rank in the three summed, lowest
-  // total first. The "My Stats" view (the signed-in user's own per-episode
-  // totals) was dropped in the same change; the Episodes You've Supported
-  // grid below covers it.
+  // total first. Drawn as the OnlyBoosts chart board draws a Top 10
+  // (their chart-board.js): a position, the episode title linking to its
+  // page, and at the right either the figure the view ranks on or, on
+  // Overall, the three component ranks as sats / boosts / supporters. Every
+  // rank wears a "#" (Reed's call: they are standings, not counts), and a
+  // shared place wears a T (T#4), competition style. The horizontal bars
+  // this section used to draw, and the "My Stats" view (the signed-in
+  // user's own per-episode totals), went in the same change; the Episodes
+  // You've Supported grid below covers the latter.
   //
   // Counting rules mirror the wall's: sats are every episode-attributed
   // row's total_sats; boosts are every non-zap row (a stream row is a
@@ -625,13 +631,14 @@
   // name), each truly anonymous row its own supporter. Zap rows carry no
   // episode number today, so the zap exclusion is insurance.
   var BOARD_VIEWS = {
-    overall: { sub: 'overall rank: each episode’s rank in sats, boosts and supporters summed, lowest first (shown as sats / boosts / supporters)',
+    overall: { sub: 'overall rank: each episode’s rank in sats, boosts and supporters summed, lowest first',
                aria: 'Episodes ranked overall: rank in sats, boosts and supporters summed' },
-    sats: { sub: 'total sats received (boosts + streams)', aria: 'Episodes ranked by total sats received' },
-    boosts: { sub: 'boosts received (boosts + streams, a stream counted once per supporter)', aria: 'Episodes ranked by boosts received' },
-    supporters: { sub: 'unique supporters (boosts + streams)', aria: 'Episodes ranked by unique supporters' },
+    sats: { sub: 'total sats received (boosts + streams)', aria: 'Episodes ranked by total sats received', unit: ['sat', 'sats'] },
+    boosts: { sub: 'boosts received (boosts + streams, a stream counted once per supporter)', aria: 'Episodes ranked by boosts received', unit: ['boost', 'boosts'] },
+    supporters: { sub: 'unique supporters (boosts + streams)', aria: 'Episodes ranked by unique supporters', unit: ['supporter', 'supporters'] },
   };
   var BOARD_DEFAULT_VIEW = 'overall';
+  var BOARD_TOP = 10;
 
   // Competition rank of every value in `vals`: 1 + the count strictly ahead,
   // so equal values share a place (1, 2, 2, 4). OnlyBoosts' rank.js; the
@@ -645,13 +652,33 @@
     });
   }
 
-  function renderLeaderboard(rows) {
+  // `#4`, or `T#4` when the place is shared: the OnlyBoosts detail-tile
+  // form. `peers` is how many rows hold that same place.
+  function rankChip(rank, peers) {
+    return (peers > 1 ? 'T#' : '#') + rank;
+  }
+
+  // The RSS title without its "| Ep. 028" tail (or episode 1's leading
+  // "001. " form), since the number is printed beside it; "Episode 028"
+  // when the feed did not load.
+  function episodeName(num, rssTitle) {
+    var t = (rssTitle || '').replace(/\s*\|\s*Ep(?:isode)?\.?\s*\d+\s*$/i, '')
+      .replace(/^\s*\d{1,3}\.\s+/, '').trim();
+    return t || ('Episode ' + String(num).padStart(3, '0'));
+  }
+
+  function renderLeaderboard(rows, rssEpisodes) {
     if (!boardCanvas) return;
+
+    var titles = Object.create(null);
+    for (var t = 0; t < (rssEpisodes || []).length; t++) {
+      titles[rssEpisodes[t].num] = rssEpisodes[t].title || '';
+    }
 
     var byEp = Object.create(null);
     for (var i = 0; i < rows.length; i++) {
       var row = rows[i];
-      if (row.episode_num == null) continue;  // show-level rows get no bar
+      if (row.episode_num == null) continue;  // show-level rows get no row
       var num = parseInt(row.episode_num, 10);
       if (!isFinite(num) || num <= 0) continue;
       var ep = byEp[num] ||
@@ -668,6 +695,7 @@
     for (var k in byEp) {
       episodes.push({
         num: byEp[k].num,
+        name: episodeName(byEp[k].num, titles[byEp[k].num]),
         sats: byEp[k].sats,
         boosts: byEp[k].boosts,
         supporters: Object.keys(byEp[k].keys).length + byEp[k].anon,
@@ -678,18 +706,26 @@
       return;
     }
 
-    // Overall: the chart rank over EVERY episode (the ranks are competition
-    // ranks across the whole set, not the top 10), then the top 10. The bar
-    // runs on points, 3n + 3 minus the score, so a better standing is the
-    // longer bar and the order stays monotonic; the figure at the bar's end
-    // is the three component ranks, sats / boosts / supporters, like the
-    // OnlyBoosts chart board prints them. Ties break supporters → sats →
-    // boosts, then episode number, so a full tie is stable.
+    // How many rows share each distinct value, for the T on a shared place.
+    function peerCounts(vals) {
+      var n = Object.create(null);
+      for (var i = 0; i < vals.length; i++) n[vals[i]] = (n[vals[i]] || 0) + 1;
+      return n;
+    }
+
+    // Overall: OnlyBoosts' chartRanks over EVERY episode (component ranks
+    // are competition ranks across the whole set, not the top 10), then the
+    // top 10. Ties break supporters → sats → boosts, then episode number,
+    // so a full tie is stable; what is still equal on the whole tuple
+    // shares a place and the next distinct tuple skips the group. Each
+    // row's figure is its three component ranks, sats / boosts /
+    // supporters, each with its own T where that component is shared.
     function orderOverall() {
-      var n = episodes.length;
-      var rS = compRanks(episodes.map(function (e) { return e.sats; }));
-      var rB = compRanks(episodes.map(function (e) { return e.boosts; }));
-      var rK = compRanks(episodes.map(function (e) { return e.supporters; }));
+      var S = episodes.map(function (e) { return e.sats; });
+      var B = episodes.map(function (e) { return e.boosts; });
+      var K = episodes.map(function (e) { return e.supporters; });
+      var rS = compRanks(S), rB = compRanks(B), rK = compRanks(K);
+      var pS = peerCounts(S), pB = peerCounts(B), pK = peerCounts(K);
       var scored = episodes.map(function (e, i) {
         return { ep: e, rS: rS[i], rB: rB[i], rK: rK[i], score: rS[i] + rB[i] + rK[i] };
       });
@@ -697,36 +733,77 @@
         return a.score - b.score || b.ep.supporters - a.ep.supporters ||
           b.ep.sats - a.ep.sats || b.ep.boosts - a.ep.boosts || a.ep.num - b.ep.num;
       });
+      function tup(x) { return x.score + '|' + x.ep.supporters + '|' + x.ep.sats + '|' + x.ep.boosts; }
+      var runRank = 1;
+      for (var i = 0; i < scored.length; i++) {
+        if (i > 0 && tup(scored[i]) !== tup(scored[i - 1])) runRank = i + 1;
+        scored[i].rank = runRank;
+        scored[i].tied = (i > 0 && tup(scored[i]) === tup(scored[i - 1])) ||
+          (i + 1 < scored.length && tup(scored[i]) === tup(scored[i + 1]));
+      }
       return scored.map(function (s) {
         return {
-          label: 'Ep ' + s.ep.num,
-          value: 3 * n + 3 - s.score,
-          text: s.rS + ' / ' + s.rB + ' / ' + s.rK,
-          title: 'Rank in sats #' + s.rS + ', boosts #' + s.rB + ', supporters #' + s.rK +
+          ep: s.ep,
+          pos: rankChip(s.rank, s.tied ? 2 : 1),
+          figure: rankChip(s.rS, pS[s.ep.sats]) + ' / ' + rankChip(s.rB, pB[s.ep.boosts]) +
+            ' / ' + rankChip(s.rK, pK[s.ep.supporters]),
+          title: 'Rank in sats ' + rankChip(s.rS, pS[s.ep.sats]) + ', boosts ' +
+            rankChip(s.rB, pB[s.ep.boosts]) + ', supporters ' + rankChip(s.rK, pK[s.ep.supporters]) +
             ' (' + fmtSats(s.ep.sats) + ' sats, ' + s.ep.boosts +
             (s.ep.boosts === 1 ? ' boost, ' : ' boosts, ') + s.ep.supporters +
             (s.ep.supporters === 1 ? ' supporter)' : ' supporters)'),
-          href: epHref(s.ep.num),
         };
       });
     }
 
+    // A single axis: competition rank on that figure over every episode,
+    // ties broken for display order on sats, then boosts, then number.
     function orderBy(metric) {
-      return episodes.slice()
+      var vals = episodes.map(function (e) { return e[metric]; });
+      var ranks = compRanks(vals), peers = peerCounts(vals);
+      var unit = BOARD_VIEWS[metric].unit;
+      return episodes.map(function (e, i) { return { ep: e, rank: ranks[i] }; })
         .sort(function (a, b) {
-          return b[metric] - a[metric] || b.sats - a.sats || b.boosts - a.boosts || a.num - b.num;
+          return a.rank - b.rank || b.ep.sats - a.ep.sats || b.ep.boosts - a.ep.boosts || a.ep.num - b.ep.num;
         })
-        .map(function (e) {
-          return { label: 'Ep ' + e.num, value: e[metric], href: epHref(e.num) };
+        .map(function (s) {
+          var v = s.ep[metric];
+          return {
+            ep: s.ep,
+            pos: rankChip(s.rank, peers[v]),
+            figure: fmtSats(v) + ' ' + (v === 1 ? unit[0] : unit[1]),
+            title: fmtSats(s.ep.sats) + ' sats, ' + s.ep.boosts + (s.ep.boosts === 1 ? ' boost, ' : ' boosts, ') +
+              s.ep.supporters + (s.ep.supporters === 1 ? ' supporter' : ' supporters'),
+          };
         });
     }
 
+    function rowHtml(it, isOverall) {
+      var pad = String(it.ep.num).padStart(3, '0');
+      return '<li class="stats-rank-row">' +
+        '<span class="stats-rank-pos">' + svgEsc(it.pos) + '</span>' +
+        '<span class="stats-rank-who">' +
+          '<a class="stats-rank-name" href="' + epHref(it.ep.num) + '">' + svgEsc(it.ep.name) + '</a>' +
+          '<span class="stats-rank-sub">Ep ' + pad + '</span>' +
+        '</span>' +
+        '<span class="' + (isOverall ? 'stats-rank-ranks' : 'stats-rank-fig') +
+          '" title="' + svgEsc(it.title) + '">' + svgEsc(it.figure) + '</span>' +
+        '</li>';
+    }
+
     function draw(view) {
-      var spec = BOARD_VIEWS[view] || BOARD_VIEWS[BOARD_DEFAULT_VIEW];
       if (!BOARD_VIEWS[view]) view = BOARD_DEFAULT_VIEW;
-      var items = (view === 'overall' ? orderOverall() : orderBy(view)).slice(0, 10);
-      boardCanvas.innerHTML = buildBarSvg(items, spec.aria,
-        { breakOutlier: view === 'sats' });
+      var spec = BOARD_VIEWS[view];
+      var isOverall = view === 'overall';
+      var items = (isOverall ? orderOverall() : orderBy(view)).slice(0, BOARD_TOP);
+      // "rank in" is what stops the triplet reading as counts (OnlyBoosts'
+      // own column head); the single views need no head, the unit is on
+      // every figure.
+      var head = isOverall
+        ? '<div class="stats-rank-colhead">rank in sats / boosts / supporters</div>' : '';
+      boardCanvas.innerHTML = head +
+        '<ol class="stats-rank-list" aria-label="' + svgEsc(spec.aria) + '">' +
+        items.map(function (it) { return rowHtml(it, isOverall); }).join('') + '</ol>';
       if (boardSubEl) {
         boardSubEl.textContent = 'Top ' + items.length + ' episodes by ' + spec.sub;
       }
@@ -743,27 +820,19 @@
     }
   }
 
-  // Horizontal bar chart. `items` is a pre-sorted [{ label, value,
-  // isAnon?, href?, text?, title? }] array, drawn top to bottom; the left
-  // margin auto-fits the longest label. Used by the episode leaderboard (the
-  // supporter board renders HTML rows, see buildBarRows). A label with
-  // `href` links there; plain labels stay plain. The figure at the bar's
-  // end is `value` formatted as sats unless the item carries `text` (the
-  // Overall view prints component ranks there, with `title` as its tooltip).
+  // Broken-axis geometry for the supporter board's HTML bar rows
+  // (buildBarRows). When breaking: normal bars scale so the largest
+  // NON-outlier fills NORM_FRAC of the track; each outlier's main segment
+  // runs to OUT_MAIN, a GAP_W tear, then a short tip staggered by
+  // OUT_STAGGER per rank so a bigger outlier still reads as the longer bar.
   // opts.breakOutlier: when the top bar(s) dwarf the rest, draw the other
   // bars to scale against the largest NON-outlier value so they stay
   // readable, and render each outlier as a fixed-length "torn" bar (a broken
   // axis) rather than to scale. How many bars get torn is data-driven: we
   // break at the single biggest relative cliff among the first MAX_BREAK
-  // rows — so one giant episode (Ep 015's donated 2.1M) breaks just the top
-  // bar, while two whales atop the supporter board (adminpacman + sovreign,
+  // rows — so two whales atop the supporter board (adminpacman + sovreign,
   // both dwarfing #3) break the top two. The true value still labels each
   // bar's end, so the number tells the real story even off-scale.
-  // Broken-axis geometry shared by the SVG bars (episode board) and the
-  // HTML rows (supporter board). When breaking: normal bars scale so the
-  // largest NON-outlier fills NORM_FRAC of the track; each outlier's main
-  // segment runs to OUT_MAIN, a GAP_W tear, then a short tip staggered by
-  // OUT_STAGGER per rank so a bigger outlier still reads as the longer bar.
   var BAR_LAYOUT = { NORM_FRAC: 0.70, OUT_MAIN: 0.80, OUT_END: 0.90, OUT_STAGGER: 0.04, GAP_W: 14 };
 
   // Rank the rows by value (descending) to find the "outlier group": the
@@ -794,80 +863,9 @@
     return { doBreak: doBreak, breakRank: breakRank, scaleMax: scaleMax };
   }
 
-  function buildBarSvg(items, ariaLabel, opts) {
-    opts = opts || {};
-    var W = 720;
-    var rowH = 30, barH = 18, mT = 14, mB = 14, mR = 92;
-    var longest = 0;
-    for (var i = 0; i < items.length; i++) {
-      if (items[i].label.length > longest) longest = items[i].label.length;
-    }
-    var mL = Math.min(Math.max(longest * 7 + 16, 58), 180);
-    var H = mT + mB + items.length * rowH;
-    var tw = W - mL - mR;
-
-    var plan = barPlan(items.map(function (it) { return it.value; }), opts.breakOutlier);
-    var doBreak = plan.doBreak, breakRank = plan.breakRank, scaleMax = plan.scaleMax;
-    var OUT_MAIN = BAR_LAYOUT.OUT_MAIN, OUT_END = BAR_LAYOUT.OUT_END,
-        OUT_STAGGER = BAR_LAYOUT.OUT_STAGGER, GAP_W = BAR_LAYOUT.GAP_W;
-    var normFullW = doBreak ? tw * BAR_LAYOUT.NORM_FRAC : tw;
-
-    function valueText(it, x, y) {
-      var t = '<text class="stats-bar-value" x="' + x + '" y="' + y + '">' +
-        svgEsc(it.text != null ? it.text : fmtSats(it.value)) + '</text>';
-      return it.title ? '<g><title>' + svgEsc(it.title) + '</title>' + t + '</g>' : t;
-    }
-
-    var parts = [];
-    for (var k = 0; k < items.length; k++) {
-      var it = items[k];
-      var cy = mT + k * rowH + rowH / 2;
-      var cls = it.isAnon ? 'stats-bar stats-bar-anon' : 'stats-bar';
-      var labelEl = '<text class="stats-bar-label" x="' + (mL - 8) + '" y="' +
-        (cy + 4) + '">' + svgEsc(it.label) + '</text>';
-      if (it.href) {
-        parts.push('<a class="stats-bar-link" href="' + svgEsc(it.href) + '">' +
-          labelEl + '</a>');
-      } else {
-        parts.push(labelEl);
-      }
-
-      if (doBreak && k in breakRank) {
-        // Torn outlier bar: main segment + staggered tip, two break slashes between.
-        var r = breakRank[k];
-        var mainW = tw * OUT_MAIN;
-        var gapStart = mL + mainW;
-        var gapEnd = gapStart + GAP_W;
-        var tipEnd = mL + tw * (OUT_END - r * OUT_STAGGER);
-        var top = cy - barH / 2;
-        parts.push('<rect class="' + cls + '" x="' + mL + '" y="' + top +
-          '" width="' + mainW + '" height="' + barH + '" rx="3"/>');
-        parts.push('<rect class="' + cls + '" x="' + gapEnd + '" y="' + top +
-          '" width="' + (tipEnd - gapEnd) + '" height="' + barH + '" rx="3"/>');
-        parts.push('<path class="stats-bar-break" d="M' + (gapStart + 2) + ',' +
-          (cy + barH / 2 + 3) + ' L' + (gapStart + 8) + ',' + (cy - barH / 2 - 3) +
-          ' M' + (gapStart + 8) + ',' + (cy + barH / 2 + 3) + ' L' +
-          (gapStart + 14) + ',' + (cy - barH / 2 - 3) + '"/>');
-        parts.push(valueText(it, tipEnd + 8, cy + 4));
-        continue;
-      }
-
-      var bw = Math.max((it.value / scaleMax) * normFullW, 2);
-      if (bw > normFullW) bw = normFullW;   // guard rounding past the cap
-      parts.push('<rect class="' + cls + '" x="' + mL + '" y="' + (cy - barH / 2) +
-        '" width="' + bw + '" height="' + barH + '" rx="3"/>');
-      parts.push(valueText(it, mL + bw + 8, cy + 4));
-    }
-    // role="group", not "img": the labels are links and buttons, and an
-    // image role would hide them from assistive tech.
-    return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="stats-bar-svg" ' +
-      'role="group" preserveAspectRatio="xMidYMid meet" aria-label="' +
-      svgEsc(ariaLabel) + '">' + parts.join('') + '</svg>';
-  }
-
   // Horizontal bars as HTML rows, one identity chip (avatar + name, the
   // same chip the Streamers and Top Zappers cards use) per row with the
-  // bar beside it. Same broken-axis treatment as buildBarSvg, expressed in
+  // bar beside it. Broken-axis treatment per barPlan, expressed in
   // percentages of the track. `items` is a pre-sorted [{ label, value,
   // isAnon?, npub?, picture? }] array. Chips with an npub open the person's
   // OnlyBoosts page or copy the npub (wireIdentity); the rest stay plain.

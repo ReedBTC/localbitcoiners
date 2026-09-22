@@ -242,8 +242,10 @@ Sort + 1W/1M/All head. Things that fail silently if missed:
   2026-09-22): Overall (default), Most Sats, Most Boosts, Most Supporters.
   Overall is each episode's competition rank in the three summed, lowest
   first, ties supporters → sats → boosts, ranked over every episode before
-  the top-10 cut; the bar runs on points (3n + 3 minus the score) and the
-  figure at its end is the three ranks as sats / boosts / supporters.
+  the top-10 cut. It is a ranked list, not bars (the OnlyBoosts chart-board
+  row): `#`-prefixed position (T# on a shared place), title linking to the
+  episode page, and at the right the view's total or, on Overall, the three
+  component ranks as sats / boosts / supporters under a "rank in" head.
   `compRanks` is duplicated in `stats.js` (classic script) and
   `supporters.js` (module); change the rule in both. The "My Stats" view is
   gone; Episodes You've Supported covers it.
