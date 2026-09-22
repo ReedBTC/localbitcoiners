@@ -255,18 +255,6 @@ def eps_medal(ep):
     return medals.get(ep['rank'], eps_rank_chip(ep['rank'], ep['tied']))
 
 
-def eps_figures(ep):
-    b, k = ep['boosts'], ep['supporters']
-    return (f"{ep['total_sats']:,} sats · {b} boost{'s' if b != 1 else ''}"
-            f" · {k} supporter{'s' if k != 1 else ''}")
-
-
-def eps_component_ranks(ep):
-    return ("rank in sats " + eps_rank_chip(ep['r_sats'], ep['tied_sats']) +
-            ", boosts " + eps_rank_chip(ep['r_boosts'], ep['tied_boosts']) +
-            ", supporters " + eps_rank_chip(ep['r_supporters'], ep['tied_supporters']))
-
-
 def eps_resolve_guests(eps_to_scrape, guest_cache):
     """Scrape Fountain pages for guest npubs. Only called on the ranked
     top-N to keep scrape volume small."""
@@ -280,12 +268,20 @@ def eps_resolve_guests(eps_to_scrape, guest_cache):
         time.sleep(0.3)
 
 
+def eps_ranks_slash(ep):
+    """The three component ranks as sats/boosts/supporters, e.g. #2/T#7/#5."""
+    return "/".join([
+        eps_rank_chip(ep['r_sats'], ep['tied_sats']),
+        eps_rank_chip(ep['r_boosts'], ep['tied_boosts']),
+        eps_rank_chip(ep['r_supporters'], ep['tied_supporters']),
+    ])
+
+
 def eps_format_note(ranked, guest_cache, default_npub):
     lines = [
-        "⚡ Local Bitcoiners Episode Leaderboard!",
+        "⚡ Local Bitcoiners Top Episode Leaderboard!",
         "",
-        "Ranked overall: each episode's place in sats, boosts and supporters, "
-        "added up. Lowest total wins.",
+        "Overall Rank: rank in sats / boosts / supporters",
         "",
     ]
 
@@ -294,12 +290,10 @@ def eps_format_note(ranked, guest_cache, default_npub):
         ep_label = f"Ep. {ep_num}" if ep_num else ep["title"]
         guests   = guest_cache.get(ep_id, []) or [default_npub]
         guest_str = " & ".join(f"nostr:{n}" for n in guests)
-        lines.append(f"{eps_medal(ep)} {ep_label} with {guest_str} - {eps_figures(ep)}")
+        lines.append(f"{eps_medal(ep)} {ep_label} with {guest_str}: {eps_ranks_slash(ep)}")
 
     lines.append("")
-    lines.append("#LocalBitcoiners #V4V #valuechain")
-    lines.append("")
-    lines.append("🎧 https://fountain.fm/show/Q48WBr6nT3mrbwMZ8ydY")
+    lines.append("https://localbitcoiners.com/stats")
     return "\n".join(lines)
 
 
@@ -310,8 +304,12 @@ def eps_format_episode_reply(ep_id, ep, guests):
     ep_url   = f"https://fountain.fm/episode/{ep_id}"
 
     lines = [
-        f"{eps_medal(ep)} {ep_label} - {eps_figures(ep)}",
-        f"Overall {eps_rank_chip(ep['rank'], ep['tied'])} · {eps_component_ranks(ep)}",
+        f"{eps_medal(ep)} {ep_label} - Overall {eps_rank_chip(ep['rank'], ep['tied'])}",
+        f"Rank in sats / boosts / supporters: {eps_ranks_slash(ep)}",
+        "",
+        f"Total sats: {ep['total_sats']:,}",
+        f"Boosts: {ep['boosts']}",
+        f"Supporters: {ep['supporters']}",
         "",
         title,
         "",
