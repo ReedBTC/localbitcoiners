@@ -247,7 +247,9 @@ Sort + 1W/1M/All head. Things that fail silently if missed:
   episode page, and at the right the view's total or, on Overall, the three
   component ranks as sats / boosts / supporters under a "rank in" head.
   `compRanks` is duplicated in `stats.js` (classic script) and
-  `supporters.js` (module); change the rule in both. The "My Stats" view is
+  `supporters.js` (module), and the weekly episodesats note ranks by the
+  same rule (`eps_rank` in `bots/leaderboards/local_bitcoiners_leaderboards.py`,
+  since 2026-09-22); change the rule in all three. The "My Stats" view is
   gone; Episodes You've Supported covers it.
 - **By App tiles are data-driven** from `row.app`; a new app appears on its
   own the first time it boosts. Colors are a fixed map (`appColorVar`);

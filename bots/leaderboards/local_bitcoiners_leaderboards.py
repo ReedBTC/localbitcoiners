@@ -7,7 +7,7 @@ file flow through to leaderboard output. No per-bot state files; no direct
 Alby Hub access.
 
 Order:
-    1. episodesats     — top episodes by all-time sats
+    1. episodesats     — top episodes by overall rank (sats + boosts + supporters)
     2. boost-leaders   — listeners ranked by number of shows boosted
     3. top-boosts      — single largest boosts of the last 33 days
 """
@@ -143,8 +143,15 @@ def build_note_tags(note_text, nsec):
 
 
 # ===========================================================================
-# 1/3  episodesats — top episodes by all-time sats
+# 1/3  episodesats — top episodes by overall rank
 # ===========================================================================
+#
+# Mirrors the stats page's Episode Leaderboard (`orderOverall` in
+# assets/js/stats.js, lb-v83, the OnlyBoosts chart rule the Supporters wall
+# also ranks by): each episode's competition rank in sats, boosts and unique
+# supporters, summed, lowest first; ties break supporters → sats → boosts →
+# episode number. Ranks are taken over EVERY episode before the top-N cut.
+# Change the rule on the site (stats.js + supporters.js) and change it here.
 
 EPS_TOP_N = 5
 EPS_HOST_NPUBS = [
@@ -154,9 +161,12 @@ EPS_HOST_NPUBS = [
 
 
 def eps_aggregate(rows):
-    """Group rows by episode_id, sum total_sats across all kinds (boost +
-    stream). Excludes show-level rows (those go to the show bucket, not on
-    the per-episode leaderboard)."""
+    """Group rows by episode_id: total_sats across every kind (boost +
+    stream + zap), a boost count, and the unique supporters — keyed by
+    npub, else display name; a row with neither is its own supporter. A
+    zap row adds sats only (no boost, no supporter credit), the same rule
+    the stats page applies. Excludes show-level rows (those go to the show
+    bucket, not on the per-episode leaderboard)."""
     eps = {}
     for r in rows:
         if is_show_level(r):
@@ -171,16 +181,89 @@ def eps_aggregate(rows):
         if sats <= 0:
             continue
         title = normalize_title(r.get('episode_title') or '')
-        bucket = eps.setdefault(eid, {'title': title or eid, 'total_sats': 0})
+        bucket = eps.setdefault(eid, {
+            'title': title or eid, 'total_sats': 0, 'boosts': 0,
+            'keys': set(), 'anon': 0,
+        })
         # Prefer the longest title seen for this episode (most descriptive).
         if title and len(title) > len(bucket['title']):
             bucket['title'] = title
         bucket['total_sats'] += sats
+        if (r.get('source') or '') == 'zap':
+            continue  # sats, not a boost, no supporter credit
+        bucket['boosts'] += 1
+        key = r.get('sender_npub') or r.get('sender_name') or ''
+        if key:
+            bucket['keys'].add(key)
+        else:
+            bucket['anon'] += 1
+    for ep in eps.values():
+        ep['supporters'] = len(ep.pop('keys')) + ep.pop('anon')
     return eps
 
 
+def comp_ranks(vals):
+    """Competition rank of every value, higher is better: 1 + how many are
+    strictly ahead, so equals share a place and the next place skips."""
+    return [1 + sum(1 for o in vals if o > v) for v in vals]
+
+
 def eps_rank(eps):
-    return sorted(eps.items(), key=lambda x: -x[1]['total_sats'])[:EPS_TOP_N]
+    """Order every episode overall, then cut to the top N. Returns
+    [(episode_id, ep)] where ep carries `rank` (shared on a full tie, with
+    `tied`) and the three component ranks r_sats / r_boosts /
+    r_supporters, each with a tied_* flag where that figure is shared."""
+    items = list(eps.items())
+    S = [ep['total_sats'] for _, ep in items]
+    B = [ep['boosts'] for _, ep in items]
+    K = [ep['supporters'] for _, ep in items]
+    rS, rB, rK = comp_ranks(S), comp_ranks(B), comp_ranks(K)
+    for i, (_, ep) in enumerate(items):
+        ep['r_sats'], ep['r_boosts'], ep['r_supporters'] = rS[i], rB[i], rK[i]
+        ep['tied_sats']       = S.count(S[i]) > 1
+        ep['tied_boosts']     = B.count(B[i]) > 1
+        ep['tied_supporters'] = K.count(K[i]) > 1
+        ep['score'] = rS[i] + rB[i] + rK[i]
+
+    def tup(ep):
+        return (ep['score'], ep['supporters'], ep['total_sats'], ep['boosts'])
+
+    items.sort(key=lambda x: (
+        x[1]['score'], -x[1]['supporters'], -x[1]['total_sats'], -x[1]['boosts'],
+        get_episode_number(x[1]['title']) or '999', x[0],
+    ))
+    rank = 1
+    for i, (_, ep) in enumerate(items):
+        if i and tup(ep) != tup(items[i - 1][1]):
+            rank = i + 1
+        ep['rank'] = rank
+    for i, (_, ep) in enumerate(items):
+        ep['tied'] = (i > 0 and tup(ep) == tup(items[i - 1][1])) or \
+                     (i + 1 < len(items) and tup(ep) == tup(items[i + 1][1]))
+    return items[:EPS_TOP_N]
+
+
+def eps_rank_chip(rank, tied):
+    return f"T#{rank}" if tied else f"#{rank}"
+
+
+def eps_medal(ep):
+    """Medal by shared place (a tie at 1 is two golds, as on the site);
+    off the podium, the # chip."""
+    medals = {1: "🥇", 2: "🥈", 3: "🥉"}
+    return medals.get(ep['rank'], eps_rank_chip(ep['rank'], ep['tied']))
+
+
+def eps_figures(ep):
+    b, k = ep['boosts'], ep['supporters']
+    return (f"{ep['total_sats']:,} sats · {b} boost{'s' if b != 1 else ''}"
+            f" · {k} supporter{'s' if k != 1 else ''}")
+
+
+def eps_component_ranks(ep):
+    return ("rank in sats " + eps_rank_chip(ep['r_sats'], ep['tied_sats']) +
+            ", boosts " + eps_rank_chip(ep['r_boosts'], ep['tied_boosts']) +
+            ", supporters " + eps_rank_chip(ep['r_supporters'], ep['tied_supporters']))
 
 
 def eps_resolve_guests(eps_to_scrape, guest_cache):
@@ -197,17 +280,20 @@ def eps_resolve_guests(eps_to_scrape, guest_cache):
 
 
 def eps_format_note(ranked, guest_cache, default_npub):
-    medals = ["🥇", "🥈", "🥉"]
-    lines  = ["⚡ Local Bitcoiners Episode Boost Leaderboard!", ""]
+    lines = [
+        "⚡ Local Bitcoiners Episode Leaderboard!",
+        "",
+        "Ranked overall: each episode's place in sats, boosts and supporters, "
+        "added up. Lowest total wins.",
+        "",
+    ]
 
-    for i, (ep_id, ep) in enumerate(ranked):
-        medal    = medals[i] if i < 3 else "▪️"
+    for ep_id, ep in ranked:
         ep_num   = get_episode_number(ep["title"])
         ep_label = f"Ep. {ep_num}" if ep_num else ep["title"]
-        sats     = f"{ep['total_sats']:,}"
         guests   = guest_cache.get(ep_id, []) or [default_npub]
         guest_str = " & ".join(f"nostr:{n}" for n in guests)
-        lines.append(f"{medal} {ep_label} with {guest_str} - {sats} sats")
+        lines.append(f"{eps_medal(ep)} {ep_label} with {guest_str} - {eps_figures(ep)}")
 
     lines.append("")
     lines.append("#LocalBitcoiners #V4V #valuechain")
@@ -216,16 +302,19 @@ def eps_format_note(ranked, guest_cache, default_npub):
     return "\n".join(lines)
 
 
-def eps_format_episode_reply(rank, ep_id, ep, guests):
-    medals   = ["🥇", "🥈", "🥉", "4th:", "5th:"]
-    medal    = medals[rank] if rank < len(medals) else f"{rank + 1}th:"
+def eps_format_episode_reply(ep_id, ep, guests):
     ep_num   = get_episode_number(ep["title"])
     ep_label = f"Ep. {ep_num}" if ep_num else ep["title"]
-    sats     = f"{ep['total_sats']:,}"
     title    = title_without_number(ep["title"])
     ep_url   = f"https://fountain.fm/episode/{ep_id}"
 
-    lines = [f"{medal} {ep_label} - {sats} sats", "", title, ""]
+    lines = [
+        f"{eps_medal(ep)} {ep_label} - {eps_figures(ep)}",
+        f"Overall {eps_rank_chip(ep['rank'], ep['tied'])} · {eps_component_ranks(ep)}",
+        "",
+        title,
+        "",
+    ]
     lines.append("Hosted by " + " & ".join(f"nostr:{n}" for n in EPS_HOST_NPUBS))
     if guests:
         lines.append("Featuring " + " & ".join(f"nostr:{n}" for n in guests))
@@ -237,7 +326,7 @@ def eps_format_episode_reply(rank, ep_id, ep, guests):
 def run_episodesats(rows, nsec):
     print()
     print("==============================================================")
-    print("  1/3  episodesats — top episodes by all-time sats")
+    print("  1/3  episodesats — top episodes by overall rank (sats + boosts + supporters)")
     print("==============================================================")
 
     pk           = PrivateKey.from_nsec(nsec)
@@ -261,9 +350,9 @@ def run_episodesats(rows, nsec):
 
     replies = []
     for i, (ep_id, ep) in enumerate(ranked):
-        reply_text = eps_format_episode_reply(i, ep_id, ep, guest_cache.get(ep_id, []))
+        reply_text = eps_format_episode_reply(ep_id, ep, guest_cache.get(ep_id, []))
         replies.append((i, ep_id, ep, reply_text))
-        print(f"\n--- Reply {i + 1} of {len(ranked)} (rank {i + 1}) ---")
+        print(f"\n--- Reply {i + 1} of {len(ranked)} (overall {eps_rank_chip(ep['rank'], ep['tied'])}) ---")
         print(reply_text)
         print("-" * 50)
 
