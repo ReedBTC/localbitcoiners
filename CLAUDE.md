@@ -238,6 +238,15 @@ Sort + 1W/1M/All head. Things that fail silently if missed:
   means "who streamed in it", and their sats can include earlier listens of
   the same episode; boost and zap rows are per payment. Say so in any new
   subline, do not present a stream window as exact.
+- **The Episode Leaderboard ranks by the wall's chart rule** (since
+  2026-09-22): Overall (default), Most Sats, Most Boosts, Most Supporters.
+  Overall is each episode's competition rank in the three summed, lowest
+  first, ties supporters → sats → boosts, ranked over every episode before
+  the top-10 cut; the bar runs on points (3n + 3 minus the score) and the
+  figure at its end is the three ranks as sats / boosts / supporters.
+  `compRanks` is duplicated in `stats.js` (classic script) and
+  `supporters.js` (module); change the rule in both. The "My Stats" view is
+  gone; Episodes You've Supported covers it.
 - **By App tiles are data-driven** from `row.app`; a new app appears on its
   own the first time it boosts. Colors are a fixed map (`appColorVar`);
   add one when a new app shows up grey.

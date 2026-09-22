@@ -3,8 +3,9 @@
  *
  * 1. Sats over time — line chart, cumulative / daily toggle, with
  *    episode-release markers.
- * 2. Episode leaderboard — top 10 episodes by total sats or by unique
- *    supporters.
+ * 2. Episode leaderboard — top 10 episodes by sats, boosts, unique
+ *    supporters, or Overall (the three competition ranks summed, the
+ *    OnlyBoosts Charts rule the Supporters wall also uses).
  * 3. Supporter leaderboard — top 10 identities by total sats or by
  *    episodes supported, plus an always-on bucket aggregating every
  *    anonymous payment.
@@ -609,12 +610,44 @@
   }
 
   // ── Episode leaderboard — horizontal bar chart ─────────────────────
+  // Four views, the OnlyBoosts Charts rule carried over (Reed, 2026-09-22),
+  // the same one the Supporters wall ranks people by (supporters.js
+  // #orderPeople): Most sats, Most boosts, Most supporters, and Overall,
+  // which is each episode's competition rank in the three summed, lowest
+  // total first. The "My Stats" view (the signed-in user's own per-episode
+  // totals) was dropped in the same change; the Episodes You've Supported
+  // grid below covers it.
+  //
+  // Counting rules mirror the wall's: sats are every episode-attributed
+  // row's total_sats; boosts are every non-zap row (a stream row is a
+  // per-(episode, supporter) aggregate, so a streamer counts once per
+  // episode); supporters are distinct identities (npub, else display
+  // name), each truly anonymous row its own supporter. Zap rows carry no
+  // episode number today, so the zap exclusion is insurance.
+  var BOARD_VIEWS = {
+    overall: { sub: 'overall rank: each episode’s rank in sats, boosts and supporters summed, lowest first (shown as sats / boosts / supporters)',
+               aria: 'Episodes ranked overall: rank in sats, boosts and supporters summed' },
+    sats: { sub: 'total sats received (boosts + streams)', aria: 'Episodes ranked by total sats received' },
+    boosts: { sub: 'boosts received (boosts + streams, a stream counted once per supporter)', aria: 'Episodes ranked by boosts received' },
+    supporters: { sub: 'unique supporters (boosts + streams)', aria: 'Episodes ranked by unique supporters' },
+  };
+  var BOARD_DEFAULT_VIEW = 'overall';
+
+  // Competition rank of every value in `vals`: 1 + the count strictly ahead,
+  // so equal values share a place (1, 2, 2, 4). OnlyBoosts' rank.js; the
+  // same function sits in supporters.js, which is a module this classic
+  // script cannot import.
+  function compRanks(vals) {
+    return vals.map(function (v) {
+      var ahead = 0;
+      for (var i = 0; i < vals.length; i++) if (vals[i] > v) ahead++;
+      return 1 + ahead;
+    });
+  }
+
   function renderLeaderboard(rows) {
     if (!boardCanvas) return;
 
-    // Group episode-attributed rows by episode number. A "supporter" is
-    // keyed by npub, else display name; rows with neither (truly anon)
-    // each count as their own supporter.
     var byEp = Object.create(null);
     for (var i = 0; i < rows.length; i++) {
       var row = rows[i];
@@ -622,8 +655,10 @@
       var num = parseInt(row.episode_num, 10);
       if (!isFinite(num) || num <= 0) continue;
       var ep = byEp[num] ||
-        (byEp[num] = { num: num, sats: 0, keys: Object.create(null), anon: 0 });
+        (byEp[num] = { num: num, sats: 0, boosts: 0, keys: Object.create(null), anon: 0 });
       ep.sats += row.total_sats;
+      if (row.source === 'zap') continue;     // sats, not a boost, no supporter credit
+      ep.boosts += 1;
       var key = row.sender_npub || row.sender_name;
       if (key) ep.keys[key] = true;
       else ep.anon += 1;
@@ -634,6 +669,7 @@
       episodes.push({
         num: byEp[k].num,
         sats: byEp[k].sats,
+        boosts: byEp[k].boosts,
         supporters: Object.keys(byEp[k].keys).length + byEp[k].anon,
       });
     }
@@ -642,67 +678,62 @@
       return;
     }
 
-    function draw(metric) {
-      if (metric === 'mine') { drawMine(); return; }
-      var sorted = episodes.slice()
-        .sort(function (a, b) { return b[metric] - a[metric]; })
-        .slice(0, 10);
-      var items = sorted.map(function (e) {
-        return { label: 'Ep ' + e.num, value: e[metric], href: epHref(e.num) };
+    // Overall: the chart rank over EVERY episode (the ranks are competition
+    // ranks across the whole set, not the top 10), then the top 10. The bar
+    // runs on points, 3n + 3 minus the score, so a better standing is the
+    // longer bar and the order stays monotonic; the figure at the bar's end
+    // is the three component ranks, sats / boosts / supporters, like the
+    // OnlyBoosts chart board prints them. Ties break supporters → sats →
+    // boosts, then episode number, so a full tie is stable.
+    function orderOverall() {
+      var n = episodes.length;
+      var rS = compRanks(episodes.map(function (e) { return e.sats; }));
+      var rB = compRanks(episodes.map(function (e) { return e.boosts; }));
+      var rK = compRanks(episodes.map(function (e) { return e.supporters; }));
+      var scored = episodes.map(function (e, i) {
+        return { ep: e, rS: rS[i], rB: rB[i], rK: rK[i], score: rS[i] + rB[i] + rK[i] };
       });
-      boardCanvas.innerHTML = buildBarSvg(items, metric === 'sats'
-        ? 'Episodes ranked by total sats received'
-        : 'Episodes ranked by unique supporters',
-        { breakOutlier: metric === 'sats' });
+      scored.sort(function (a, b) {
+        return a.score - b.score || b.ep.supporters - a.ep.supporters ||
+          b.ep.sats - a.ep.sats || b.ep.boosts - a.ep.boosts || a.ep.num - b.ep.num;
+      });
+      return scored.map(function (s) {
+        return {
+          label: 'Ep ' + s.ep.num,
+          value: 3 * n + 3 - s.score,
+          text: s.rS + ' / ' + s.rB + ' / ' + s.rK,
+          title: 'Rank in sats #' + s.rS + ', boosts #' + s.rB + ', supporters #' + s.rK +
+            ' (' + fmtSats(s.ep.sats) + ' sats, ' + s.ep.boosts +
+            (s.ep.boosts === 1 ? ' boost, ' : ' boosts, ') + s.ep.supporters +
+            (s.ep.supporters === 1 ? ' supporter)' : ' supporters)'),
+          href: epHref(s.ep.num),
+        };
+      });
+    }
+
+    function orderBy(metric) {
+      return episodes.slice()
+        .sort(function (a, b) {
+          return b[metric] - a[metric] || b.sats - a.sats || b.boosts - a.boosts || a.num - b.num;
+        })
+        .map(function (e) {
+          return { label: 'Ep ' + e.num, value: e[metric], href: epHref(e.num) };
+        });
+    }
+
+    function draw(view) {
+      var spec = BOARD_VIEWS[view] || BOARD_VIEWS[BOARD_DEFAULT_VIEW];
+      if (!BOARD_VIEWS[view]) view = BOARD_DEFAULT_VIEW;
+      var items = (view === 'overall' ? orderOverall() : orderBy(view)).slice(0, 10);
+      boardCanvas.innerHTML = buildBarSvg(items, spec.aria,
+        { breakOutlier: view === 'sats' });
       if (boardSubEl) {
-        boardSubEl.textContent = metric === 'sats'
-          ? 'Top ' + sorted.length + ' episodes by total sats received (boosts + streams)'
-          : 'Top ' + sorted.length + ' episodes by unique supporters (boosts + streams)';
+        boardSubEl.textContent = 'Top ' + items.length + ' episodes by ' + spec.sub;
       }
     }
 
-    // "My Stats" — the signed-in user's own per-episode boost totals.
-    // Not logged in → show a prompt and open the login modal; the
-    // onChange hook below redraws the moment they sign in (or a session
-    // restore completes). Anonymous (burner-signed) boosts carry no
-    // sender_npub, so they correctly never show up as "yours".
-    function drawMine() {
-      if (boardSubEl) boardSubEl.textContent = 'Sats you’ve boosted to each episode';
-      var user = window.LBLogin && typeof window.LBLogin.getUser === 'function'
-        ? window.LBLogin.getUser() : null;
-      if (!user || !user.npub) {
-        boardCanvas.innerHTML = '<p class="stats-error">Sign in with Nostr to see the sats you’ve boosted to each episode.</p>';
-        if (window.LBLogin && typeof window.LBLogin.requestLogin === 'function') {
-          window.LBLogin.requestLogin();
-        }
-        return;
-      }
-      var mineByEp = Object.create(null);
-      for (var i = 0; i < rows.length; i++) {
-        var row = rows[i];
-        if (row.episode_num == null) continue;
-        if (row.sender_npub !== user.npub) continue;
-        var num = parseInt(row.episode_num, 10);
-        if (!isFinite(num) || num <= 0) continue;
-        mineByEp[num] = (mineByEp[num] || 0) + (row.total_sats || 0);
-      }
-      var mine = [];
-      for (var k in mineByEp) mine.push({ num: parseInt(k, 10), sats: mineByEp[k] });
-      if (!mine.length) {
-        boardCanvas.innerHTML = '<p class="stats-error">You haven’t boosted any episodes yet — boost one and it’ll show up here.</p>';
-        return;
-      }
-      mine.sort(function (a, b) { return b.sats - a.sats; });
-      var items = mine.map(function (e) {
-        return { label: 'Ep ' + e.num, value: e.sats, href: epHref(e.num) };
-      });
-      boardCanvas.innerHTML = buildBarSvg(items, 'Sats you have boosted to each episode');
-      if (boardSubEl) {
-        boardSubEl.textContent = 'You’ve boosted ' + items.length +
-          (items.length === 1 ? ' episode' : ' episodes');
-      }
-    }
-    draw('sats');
+    var checked = document.querySelector('input[name="stats-board-view"]:checked');
+    draw(checked ? checked.value : BOARD_DEFAULT_VIEW);
 
     var radios = document.querySelectorAll('input[name="stats-board-view"]');
     for (var r = 0; r < radios.length; r++) {
@@ -710,47 +741,15 @@
         if (e.target.checked) draw(e.target.value);
       });
     }
-
-    // Show the signed-in user's pfp inside the "My Stats" toggle. Pulls the
-    // image straight off the live LBLogin user (profile.image); hides the
-    // <img> when logged out or when no avatar is set, and on a broken URL so
-    // the pill never shows a busted-image glyph.
-    var mineAvatarEl = document.querySelector('[data-mine-avatar]');
-    if (mineAvatarEl) {
-      mineAvatarEl.addEventListener('error', function () { mineAvatarEl.hidden = true; });
-    }
-    function updateMineAvatar() {
-      if (!mineAvatarEl) return;
-      var u = window.LBLogin && typeof window.LBLogin.getUser === 'function'
-        ? window.LBLogin.getUser() : null;
-      var img = u && u.profile && u.profile.image;
-      if (img) {
-        mineAvatarEl.src = img;
-        mineAvatarEl.hidden = false;
-      } else {
-        mineAvatarEl.removeAttribute('src');
-        mineAvatarEl.hidden = true;
-      }
-    }
-    updateMineAvatar();
-
-    // Redraw the "My Stats" view on login/logout so it reflects the
-    // current user as soon as a sign-in (or session restore) lands, and
-    // refresh the toggle's avatar to match.
-    if (window.LBLogin && typeof window.LBLogin.onChange === 'function') {
-      window.LBLogin.onChange(function () {
-        updateMineAvatar();
-        var sel = document.querySelector('input[name="stats-board-view"]:checked');
-        if (sel && sel.value === 'mine') drawMine();
-      });
-    }
   }
 
   // Horizontal bar chart. `items` is a pre-sorted [{ label, value,
-  // isAnon?, href? }] array, drawn top to bottom; the left margin auto-fits
-  // the longest label. Used by the episode leaderboard (the supporter board
-  // renders HTML rows, see buildBarRows). A label with `href` links there;
-  // plain labels stay plain.
+  // isAnon?, href?, text?, title? }] array, drawn top to bottom; the left
+  // margin auto-fits the longest label. Used by the episode leaderboard (the
+  // supporter board renders HTML rows, see buildBarRows). A label with
+  // `href` links there; plain labels stay plain. The figure at the bar's
+  // end is `value` formatted as sats unless the item carries `text` (the
+  // Overall view prints component ranks there, with `title` as its tooltip).
   // opts.breakOutlier: when the top bar(s) dwarf the rest, draw the other
   // bars to scale against the largest NON-outlier value so they stay
   // readable, and render each outlier as a fixed-length "torn" bar (a broken
@@ -813,6 +812,12 @@
         OUT_STAGGER = BAR_LAYOUT.OUT_STAGGER, GAP_W = BAR_LAYOUT.GAP_W;
     var normFullW = doBreak ? tw * BAR_LAYOUT.NORM_FRAC : tw;
 
+    function valueText(it, x, y) {
+      var t = '<text class="stats-bar-value" x="' + x + '" y="' + y + '">' +
+        svgEsc(it.text != null ? it.text : fmtSats(it.value)) + '</text>';
+      return it.title ? '<g><title>' + svgEsc(it.title) + '</title>' + t + '</g>' : t;
+    }
+
     var parts = [];
     for (var k = 0; k < items.length; k++) {
       var it = items[k];
@@ -843,8 +848,7 @@
           (cy + barH / 2 + 3) + ' L' + (gapStart + 8) + ',' + (cy - barH / 2 - 3) +
           ' M' + (gapStart + 8) + ',' + (cy + barH / 2 + 3) + ' L' +
           (gapStart + 14) + ',' + (cy - barH / 2 - 3) + '"/>');
-        parts.push('<text class="stats-bar-value" x="' + (tipEnd + 8) + '" y="' +
-          (cy + 4) + '">' + fmtSats(it.value) + '</text>');
+        parts.push(valueText(it, tipEnd + 8, cy + 4));
         continue;
       }
 
@@ -852,8 +856,7 @@
       if (bw > normFullW) bw = normFullW;   // guard rounding past the cap
       parts.push('<rect class="' + cls + '" x="' + mL + '" y="' + (cy - barH / 2) +
         '" width="' + bw + '" height="' + barH + '" rx="3"/>');
-      parts.push('<text class="stats-bar-value" x="' + (mL + bw + 8) + '" y="' +
-        (cy + 4) + '">' + fmtSats(it.value) + '</text>');
+      parts.push(valueText(it, mL + bw + 8, cy + 4));
     }
     // role="group", not "img": the labels are links and buttons, and an
     // image role would hide them from assistive tech.

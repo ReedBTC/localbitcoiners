@@ -216,7 +216,7 @@
 // and the Feature leg is 32%. Payment routing lives in the widget bundle and
 // in value-block.js, both stale-while-revalidate, so without a bump a
 // returning donor would keep paying the old wallet for one more session.
-const VERSION = 'lb-v82';
+const VERSION = 'lb-v83';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
