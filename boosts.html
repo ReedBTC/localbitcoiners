@@ -208,6 +208,23 @@
       display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;
       margin-left: auto;
     }
+    /* ── New Member line (assets/js/new-member.js): the first boost the sats
+       ledger holds for a supporter. Inserted above the note body; the card
+       also gets a brand-orange left edge so it stands out while scanning. ── */
+    .note-card.is-new-member { border-left: 4px solid var(--brand, #f7931a); }
+    .new-member {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem 0.6rem;
+      margin: -0.1rem 0 0.6rem;
+      font-size: 0.78rem; color: var(--muted);
+    }
+    .new-member-pill {
+      display: inline-block; padding: 0.18rem 0.6rem;
+      font-weight: 700; font-size: 0.74rem; letter-spacing: 0.01em;
+      color: var(--brand-dd, #a85500);
+      background: var(--brand-tint, rgba(247, 147, 26, 0.14));
+      border: 1px solid var(--brand-ring, rgba(247, 147, 26, 0.35));
+      border-radius: 999px; white-space: nowrap;
+    }
     .pcast-range { display: flex; flex-shrink: 0; }
     .pcast-range-btn {
       min-width: 2rem; padding: 0.5rem 0.35rem;
@@ -455,6 +472,7 @@
   } from '/assets/js/boosts-thread.js'
   import { configureBoostActions } from '/assets/js/boost-actions.js'
   import { rangeControl, sortControl, rangeStartMs, rangeWindow } from '/assets/js/head-controls.js'
+  import { loadFirstBoosts, newMemberBadge } from '/assets/js/new-member.js'
 
   // ── Range + sort ────────────────────────────────────────────────────
   // 1W / 1M / All on the note's created_at (when the bot published the
@@ -541,7 +559,32 @@
       // renderChildCards reads its list from a Map, so hand it the
       // filtered + sorted list under the root id.
       renderChildCards(root.id, new Map([[root.id, boosts]]), $content)
+      markNewMembers(boosts)
     }
+  }
+
+  // ── New Member badges ───────────────────────────────────────────────
+  // The sats ledger loads alongside the thread (see init); until it lands,
+  // or if it never does, cards simply carry no badge. A card is a first boost
+  // when its wall record's payment hash is the earliest boost the ledger has
+  // for that sender (the rule is in new-member.js). Cards are cached across
+  // repaints by boosts-thread.js, so this must be idempotent, and it pairs
+  // cards with boosts by position: renderChildCards paints one <li> per
+  // event in list order.
+  let firstBoosts = null
+  function markNewMembers(boosts) {
+    if (!firstBoosts) return
+    const cards = $content.querySelectorAll('.reply-children > li > .note-card')
+    if (cards.length !== boosts.length) return
+    boosts.forEach((ev, i) => {
+      const card = cards[i]
+      if (card.classList.contains('is-new-member')) return
+      const meta = getBoostMeta(ev.id)
+      if (!meta || !firstBoosts.isFirstBoost(meta.paymentHash)) return
+      card.classList.add('is-new-member')
+      const body = card.querySelector('.note-body')
+      if (body) card.insertBefore(newMemberBadge(), body)
+    })
   }
 
   // ── Thread state ────────────────────────────────────────────────────
@@ -558,6 +601,13 @@
   }
 
   async function init() {
+    // Ledger fetch in parallel with the thread; whichever lands second
+    // triggers the badge pass (paint runs markNewMembers on every repaint).
+    loadFirstBoosts().then((fb) => {
+      firstBoosts = fb
+      if (fb) rerenderBoosts()
+    })
+
     // fetchBoostThread owns the cached-wall fetch, the live fallback, the
     // mention/quote/calendar resolution, and cache seeding.
     //

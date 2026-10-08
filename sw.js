@@ -221,7 +221,12 @@
 // chart rule) instead of the bar chart, and the "My Stats" view is gone.
 // stats.js is stale-while-revalidate, and an old copy against the new
 // stats.html would look for radio values that no longer exist.
-const VERSION = 'lb-v83';
+// lb-v84: the boost wall marks a supporter's first boost with a "New Member!"
+// line (assets/js/new-member.js reads /api/sats and /api/guests, joins by
+// payment hash, npubs only, hosts and past guests never) so
+// the hosts can welcome newcomers as they read boosts off. boosts.html is
+// precached, and the old page has no import for the new module.
+const VERSION = 'lb-v84';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
