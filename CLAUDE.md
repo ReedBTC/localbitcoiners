@@ -273,6 +273,35 @@ Sort + 1W/1M/All head. Things that fail silently if missed:
   The `.pcast-range` / `.pcast-sort` CSS is copied per page (feeds, stats,
   boosts, supporters) with `--accent` / `--accent-d` / `--tint` set locally.
 
+## "New Member!" badge on the boost wall (lb-v84, 2026-10-08)
+
+`boosts.html` marks a supporter's first boost with a gold "🎉 New Member!"
+line above the note body and a brand-orange left edge on the card, so the
+hosts can welcome newcomers as they read boosts off. The rule lives in
+`assets/js/new-member.js` (a NEW module on purpose; `boosts-thread.js` is
+shared and cached) and `scripts/test-new-member.mjs` covers it. Reed's
+calls, each of which fails silently if loosened:
+
+- **Npubs only.** Identity is `sender_npub`; a name-only boost (Fountain
+  username, keysend boostagram name, the site's "A Local Bitcoiner" default)
+  never gets the badge and does not spend the npub's. Names vary by app and
+  a regular boosting without their npub attached looked like a newcomer.
+- **Hosts and past guests are never new.** `HOST_NPUBS` in the module plus
+  every npub from `/api/guests`, whichever came first, the episode or the
+  boost. The guest list is required: if it cannot be read, no card gets a
+  badge, rather than a guest welcomed by mistake.
+- **Only `kind: "boost"` rows count; streams and zaps neither earn nor
+  block.** Stream rows are stamped with last activity (see below), so a
+  prior stream cannot be ordered against a boost. A long-time streamer's
+  first boost is flagged, and that is the intended meaning.
+- **The join is by payment hash.** Every boost-wall record matches a ledger
+  row by `payment_hash` with the same `settled_at` (466 of 466 on
+  2026-10-08). A card the ledger has not seen gets no badge; unknown is
+  never new. The page pairs cards with events by list position after
+  `renderChildCards`, and the pass is idempotent because cards are cached.
+- Boosts page only; the episode and stats pages render the same cards
+  without it.
+
 ## Backfilled rows in the sats ledger
 
 Some `data/sats.csv` rows record boosts that were **sent but never arrived** —
