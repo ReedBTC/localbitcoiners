@@ -185,6 +185,30 @@ import { rangeControl, sortControl, rangeStartMs, rangeWindow } from '/assets/js
     cardsByNpub[npub].push(rec);
   }
 
+  // Put a profile picture in an avatar, or leave the blank silhouette when
+  // there is none. A picture URL comes straight out of the person's kind-0 and
+  // can be dead (a host that deleted the file answers 404; Fountain's imagekit
+  // store has done this); a bare <img> then renders as a broken image on
+  // every load, so the error swaps it back to the silhouette. The dead URL is
+  // remembered on the avatar so the later profile pass doesn't re-add it.
+  function setAvatarPicture(avatar, picture) {
+    if (!picture || avatar.dataset.deadPicture === picture) {
+      avatar.classList.add('is-blank');
+      return;
+    }
+    var img = document.createElement('img');
+    img.alt = '';
+    img.loading = 'lazy';
+    img.addEventListener('error', function () {
+      img.remove();
+      avatar.dataset.deadPicture = picture;
+      avatar.classList.add('is-blank');
+    }, { once: true });
+    img.src = picture;
+    avatar.classList.remove('is-blank');
+    avatar.appendChild(img);
+  }
+
   // Build one supporter card. `npub` may be null for name-only supporters.
   function makeCard(opts) {
     var npub = opts.npub || null;
@@ -196,16 +220,7 @@ import { rangeControl, sortControl, rangeStartMs, rangeWindow } from '/assets/js
     // answer that wiring gives.
     var avatar = document.createElement('span');
     avatar.className = 'sup-avatar';
-    var img = null;
-    if (picture) {
-      img = document.createElement('img');
-      img.src = picture;
-      img.alt = '';
-      img.loading = 'lazy';
-      avatar.appendChild(img);
-    } else {
-      avatar.classList.add('is-blank');
-    }
+    setAvatarPicture(avatar, picture);
 
     // Cards with an npub are interactive; name-only supporters (no npub) are
     // static — there's nothing to click. An interactive card is an <a> when the
@@ -338,12 +353,7 @@ import { rangeControl, sortControl, rangeStartMs, rangeWindow } from '/assets/js
         }
       }
       if (prof.picture && rec.avatar.classList.contains('is-blank')) {
-        rec.avatar.classList.remove('is-blank');
-        var img = document.createElement('img');
-        img.src = prof.picture;
-        img.alt = '';
-        img.loading = 'lazy';
-        rec.avatar.appendChild(img);
+        setAvatarPicture(rec.avatar, prof.picture);
       }
     }
   }
