@@ -351,7 +351,7 @@ function isCalendarCoord(coordinate) {
 // a hard error on the Events tab.
 async function fetchBoostedSet() {
   const coords = new Set()
-  const hints = new Set()
+  const hints = new Map()  // coord -> relay hints from that row's naddr
   const by = new Map()  // coord -> { pubkey, name, picture } (pubkey '' when anon)
   const at = new Map()  // coord -> ms of the most recent boost
   try {
@@ -365,7 +365,8 @@ async function fetchBoostedSet() {
       coords.add(r.coordinate)
       const ts = parseSettledAt(r.settled_at)
       if (typeof r.naddr === 'string') {
-        for (const h of relayHintsFromNaddr(r.naddr)) hints.add(h)
+        const prev = hints.get(r.coordinate) || []
+        hints.set(r.coordinate, [...new Set([...prev, ...relayHintsFromNaddr(r.naddr)])])
       }
       // Rows arrive newest-first, but don't rely on it: the most recent boost
       // is the one credited, and the one that sets the event's featured-at.
@@ -394,7 +395,13 @@ async function backfillFeatured(state, boosted) {
   const missing = [...boosted.coords].filter((c) => !state.eventsByCoord.has(c))
   if (!missing.length) return
   try {
-    const relays = [...new Set([...state.relays, ...boosted.hints])]
+    // Only the hints of the events actually being fetched. The hints are
+    // whatever relays the booster's client baked into the naddr they pasted,
+    // so the union over every boosted row dials a growing list of personal
+    // and dead relays (a 530 from one of them on every load, 2026-10-15) for
+    // events the snapshot already holds.
+    const hints = missing.flatMap((c) => boosted.hints.get(c) || [])
+    const relays = [...new Set([...state.relays, ...hints])]
     const found = await fetchCalendarEventsFromRelays(missing, relays)
     for (const parsed of found.values()) {
       const coord = coordOf(parsed)
@@ -1067,6 +1074,11 @@ async function loadEvents() {
 
     if (snapshot) {
       ingestEvents(state, snapshot)
+      // Paint the snapshot now. The boosted set, the relay backfill and the
+      // profile fetch below take several seconds between them (the backfill
+      // alone waits on every relay's EOSE or its 8 s safety), and a first
+      // visit with no cache otherwise sits on skeletons the whole time.
+      paint()
     } else {
       // Fallback: resolve supporters, then stream events + deletions from
       // relays, repainting as they land.
@@ -1085,12 +1097,16 @@ async function loadEvents() {
     // those coordinates, and backfill any boosted event missing from the
     // supporter snapshot straight from relays (scope = "any boosted meetup").
     const boosted = await fetchBoostedSet()
-    await backfillFeatured(state, boosted)
     for (const c of boosted.coords) state.featuredCoords.add(c)
     for (const [c, info] of boosted.by) state.featuredBy.set(c, info)
     for (const [c, ts] of boosted.at) {
       if (ts > (state.featuredAt.get(c) || 0)) state.featuredAt.set(c, ts)
     }
+    // The featured events the snapshot already holds go up before the relay
+    // backfill; the box keeps its trailing skeleton (featuredLoading) for the
+    // ones still being fetched.
+    paint()
+    await backfillFeatured(state, boosted)
     state.featuredLoading = false
 
     // Organizer + booster profiles (avatar + name) once the author set is
