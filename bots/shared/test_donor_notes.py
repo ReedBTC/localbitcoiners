@@ -141,6 +141,25 @@ c = {"event": {"id": "c", "created_at": 50}, "settled_at": "2026-10-14T13:50:00Z
 order = [r["event"]["id"] for r in sorted([a, b, c], key=boost_wall.sort_key)]
 check("settled_at ranks a payment record, created_at only the bare ones", order == ["c", "a", "b"])
 
+print("rule 4 bursts: pair_burst / note_episode")
+R = [("r1", "001", "fid1", 100), ("r2", "002", "fid2", 160), ("r3", "003", "fid3", 220)]
+N = [("n1", "001", "fid1", 90, None), ("n2", "002", None, 150, None), ("n3", "003", "fid3", 210, None)]
+pairs, left = dn.pair_burst(R, N)
+check("one note per episode pairs by fountain id or episode number", pairs == {"r1": "n1", "r2": "n2", "r3": "n3"} and not left)
+pairs, left = dn.pair_burst(R, [("n1", "001", "fid1", 90, None), ("n9", "009", None, 95, None), ("nx", None, None, 99, "guid says Ep 002, text says Ep 003")])
+check("a note naming an episode no record has, and a self-contradicting note, are left out and named",
+      pairs == {"r1": "n1"} and {w for w, _, _ in left} == {"note", "record"} and len(left) == 4)
+pairs, left = dn.pair_burst(R, [("a", None, None, 95, None), ("b", None, None, 155, None)])
+check("no note names an episode → plain time order, leftover record listed", pairs == {"r1": "a", "r2": "b"} and left == [("record", "r3", "more records than notes (time order)")])
+pairs, left = dn.pair_burst([("r1", "001", "f", 100), ("r1b", "001", "f", 200)], [("n1", "001", None, 190, None), ("n0", "001", None, 90, None)])
+check("time order inside one episode", pairs == {"r1": "n0", "r1b": "n1"})
+gi = {"g2": {"fountain_id": "fid2", "title": "002. Second"}}
+ev = {"content": "Just boosted ⚡ 100 sats to nostr:x for Ep. 2", "tags": [["i", "podcast:item:guid:g2"]]}
+check("note_episode: guid via the RSS index agrees with the text", dn.note_episode(ev, gi) == ("002", "fid2", None))
+ev["content"] = "Just boosted ⚡ 100 sats for Ep. 3"
+check("note_episode: guid vs text disagreement is a contradiction", dn.note_episode(ev, gi)[2] == "guid says Ep 002, text says Ep 003")
+check("note_episode: text alone when the guid is unknown", dn.note_episode({"content": "for Ep. 7", "tags": []}, gi) == ("007", None, None))
+
 print("attach_donor_notes (offline: no index, no fetch)")
 wall = {"s1": {"event": {"id": "s1", "pubkey": SHOW, "created_at": T0}, "payment_hash": "ph1",
                "sender_npub": ALICE_NPUB, "settled_at": "2026-10-14T17:46:40Z", "source": "fountain_boost"}}

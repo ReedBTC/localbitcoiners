@@ -31,14 +31,22 @@ and four rules that make a wrong card impossible rather than unlikely:
      safe direction is silence) but not to ATTRIBUTE. Rejected, listed for
      hand review.
   4. An npub-only match with a second note from the same npub in the window
-     cannot be told apart from their other boost. Listed for review.
+     cannot be told apart from their other boost by sats or text. Such a
+     BURST is paired by episode instead (Reed, 2026-10-17, for the 19-boost
+     BullishBoosts test run of 2026-07-21): the note's NIP-73 item guid
+     against the record's episode (via the RSS index), else the note's own
+     "for Ep. N" line, then time order within each episode, and plain time
+     order only when no note names an episode. A note that contradicts
+     itself or names an episode no record in the burst has stays
+     unattached and is listed.
 
 Signatures are verified before a pubkey is believed (collector_common).
 """
 
+import re
 import sys
 import time
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
 
@@ -48,8 +56,10 @@ from collector_common import query_relay, verify_raw_event  # noqa: E402
 from nostr_utils import npub_to_hex, BOOST_SCAN_RELAYS, NOSTR_RELAYS  # noqa: E402
 from boost_formatter import (  # noqa: E402
     fetch_event, fetch_kind_30078, fetch_all_kind_30078, _receipt_share_info,
-    make_cache, record_donor_note,
+    make_cache, record_donor_note, build_rss_item_index, _extract_episode_number,
 )
+
+_FOR_EP_RE = re.compile(r"\bfor Ep\.?\s*(\d{1,3})\b", re.IGNORECASE)
 
 SHOW_PUBKEY_HEX = cov.SHOW_PUBKEY_HEX
 
@@ -301,13 +311,14 @@ def attach_donor_notes(wall, published_events, rows_by_ph, index_records, *,
     `review` list is what a human should look at."""
     relays = relays or DONOR_RELAYS
     cache = cache if cache is not None else make_cache()
-    stats = {"candidates": 0, "attached": Counter(), "by_source": Counter(),
+    stats = {"_wall": wall, "candidates": 0, "attached": Counter(), "by_source": Counter(),
              "id_only": 0, "unmatched": Counter(), "rejected": Counter(),
              "review": [], "already": 0, "message_filled": 0}
     consumed = {r.get("donor_note_id") for r in wall.values() if r.get("donor_note_id")}
     consumed |= {r.get("donor_note_id") for r in published_events.values() if r.get("donor_note_id")}
     donor_recs = donor_records(index_records) if index_records is not None else None
     pending = {}   # note id -> (event id, info, how)
+    bursts = defaultdict(list)   # npub -> [(event id, info, settled ts)] (rule 4)
 
     def _apply(eid, info, d):
         rec = wall[eid]
@@ -374,6 +385,9 @@ def attach_donor_notes(wall, published_events, rows_by_ph, index_records, *,
             pending[m["id"]] = (eid, info, how)
         else:
             src = info.get("source") or "?"
+            if how == "npub" and why.startswith("ambiguous"):
+                bursts[info["sender_npub"]].append((eid, info, ts))
+                continue
             if how:
                 stats["rejected"][why.split(" (")[0]] += 1
                 stats["review"].append({
@@ -382,6 +396,9 @@ def attach_donor_notes(wall, published_events, rows_by_ph, index_records, *,
                     "tier": how, "why": why,
                 })
             stats["unmatched"][f"{src}{' (npub)' if info.get('sender_npub') else ''}"] += 1
+
+    if bursts:
+        _pair_bursts(bursts, donor_recs, consumed, pending, stats, relays, cache, fetch, log)
 
     if pending:
         events = fetch_events_by_ids(list(pending), relays) if fetch else {}
@@ -400,6 +417,116 @@ def attach_donor_notes(wall, published_events, rows_by_ph, index_records, *,
     return stats
 
 
+# ── rule 4: bursts, paired by episode ─────────────────────────────────────────
+
+def note_episode(event, guid_index):
+    """(episode_num, fountain_id, contradiction) for a donor note: the NIP-73
+    item guid resolved through the RSS index first, the note's own
+    "for Ep. N" line second. `contradiction` is set when the two disagree."""
+    ep_guid = fid = None
+    for t in event.get("tags") or []:
+        if len(t) > 1 and t[0] == "i" and str(t[1]).startswith("podcast:item:guid:"):
+            entry = (guid_index or {}).get(t[1][len("podcast:item:guid:"):])
+            if entry:
+                fid = entry.get("fountain_id") or None
+                title = entry.get("title") or ""
+                lead = re.match(r"\s*(\d{3})\.", title)      # "002. Title" — the feed's shape
+                ep_guid = (lead.group(1) if lead else _extract_episode_number(title)) or None
+            break
+    m = _FOR_EP_RE.search(event.get("content") or "")
+    ep_text = m.group(1).zfill(3) if m else None
+    if ep_guid and ep_text and ep_guid != ep_text:
+        return None, fid, f"guid says Ep {ep_guid}, text says Ep {ep_text}"
+    return ep_guid or ep_text, fid, None
+
+
+def pair_burst(records, notes):
+    """Pair one donor's burst. `records`: [(key, episode_num, episode_id,
+    settled_ts)]; `notes`: [(note_id, episode_num, fountain_id, created_at,
+    contradiction)]. Returns (pairs {key: note_id}, leftovers [(what, id, why)]).
+
+    By episode first (fountain id or episode number), time order inside an
+    episode; plain time order over everything only when NO note names an
+    episode. A note that names an episode no record has, or contradicts
+    itself, is left out and said so."""
+    pairs, left = {}, []
+    usable = [n for n in notes if not n[4]]
+    left += [("note", n[0], n[4]) for n in notes if n[4]]
+    if usable and not any(n[1] or n[2] for n in usable):
+        rs = sorted(records, key=lambda r: r[3]); ns = sorted(usable, key=lambda n: n[3])
+        for r, n in zip(rs, ns):
+            pairs[r[0]] = n[0]
+        left += [("record", r[0], "more records than notes (time order)") for r in rs[len(ns):]]
+        left += [("note", n[0], "more notes than records (time order)") for n in ns[len(rs):]]
+        return pairs, left
+    by_ep = defaultdict(lambda: ([], []))
+    for r in records:
+        by_ep[r[2] or r[1] or "?"][0].append(r)
+    for n in usable:
+        key = n[2] if n[2] and n[2] in by_ep else (n[1] or n[2] or "?")
+        # a note naming only an episode number joins the record keyed by fountain id
+        if key not in by_ep:
+            for k, (rs, _) in by_ep.items():
+                if any(r[1] == n[1] for r in rs) and n[1]:
+                    key = k
+                    break
+        by_ep[key][1].append(n)
+    for key, (rs, ns) in by_ep.items():
+        rs = sorted(rs, key=lambda r: r[3]); ns = sorted(ns, key=lambda n: n[3])
+        for r, n in zip(rs, ns):
+            pairs[r[0]] = n[0]
+        left += [("record", r[0], f"no note for its episode ({key})") for r in rs[len(ns):]]
+        left += [("note", n[0], f"names episode {key}, which no record in the burst has") for n in ns[len(rs):]]
+    return pairs, left
+
+
+def _pair_bursts(bursts, donor_recs, consumed, pending, stats, relays, cache, fetch, log):
+    guid_index = None
+    if fetch:
+        try:
+            guid_index = build_rss_item_index(cache)
+        except Exception as e:
+            log(f"  [warn] RSS index unavailable for burst pairing ({e}); using the notes' text only")
+    for npub, group in bursts.items():
+        lo = min(ts for _, _, ts in group) - cov.MATCH_WINDOW_SEC
+        hi = max(ts for _, _, ts in group) + cov.MATCH_WINDOW_SEC
+        cands = [r for r in donor_recs
+                 if (r.get("booster") or {}).get("npub") == npub
+                 and r.get("id") not in consumed and lo <= int(r.get("ts") or 0) <= hi]
+        events = fetch_events_by_ids([r["id"] for r in cands], relays) if fetch else {}
+        notes = []
+        for r in cands:
+            ev = events.get(r["id"])
+            if not ev:
+                continue
+            ep, fid, contra = note_episode(ev, guid_index)
+            notes.append((r["id"], ep, fid, ev.get("created_at") or r["ts"], contra))
+        records = [(eid, info.get("episode_number"), None, ts) for eid, info, ts in group]
+        # the record's fountain id lives on the wall record, not the info
+        records = [(eid, ep, (stats.get("_wall") or {}).get(eid, {}).get("episode_id"), ts)
+                   for eid, ep, _, ts in records]
+        pairs, left = pair_burst(records, notes)
+        log(f"  burst {npub[:16]}…: {len(group)} boosts, {len(notes)} notes fetched, "
+            f"{len(pairs)} paired by episode, {len(left)} left")
+        infos = {eid: info for eid, info, _ in group}
+        for eid, nid in pairs.items():
+            consumed.add(nid)
+            pending[nid] = (eid, infos[eid], "npub+episode")
+        for what, ident, why in left:
+            stats["rejected"][f"burst: {what} left unpaired"] += 1
+            if what == "record":
+                info = infos[ident]
+                stats["unmatched"][f"{info.get('source') or '?'} (npub)"] += 1
+                stats["review"].append({
+                    "payment_hash": info.get("payment_hash"), "source": info.get("source"),
+                    "settled_at": info.get("settled_at"), "sats": info.get("total_sats"),
+                    "sender_npub": npub, "tier": "npub", "why": f"burst: {why}"})
+            else:
+                stats["review"].append({"payment_hash": None, "source": "note", "settled_at": None,
+                                        "sats": None, "sender_npub": npub, "tier": "npub",
+                                        "why": f"burst: note {ident[:12]}… {why}"})
+
+
 def print_stats(stats, log=print):
     log(f"  candidates {stats['candidates']}, already had a donor note {stats['already']}, "
         f"message filled from the ledger on {stats['message_filled']}")
@@ -416,5 +543,5 @@ def print_stats(stats, log=print):
     if stats["review"]:
         log(f"\n  FOR REVIEW ({len(stats['review'])}) — not attached:")
         for r in stats["review"]:
-            log(f"    {r['settled_at']}  {r['source']:<14} {str(r['sats']):>7} sats  "
-                f"{(r['sender_npub'] or '-')[:16]}  ph={r['payment_hash'][:12]}…  {r['why']}")
+            log(f"    {r['settled_at'] or '-':<20}  {r['source']:<14} {str(r['sats']):>7} sats  "
+                f"{(r['sender_npub'] or '-')[:16]}  ph={(r['payment_hash'] or '-')[:12]}…  {r['why']}")

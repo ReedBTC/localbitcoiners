@@ -317,8 +317,11 @@ Things that fail silently if missed:
   `P` tag is never read); when the ledger knows the npub the note's pubkey
   must be it; a sats-only match suppresses our claim but never attributes;
   an npub-only match with a second note from that npub in the ±15 min
-  window goes to review. `set_donor_note` refuses a mismatched pair, so a
-  wrong `donor_event` cannot reach the file through any writer.
+  window is a burst and is paired by episode (the note's NIP-73 item guid
+  through the RSS index, else its "for Ep. N" line, then time order inside
+  an episode; a note that contradicts itself or names an episode the burst
+  lacks is left out and listed). `set_donor_note` refuses a mismatched
+  pair, so a wrong `donor_event` cannot reach the file through any writer.
 - **Three writers, one join.** The publisher captures the note live (the
   receipt's share note when donor-signed, `decide()`'s index match via
   `match_out`, or the claim veto note); `build_boost_wall.py` runs a 7-day
