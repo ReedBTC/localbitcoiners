@@ -197,6 +197,33 @@ def record_published_event(events, payment_hash, event_id, settled_at,
     if sibling_of:
         events[payment_hash]["sibling_of"] = sibling_of
 
+def record_donor_note(events, payment_hash, donor_note_id, donor_match, donor_pubkey=None):
+    """Patch the DONOR's own kind-1 note onto an existing record (donor-notes
+    wall, 2026-10-17). Three fields, all or nothing:
+
+      donor_note_id  the donor-signed note that represents this boost
+      donor_match    how it was tied to the payment: "receipt" (the website
+                     receipt's share_note, author resolved on the relays),
+                     "session" (the note's boost_session tag, backfill), one
+                     of onlyboosts_coverage.find_match's tiers, or "relay"
+                     (relay_note_for's veto note)
+      donor_pubkey   the note's author, hex — what topboosts needs to embed it
+                     as an nevent without a second relay round trip
+
+    This is the durable join: data/boost_wall.json is rebuilt from it, and the
+    weekly topboosts note prefers it over `event_id` (Reed, 2026-10-17). Only
+    ever set on a record that exists — a payment hash with no standalone note
+    is not a boost this bot knows, and `published_events` is the dedupe gate,
+    so inventing records here would be a second writer to that gate."""
+    rec = events.get(payment_hash)
+    if not rec or not donor_note_id:
+        return False
+    rec["donor_note_id"] = donor_note_id
+    rec["donor_match"]   = donor_match or "unknown"
+    if donor_pubkey:
+        rec["donor_pubkey"] = donor_pubkey
+    return True
+
 def published_sessions(events):
     """{boost_session: payment_hash of the leg whose note was published} over a
     published_events map. Sibling records are skipped so the map always points
@@ -625,6 +652,7 @@ def make_cache():
         "kind_30078":            {},    # payment_hash -> kind 30078 event dict (or None)
         "kind_30078_by_d":       {},    # d-tag value -> list of ALL kind 30078 events sharing that #d
         "event_author":          {},    # event id -> author pubkey hex (or None if unfetchable)
+        "event_by_id":           {},    # event id -> raw kind-1 event dict (or None if unfetchable)
         "title_cache":           {},    # episode_id  -> (title, guests) for Fountain pages
         "episode_id_map":        None,  # zero-padded ep number -> fountain_id (lazy disk-backed)
         "episode_id_map_dirty":  False,
@@ -746,31 +774,32 @@ def fetch_all_kind_30078(d_value, relays=None, cache=None):
         cache["kind_30078_by_d"][d_value] = events
     return events
 
-def fetch_event_author(event_id, relays, cache=None):
-    """Author pubkey (hex) of a Nostr event, looked up by id across `relays`.
-    Returns None when no relay in the set returns the event — the caller
-    decides whether that means retry or degrade.
+def fetch_event(event_id, relays, cache=None):
+    """A Nostr event looked up by id across `relays`, or None when no relay in
+    the set returns it — the caller decides whether that means retry or degrade.
 
-    Built for the ob-boost-flow site-signed share notes (2026-08-24): a
-    boost_receipt's share_status=published can't say WHO signed the share note
-    (the site's own show key vs the donor's), and the publisher must not post
-    its standalone next to a show-key note, so it checks the note's author
-    here. Cached by event id, negatives included — within one run a re-query
-    seconds later would answer the same.
+    Since 2026-10-17 the raw event is kept, not just its author: when the
+    website receipt's share note turns out to be DONOR-signed, that event is
+    the donor's own note and goes on the boost wall as `donor_event`. The
+    event is NOT signature-verified here (the wall writer does that via
+    collector_common.verify_raw_event before it trusts the pubkey). Cached by
+    event id, negatives included — within one run a re-query seconds later
+    would answer the same.
     """
     if not event_id:
         return None
-    if cache is not None and event_id in cache["event_author"]:
-        return cache["event_author"][event_id]
-    author = None
+    if cache is not None and event_id in cache["event_by_id"]:
+        return cache["event_by_id"][event_id]
+    event = None
     for relay in relays:
         try:
             ws = websocket.create_connection(relay, timeout=10)
-            ws.send(json.dumps(["REQ", "evauthor", {"ids": [event_id]}]))
+            ws.send(json.dumps(["REQ", "evbyid", {"ids": [event_id]}]))
             while True:
                 msg = json.loads(ws.recv())
                 if msg[0] == "EVENT":
-                    author = msg[2].get("pubkey") or None
+                    if (msg[2] or {}).get("id") == event_id:
+                        event = msg[2]
                     ws.close()
                     break
                 elif msg[0] in ("EOSE", "CLOSED", "NOTICE"):
@@ -778,11 +807,31 @@ def fetch_event_author(event_id, relays, cache=None):
                     break
         except Exception as e:
             print(f"  [warn] relay query failed {relay}: {e}")
-        if author:
+        if event:
             break
     if cache is not None:
-        cache["event_author"][event_id] = author
-    return author
+        cache["event_by_id"][event_id] = event
+        cache["event_author"][event_id] = (event or {}).get("pubkey") or None
+    return event
+
+
+def fetch_event_author(event_id, relays, cache=None):
+    """Author pubkey (hex) of a Nostr event, looked up by id across `relays`.
+    Returns None when no relay in the set returns the event.
+
+    Built for the ob-boost-flow site-signed share notes (2026-08-24): a
+    boost_receipt's share_status=published can't say WHO signed the share note
+    (the site's own show key vs the donor's), and the publisher must not post
+    its standalone next to a show-key note, so it checks the note's author
+    here. A view onto fetch_event since 2026-10-17, so one relay round trip
+    answers both "who signed it" and "what did they sign".
+    """
+    if not event_id:
+        return None
+    if cache is not None and event_id in cache["event_author"]:
+        return cache["event_author"][event_id]
+    event = fetch_event(event_id, relays, cache=cache)
+    return (event or {}).get("pubkey") or None
 
 
 def _receipt_share_info(receipts):

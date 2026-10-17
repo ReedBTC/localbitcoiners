@@ -18,11 +18,12 @@ from boost_formatter import (
     record_published_event, record_reply_event, published_sessions,
     make_cache, is_dry_run,
     persist_cache, build_podcast_guid_tags, build_boost_claim_tags,
-    resolve_item_guid, build_rss_item_index, fetch_event_author,
+    resolve_item_guid, build_rss_item_index, fetch_event, record_donor_note,
 )
 import lnbits_source
 import boost_wall
 import onlyboosts_coverage
+import donor_notes
 
 # --- Config ---
 CREDENTIALS_FILE = Path.home() / ".config/nostr-bots/credentials.env"
@@ -102,12 +103,17 @@ def fetch_transactions(config, cutoff):
         print(f"  [backlog] paged back {len(out)} txs to reach {cutoff}")
     return out
 
-def claim_tags(decision, why, info, cache):
+def claim_tags(decision, why, info, cache, donor_out=None):
     """Payment-evidence tags for this boost, or [] — and say which, either way.
 
     Printed on every boost rather than only on a claim: the log is how we know
     the match logic is right before CLAIM_BOOST_TAGS is ever flipped on, and
     afterwards it is the record of why a given note does or doesn't count.
+
+    `donor_out`: when the last-look check vetoes the claim because a donor
+    note turned up (indexed since the batch query, or on a relay the index
+    has not seen), that note is the boost's donor note and is handed back
+    here for the wall.
     """
     if decision != "claim":
         print(f"  [claim] no — {why}")
@@ -122,13 +128,24 @@ def claim_tags(decision, why, info, cache):
     # boost, and ours must not.
     # The episode is what separates two same-size boosts from one donor, so
     # resolve it before the check rather than leaving the field empty.
+    veto = {}
     ok, verdict = onlyboosts_coverage.verify_before_claim(
         {**info,
          "sender_pubkey_hex": npub_to_hex(info.get("sender_npub") or ""),
          "item_guid": resolve_item_guid(info, cache)},
-        int(time.time()), relays=BOOST_SCAN_RELAYS, query_relay=query_relay)
+        int(time.time()), relays=BOOST_SCAN_RELAYS, query_relay=query_relay,
+        match_out=veto)
     if not ok:
         print(f"  [claim] no — {verdict}")
+        if donor_out is not None and not donor_out:
+            d = None
+            if veto.get("event"):
+                d = donor_notes.donor_from_event(veto["event"], info, "relay")
+            elif veto.get("record"):
+                d = donor_notes.donor_from_index_record(veto["record"], info, veto.get("how"), cache=cache)
+            if d:
+                donor_out.update(d)
+                print(f"  [donor] the veto note is the donor's own ({d['donor_note_id'][:12]}..., {d['donor_match']})")
         return []
     print(f"  [claim] yes — {why}; {verdict}")
     return build_boost_claim_tags(info)
@@ -332,10 +349,16 @@ def main():
         # share_status=published can't distinguish that from a donor-signed
         # note (the pre-existing flow, where our untagged standalone should
         # still publish), so resolve the share note's AUTHOR on the relays.
+        # The donor's OWN note for this boost, when one exists — what the
+        # boost wall shows in place of ours since 2026-10-17 (donor_notes.py).
+        # Filled by whichever path finds it: the receipt's share note below
+        # (donor-signed), decide()'s index match, or claim_tags' veto.
+        donor = {}
         site_signed_note_id = None
         if ((info.get("share_status") or "").strip().lower() == "published"
                 and info.get("share_note_id") and show_pubkey):
-            author = fetch_event_author(info["share_note_id"], NOSTR_RELAYS, cache=cache)
+            share_ev = fetch_event(info["share_note_id"], NOSTR_RELAYS, cache=cache)
+            author = (share_ev or {}).get("pubkey") or None
             if author == show_pubkey:
                 site_signed_note_id = info["share_note_id"]
                 print(f"  [site-signed] share note {site_signed_note_id[:12]}... was "
@@ -368,12 +391,33 @@ def main():
                 print(f"  [warn] share note {info['share_note_id'][:12]}... unfetchable "
                       f"for over an hour — trusting the receipt and skipping our "
                       f"standalone (reply still publishes) to rule out a show-npub duplicate")
+            else:
+                # Donor-signed: the pre-existing flow, our untagged standalone
+                # still publishes — and this IS the donor's note for the wall.
+                d = donor_notes.donor_from_event(share_ev, info, "receipt")
+                if d:
+                    donor.update(d)
+                    print(f"  [donor] share note {d['donor_note_id'][:12]}... is the donor's own")
+                else:
+                    print(f"  [donor] share note {info['share_note_id'][:12]}... is not by the "
+                          f"ledger's npub — not shown as the donor's note")
 
         # Claim decision. "skip" → publish the note exactly as we always have.
         # "claim" → add the payment-evidence tags to the STANDALONE note only.
         # "hold" → publish nothing yet; the donor's own note may still land.
+        matched = {}
         decision, why = onlyboosts_coverage.decide(
-            info, indexed, int(time.time()), claimed_matches)
+            info, indexed, int(time.time()), claimed_matches, match_out=matched)
+        if decision == "skip" and matched.get("record") and not donor:
+            d = donor_notes.donor_from_index_record(
+                matched["record"], info, matched.get("how"), cache=cache)
+            if d:
+                donor.update(d)
+                print(f"  [donor] indexed note {d['donor_note_id'][:12]}... is the donor's own "
+                      f"({d['donor_match']}{'' if d.get('donor_event') else ', event not fetched yet'})")
+            else:
+                print(f"  [donor] indexed note {matched['record']['id'][:12]}... is not "
+                      f"attributable as the donor's own ({matched.get('how')})")
         if decision == "hold":
             ph = info.get("payment_hash", "")
             if CLAIM_BOOST_TAGS:
@@ -413,6 +457,9 @@ def main():
             standalone_id = site_signed_note_id
             record_published_event(published_events, payment_hash, standalone_id, settled_at,
                                        boost_session=info.get("boost_session"))
+            if donor:
+                record_donor_note(published_events, payment_hash, donor["donor_note_id"],
+                                  donor["donor_match"], donor.get("donor_pubkey"))
             save_published_events(published_events)
 
             if boost_board:
@@ -424,7 +471,7 @@ def main():
                     record_reply_event(published_events, payment_hash, reply_ev["id"])
                     save_published_events(published_events)
                     boost_wall.upsert(wall, boost_wall.build_record(
-                        reply_ev, info=info, standalone_id=standalone_id))
+                        reply_ev, info=info, standalone_id=standalone_id, donor=donor or None))
                     wall_dirty = True
         elif nsec and not effective_dryrun:
             print("  Building zap splits...")
@@ -446,7 +493,7 @@ def main():
             # so it rides the same gate as the claim rather than landing on its
             # own. Flag off → byte-identical to what this bot published before.
             all_tags = zap_tags + build_podcast_guid_tags(info, cache if CLAIM_BOOST_TAGS else None)
-            all_tags += claim_tags(decision, why, info, cache)
+            all_tags += claim_tags(decision, why, info, cache, donor_out=donor)
 
             print("  Publishing standalone note...")
             # Banner image on the STANDALONE note only; the board reply below
@@ -456,6 +503,9 @@ def main():
             if standalone_id:
                 record_published_event(published_events, payment_hash, standalone_id, settled_at,
                                        boost_session=info.get("boost_session"))
+                if donor:
+                    record_donor_note(published_events, payment_hash, donor["donor_note_id"],
+                                      donor["donor_match"], donor.get("donor_pubkey"))
                 # Persist per-boost, not once at the end of the run. The note is
                 # already irreversibly on the relays by this line, so the record
                 # of it has to survive anything that happens to the rest of the
@@ -475,7 +525,7 @@ def main():
                     record_reply_event(published_events, payment_hash, reply_ev["id"])
                     save_published_events(published_events)
                     boost_wall.upsert(wall, boost_wall.build_record(
-                        reply_ev, info=info, standalone_id=standalone_id))
+                        reply_ev, info=info, standalone_id=standalone_id, donor=donor or None))
                     wall_dirty = True
         elif effective_dryrun and nsec:
             print("  Building zap splits...")
@@ -488,11 +538,14 @@ def main():
             else:
                 all_tags = (zap_tags
                             + build_podcast_guid_tags(info, cache if CLAIM_BOOST_TAGS else None)
-                            + claim_tags(decision, why, info, cache))
+                            + claim_tags(decision, why, info, cache, donor_out=donor))
                 path, standalone_id = write_dry_run_event(
                     with_header_image(note, STANDALONE_BOOST_IMAGE), nsec, prefix="boosts", extra_tags=all_tags, suffix=suffix,
                 )
                 print(f"  [dry-run] standalone → {path}")
+            if donor:
+                print(f"  [dry-run] wall record would carry donor note "
+                      f"{donor['donor_note_id'][:12]}... ({donor['donor_match']})")
             # Deliberately NOT recording standalone_id to published_events in
             # dry-run: the preview id wouldn't exist on real relays, and
             # persisting it would corrupt future production runs.

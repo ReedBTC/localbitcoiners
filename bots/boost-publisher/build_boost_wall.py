@@ -25,14 +25,25 @@ several boosts share identical text (23 of them — a bare "1000 sats" on the sa
 episode), created_at proximity picks the right pair and each standalone is
 consumed once.
 
-Read-only against relays and against every local data file. Writes exactly one
-file, data/boost_wall.json, and pushes only with --push.
+Since 2026-10-17 a third job rides along: the DONOR-NOTE pass. For every
+record with a payment behind it and no donor note yet, settled within the
+last --donor-days (7), it looks for the booster's own kind-1 (the website
+receipt chain, then the OnlyBoosts index) and attaches it — the late cases
+the publisher cannot see at publish time (a Fountain note indexed after our
+reply went out; a share note that was unfetchable for an hour). Ids it finds
+are recorded in published_events.json, the durable join the wall is rebuilt
+from, so this is the one place besides the publisher that writes that file.
+
+Read-only against relays and every other local data file. Writes
+data/boost_wall.json and (donor ids only) published_events.json, and pushes
+only with --push.
 """
 
 import argparse
 import csv
 import json
 import sys
+import time
 from pathlib import Path
 
 import boost_wall
@@ -41,7 +52,9 @@ _BOTS_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_BOTS_ROOT / "shared"))
 from collector_common import query_relay, verify_raw_event  # noqa: E402
 from nostr_utils import NOSTR_RELAYS, load_config  # noqa: E402
-from boost_formatter import load_published_events  # noqa: E402
+from boost_formatter import load_published_events, save_published_events  # noqa: E402
+import donor_notes  # noqa: E402
+import onlyboosts_coverage as cov  # noqa: E402
 
 CREDENTIALS_FILE = Path.home() / ".config/nostr-bots/credentials.env"
 SATS_CSV         = boost_wall.REPO_ROOT / "data" / "sats.csv"
@@ -86,17 +99,8 @@ def scan_thread(root_id, relays):
 
 
 def fetch_events_by_id(ids, relays):
-    """Batched id lookup, stopping early once everything is found."""
-    out = {}
-    for relay in relays:
-        want = [i for i in ids if i not in out]
-        if not want:
-            break
-        for i in range(0, len(want), 100):
-            for ev in query_relay(relay, {"ids": want[i:i + 100]}, max_wall_seconds=30):
-                if ev.get("id") in want and verify_raw_event(ev):
-                    out[ev["id"]] = ev
-    return out
+    """Batched, signature-verified id lookup (shared with the donor pass)."""
+    return donor_notes.fetch_events_by_ids(ids, relays)
 
 
 def normalize(content):
@@ -168,6 +172,8 @@ def main():
     ap.add_argument("--no-legacy-join", action="store_true",
                     help="skip the content join; unrecorded replies get their event only")
     ap.add_argument("--root", default=None, help="thread root id (default: the boost board)")
+    ap.add_argument("--donor-days", type=int, default=7,
+                    help="look for donor notes on boosts settled this many days back (0 = skip)")
     args = ap.parse_args()
 
     config = load_config(CREDENTIALS_FILE) if CREDENTIALS_FILE.exists() else {}
@@ -215,12 +221,31 @@ def main():
           f"(root, manual corrections, third-party replies)")
     print(f"  wall: {before} → {len(wall)} records")
 
+    pe_dirty = False
+    if args.donor_days > 0:
+        print(f"\nDonor notes — boosts settled in the last {args.donor_days} days")
+        since_ts = int(time.time()) - args.donor_days * 86400
+        try:
+            index = cov.fetch_indexed(since_ts - cov.QUERY_PAD_SEC)
+            print(f"  OnlyBoosts has {len(index)} LB boosts indexed in the window")
+        except cov.CoverageUnavailable as e:
+            index = None
+            print(f"  [warn] OnlyBoosts unreachable ({e}) — index matching skipped this run")
+        stats = donor_notes.attach_donor_notes(
+            wall, published_events, sats_rows, index,
+            set_donor_note=boost_wall.set_donor_note, since_ts=since_ts)
+        donor_notes.print_stats(stats)
+        pe_dirty = sum(stats["attached"].values()) > 0
+
     if args.dry_run:
         print("\n[dry-run] nothing written")
         return 0
 
     count, size = boost_wall.save_wall(wall)
     print(f"\n  wrote {count} records ({size / 1024:.0f} KB) → data/{boost_wall.WALL_FILE}")
+    if pe_dirty:
+        save_published_events(published_events)
+        print("  recorded the new donor note ids in published_events.json")
     if args.push:
         boost_wall.push_wall(config)
     else:

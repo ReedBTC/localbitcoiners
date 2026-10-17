@@ -618,20 +618,28 @@ def tb_format_note(ranked):
 
 
 def tb_resolve_event_ids(ranked, published_events, donation_events):
-    """For each top-N boost look up its event_id from boost-publisher's
-    published_events / donation_events cache. Returns payment_hash → event_id
-    for hits; logs a coverage warning for misses (their reply notes are
-    skipped — we no longer regen via Alby in this bot)."""
+    """For each top-N boost, the note to embed in its reply, from
+    boost-publisher's published_events / donation_events cache. Returns
+    payment_hash → (event_id, author_hex_or_None); logs a coverage warning for
+    misses (their reply notes are skipped — we no longer regen via Alby in
+    this bot).
+
+    Since 2026-10-17 the DONOR's own note is preferred when the record has one
+    (`donor_note_id`, with `donor_pubkey` as the nevent author; Reed: "I want
+    the donor's note to go there"), falling back to our standalone
+    (`event_id`, author = the show) exactly as before."""
     event_ids = {}
     missing   = []
     for b in ranked:
         ph = b.get('payment_hash')
         if not ph:
             continue
-        if ph in published_events:
-            event_ids[ph] = published_events[ph]['event_id']
-        elif ph in donation_events:
-            event_ids[ph] = donation_events[ph]['event_id']
+        rec = published_events.get(ph) or donation_events.get(ph)
+        if rec and rec.get('donor_note_id'):
+            event_ids[ph] = (rec['donor_note_id'], rec.get('donor_pubkey') or None)
+            print(f"  donor note for {ph[:12]}... ({rec.get('donor_match', '?')})")
+        elif rec and rec.get('event_id'):
+            event_ids[ph] = (rec['event_id'], None)
         else:
             missing.append(b)
 
@@ -702,11 +710,12 @@ def run_topboosts(rows, nsec):
     for i in reversed(range(len(ranked))):
         b  = ranked[i]
         ph = b.get('payment_hash', '')
-        ev_id = event_ids_by_hash.get(ph)
+        ev_id, author_hex = event_ids_by_hash.get(ph) or (None, None)
         if not ev_id:
             print(f"[skip] Rank {i + 1} ({ph[:12]}...) has no event id — no reply")
             continue
-        nevent     = event_id_to_nevent(ev_id, author_hex=lb_author_hex)
+        # A donor note's nevent names the donor; ours names the show.
+        nevent     = event_id_to_nevent(ev_id, author_hex=author_hex or lb_author_hex)
         reply_text = f"nostr:{nevent}"
 
         if DRY_RUN:

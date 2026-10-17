@@ -464,12 +464,17 @@ def relay_note_for(info, settled_ts, relays, query_relay, show_pubkey=SHOW_PUBKE
     return None, None
 
 
-def verify_before_claim(info, now_ts, relays=None, query_relay=None):
+def verify_before_claim(info, now_ts, relays=None, query_relay=None, match_out=None):
     """Re-check, immediately before publishing, that nobody else covered this
     boost. Returns (True, why) to go ahead, or (False, why) to publish untagged.
 
     Only ever called on a "claim" verdict, so it runs a handful of times a day —
     cheap enough to be thorough where it counts.
+
+    `match_out`, when a dict, receives what vetoed the claim so the caller can
+    keep it as the boost's donor note: `{"record": <index record>, "how": tier}`
+    for an index hit, `{"event": <raw relay event>, "how": "relay"}` for a
+    relay veto. Untouched when the claim goes ahead.
     """
     settled_ts = _ts(info.get("settled_at"))
     if settled_ts is None:
@@ -481,11 +486,15 @@ def verify_before_claim(info, now_ts, relays=None, query_relay=None):
         return False, f"OnlyBoosts unreachable on re-check ({e}) — not claiming"
     match, how = find_match(fresh, info, settled_ts)
     if match:
+        if match_out is not None:
+            match_out.update(record=match, how=how)
         return False, f"indexed since the batch query (matched on {how}, {match['id'][:12]}...)"
 
     if relays and query_relay:
         ev, why = relay_note_for(info, settled_ts, relays, query_relay)
         if ev:
+            if match_out is not None:
+                match_out.update(event=ev, how="relay")
             return False, (f"a note for this boost is already on Nostr but NOT indexed — "
                            f"{why}. Not republishing; this is an indexer gap "
                            f"(coverage_audit reports it as INDEX GAP).")
@@ -498,13 +507,18 @@ def verify_before_claim(info, now_ts, relays=None, query_relay=None):
 SHARE_PUBLISHED = "published"
 
 
-def decide(info, records, now_ts, consumed=None):
+def decide(info, records, now_ts, consumed=None, match_out=None):
     """Should our standalone note claim this boost?
 
     Returns (decision, reason) where decision is one of:
       "skip"  — somebody else's note covers it; publish our note untagged.
       "claim" — nobody did; publish our note WITH boost-evidence tags.
       "hold"  — too early to tell; publish nothing this tick and try again.
+
+    `match_out`, when a dict, receives `{"record": <index record>, "how": tier}`
+    on an index-matched skip — the donor's own note, which the boost wall
+    shows in place of ours since 2026-10-17. The return shape is unchanged so
+    the audit and the tests keep reading it as before.
 
     `records` is the fetch_indexed() result, or None when the API was
     unreachable — in which case a boost is held until HOLD_WINDOW_SEC and then
@@ -535,6 +549,8 @@ def decide(info, records, now_ts, consumed=None):
     if match:
         if consumed is not None:
             consumed.add(match["id"])
+        if match_out is not None:
+            match_out.update(record=match, how=how)
         who = ((match.get("client_app") or {}).get("id")
                or match.get("client") or "unknown client")
         return "skip", f"already indexed via {who} (matched on {how}, {match['id'][:12]}...)"

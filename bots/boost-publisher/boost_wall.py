@@ -8,20 +8,36 @@ same corpus, pre-assembled: every kind-1 event in the thread as its raw signed
 event, so the site's existing renderNoteCard/verifyEvent path is unchanged and
 nothing has to be trusted just because it came from us.
 
-Shape: a JSON array, newest first, of
+Shape: a JSON array, newest first (by settled_at where known, else the
+event's created_at), of
 
     {
       "event": { ...raw signed kind-1, byte-for-byte as published... },
       "payment_hash": "...", "sats": 2100, "sender_npub": "npub1...",
       "sender_name": "...", "episode_id": "...", "episode_num": "019",
       "episode_title": "...", "app": "Fountain", "source": "fountain_boost",
-      "settled_at": "...", "show_level": false, "standalone_id": "..."
+      "settled_at": "...", "show_level": false, "standalone_id": "...",
+      "message": "...",
+      "donor_note_id": "...", "donor_match": "npub+message",
+      "donor_event": { ...the DONOR's own raw signed kind-1... }
     }
 
 Only `event` is guaranteed. The payment-side fields exist for the boosts this
 bot published and could join to a payment; they are ABSENT (not null) on the
 thread root, on notes Reed published by hand, and on replies from other people
 — all of which the website renders today and so all of which belong here.
+
+The donor fields (2026-10-17, Reed: "use each individual's kind-1 notes in
+the feed if they exist, and the LB kind-1 note if there isn't one") carry the
+booster's OWN note for the same boost — the OnlyBoosts model. The site shows
+`donor_event` when present and `event` otherwise; `"donor_event" in rec` is
+the presence test. `donor_note_id` can be present WITHOUT `donor_event` (the
+id is known, the raw event could not be fetched yet; the reconcile pass
+fills it in), and `donor_event.pubkey` always equals `sender_npub` when both
+are present — `set_donor_note` refuses the pair otherwise. `message` is the
+ledger's copy of the donor's text (verbatim, Fountain trailer stripped)
+for a card whose donor note carries the text inside a Fountain-generated
+preamble. See shared/donor_notes.py for how a donor note is found.
 
 `episode_num` is a zero-padded STRING ("019", "001") — that's the shape
 `_extract_episode_number` produces and the shape data/sats.csv already carries.
@@ -36,11 +52,13 @@ what keeps manual corrections and third-party replies on the wall.
 
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
 
 _BOTS_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_BOTS_ROOT / "shared"))
 from collector_common import push_file_to_vps  # noqa: E402
+from donor_notes import set_donor_note, SHOW_PUBKEY_HEX  # noqa: E402,F401
 
 REPO_ROOT    = _BOTS_ROOT.parent
 DATA_DIR     = REPO_ROOT / "data"
@@ -84,8 +102,11 @@ EXCLUDED_EVENT_IDS = {
 _META_FIELDS = (
     "payment_hash", "sats", "sender_npub", "sender_name",
     "episode_id", "episode_num", "episode_title", "show_level",
-    "app", "source", "settled_at", "standalone_id",
+    "app", "source", "settled_at", "standalone_id", "message",
 )
+
+# The donor's own note, in the order they're written. Same absence rule.
+DONOR_FIELDS = ("donor_note_id", "donor_match", "donor_event")
 
 
 def load_wall(path=None):
@@ -106,9 +127,11 @@ def load_wall(path=None):
     return out
 
 
-def build_record(event, info=None, standalone_id=None):
+def build_record(event, info=None, standalone_id=None, donor=None):
     """One wall record. `info` is a BoostInfo (or a data/sats.csv row — the field
-    names overlap by design); omit it for events with no payment behind them."""
+    names overlap by design); omit it for events with no payment behind them.
+    `donor` is a donor_notes.DonorNote-shaped dict (donor_event / donor_note_id /
+    donor_match), applied through set_donor_note so its guards run."""
     rec = {"event": event}
     if info:
         meta = {
@@ -125,6 +148,7 @@ def build_record(event, info=None, standalone_id=None):
             "app":           info.get("app_name") or info.get("app"),
             "source":        info.get("source"),
             "settled_at":    info.get("settled_at"),
+            "message":       info.get("message"),
         }
         meta["standalone_id"] = standalone_id
         for k in _META_FIELDS:
@@ -137,8 +161,20 @@ def build_record(event, info=None, standalone_id=None):
                 elif isinstance(v, str) and v:
                     rec[k] = v.lower() == "true"
             elif v not in (None, "", []):
-                rec[k] = int(v) if k == "sats" else v
+                rec[k] = int(float(v)) if k == "sats" else v
+    if donor:
+        set_donor_note(rec, **{k: donor.get(k) for k in DONOR_FIELDS})
     return rec
+
+
+def _settled_ts(rec):
+    s = rec.get("settled_at")
+    if not s:
+        return None
+    try:
+        return int(datetime.fromisoformat(str(s).replace("Z", "+00:00")).timestamp())
+    except Exception:
+        return None
 
 
 def upsert(wall, rec):
@@ -153,7 +189,7 @@ def upsert(wall, rec):
     if existing:
         merged = dict(existing)
         merged["event"] = ev
-        for k in _META_FIELDS:
+        for k in _META_FIELDS + DONOR_FIELDS:
             if k in rec:
                 merged[k] = rec[k]
         wall[eid] = merged
@@ -161,16 +197,28 @@ def upsert(wall, rec):
         wall[eid] = rec
 
 
+def sort_key(rec):
+    """Newest first by the PAYMENT's settled_at, falling back to the show
+    note's created_at for the records with no payment behind them. Not the
+    donor note's created_at: measured over 441 matches on 2026-10-17 it runs
+    from 13 min before settlement to 15 min after (median +2 s), so ordering
+    on it would shuffle neighbours. Id tiebreak keeps the output byte-stable."""
+    ev = rec.get("event") or {}
+    ts = _settled_ts(rec)
+    if ts is None:
+        ts = ev.get("created_at") or 0
+    return (-ts, ev.get("id") or "")
+
+
 def save_wall(wall, path=None):
-    """Write newest-first. Sorted by created_at desc with the id as tiebreak so
-    the output is byte-stable across runs (an unstable sort would make every
-    push a full-file diff for no reason)."""
+    """Write newest-first (see sort_key) so the output is byte-stable across
+    runs (an unstable sort would make every push a full-file diff for no
+    reason)."""
     p = Path(path or WALL_PATH)
     p.parent.mkdir(parents=True, exist_ok=True)
     records = sorted(
         (r for eid, r in wall.items() if eid not in EXCLUDED_EVENT_IDS),
-        key=lambda r: (-(r.get("event", {}).get("created_at") or 0),
-                       r.get("event", {}).get("id") or ""),
+        key=sort_key,
     )
     p.write_text(json.dumps(records, separators=(",", ":"), ensure_ascii=False))
     return len(records), p.stat().st_size

@@ -302,6 +302,42 @@ calls, each of which fails silently if loosened:
 - Boosts page only; the episode and stats pages render the same cards
   without it.
 
+## Donor notes on the boost wall (donor-notes-wall, 2026-10-17)
+
+The wall shows the booster's OWN kind-1 note when one exists and the show's
+note otherwise (Reed: "the onlyboosts model"). `data/boost_wall.json` records
+carry `donor_event` (the donor's raw signed kind-1), `donor_note_id`,
+`donor_match` and `message` beside the unchanged `event`; the site tests
+`"donor_event" in rec`, and `event` is always present. The rules live in
+`bots/shared/donor_notes.py` and `bots/shared/test_donor_notes.py` pins them.
+Things that fail silently if missed:
+
+- **Four rules decide whether a note is the donor's.** The signer must be a
+  person (the show key and every OnlyBoosts publisher account are out, and a
+  `P` tag is never read); when the ledger knows the npub the note's pubkey
+  must be it; a sats-only match suppresses our claim but never attributes;
+  an npub-only match with a second note from that npub in the ±15 min
+  window goes to review. `set_donor_note` refuses a mismatched pair, so a
+  wrong `donor_event` cannot reach the file through any writer.
+- **Three writers, one join.** The publisher captures the note live (the
+  receipt's share note when donor-signed, `decide()`'s index match via
+  `match_out`, or the claim veto note); `build_boost_wall.py` runs a 7-day
+  reconcile for the late cases (`--donor-days`); `backfill_donor_notes.py`
+  walks the whole wall once (dry run by default, `--apply` to write). All
+  three record `donor_note_id` / `donor_match` / `donor_pubkey` in
+  `published_events.json`, which is what the wall is rebuilt from; a
+  `donor_note_id` without `donor_event` means "known, not fetched yet".
+- **The wall sorts by `settled_at`**, falling back to the show note's
+  `created_at` only for the bare records. Never by the donor note's
+  `created_at`: it lands anywhere from 13 min before settlement to 15 min
+  after.
+- **The weekly topboosts note embeds the donor's note** when the record has
+  one (`tb_resolve_event_ids`, nevent authored by `donor_pubkey`), our
+  standalone otherwise. Reed's call, 2026-10-17.
+- **Website donor notes carry the message; Fountain's carry a trailer.**
+  `message` on the meta is the ledger's clean copy for the site to use under
+  a Fountain note; the signed `donor_event.content` is never rewritten.
+
 ## Backfilled rows in the sats ledger
 
 Some `data/sats.csv` rows record boosts that were **sent but never arrived** —
