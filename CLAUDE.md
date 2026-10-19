@@ -300,10 +300,14 @@ note embeds it. Things that fail silently if missed:
   the payment, and the show note's `created_at` is the bot's publish time.
 - **The meta strip** (`.note-meta`, sats · via app · Ep. N) prints on every
   card with a record, including show cards whose text already says it.
-- **A donor note is verified twice**: signature (same chunked pass as the
-  show note) and signer == the record's `sender_npub` (`donorEventProblem`).
-  Either failure drops the donor note and renders the show note; the record
-  is never dropped. A record with `donor_note_id` but no `donor_event` is
+- **A donor note is verified three times**: signature (same chunked pass as
+  the show note), signer == the record's `sender_npub`, and, on a Fountain
+  record, comment == the record's `message` (`donorEventProblem`;
+  `normalizeComment` folds the ledger's literal `\n` pairs, Fountain's
+  trailer in either form and the no-comment sentinel). The third catches the
+  bots' npub-only tier pairing one booster's note with their other boost
+  minutes apart (Reed found one on 2026-10-19). Any failure drops the donor
+  note and renders the show note; the record is never dropped. A record with `donor_note_id` but no `donor_event` is
   "known, not fetched" and renders the show note too.
 - **Fountain's trailer is stripped at render only** (`stripFountainTrailer`,
   a mirror of the bot's, no-op unless the trailing nevent is a kind-9735 zap

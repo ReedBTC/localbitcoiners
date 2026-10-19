@@ -21,7 +21,7 @@ import assert from 'node:assert/strict'
 import {
   parseWallRecord, displayEventOf, isDonorCard, boostSatsOf, boostTimeOf,
   episodeNumMatches, metaStripParts, stripFountainTrailer, neventKind,
-  displayContentOf, donorEventProblem,
+  displayContentOf, donorEventProblem, normalizeComment, fountainCommentMatches,
 } from '../assets/js/boost-record.js'
 
 let passed = 0
@@ -163,6 +163,34 @@ ok('an anonymous record (no sender) accepts any well-formed signer', () => {
 ok('a malformed pubkey is refused; no donor note is no problem', () => {
   assert.equal(donorEventProblem(parseWallRecord(record({ donor_event: donorEvent({ pubkey: 'nope' }) })), null), 'bad-pubkey')
   assert.equal(donorEventProblem(parseWallRecord(record()), SENDER_HEX), null)
+})
+
+console.log('Fountain comment check')
+ok('normalizeComment: sentinel empty, trailer and bare URL gone, whitespace folded', () => {
+  assert.equal(normalizeComment('*no comment with boost*'), '')
+  assert.equal(normalizeComment(donorEvent().content), 'Toxic Maximalism has its place.')
+  assert.equal(normalizeComment('Gang gang\n\nhttps://fountain.fm/episode/tnzA'), 'Gang gang')
+  assert.equal(normalizeComment('Pure signal\n#40HPW'), 'Pure signal #40HPW')
+  assert.equal(normalizeComment('Pure signal\\n\\n#40HPW'), 'Pure signal #40HPW')
+  assert.equal(normalizeComment(null), '')
+})
+ok('a Fountain note whose comment is the ledger message passes, whatever the whitespace', () => {
+  const m = parseWallRecord(record({ donor_event: donorEvent(), message: 'Toxic Maximalism has its place.\n\nhttps://fountain.fm/episode/VR6Q' }))
+  assert.equal(fountainCommentMatches(m), true); assert.equal(donorEventProblem(m, SENDER_HEX), null)
+})
+ok('an empty Fountain note on a record with a comment is refused (the Lakesurfer pair)', () => {
+  const empty = donorEvent({ content: 'https://fountain.fm/episode/VR6Q4kwdypJ8yF51X66y\n\nnostr:' + ZAP_NEVENT })
+  const m = parseWallRecord(record({ donor_event: empty, message: 'Ausome entropy to my bitcoin content.  Thanks guys' }))
+  assert.equal(donorEventProblem(m, SENDER_HEX), 'comment-mismatch')
+  const noComment = parseWallRecord(record({ donor_event: empty, message: '*no comment with boost*' }))
+  assert.equal(donorEventProblem(noComment, SENDER_HEX), null)
+})
+ok('a Fountain note with a different comment is refused; other apps and messageless records are not checked', () => {
+  const other = donorEvent({ content: 'Voicemails sound fun.' })
+  assert.equal(donorEventProblem(parseWallRecord(record({ donor_event: other, message: 'Bullish' })), SENDER_HEX), 'comment-mismatch')
+  assert.equal(donorEventProblem(parseWallRecord(record({ donor_event: other, message: 'Bullish', app: 'localbitcoiners.com' })), SENDER_HEX), null)
+  const rec = record({ donor_event: other }); delete rec.message
+  assert.equal(donorEventProblem(parseWallRecord(rec), SENDER_HEX), null)
 })
 
 console.log('metaStripParts')

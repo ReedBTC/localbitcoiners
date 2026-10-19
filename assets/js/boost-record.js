@@ -206,5 +206,35 @@ export function donorEventProblem(meta, senderPubkeyHex) {
   if (ev.kind !== 1) return 'not-kind-1'
   if (typeof ev.pubkey !== 'string' || !/^[0-9a-f]{64}$/i.test(ev.pubkey)) return 'bad-pubkey'
   if (senderPubkeyHex && ev.pubkey.toLowerCase() !== senderPubkeyHex.toLowerCase()) return 'pubkey-mismatch'
+  if (!fountainCommentMatches(meta)) return 'comment-mismatch'
   return null
+}
+
+// The ledger's "no comment" sentinel (bots/shared/boost_formatter.py).
+const NO_COMMENT = '*no comment with boost*'
+
+// A comment as it reads after Fountain and the ledger have each had their
+// way with it: trailing fountain.fm episode URL (with or without the nevent
+// Fountain appends) gone, the no-comment sentinel empty, whitespace folded.
+export function normalizeComment(text) {
+  let t = typeof text === 'string' ? text : ''
+  if (t.trim() === NO_COMMENT) return ''
+  // The ledger keeps a comment's line breaks as a literal backslash-n pair.
+  t = t.replace(/\\n/g, ' ')
+  // Fountain's trailer, in either form: the episode URL alone, or the URL
+  // followed by the nevent (a zap receipt on a note; older ledger rows kept
+  // it too). Kind is not checked here: this is a comparison, not a render.
+  t = t.replace(/\s*https?:\/\/fountain\.fm\/episode\/\S+(?:\s+(?:nostr:)?nevent1[02-9ac-hj-np-z]+)?\s*$/i, '')
+  return t.replace(/\s+/g, ' ').trim()
+}
+
+// A Fountain note is the booster's comment verbatim, so a note whose comment
+// is not the record's message belongs to another boost (two boosts by one
+// npub minutes apart look alike to the bots' npub-only match). Only Fountain
+// records are checked: the site's own notes wrap the message in a sentence,
+// and a record without a message cannot be checked at all.
+export function fountainCommentMatches(meta) {
+  if (!meta?.donorEvent || meta.app !== 'Fountain') return true
+  if (typeof meta.message !== 'string') return true
+  return normalizeComment(meta.donorEvent.content) === normalizeComment(meta.message)
 }
