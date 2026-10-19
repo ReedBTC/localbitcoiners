@@ -83,6 +83,43 @@ check("npub-only with a single candidate attributes and is consumed", m and "x" 
 m, how, why = dn.index_match([rec("x", ALICE, ALICE_NPUB, sats=1000)], info(ALICE_NPUB), T0, consumed)
 check("a consumed note cannot be matched twice", m is None)
 
+print("rule 5: a Fountain note says what the boost said")
+TRAILER = ("https://fountain.fm/episode/My7odT0MuyDuyh3Y3fw8\\n\\nnostr:nevent1qvzqqqpxqupzpwrxeemtukuzv62esqjgxg4c"
+           "maxrs9sgl7j6tdrufuaturv0wea9qqs0d5l4rgmnfczamq7k0wtxu3vgkx7uqav7f9w0pqpl232ks5h076spvtc3v")
+check("ledger text: literal \\n folded, Fountain trailer dropped, casefolded",
+      dn.donor_text("Gang  gang\\n\\n" + TRAILER) == "gang gang")
+check("ledger placeholder is empty", dn.donor_text("*no comment with boost*") == "" and dn.donor_text(None) == "")
+check("note text: real newlines + trailer", dn.donor_text("Gang gang\n\n" + TRAILER.replace("\\n", "\n")) == "gang gang")
+check("both empty agree", dn.comment_agrees("*no comment with boost*", TRAILER.replace("\\n", "\n")))
+check("a comment against an empty note disagrees (Lakesurfer 500)", not dn.comment_agrees("Ausome entropy", ""))
+check("a different comment disagrees (Bullish / Voicemails)", not dn.comment_agrees("Bullish", "Voicemails sound fun"))
+check("a wrapped comment agrees (BoostMeBitch note)", dn.comment_agrees("Test boost", "⚡ Boost ⚡\n\nTest boost\n\nBoosted 121 sats"))
+check("an empty comment against a note with text disagrees", not dn.comment_agrees("", "hello there"))
+# Lakesurfer: 500 sats with a comment at T0, 2000 sats without at T0+121; the
+# donor's only note (empty) is the 2000's. The 500 must not take it first.
+lake = [rec("e", ALICE, ALICE_NPUB, ts=T0 + 125, sats=2000, msg="")]
+consumed = set()
+m, how, why = dn.index_match(lake, info(ALICE_NPUB, sats=500, msg="Ausome entropy to my bitcoin content"), T0, consumed)
+check("rule 5: the empty note is refused for the boost with a comment", m is None and "carries the comment" in why and not consumed)
+m, how, why = dn.index_match(lake, info(ALICE_NPUB, sats=2000, msg="*no comment with boost*"), T0 + 121, consumed)
+check("…and attaches to the boost without one, as npub", m and m["id"] == "e" and how == "npub")
+# Ep 018: same sats, different text, four minutes apart.
+voice = [rec("v", ALICE, ALICE_NPUB, ts=T0 + 277, sats=111, msg="Voicemails sound fun. Maybe someone can cook something up")]
+m, how, why = dn.index_match(voice, info(ALICE_NPUB, sats=111, msg="Bullish"), T0, set())
+check("rule 5: a same-size note with a different comment is refused", m is None)
+m, how, how_ = dn.index_match(voice, info(ALICE_NPUB, sats=111, msg="Voicemails sound fun. Maybe someone can cook something up"), T0 + 274, set())
+check("…and the note goes to the boost that said it", m and m["id"] == "v" and how == "npub+message")
+# Two passing notes are still a burst (rule 4), not a coin flip.
+two = [rec("p", ALICE, ALICE_NPUB, ts=T0 + 10, msg=""), rec("q", ALICE, ALICE_NPUB, ts=T0 + 400, msg="")]
+m, how, why = dn.index_match(two, info(ALICE_NPUB, msg=None), T0, set())
+check("two empty notes for an empty boost → ambiguous (burst)", m is None and why.startswith("ambiguous"))
+# A website boost is exempt: its share note never carries the message.
+m, how, why = dn.index_match([rec("w", ALICE, ALICE_NPUB, msg="Just boosted 1000 sats for Ep. 3")],
+                             {**info(ALICE_NPUB, msg="great show"), "source": "website"}, T0, set())
+check("website boosts are not held to rule 5", m and m["id"] == "w")
+check("donor_from_index_record refuses a Fountain record whose msg disagrees, offline",
+      dn.donor_from_index_record(rec("z", ALICE, ALICE_NPUB, msg="other"), info(ALICE_NPUB, msg="Bullish"), "npub", relays=[]) is None)
+
 print("verified_donor_event")
 fake = {"id": "e" * 64, "pubkey": ALICE, "kind": 1, "created_at": T0, "tags": [], "content": "x", "sig": "0" * 128}
 ev, why = dn.verified_donor_event(fake, info(ALICE_NPUB))
