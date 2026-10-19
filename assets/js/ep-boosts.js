@@ -13,7 +13,9 @@
 import {
   fetchBoostThread,
   renderNoteCard,
+  getBoostMeta,
 } from '/assets/js/boosts-thread.js'
+import { episodeNumMatches, boostTimeOf } from '/assets/js/boost-record.js'
 import { configureBoostActions } from '/assets/js/boost-actions.js'
 
 (async function init() {
@@ -75,21 +77,15 @@ import { configureBoostActions } from '/assets/js/boost-actions.js'
 })
 
 function repaint(rootEvent, childrenOf, epNum, statusEl, listEl) {
-  // Boost-bot notes carry the episode info in the 🎙️ line, copied
-  // verbatim from the Fountain title. Most episodes read `… | Ep. NNN`
-  // — matched word-bounded with optional leading zeros so "Ep. 11" and
-  // "Ep. 011" both resolve here. Episode 1 is the lone exception: its
-  // Fountain title is `Local Bitcoiners • 001. …` with no "Ep." marker,
-  // so the second alternative (anchored to the show-name prefix to
-  // avoid matching stray bullet lists in message bodies) catches it.
-  // Anchors are direct-reply matches under the root; replies to those
-  // boosts are intentionally not rendered.
-  const epPattern = new RegExp(
-    `\\bEp\\.?\\s*0*${epNum}\\b|Local Bitcoiners\\s*•\\s*0*${epNum}\\.`,
-    'i'
-  )
+  // The episode comes from the wall record's episode_num (a zero-padded
+  // string; episodeNumMatches normalises it). The card may show the
+  // booster's own note, which names no episode, so the 🎙️-line regex that
+  // used to do this is now only the fallback for events without a record
+  // (relay fallback, hand-published corrections). Anchors are direct
+  // replies under the root; replies to those boosts are intentionally
+  // not rendered.
   const directReplies = childrenOf.get(rootEvent.id) || []
-  const anchors = directReplies.filter((ev) => epPattern.test(ev.content || ''))
+  const anchors = directReplies.filter((ev) => episodeNumMatches(ev, getBoostMeta(ev.id), epNum))
 
   listEl.innerHTML = ''
 
@@ -108,9 +104,9 @@ function repaint(rootEvent, childrenOf, epNum, statusEl, listEl) {
 
   if (statusEl && statusEl.isConnected) statusEl.remove()
 
-  // buildThread already orders descendants newest-first; sort anchors
-  // here too since they come straight from the children map.
-  anchors.sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
+  // Newest boost first by settled time (the show note's publish time for
+  // events without a record), never by the shown note's created_at.
+  anchors.sort((a, b) => boostTimeOf(b, getBoostMeta(b.id)) - boostTimeOf(a, getBoostMeta(a.id)))
 
   const ul = document.createElement('ul')
   ul.className = 'note-list ep-boosts-anchors'

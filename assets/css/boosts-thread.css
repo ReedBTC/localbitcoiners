@@ -55,6 +55,24 @@
   flex-shrink: 0;
 }
 
+/* The meta strip: sats · app · episode off the payment record, on every
+   card that has one (boosts-thread.js renderNoteCard). A booster's own note
+   says none of that itself. */
+.note-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  margin: -0.15rem 0 0.55rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--navy);
+}
+.note-meta .note-meta-sep { color: var(--muted); font-weight: 400; }
+/* A Fountain boost sent without a comment is only the trailer, which the
+   renderer strips; the strip above already says everything the card has. */
+.note-card .note-body:empty { display: none; }
+
 .note-body {
   white-space: pre-wrap;
   word-break: break-word;

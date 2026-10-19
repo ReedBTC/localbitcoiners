@@ -348,10 +348,16 @@ function buildReplyTags(parent) {
   const tags = []
   // Root e-tag (NIP-10 marked). If parent IS the root, only emit the
   // root marker — emitting both root + reply on the same id confuses
-  // clients.
-  if (rootId) tags.push(['e', rootId, '', 'root'])
-  if (parent.id !== rootId) {
-    tags.push(['e', parent.id, '', 'reply'])
+  // clients. A booster's own note (the donor card since lb-v86) is not in
+  // the mega-thread at all: it is a top-level note on their feed, so the
+  // reply's root is that note, not the show's thread root.
+  const inThread = parent.id === rootId
+    || (parent.tags || []).some((t) => t[0] === 'e' && t[1] === rootId)
+  if (!inThread) {
+    tags.push(['e', parent.id, '', 'root'])
+  } else {
+    if (rootId) tags.push(['e', rootId, '', 'root'])
+    if (parent.id !== rootId) tags.push(['e', parent.id, '', 'reply'])
   }
   // p tags: every p tag from the parent + the parent's own pubkey,
   // deduplicated.

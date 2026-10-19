@@ -273,6 +273,47 @@ Sort + 1W/1M/All head. Things that fail silently if missed:
   The `.pcast-range` / `.pcast-sort` CSS is copied per page (feeds, stats,
   boosts, supporters) with `--accent` / `--accent-d` / `--tint` set locally.
 
+## The boost wall shows the booster's own note (lb-v86, 2026-10-17)
+
+The OnlyBoosts model, Reed's call: one card per boost, the booster's OWN
+kind-1 (Fountain, the site's episode flow, BullishBoosts, …) when the wall
+record carries it, the show bot's note otherwise. Same cards on `boosts.html`,
+every `/ep###` and the stats page's Biggest Boosts. The bots side stores the
+donor note on the wall record (`donor_event`, `donor_note_id`, `donor_match`,
+`message`; the bot's `boost_wall.py` is the schema) and the weekly topboosts
+note embeds it. Things that fail silently if missed:
+
+- **The show note is still the key.** Thread position, `EXCLUDED_NOTE_IDS`,
+  the card cache, `getBoostMeta`, the New Member payment-hash join and the
+  `childrenOf` map all key on the record's `event`. `renderNoteCard(ev)`
+  takes the thread event and swaps `displayEventFor(ev)` in for the author,
+  time, body, Nostr link and action bar. Never put the donor event into the
+  thread; it is not a reply to the root and `buildThread` would drop it.
+- **Nothing reads the shown note's text or time.** A Fountain donor note is
+  the comment only: no sats, no app, no episode. Sats, settled time and
+  episode come from the record through `assets/js/boost-record.js`
+  (`boostSatsOf`, `boostTimeOf`, `episodeNumMatches`), a NEW module on
+  purpose so it is testable in Node (`scripts/test-boost-record.mjs`) and
+  so `boosts-thread.js` grows no new export. The 💰 and 🎙️ regexes are
+  fallbacks for events without a record only. Sort and range windows use
+  `settled_at`: donor notes land anywhere from 13 min before to 15 min after
+  the payment, and the show note's `created_at` is the bot's publish time.
+- **The meta strip** (`.note-meta`, sats · via app · Ep. N) prints on every
+  card with a record, including show cards whose text already says it.
+- **A donor note is verified twice**: signature (same chunked pass as the
+  show note) and signer == the record's `sender_npub` (`donorEventProblem`).
+  Either failure drops the donor note and renders the show note; the record
+  is never dropped. A record with `donor_note_id` but no `donor_event` is
+  "known, not fetched" and renders the show note too.
+- **Fountain's trailer is stripped at render only** (`stripFountainTrailer`,
+  a mirror of the bot's, no-op unless the trailing nevent is a kind-9735 zap
+  receipt). The signed event is never rewritten; `finishBoostThread` scans
+  the stripped text so the receipt is not fetched as a quoted note.
+- **Replies to a donor card are top-level replies to the booster's note**
+  (`buildReplyTags`: a parent that does not reference the thread root gets
+  `['e', parent.id, '', 'root']` and nothing else). Like, repost and zap act
+  on the shown note and its author's lud16.
+
 ## "New Member!" badge on the boost wall (lb-v84, 2026-10-08)
 
 `boosts.html` marks a supporter's first boost with a gold "🎉 New Member!"
