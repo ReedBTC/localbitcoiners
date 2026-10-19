@@ -286,8 +286,7 @@ def index_match(records, info, settled_ts, consumed=None):
         same = [r for r in recs
                 if (r.get("booster") or {}).get("npub") == npub
                 and r.get("id") not in (consumed or set())
-                and abs(int(r.get("ts") or 0) - settled_ts) <= cov.MATCH_WINDOW_SEC
-                and not cov._episode_conflict(r, info)]
+                and abs(int(r.get("ts") or 0) - settled_ts) <= cov.MATCH_WINDOW_SEC]
         if needs_comment_check(info):
             # Rule 5 picks among the donor's notes: the ones that say what the
             # boost said. find_match's pick may be one of their other boosts.
