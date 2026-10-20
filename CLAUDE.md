@@ -287,7 +287,9 @@ note embeds it. Things that fail silently if missed:
   the card cache, `getBoostMeta`, the New Member payment-hash join and the
   `childrenOf` map all key on the record's `event`. `renderNoteCard(ev)`
   takes the thread event and swaps `displayEventFor(ev)` in for the author,
-  time, body, Nostr link and action bar. Never put the donor event into the
+  body, Nostr link and action bar; the card's time is `boostTimeOf` (the
+  payment's `settled_at`), the clock the Latest sort and the range windows
+  use, so a list sorted by Latest reads monotonic. Never put the donor event into the
   thread; it is not a reply to the root and `buildThread` would drop it.
 - **Nothing reads the shown note's text or time.** A Fountain donor note is
   the comment only: no sats, no app, no episode. Sats, settled time and
@@ -299,9 +301,12 @@ note embeds it. Things that fail silently if missed:
   `settled_at`: donor notes land anywhere from 13 min before to 15 min after
   the payment, and the show note's `created_at` is the bot's publish time.
 - **The meta strip** (`.note-meta`, sats · via app · Ep. N) prints on every
-  card with a record, including show cards whose text already says it.
+  card whose record carries `sats`, including show cards whose text already
+  says it (the pre-ledger records have no sats and get no strip).
 - **A donor note is verified three times**: signature (same chunked pass as
-  the show note), signer == the record's `sender_npub`, and, on a Fountain
+  the show note), signer == the record's `sender_npub` (a named sender that
+  does not decode as an npub refuses the note; only a blank sender admits any
+  signer), and, on a Fountain
   record, comment == the record's `message` (`donorEventProblem`;
   `normalizeComment` folds the ledger's literal `\n` pairs, Fountain's
   trailer in either form and the no-comment sentinel). The third catches the
@@ -310,8 +315,9 @@ note embeds it. Things that fail silently if missed:
   note and renders the show note; the record is never dropped. A record with `donor_note_id` but no `donor_event` is
   "known, not fetched" and renders the show note too.
 - **Fountain's trailer is stripped at render only** (`stripFountainTrailer`,
-  a mirror of the bot's, no-op unless the trailing nevent is a kind-9735 zap
-  receipt). The signed event is never rewritten; `finishBoostThread` scans
+  the bot's rule, no-op unless the trailing nevent is a kind-9735 zap
+  receipt, with or without Fountain's episode URL before it since
+  BoostMeBitch appends the receipt alone). The signed event is never rewritten; `finishBoostThread` scans
   the stripped text so the receipt is not fetched as a quoted note.
 - **Replies to a donor card are top-level replies to the booster's note**
   (`buildReplyTags`: a parent that does not reference the thread root gets

@@ -135,6 +135,10 @@ ok('neventKind decodes the kind TLV', () => {
 ok('a zap-receipt trailer is stripped', () => {
   assert.equal(stripFountainTrailer(donorEvent().content), 'Toxic Maximalism has its place.')
 })
+ok('a bare trailing zap receipt (BoostMeBitch) is stripped; a bare quoted kind-1 is kept', () => {
+  assert.equal(stripFountainTrailer('Great rip.\n\nnostr:' + ZAP_NEVENT), 'Great rip.')
+  assert.equal(stripFountainTrailer('Great rip.\n\nnostr:' + NOTE_NEVENT), 'Great rip.\n\nnostr:' + NOTE_NEVENT)
+})
 ok('a quoted kind-1 at the end is kept', () => {
   const text = 'look at this\n\nhttps://fountain.fm/episode/VR6Q\n\nnostr:' + NOTE_NEVENT
   assert.equal(stripFountainTrailer(text), text)
@@ -158,7 +162,11 @@ ok('a donor note signed by someone else is refused', () => {
   assert.equal(donorEventProblem(m, SENDER_HEX), 'pubkey-mismatch')
 })
 ok('an anonymous record (no sender) accepts any well-formed signer', () => {
-  assert.equal(donorEventProblem(parseWallRecord(record({ donor_event: donorEvent() })), null), null)
+  assert.equal(donorEventProblem(parseWallRecord(record({ donor_event: donorEvent(), sender_npub: '' })), null), null)
+})
+ok('a record that names a sender the caller could not decode is refused', () => {
+  const m = parseWallRecord(record({ donor_event: donorEvent(), sender_npub: SENDER_HEX }))
+  assert.equal(donorEventProblem(m, null), 'bad-sender')
 })
 ok('a malformed pubkey is refused; no donor note is no problem', () => {
   assert.equal(donorEventProblem(parseWallRecord(record({ donor_event: donorEvent({ pubkey: 'nope' }) })), null), 'bad-pubkey')

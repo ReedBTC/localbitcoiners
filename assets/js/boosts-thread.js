@@ -24,6 +24,7 @@ import {
   isDonorCard,
   metaStripParts,
   donorEventProblem,
+  boostTimeOf,
 } from '/assets/js/boost-record.js'
 import {
   KIND_DATE_EVENT,
@@ -864,10 +865,15 @@ export function renderNoteCard(ev, { isRoot = false } = {}) {
   }
   authorRow.appendChild(nameWrap)
 
+  // The card's clock is the payment's settled time, the one the Latest sort
+  // and the range windows use; a booster's note is stamped anywhere from
+  // minutes before to minutes after the payment, and the show note at the
+  // bot's publish time. Without a record this is the shown note's created_at.
+  const when = boostTimeOf(ev, meta)
   const time = document.createElement('time')
-  time.dateTime = new Date(shown.created_at * 1000).toISOString()
-  time.textContent = relTime(shown.created_at)
-  time.title = new Date(shown.created_at * 1000).toLocaleString()
+  time.dateTime = new Date(when * 1000).toISOString()
+  time.textContent = relTime(when)
+  time.title = new Date(when * 1000).toLocaleString()
   authorRow.appendChild(time)
 
   card.appendChild(authorRow)

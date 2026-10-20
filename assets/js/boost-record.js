@@ -131,13 +131,20 @@ export function metaStripParts(meta) {
 // ── Fountain's trailer ──────────────────────────────────────────────
 // Fountain appends `\n\nhttps://fountain.fm/episode/<id>\n\nnostr:nevent1…`
 // to every boost comment it publishes, the nevent being the kind-9735 zap
-// receipt. Rendered verbatim that is a dead episode link plus a "quoted note
-// not available" embed under every Fountain card. Mirrors
-// strip_fountain_trailer in bots/shared/boost_formatter.py: a no-op unless
-// the trailing nevent decodes to kind 9735, so a donor who quoted a note on
-// purpose keeps it. Render-time only; the signed event is never rewritten.
-const FOUNTAIN_TRAILER_RE =
-  /\s*https?:\/\/fountain\.fm\/episode\/\S+\s+(?:nostr:)?(nevent1[02-9ac-hj-np-z]+)\s*$/i
+// receipt; BoostMeBitch appends the receipt alone. Rendered verbatim that is
+// a dead episode link plus a "quoted note not available" embed under the
+// card. Same rule as strip_fountain_trailer in bots/shared/boost_formatter.py
+// (which only knows Fountain's form): a no-op unless the trailing nevent
+// decodes to kind 9735, so a donor who quoted a note on purpose keeps it.
+// Render-time only; the signed event is never rewritten. The two regexes
+// below share their pieces so the strip and the comment comparison cannot
+// drift apart.
+const FOUNTAIN_URL_SRC = 'https?:\\/\\/fountain\\.fm\\/episode\\/\\S+'
+const NEVENT_SRC = '(?:nostr:)?(nevent1[02-9ac-hj-np-z]+)'
+const FOUNTAIN_TRAILER_RE = new RegExp('\\s*(?:' + FOUNTAIN_URL_SRC + '\\s+)?' + NEVENT_SRC + '\\s*$', 'i')
+// For comparing a comment with the ledger message: the URL, the nevent, or
+// both, in any form the ledger or Fountain has written them. Kind unchecked.
+const COMMENT_TRAILER_RE = new RegExp('(?:\\s*' + FOUNTAIN_URL_SRC + ')?(?:\\s*' + NEVENT_SRC + ')?\\s*$', 'i')
 
 const BECH32_CHARSET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l'
 
@@ -205,6 +212,9 @@ export function donorEventProblem(meta, senderPubkeyHex) {
   if (!ev) return null
   if (ev.kind !== 1) return 'not-kind-1'
   if (typeof ev.pubkey !== 'string' || !/^[0-9a-f]{64}$/i.test(ev.pubkey)) return 'bad-pubkey'
+  // A record that names a sender the caller could not decode is not an
+  // anonymous record: with no pubkey to hold the signer to, refuse the note.
+  if (meta.senderNpub && !senderPubkeyHex) return 'bad-sender'
   if (senderPubkeyHex && ev.pubkey.toLowerCase() !== senderPubkeyHex.toLowerCase()) return 'pubkey-mismatch'
   if (!fountainCommentMatches(meta)) return 'comment-mismatch'
   return null
@@ -221,10 +231,9 @@ export function normalizeComment(text) {
   if (t.trim() === NO_COMMENT) return ''
   // The ledger keeps a comment's line breaks as a literal backslash-n pair.
   t = t.replace(/\\n/g, ' ')
-  // Fountain's trailer, in either form: the episode URL alone, or the URL
-  // followed by the nevent (a zap receipt on a note; older ledger rows kept
-  // it too). Kind is not checked here: this is a comparison, not a render.
-  t = t.replace(/\s*https?:\/\/fountain\.fm\/episode\/\S+(?:\s+(?:nostr:)?nevent1[02-9ac-hj-np-z]+)?\s*$/i, '')
+  // Fountain's trailer in either form: the episode URL alone, or the URL
+  // followed by the nevent (older ledger rows kept it too), or a bare nevent.
+  t = t.replace(COMMENT_TRAILER_RE, '')
   return t.replace(/\s+/g, ' ').trim()
 }
 
