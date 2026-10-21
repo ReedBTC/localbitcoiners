@@ -226,7 +226,7 @@
 // payment hash, npubs only, hosts and past guests never) so
 // the hosts can welcome newcomers as they read boosts off. boosts.html is
 // precached, and the old page has no import for the new module.
-const VERSION = 'lb-v85';
+const VERSION = 'lb-v86';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
@@ -261,6 +261,7 @@ const PRECACHE_URLS = [
   '/assets/js/ep-sats.js',
   '/assets/js/ep-boosts.js',
   '/assets/js/boosts-thread.js',
+  '/assets/js/boost-record.js',
   '/assets/js/profile-cache.js',
   '/assets/js/calendar-events.js',
   '/assets/js/onlyboosts.js',
