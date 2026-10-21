@@ -114,3 +114,6 @@ pi-creds.env
 # Functions (/api/*) plus saved snapshot JSON and headless-Chrome CDP drivers.
 # Machine-local and regenerable — snapshots are re-pulled from prod on demand.
 scratchpad/
+
+# backfill_donor_notes.py dry-run output (regenerable; the sats-log autopush adds data/ wholesale)
+data/*.donor.json
