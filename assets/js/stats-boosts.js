@@ -16,8 +16,10 @@ import {
   setCachedProfile,
   registerEvent,
   fetchProfilesFromPrimal,
+  getBoostMeta,
   STATIC_RELAYS,
 } from '/assets/js/boosts-thread.js'
+import { boostSatsOf, boostTimeOf } from '/assets/js/boost-record.js'
 import { configureBoostActions } from '/assets/js/boost-actions.js'
 
 // How many notes each range shows: five either way. No sat floor, so a
@@ -74,8 +76,8 @@ function updateSub() {
   const sub = document.querySelector('[data-boosts-sub]')
   if (!sub) return
   sub.textContent = range === '1m'
-    ? 'The ' + TOP_MONTH + ' biggest Nostr Boost Bot Notes of the last ' + MONTH_WINDOW_DAYS + ' days'
-    : 'The ' + TOP_ALL + ' biggest Nostr Boost Bot Notes of all time'
+    ? 'The ' + TOP_MONTH + ' biggest boosts of the last ' + MONTH_WINDOW_DAYS + ' days'
+    : 'The ' + TOP_ALL + ' biggest boosts of all time'
 }
 
 // Bot boost notes that were published un-threaded — no `e` tag links
@@ -133,13 +135,13 @@ const EXTRA_BOOST_IDS = [
   console.error('[stats-boosts] init failed', err)
 })
 
-// Parse the sat amount out of a bot boost note's "💰 N sats" line.
-// Non-boost notes (human replies posted straight to the root) have no
-// such line and resolve to 0, so they fall below the threshold.
-function boostSats(content) {
-  const m = (content || '').match(/💰\s*([\d,]+)\s*sats/i)
-  return m ? parseInt(m[1].replace(/,/g, ''), 10) || 0 : 0
-}
+// Sats off the wall record first, else parsed from the bot note's "💰 N
+// sats" line (the un-threaded extras, the relay fallback). Non-boost notes
+// (human replies posted straight to the root) have neither and resolve to
+// 0, so they fall below the threshold. The card may show the booster's own
+// note, which carries no amount; never read the shown note's text.
+function boostSats(ev) { return boostSatsOf(ev, getBoostMeta(ev.id)) }
+function boostTime(ev) { return boostTimeOf(ev, getBoostMeta(ev.id)) }
 
 // Minimal direct-relay fetch for specific event ids — used only for the
 // hardcoded un-threaded extras above (boosts-thread.js has no exported
@@ -182,10 +184,10 @@ function repaint(rootEvent, childrenOf, container, extras) {
       // De-dupe in case an "extra" id also turns up in the thread.
       if (!ev || !ev.id || seen.has(ev.id)) return false
       seen.add(ev.id)
-      if ((ev.created_at || 0) < start) return false
-      return boostSats(ev.content) > 0   // bot boost notes only; human replies carry no 💰 line
+      if (boostTime(ev) < start) return false
+      return boostSats(ev) > 0   // boosts only; human replies carry no sats
     })
-    .sort((a, b) => boostSats(b.content) - boostSats(a.content))
+    .sort((a, b) => (boostSats(b) - boostSats(a)) || (boostTime(b) - boostTime(a)))
     .slice(0, topN())
 
   container.innerHTML = ''

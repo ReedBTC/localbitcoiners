@@ -18,6 +18,15 @@
 import { SimplePool, nip19, verifyEvent } from '/assets/widgets/nostr-tools.js'
 import { resolveProfiles } from '/assets/js/profile-cache.js'
 import {
+  parseWallRecord,
+  displayEventOf,
+  displayContentOf,
+  isDonorCard,
+  metaStripParts,
+  donorEventProblem,
+  boostTimeOf,
+} from '/assets/js/boost-record.js'
+import {
   KIND_DATE_EVENT,
   KIND_TIME_EVENT,
   fetchCalendarEventsFromRelays,
@@ -709,37 +718,36 @@ async function fetchProfilesFromRelays(pubkeys, relays) {
 const BOOST_WALL_URL = '/api/boost-wall'
 const BOOST_WALL_TIMEOUT_MS = 8000
 
-// Payment context by event id, populated only when the wall file is the
-// source. The thread's own notes carry no episode identifier — the publisher
-// puts the NIP-73 GUID tags on the standalone twin, not on the boost-board
-// reply, so a GUID-aware client doesn't surface every boost twice — which is
-// why episode/sats/app live in the record and not in the event's tags.
-// Absent for anything the relay fallback supplied, so callers must treat a
-// miss as "unknown", never as zero.
+// Payment context by SHOW-NOTE event id, populated only when the wall file is
+// the source. The thread's own notes carry no episode identifier — the
+// publisher puts the NIP-73 GUID tags on the standalone twin, not on the
+// boost-board reply, so a GUID-aware client doesn't surface every boost
+// twice — which is why episode/sats/app live in the record and not in the
+// event's tags. Absent for anything the relay fallback supplied, so callers
+// must treat a miss as "unknown", never as zero.
+//
+// Since lb-v86 the record may also carry the booster's own note
+// (`donorEvent`, verified below). The show note stays the key everywhere —
+// thread position, card cache, excluded ids, the New Member join — and the
+// card swaps the donor note in at render time (displayEventFor). The parsing
+// and the one-card rule live in boost-record.js.
 const boostMetaById = new Map()
 export function getBoostMeta(id) {
   return boostMetaById.get(id) || null
 }
 
-// ⚠️ episode_num is a zero-padded STRING ("019", "001") matching sats.csv's
-// column, and is absent rather than 0 when unknown. Compare it as a string or
-// normalize explicitly; `=== 19` will never match.
-function parseWallRecord(rec) {
-  const num = typeof rec.episode_num === 'string' ? rec.episode_num : null
-  return {
-    paymentHash:  rec.payment_hash  || null,
-    sats:         Number.isFinite(rec.sats) ? rec.sats : null,
-    senderNpub:   rec.sender_npub   || null,
-    senderName:   rec.sender_name   || null,
-    episodeId:    rec.episode_id    || null,
-    episodeNum:   num,
-    episodeTitle: rec.episode_title || null,
-    showLevel:    rec.show_level === true,
-    app:          rec.app           || null,
-    source:       rec.source        || null,
-    settledAt:    rec.settled_at    || null,
-    standaloneId: rec.standalone_id || null,
-  }
+// The note a card shows for a thread event: the booster's own when the
+// record has one, else the event itself. Pages hand this to anything that
+// acts on "the note" (reply, like, repost, zap, View on Nostr).
+export function displayEventFor(ev) {
+  return displayEventOf(ev, boostMetaById.get(ev?.id) || null)
+}
+
+function npubToHex(npub) {
+  try {
+    const d = nip19.decode(npub)
+    return d.type === 'npub' ? d.data : null
+  } catch { return null }
 }
 
 // Verifying the whole wall is ~1.3 ms per event, so ~550 ms for 400 notes on a
@@ -780,10 +788,30 @@ async function fetchThreadFromBoostWall(rootId) {
       if (!ev || typeof ev.id !== 'string' || ev.kind !== 1) continue
       if (ev.id !== rootId && !eventReferencesRoot(ev, rootId)) continue
       candidates.push(ev)
-      meta.set(ev.id, parseWallRecord(rec))
+      const m = parseWallRecord(rec)
+      // A donor note is shown as if it came off the booster's own feed, so
+      // it is held to the same bar as the show note (signature, below) plus
+      // one more: the signer must be the sender the payment record names.
+      // Failing either drops the donor note, never the record — the show
+      // note still renders, exactly as before lb-v86.
+      if (m.donorEvent) {
+        const senderHex = m.senderNpub ? npubToHex(m.senderNpub) : null
+        if (donorEventProblem(m, senderHex)) m.donorEvent = null
+      }
+      meta.set(ev.id, m)
     }
 
-    const notes = await verifyEventsChunked(candidates)
+    const donorCandidates = []
+    for (const m of meta.values()) if (m.donorEvent) donorCandidates.push(m.donorEvent)
+
+    const [notes, donorNotes] = await Promise.all([
+      verifyEventsChunked(candidates),
+      verifyEventsChunked(donorCandidates),
+    ])
+    const donorOk = new Set(donorNotes.map((ev) => ev.id))
+    for (const m of meta.values()) {
+      if (m.donorEvent && !donorOk.has(m.donorEvent.id)) m.donorEvent = null
+    }
     // No root means buildThread would return nothing renderable. Treat a
     // rootless file as a failed fetch rather than as an empty wall.
     if (!notes.some((ev) => ev.id === rootId)) return null
@@ -796,10 +824,18 @@ async function fetchThreadFromBoostWall(rootId) {
 }
 
 // ── Card renderer ────────────────────────────────────────────────────
+// `ev` is the THREAD event (the show note); what the card shows is
+// displayEventFor(ev): the booster's own note when the wall record carries
+// one. Author, time, body, the Nostr link and the action bar all follow the
+// shown note; the card itself stays keyed and cached by the thread event.
 export function renderNoteCard(ev, { isRoot = false } = {}) {
-  const profile = profileCache.get(ev.pubkey)
+  const meta = boostMetaById.get(ev.id) || null
+  const shown = displayEventOf(ev, meta)
+  const donor = isDonorCard(meta)
+  const profile = profileCache.get(shown.pubkey)
   const card = document.createElement('article')
-  card.className = 'note-card' + (isRoot ? ' is-root' : '')
+  card.className = 'note-card' + (isRoot ? ' is-root' : '') + (donor ? ' is-donor' : '')
+  card.dataset.noteSource = donor ? 'donor' : 'show'
 
   const authorRow = document.createElement('div')
   authorRow.className = 'note-author'
@@ -818,7 +854,7 @@ export function renderNoteCard(ev, { isRoot = false } = {}) {
 
   const nameEl = document.createElement('span')
   nameEl.className = 'author-name'
-  nameEl.textContent = profile?.name || (ev.pubkey.slice(0, 8) + '…')
+  nameEl.textContent = profile?.name || (shown.pubkey.slice(0, 8) + '…')
   nameWrap.appendChild(nameEl)
 
   if (profile?.nip05) {
@@ -829,23 +865,49 @@ export function renderNoteCard(ev, { isRoot = false } = {}) {
   }
   authorRow.appendChild(nameWrap)
 
+  // The card's clock is the payment's settled time, the one the Latest sort
+  // and the range windows use; a booster's note is stamped anywhere from
+  // minutes before to minutes after the payment, and the show note at the
+  // bot's publish time. Without a record this is the shown note's created_at.
+  const when = boostTimeOf(ev, meta)
   const time = document.createElement('time')
-  time.dateTime = new Date(ev.created_at * 1000).toISOString()
-  time.textContent = relTime(ev.created_at)
-  time.title = new Date(ev.created_at * 1000).toLocaleString()
+  time.dateTime = new Date(when * 1000).toISOString()
+  time.textContent = relTime(when)
+  time.title = new Date(when * 1000).toLocaleString()
   authorRow.appendChild(time)
 
   card.appendChild(authorRow)
 
+  // The meta strip: sats, app, episode off the payment record, on every card
+  // that has one. A Fountain donor note is only the comment, so without this
+  // line the card would not say what was boosted or where.
+  const stripParts = metaStripParts(meta)
+  if (stripParts.length) {
+    const strip = document.createElement('div')
+    strip.className = 'note-meta'
+    stripParts.forEach((part, i) => {
+      if (i) {
+        const sep = document.createElement('span')
+        sep.className = 'note-meta-sep'
+        sep.textContent = '·'
+        strip.appendChild(sep)
+      }
+      const span = document.createElement('span')
+      span.textContent = part
+      strip.appendChild(span)
+    })
+    card.appendChild(strip)
+  }
+
   const body = document.createElement('div')
   body.className = 'note-body'
-  renderContentInto(body, ev.content)
+  renderContentInto(body, displayContentOf(ev, meta))
   card.appendChild(body)
 
   const footer = document.createElement('div')
   footer.className = 'note-footer'
   let nevent = ''
-  try { nevent = nip19.neventEncode({ id: ev.id, author: ev.pubkey }) } catch {}
+  try { nevent = nip19.neventEncode({ id: shown.id, author: shown.pubkey }) } catch {}
   if (nevent) {
     const link = document.createElement('a')
     link.href = `https://njump.me/${nevent}`
@@ -856,10 +918,12 @@ export function renderNoteCard(ev, { isRoot = false } = {}) {
   }
   card.appendChild(footer)
 
-  // Per-card actions (Reply/Like/Repost/Zap) injected by the host page.
+  // Per-card actions (Reply/Like/Repost/Zap) injected by the host page,
+  // acting on the note the card shows: a reply or a zap on a donor card
+  // goes to the booster, not to the bot's reply about them.
   // Skipped on the root card and skipped entirely on read-only pages.
   if (!isRoot && typeof actionsBuilder === 'function') {
-    const bar = actionsBuilder(ev, card)
+    const bar = actionsBuilder(shown, card)
     if (bar) card.appendChild(bar)
   }
 
@@ -960,12 +1024,13 @@ export async function fetchBoostThread({ rootNevent = ROOT_NEVENT, onPartial = n
   if (wall) {
     notes = wall.notes
     for (const [id, m] of wall.meta) boostMetaById.set(id, m)
-    // The file carries no kind-0. The thread has only a handful of distinct
-    // authors (the show bot plus a couple of others), so this is one small
-    // request, and the profiles.size === 0 relay fallback below still covers
+    // The file carries no kind-0. The authors are the show bot, a couple of
+    // others, and since lb-v86 every booster whose own note is shown; the
+    // nightly profiles.json covers the boosters, so this is still one cached
+    // batch, and the profiles.size === 0 relay fallback below still covers
     // it if Primal is unreachable.
     profiles = await fetchProfilesForDisplay([
-      ...new Set(notes.map((n) => n.pubkey)),
+      ...new Set(notes.map((n) => displayEventFor(n).pubkey)),
     ]).catch(() => new Map())
   } else {
     ;({ notes, profiles } = await fetchThreadFromLiveSources(rootId, relays))
@@ -980,13 +1045,17 @@ export async function fetchBoostThread({ rootNevent = ROOT_NEVENT, onPartial = n
   // them from relays so cards aren't all bare npubs.
   if (notes.length && profiles.size === 0) {
     profiles = await fetchProfilesFromRelays(
-      [...new Set(notes.map((n) => n.pubkey))],
+      [...new Set(notes.map((n) => displayEventFor(n).pubkey))],
       relays,
     ).catch(() => new Map())
   }
 
   for (const [pk, p] of profiles) setCachedProfile(pk, p)
-  for (const ev of notes) embedCache.set(ev.id, ev)
+  for (const ev of notes) {
+    embedCache.set(ev.id, ev)
+    const shown = displayEventFor(ev)
+    if (shown !== ev) embedCache.set(shown.id, shown)
+  }
 
   // Every note is in hand here, and with the profile cache the authors and
   // boosters already have names and avatars. What is left — quoted notes,
@@ -1063,7 +1132,11 @@ async function finishBoostThread({ root, childrenOf, notes, hintRelays }) {
   const refsByNote = new Map()
   for (const ev of notes) {
     const refs = { pubkeys: [], eventIds: [], coords: [] }
-    for (const m of (ev.content || '').matchAll(NOSTR_URI_RE)) {
+    // Scan what the card will SHOW (the donor note where there is one, minus
+    // Fountain's trailer, whose zap-receipt nevent would otherwise be fetched
+    // for nothing), keyed by the thread event the card cache knows.
+    const shownContent = displayContentOf(ev, boostMetaById.get(ev.id) || null)
+    for (const m of shownContent.matchAll(NOSTR_URI_RE)) {
       try {
         const decoded = nip19.decode(m[1])
         if (decoded.type === 'npub') { wantedPubkeys.add(decoded.data); refs.pubkeys.push(decoded.data) }

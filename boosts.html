@@ -470,24 +470,24 @@
     renderChildCards,
     getBoostMeta,
   } from '/assets/js/boosts-thread.js'
+  import { boostSatsOf, boostTimeOf } from '/assets/js/boost-record.js'
   import { configureBoostActions } from '/assets/js/boost-actions.js'
   import { rangeControl, sortControl, rangeStartMs, rangeWindow } from '/assets/js/head-controls.js'
   import { loadFirstBoosts, newMemberBadge } from '/assets/js/new-member.js'
 
   // ── Range + sort ────────────────────────────────────────────────────
-  // 1W / 1M / All on the note's created_at (when the bot published the
-  // boost), and Latest / Largest. Sats come from the boost-wall record
-  // (getBoostMeta) when the wall was the source, else from the bot's
-  // "💰 N sats" line; a note with neither sorts to the bottom of Largest.
+  // 1W / 1M / All on when the boost SETTLED (the wall record's settled_at,
+  // falling back to the show note's created_at for records without one),
+  // and Latest / Largest. Sats come from the boost-wall record (getBoostMeta)
+  // when the wall was the source, else from the bot's "💰 N sats" line; a
+  // note with neither sorts to the bottom of Largest. Both rules live in
+  // boost-record.js; never read the shown note's text or time, a donor note
+  // carries neither reliably.
   const SORT_OPTIONS = [['latest', 'Latest boost'], ['largest', 'Largest boost']]
   const view = { range: 'all', sort: 'latest' }
 
-  function boostSats(ev) {
-    const meta = getBoostMeta(ev.id)
-    if (meta && Number.isFinite(meta.sats)) return meta.sats
-    const m = (ev.content || '').match(/💰\s*([\d,]+)\s*sats/i)
-    return m ? parseInt(m[1].replace(/,/g, ''), 10) || 0 : 0
-  }
+  function boostSats(ev) { return boostSatsOf(ev, getBoostMeta(ev.id)) }
+  function boostTime(ev) { return boostTimeOf(ev, getBoostMeta(ev.id)) }
 
   // 1W here is deliberately the last 8 days, not 7, and the label and the
   // "last 7 days" copy stay as they are on purpose. Reed and Rev read the
@@ -500,11 +500,11 @@
     const start = view.range === '1w'
       ? Date.now() / 1000 - WEEK_WINDOW_DAYS * 86400
       : rangeStartMs(view.range) / 1000
-    const list = all.filter((ev) => (ev.created_at || 0) >= start)
+    const list = all.filter((ev) => boostTime(ev) >= start)
     if (view.sort === 'largest') {
-      list.sort((a, b) => (boostSats(b) - boostSats(a)) || ((b.created_at || 0) - (a.created_at || 0)))
+      list.sort((a, b) => (boostSats(b) - boostSats(a)) || (boostTime(b) - boostTime(a)))
     } else {
-      list.sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
+      list.sort((a, b) => boostTime(b) - boostTime(a))
     }
     return list
   }
