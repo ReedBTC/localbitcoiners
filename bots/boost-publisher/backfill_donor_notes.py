@@ -14,6 +14,11 @@ note ids in published_events.json. Nothing here publishes or pushes.
 
     python3 backfill_donor_notes.py --out ../../data/boost_wall.donor.json
     python3 backfill_donor_notes.py --apply
+    python3 backfill_donor_notes.py --redo --apply   # re-pair the whole wall
+
+--redo forgets every donor note first (wall and published_events alike) and
+pairs the whole wall again under the current rules; the normal run only
+fills records that have none. Use it after a rule change.
 
 Paths default to this checkout's files; pass them explicitly when running
 from a worktree against the live data (the state files are gitignored and
@@ -66,6 +71,8 @@ def main():
     ap.add_argument("--no-website", action="store_true", help="skip the receipt-chain join")
     ap.add_argument("--no-fetch", action="store_true", help="match only; do not fetch raw events (ids only)")
     ap.add_argument("--review-json", default=None, help="also write the review list here")
+    ap.add_argument("--redo", action="store_true",
+                    help="drop every donor note first and pair the whole wall again")
     args = ap.parse_args()
 
     wall = boost_wall.load_wall(args.wall)
@@ -74,6 +81,15 @@ def main():
     rows = load_rows(args.sats_csv)
     print(f"wall {len(wall)} records, ledger {len(rows)} boost rows, "
           f"published_events {len(published_events)}")
+    if args.redo:
+        dropped = 0
+        for r in wall.values():
+            for k in donor_notes.DONOR_FIELDS:
+                dropped += r.pop(k, None) is not None
+        for pe in published_events.values():
+            for k in ("donor_note_id", "donor_match", "donor_pubkey"):
+                pe.pop(k, None)
+        print(f"--redo: forgot {dropped} donor fields; pairing the whole wall again")
 
     settled = [cov._ts(r.get("settled_at")) for r in wall.values() if r.get("settled_at")]
     since_ts = (int(time.time()) - args.days * 86400) if args.days else min(t for t in settled if t)

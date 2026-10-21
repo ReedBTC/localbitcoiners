@@ -312,7 +312,7 @@ carry `donor_event` (the donor's raw signed kind-1), `donor_note_id`,
 `bots/shared/donor_notes.py` and `bots/shared/test_donor_notes.py` pins them.
 Things that fail silently if missed:
 
-- **Four rules decide whether a note is the donor's.** The signer must be a
+- **Five rules decide whether a note is the donor's.** The signer must be a
   person (the show key and every OnlyBoosts publisher account are out, and a
   `P` tag is never read); when the ledger knows the npub the note's pubkey
   must be it; a sats-only match suppresses our claim but never attributes;
@@ -320,8 +320,19 @@ Things that fail silently if missed:
   window is a burst and is paired by episode (the note's NIP-73 item guid
   through the RSS index, else its "for Ep. N" line, then time order inside
   an episode; a note that contradicts itself or names an episode the burst
-  lacks is left out and listed). `set_donor_note` refuses a mismatched
+  lacks is left out and listed); and a Fountain boost's note must carry the
+  boost's comment (rule 5, 2026-10-19: the note's text with Fountain's
+  trailer stripped contains the ledger `message`, or both are empty; an
+  empty note is a different boost, not "no signal", and a same-size note
+  that says something else is refused). Only the donor's notes that pass
+  are candidates, nearest first; two passing is still a burst. `donor_text`
+  / `comment_agrees` in `donor_notes.py` are the one normalisation: the
+  ledger keeps newlines as the two characters `\n` and pre-2026-05-10 rows
+  keep the whole trailer. Website share notes never carry the message, so
+  the rule is Fountain's alone. `set_donor_note` refuses a mismatched
   pair, so a wrong `donor_event` cannot reach the file through any writer.
+  After a rule change, `backfill_donor_notes.py --redo` re-pairs the whole
+  wall (the plain run only fills records that have no note yet).
 - **Three writers, one join.** The publisher captures the note live (the
   receipt's share note when donor-signed, `decide()`'s index match via
   `match_out`, or the claim veto note); `build_boost_wall.py` runs a 7-day

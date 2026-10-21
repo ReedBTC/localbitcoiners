@@ -16,7 +16,7 @@ IS the donor's note for a given payment. Three ways in:
   relay     relay_note_for's veto note, the case where a donor note exists
             on Nostr but the index has not seen it
 
-and four rules that make a wrong card impossible rather than unlikely:
+and five rules that make a wrong card impossible rather than unlikely:
 
   1. The signer must be a person. The show key and every publishing account
      OnlyBoosts knows (chadf-boostbot, boostmebitch, …) are excluded; such a
@@ -39,6 +39,15 @@ and four rules that make a wrong card impossible rather than unlikely:
      order only when no note names an episode. A note that contradicts
      itself or names an episode no record in the burst has stays
      unattached and is listed.
+  5. A Fountain boost's note must carry the boost's comment. Fountain
+     publishes the comment as the note's text (plus its trailer), so for a
+     `fountain_boost` the note's text, trailer stripped, must contain the
+     ledger message, or both must be empty. An empty note is not "no
+     signal" here, it is a different boost (Reed, 2026-10-19: a 500-sat
+     boost with a comment was shown as its donor's empty 2,000-sat note two
+     minutes later, and a 111-sat "Bullish" as a same-size note that said
+     something else). Among the donor's notes in the window only the ones
+     that pass are candidates; two that pass are a burst (rule 4).
 
 Signatures are verified before a pubkey is believed (collector_common).
 """
@@ -57,6 +66,7 @@ from nostr_utils import npub_to_hex, BOOST_SCAN_RELAYS, NOSTR_RELAYS  # noqa: E4
 from boost_formatter import (  # noqa: E402
     fetch_event, fetch_kind_30078, fetch_all_kind_30078, _receipt_share_info,
     make_cache, record_donor_note, build_rss_item_index, _extract_episode_number,
+    strip_fountain_trailer, NO_COMMENT_PLACEHOLDER,
 )
 
 _FOR_EP_RE = re.compile(r"\bfor Ep\.?\s*(\d{1,3})\b", re.IGNORECASE)
@@ -88,6 +98,11 @@ DONOR_RELAYS = list(dict.fromkeys(
 # it — kept, it never fired on the 2026-10-17 backfill, so it stays harmless.
 ATTRIBUTING_TIERS = {"npub+message", "npub", "sats+message", "message"}
 DONOR_FIELDS = ("donor_note_id", "donor_match", "donor_event")
+
+# Sources whose donor note is the comment itself (rule 5). A website boost's
+# share note never carries the message ("Just boosted ⚡ … for Ep. N"), and a
+# keysend has no npub to find a note by, so the rule is Fountain's alone.
+FOUNTAIN_SOURCES = {"fountain_boost"}
 
 
 # ── identity ──────────────────────────────────────────────────────────────────
@@ -130,6 +145,39 @@ def row_info(src):
     }
 
 
+# ── rule 5: the note says what the boost said ─────────────────────────────────
+
+def donor_text(s):
+    """A donor's comment as typed, from either side of the join: the ledger's
+    `message` (data/sats.csv keeps newlines as the two characters `\\n`, and
+    rows before ~2026-05-10 keep Fountain's whole trailer) or a note's content.
+    Trailer stripped, placeholder emptied, whitespace collapsed, casefolded.
+    "" means the donor typed nothing."""
+    if not s:
+        return ""
+    s = str(s).replace("\\r", "\n").replace("\\n", "\n")
+    s = strip_fountain_trailer(s) or ""
+    s = " ".join(s.split())
+    if s.casefold() in {"", NO_COMMENT_PLACEHOLDER.casefold(), "undefined"}:
+        return ""
+    return s.casefold()
+
+
+def comment_agrees(ledger_message, note_text):
+    """Rule 5. True when the note carries the ledger's comment (containment,
+    since a BoostMeBitch-style note wraps it in its own lines), or when both
+    are empty. A comment on one side only, or a different comment, is a
+    different boost."""
+    a, b = donor_text(ledger_message), donor_text(note_text)
+    if not a and not b:
+        return True
+    return bool(a) and bool(b) and a in b
+
+
+def needs_comment_check(info):
+    return (info or {}).get("source") in FOUNTAIN_SOURCES
+
+
 # ── the guard every donor note passes ─────────────────────────────────────────
 
 def verified_donor_event(event, info):
@@ -147,6 +195,8 @@ def verified_donor_event(event, info):
     want = npub_hex((info or {}).get("sender_npub"))
     if want and pk != want:
         return None, "author is not the ledger's npub"
+    if needs_comment_check(info) and not comment_agrees(info.get("message"), event.get("content")):
+        return None, "note's comment is not the boost's comment"
     return event, None
 
 
@@ -172,6 +222,8 @@ def donor_from_index_record(record, info, how, cache=None, relays=None):
         return None
     npub = (info or {}).get("sender_npub")
     if npub and booster.get("npub") != npub:
+        return None
+    if needs_comment_check(info) and not comment_agrees(info.get("message"), record.get("msg")):
         return None
     ev = fetch_event(record["id"], relays or DONOR_RELAYS, cache=cache)
     if ev:
@@ -230,14 +282,26 @@ def index_match(records, info, settled_ts, consumed=None):
     booster = m.get("booster") or {}
     if npub and booster.get("npub") != npub:
         return None, how, f"matched note is signed by someone else ({m['id'][:12]}…)"
-    if how == "npub":
+    if how in ("npub", "npub+message"):
         same = [r for r in recs
                 if (r.get("booster") or {}).get("npub") == npub
                 and r.get("id") not in (consumed or set())
                 and abs(int(r.get("ts") or 0) - settled_ts) <= cov.MATCH_WINDOW_SEC]
-        if len(same) > 1:
+        if needs_comment_check(info):
+            # Rule 5 picks among the donor's notes: the ones that say what the
+            # boost said. find_match's pick may be one of their other boosts.
+            ok = [r for r in same if comment_agrees(info.get("message"), r.get("msg"))]
+            if not ok:
+                return None, how, (f"none of the donor's {len(same)} note(s) in the window "
+                                   f"carries the comment ({m['id'][:12]}…)")
+            same = ok
+            m = min(same, key=lambda r: abs(int(r.get("ts") or 0) - settled_ts))
+            how = "npub+message" if donor_text(info.get("message")) else "npub"
+        if len(same) > 1 and how == "npub":
             return None, how, (f"ambiguous: {len(same)} notes from this npub in the window "
                                f"({', '.join(r['id'][:12] + '…' for r in same)})")
+    elif needs_comment_check(info) and not comment_agrees(info.get("message"), m.get("msg")):
+        return None, how, f"note's comment is not the boost's comment ({m['id'][:12]}…)"
     if consumed is not None:
         consumed.add(m["id"])
     return m, how, None
