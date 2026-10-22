@@ -1146,13 +1146,33 @@ async function publishToOutbox(signedEvent) {
 // The boost-dense core set. Global indexers read here, so this is what
 // makes a boost note discoverable within seconds rather than within a day.
 async function publishToShareRelays(signedEvent) {
+  const acked = await publishSignedToRelays(signedEvent, SHARE_NOTE_RELAYS)
+  return acked.length > 0
+}
+
+/**
+ * Publish an already-signed event to an explicit relay list through the
+ * shared SimplePool, bypassing NDK's relay-set calculation. Returns the
+ * URLs that ack'd within `timeoutMs`. Never throws.
+ *
+ * NDK's `event.publish()` builds its set from the author's write relays
+ * plus whichever pool relays are *connected at that instant*
+ * (`calculateRelaySetFromEvent` → `permanentAndConnectedRelays`). Right
+ * after sign-in that can be none of ours: KT's meetup on 2026-10-20 went
+ * out to relay.nostriot.com alone while the announcement five seconds
+ * later reached every site relay. Anything the site itself needs to read
+ * back (calendar events, the share note) goes through here as well as
+ * through the outbox, so the site's relays are a fixed part of the set.
+ */
+export async function publishSignedToRelays(signedEvent, relays, timeoutMs = 6000) {
+  if (!signedEvent?.id || !signedEvent?.sig) return []
   try {
     const results = await Promise.allSettled(
-      getPool().publish(SHARE_NOTE_RELAYS, signedEvent).map(p => withTimeout(p, 6000))
+      getPool().publish(relays, signedEvent).map(p => withTimeout(p, timeoutMs))
     )
-    return results.some(r => r.status === 'fulfilled')
+    return relays.filter((_, i) => results[i].status === 'fulfilled')
   } catch {
-    return false
+    return []
   }
 }
 

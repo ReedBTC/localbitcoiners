@@ -19,7 +19,13 @@ import {
   FALLBACK_RELAYS,
 } from './ndk.js'
 import { isSafeUrl } from './utils.js'
+import { publishSignedToRelays } from './boostagram.js'
 import { KIND_DATE_EVENT, KIND_TIME_EVENT } from './eventTypes.js'
+
+// The site's calendar relays: STATIC_RELAYS in assets/js/boosts-thread.js
+// minus relay.fountain.fm, which is kind-1-only. Also what the snapshot bot
+// (bots/community-feeds) scans before it resolves members' outboxes.
+export const CALENDAR_EVENT_RELAYS = [...FALLBACK_RELAYS]
 
 const FUTURE_CAP_SECONDS = 60
 let _lastPublishedAt = 0
@@ -105,9 +111,20 @@ export async function publishCalendarEvent(form) {
   await connectAndWait(ndk).catch(() => {})
 
   await signWithTimeout(event)
-  const publishedTo = await event.publish()
-  const confirmed = Array.from(publishedTo).map(r => r.url).filter(Boolean)
-  const relays = confirmed.length ? confirmed : [...FALLBACK_RELAYS]
+  // Two sides, in parallel: the user's outbox through NDK (their followers
+  // read there), and the site's own relays through the plain pool. NDK's
+  // relay set only includes our relays if they happen to be connected at
+  // that instant, which right after sign-in they often are not, and the
+  // Events feed (snapshot bot and live fallback alike) reads from ours; see
+  // publishSignedToRelays. Neither side's failure hides the other's acks.
+  const signed = event.toNostrEvent()
+  const [outbox, site] = await Promise.all([
+    event.publish().then(set => Array.from(set).map(r => r.url).filter(Boolean)).catch(() => []),
+    publishSignedToRelays(signed, CALENDAR_EVENT_RELAYS),
+  ])
+  const confirmed = [...new Set([...site, ...outbox])]
+  if (!confirmed.length) throw new Error('No relay accepted the event. Please try again.')
+  const relays = confirmed
 
   let naddr = ''
   try {
