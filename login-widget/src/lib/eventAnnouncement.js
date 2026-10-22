@@ -12,7 +12,8 @@
  *     successful event publish isn't undone by a failed announcement)
  */
 import { NDKEvent } from '@nostr-dev-kit/ndk'
-import { getNDK, signWithTimeout, connectAndWait } from './ndk.js'
+import { getNDK, signWithTimeout } from './ndk.js'
+import { publishSignedKindOne } from './boostagram.js'
 
 const NADDR_PLACEHOLDER = '{naddr}'
 
@@ -95,7 +96,8 @@ export async function publishEventAnnouncement(template) {
   event.content = template.content
   event.tags = template.tags
   event.created_at = template.created_at || Math.floor(Date.now() / 1000)
-  await connectAndWait(ndk).catch(() => {})
   await signWithTimeout(event)
-  return event.publish()
+  // Outbox + SHARE_NOTE_RELAYS in parallel, the boost share note's path, so
+  // the announcement does not depend on which pool relays are connected.
+  return publishSignedKindOne(event.toNostrEvent())
 }
