@@ -3177,6 +3177,12 @@
     // Backfilled by Fountain a few days after publish, so for the latest
     // episode this can be missing — in which case we just don't surface
     // a Fountain link in the share-to-feed kind 1.
+    // Fountain's <podcast:transcript> (SRT captions). The Download Transcript
+    // fallback for episodes the repo has no hand-posted .txt for (ep021+).
+    const feedTranscriptUrl = allChildrenByLocalName(item, 'transcript')
+      .map((t) => t.getAttribute('url') || '')
+      .find((u) => u.startsWith('https://')) || '';
+
     let fountainUrl = '';
     for (const cl of allChildrenByLocalName(item, 'contentLink')) {
       const href = cl.getAttribute('href') || '';
@@ -3323,40 +3329,55 @@
     }
 
     // Transcript: button instead of a plain anchor so a missing file
-    // can degrade gracefully. On click we HEAD-check the URL; if the
-    // transcript exists we trigger the download, otherwise the button
-    // becomes a "Transcript coming soon" disabled state for the rest
-    // of the session. Avoids 404 navigations for episodes that haven't
-    // been transcribed yet.
+    // can degrade gracefully. On click we HEAD-check the repo's .txt
+    // (episodes 1 to 20, hand-posted); if it exists we download it.
+    // Otherwise we fetch the feed's SRT and hand it over as a real
+    // download (the host ignores `download` cross-origin but allows
+    // CORS, the MP3 button's trick). Only an episode with neither
+    // becomes a "Transcript coming soon" disabled state for the session.
     const txUrl = `transcripts/localbitcoiners-ep${pad(epNum)}.txt`;
     const tx = document.createElement('button');
     tx.type = 'button';
     tx.className = 'btn btn-outline';
     tx.textContent = '↓ Download Transcript';
+    const triggerDownload = (href, filename) => {
+      const a = document.createElement('a');
+      a.href = href;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    };
     tx.addEventListener('click', async () => {
       const prevLabel = tx.textContent;
       tx.disabled = true;
       tx.textContent = 'Checking…';
       try {
+        // No 404.html in the repo, so a missing path comes back as the
+        // homepage with a 200; only a text/plain answer is the file.
         const res = await fetch(txUrl, { method: 'HEAD' });
-        if (res.ok) {
-          // File exists — trigger the download via a temporary anchor
-          // so the click is treated as a user-initiated download.
-          const a = document.createElement('a');
-          a.href = txUrl;
-          a.download = '';
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          tx.textContent = prevLabel;
-          tx.disabled = false;
+        const isTxt = res.ok && /^text\/plain\b/i.test(res.headers.get('content-type') || '');
+        if (isTxt) {
+          triggerDownload(txUrl, '');
+        } else if (feedTranscriptUrl) {
+          tx.textContent = 'Downloading…';
+          const blob = await fetch(feedTranscriptUrl).then((r) => {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.blob();
+          });
+          const blobUrl = URL.createObjectURL(blob);
+          triggerDownload(blobUrl, `local-bitcoiners-ep${pad(epNum)}.srt`);
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 200);
         } else {
-          // 404 — transcript not posted yet. Replace the button with a
-          // disabled "coming soon" state for the rest of the session.
+          // Neither a repo .txt nor a feed transcript yet. Replace the
+          // button with a disabled "coming soon" state for the session.
           tx.textContent = 'Transcript coming soon';
           tx.classList.remove('btn-outline');
           tx.classList.add('btn-disabled');
+          return;
         }
+        tx.textContent = prevLabel;
+        tx.disabled = false;
       } catch {
         // Network error — restore so the user can retry.
         tx.textContent = prevLabel;

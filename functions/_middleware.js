@@ -81,7 +81,10 @@ export async function onRequest(context) {
   const channelValueXml = matchChannelValue(xml);
 
   const ep = extractEpisode(itemXml, epNum, channelValueXml);
-  ep.chapters = await fetchChapters(ep.chaptersUrl);
+  [ep.chapters, ep.hasLocalTranscript] = await Promise.all([
+    fetchChapters(ep.chaptersUrl),
+    hasLocalTranscript(context, epNum),
+  ]);
   const html = renderEpisodePage(ep);
 
   return new Response(html, {
@@ -93,6 +96,32 @@ export async function onRequest(context) {
       "Cache-Control": "public, max-age=600",
     },
   });
+}
+
+// Whether the repo ships a hand-posted transcript for this episode
+// (/transcripts/localbitcoiners-ep###.txt). Episodes 1 to 20 have one, most
+// with speaker labels from the Riverside export; from ep021 on there is
+// none and the Download Transcript button links the feed's
+// <podcast:transcript> SRT instead (transcripts decision, 2026-10-25). The
+// static asset binding answers from the deploy itself, so this is a local
+// lookup, not a network round trip. Without the binding (a unit harness)
+// the answer is "no", which makes the button fall through to the feed.
+async function hasLocalTranscript(context, epNum) {
+  const assets = context?.env?.ASSETS;
+  if (!assets || typeof assets.fetch !== "function") return false;
+  try {
+    const u = new URL(localTranscriptPath(epNum), context.request.url);
+    const resp = await assets.fetch(new Request(u.toString(), { method: "HEAD" }));
+    // No 404.html in the repo, so the asset server answers a missing path
+    // with index.html and a 200; only a text/plain answer is the file.
+    return resp.ok && /^text\/plain\b/i.test(resp.headers.get("content-type") || "");
+  } catch {
+    return false;
+  }
+}
+
+function localTranscriptPath(epNum) {
+  return `/transcripts/localbitcoiners-ep${pad(epNum)}.txt`;
 }
 
 // ── RSS fetch (size-bounded, timeout-bounded — mirrors /api/rss.js) ──
@@ -364,6 +393,10 @@ function extractEpisode(itemXml, epNum, channelValueXml) {
   // item pointing at an external JSON file (type application/json+chapters).
   // We only keep the URL here; the JSON is fetched at the edge in onRequest.
   const chaptersUrl = matchAttr(itemXml, "podcast:chapters", "url");
+  // Fountain's per-item <podcast:transcript> (SRT captions, no speaker
+  // labels). The button's fallback when the repo has no .txt; see
+  // hasLocalTranscript.
+  const transcriptUrl = matchAttr(itemXml, "podcast:transcript", "url");
   const guests = parseGuests(descRaw);
   const splits = parseSplits(itemXml, channelValueXml);
 
@@ -376,6 +409,7 @@ function extractEpisode(itemXml, epNum, channelValueXml) {
     enclosureUrl: safeHttpUrl(enclosureUrl),
     fountainUrl: safeHttpUrl(fountainUrl),
     chaptersUrl: safeHttpUrl(chaptersUrl),
+    transcriptUrl: safeHttpUrl(transcriptUrl),
     guests,
     splits,
     // Filled in by onRequest after the RSS parse — an array of
@@ -497,7 +531,14 @@ function jsonForScript(v) {
 function renderEpisodePage(ep) {
   const epPad = pad(ep.number);
   const pageUrl = `${SITE_ORIGIN}/ep${epPad}`;
-  const transcriptPath = `/transcripts/localbitcoiners-ep${epPad}.txt`;
+  // Download Transcript: the repo's .txt when the deploy has one, else the
+  // feed's SRT through the same fetch-to-blob download the MP3 uses (the
+  // host ignores `download` cross-origin but allows CORS), else nothing.
+  const transcriptBtn = ep.hasLocalTranscript
+    ? `<a class="btn btn-outline" href="${htmlEscape(localTranscriptPath(ep.number))}" download>↓ Download Transcript</a>`
+    : ep.transcriptUrl
+      ? `<button type="button" class="btn btn-outline" data-lb-download-file data-file-url="${htmlEscape(ep.transcriptUrl)}" data-file-name="${htmlEscape(`local-bitcoiners-ep${epPad}.srt`)}">↓ Download Transcript</button>`
+      : "";
   const ogTitle = `Ep. ${ep.number} — ${ep.title} | Local Bitcoiners`;
   const ogDesc = truncate(ep.description, 200) ||
     `Local Bitcoiners episode ${ep.number}.`;
@@ -729,7 +770,7 @@ function renderEpisodePage(ep) {
         <button type="button" class="ep-overflow-btn" aria-label="More options" aria-expanded="false">⋮</button>
         <div class="ep-overflow-menu">
           ${ep.enclosureUrl ? `<button type="button" class="btn btn-primary" data-lb-download-mp3 data-mp3-url="${htmlEscape(ep.enclosureUrl)}" data-mp3-filename="${htmlEscape(`local-bitcoiners-ep${epPad}.mp3`)}">↓ Download MP3</button>` : ""}
-          <a class="btn btn-outline" href="${htmlEscape(transcriptPath)}" download>↓ Download Transcript</a>
+          ${transcriptBtn}
         </div>
       </div>
       ${boostBtn}
