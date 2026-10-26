@@ -403,6 +403,25 @@ Things that fail silently if missed:
   `message` on the meta is the ledger's clean copy for the site to use under
   a Fountain note; the signed `donor_event.content` is never rewritten.
 
+## Transcripts: repo .txt for ep001–ep020, the feed's SRT after that
+
+Since 2026-10-25 nobody hand-posts transcripts. `transcripts/` keeps the 20
+Riverside exports (15 of them with speaker labels; ep001–004 and ep006 are
+plain paragraphs) and the Download Transcript button, in all three places
+(`functions/_middleware.js` for `/ep###`, the inline episode script in
+`index.html` and `episodes.html`), uses the repo `.txt` when it exists and
+otherwise the item's `<podcast:transcript>` SRT from the feed, fetched to a
+blob and saved as `local-bitcoiners-ep###.srt` (`[data-lb-download-file]`
+in `episode-enhance.js`, the MP3 button's trick; the host ignores `download`
+cross-origin but allows CORS). Two things that fail silently if missed:
+
+- **There is no `404.html`, so a missing path is the homepage with a 200.**
+  "Does the .txt exist" must test for `text/plain`, never `res.ok` alone;
+  before this rule the button on ep021+ downloaded `index.html` under a
+  `.txt` name. Adding a `404.html` later is fine, the check still holds.
+- **The edge check is `env.ASSETS.fetch` (HEAD).** Without the binding
+  (a unit harness) it answers "no" and the button falls through to the feed.
+
 ## Backfilled rows in the sats ledger
 
 Some `data/sats.csv` rows record boosts that were **sent but never arrived** —

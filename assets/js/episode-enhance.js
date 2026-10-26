@@ -310,12 +310,15 @@
   // opens the audio file in a new tab. Fountain's CDN does send
   // Access-Control-Allow-Origin: *, so we can fetch the bytes, wrap
   // them in a Blob, and trigger a real download via a synthetic anchor.
+  // Also wires `[data-lb-download-file]` (data-file-url / data-file-name):
+  // the Download Transcript button when the episode's transcript is the
+  // feed's SRT rather than a repo .txt. Same host behaviour, same fix.
   function wireDownloadMp3() {
-    var btns = document.querySelectorAll('[data-lb-download-mp3]');
+    var btns = document.querySelectorAll('[data-lb-download-mp3], [data-lb-download-file]');
     for (var i = 0; i < btns.length; i++) (function (btn) {
       btn.addEventListener('click', function () {
-        var url = btn.getAttribute('data-mp3-url');
-        var filename = btn.getAttribute('data-mp3-filename') || 'episode.mp3';
+        var url = btn.getAttribute('data-mp3-url') || btn.getAttribute('data-file-url');
+        var filename = btn.getAttribute('data-mp3-filename') || btn.getAttribute('data-file-name') || 'episode.mp3';
         if (!url) return;
         var prev = btn.textContent;
         btn.disabled = true;
