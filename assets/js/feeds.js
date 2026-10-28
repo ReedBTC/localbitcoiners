@@ -58,6 +58,17 @@ const EVENTS_SNAPSHOT_URL = '/api/community-events'
 // number of `authors`, which some relays cap or reject.
 const AUTHOR_CHUNK = 50
 
+// Calendar events the site does not show, featured or not, by coordinate
+// (`kind:pubkey:d`). The boost that featured one stays in the ledger and in
+// the boosted-item log; only the card goes. Dropped in computeItems, which
+// covers the Featured box, the All list, the localStorage cache and the relay
+// backfill alike. Takedowns on request, one line each with the reason:
+const HIDDEN_EVENT_COORDS = new Set([
+  // "1 Second On The Clock" (31922, end 2027-12-31): the organizer emailed
+  // asking for it to come down, 2026-10-28.
+  '31922:ec45c75d6b020ce8d5e04703f5565b2367086eeb7d1953e71ba2d86f694d8d0f:da1e2d349dbc5efc',
+])
+
 // ── DOM state helpers ────────────────────────────────────────────────
 function showSkeletons(list, n = 3) {
   list.className = 'feed-list'
@@ -217,6 +228,7 @@ function computeItems(state) {
   for (const parsed of state.eventsByCoord.values()) {
     if (parsed.id && state.deletedIds.has(parsed.id.toLowerCase())) continue
     const coord = `${parsed.kind}:${parsed.pubkey}:${parsed.dTag}`
+    if (HIDDEN_EVENT_COORDS.has(coord)) continue
     const delAt = state.deletedCoords.get(coord)
     if (delAt != null && delAt >= (parsed.createdAt || 0)) continue
     const startMs = eventStartMs(parsed)
@@ -362,6 +374,7 @@ async function fetchBoostedSet() {
     for (const r of rows) {
       if (!r || typeof r.coordinate !== 'string') continue
       if (!isCalendarCoord(r.coordinate)) continue
+      if (HIDDEN_EVENT_COORDS.has(r.coordinate)) continue  // no backfill fetch either
       coords.add(r.coordinate)
       const ts = parseSettledAt(r.settled_at)
       if (typeof r.naddr === 'string') {
