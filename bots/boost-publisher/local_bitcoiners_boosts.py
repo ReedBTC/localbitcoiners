@@ -410,7 +410,7 @@ def main():
             info, indexed, int(time.time()), claimed_matches, match_out=matched)
         if decision == "skip" and matched.get("record") and not donor:
             d = donor_notes.donor_from_index_record(
-                matched["record"], info, matched.get("how"), cache=cache)
+                matched["record"], info, matched.get("how"), cache=cache, records=indexed)
             if d:
                 donor.update(d)
                 print(f"  [donor] indexed note {d['donor_note_id'][:12]}... is the donor's own "

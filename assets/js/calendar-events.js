@@ -284,10 +284,10 @@ export function renderCalendarCard(parsed, { bech32 = '', profile = null, action
   }
 
   const img = document.createElement('img')
-  img.src = profile?.picture || '/assets/LocalBitcoiners.png'
+  img.src = profile?.picture || '/assets/avatar-default.svg'
   img.alt = ''
   img.referrerPolicy = 'no-referrer'
-  img.onerror = () => { img.src = '/assets/LocalBitcoiners.png' }
+  img.onerror = () => { img.onerror = null; img.src = '/assets/avatar-default.svg' }
   // The dot belongs on the avatar, not on the control — the control spans the
   // avatar AND the name, so its top-right corner is out past the name text.
   idEl.appendChild(linked ? wrapWithDot(img) : img)
@@ -486,10 +486,10 @@ function buildFeaturedBy(info) {
   // paints at its natural (huge) size.
   img.width = 18
   img.height = 18
-  img.src = info.picture || '/assets/LocalBitcoiners.png'
+  img.src = info.picture || '/assets/avatar-default.svg'
   img.alt = ''
   img.referrerPolicy = 'no-referrer'
-  img.onerror = () => { img.src = '/assets/LocalBitcoiners.png' }
+  img.onerror = () => { img.onerror = null; img.src = '/assets/avatar-default.svg' }
   who.appendChild(linked ? wrapWithDot(img) : img)
 
   const name = document.createElement('span')

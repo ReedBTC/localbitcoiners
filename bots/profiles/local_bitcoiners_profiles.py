@@ -85,6 +85,11 @@ PROFILE_RELAYS = [
     "wss://relay.primal.net",
 ]
 
+# Relays that keep superseded kind-0s (checked 2026-10-29: both returned a
+# supporter's two pre-wipe profiles alongside the empty one). Queried only for
+# the profiles whose newest kind-0 is empty.
+PROFILE_HISTORY_RELAYS = ["wss://relay.ditto.pub", "wss://relay.fountain.fm"]
+
 NPUB_RE = re.compile(r"npub1[02-9ac-hj-np-z]{58}")
 
 
@@ -153,10 +158,30 @@ def source_summary(found):
 
 
 # ── resolution ───────────────────────────────────────────────────────────────
+def kind0_is_empty(ev):
+    """True when a kind-0 names nobody: no name, display_name or picture.
+    Some clients overwrite a profile with `{}` (one supporter's newest kind-0,
+    2026-10-14, is exactly that, signed by their own key, on every relay);
+    Primal and OnlyBoosts keep showing the last profile that said something,
+    and so does this cache."""
+    try:
+        c = json.loads(ev.get("content") or "{}")
+    except Exception:
+        return True
+    if not isinstance(c, dict):
+        return True
+    return not any(isinstance(c.get(k), str) and c.get(k).strip()
+                   for k in ("name", "display_name", "picture"))
+
+
 def newest_kind0(events, into=None):
-    """Fold kind-0s into {hex: event}, newest created_at per pubkey. Relays
-    disagree constantly — a stale copy of a profile is exactly what the live
-    ladder currently papers over, and it must not be what gets cached."""
+    """Fold kind-0s into {hex: event}, newest created_at per pubkey, except
+    that an empty kind-0 (kind0_is_empty) never displaces one that names
+    somebody, however much newer it is; it is kept only when nothing better
+    exists. Relays disagree constantly — a stale copy of a profile is exactly
+    what the live ladder currently papers over, and it must not be what gets
+    cached. relay.ditto.pub keeps superseded kind-0s, which is where the
+    pre-wipe profile comes from."""
     out = dict(into or {})
     for ev in events:
         if ev.get("kind") != 0:
@@ -165,7 +190,12 @@ def newest_kind0(events, into=None):
         if not pk:
             continue
         prev = out.get(pk)
-        if not prev or (ev.get("created_at") or 0) > (prev.get("created_at") or 0):
+        if not prev:
+            out[pk] = ev
+            continue
+        e_empty, p_empty = kind0_is_empty(ev), kind0_is_empty(prev)
+        newer = (ev.get("created_at") or 0) > (prev.get("created_at") or 0)
+        if (p_empty and not e_empty) or (e_empty == p_empty and newer):
             out[pk] = ev
     return out
 
@@ -181,6 +211,25 @@ def resolve(hexes, relays=PROFILE_RELAYS, use_primal=True):
         print(f"    [warn] dropped {dropped} event(s) with a bad signature")
     profiles = newest_kind0(verified)
     print(f"    {len(profiles)}/{len(hexes)} resolved from relays")
+
+    # A newest kind-0 that is empty (kind0_is_empty) hides an older one that
+    # named somebody. Relays answer a many-author REQ with the newest kind-0
+    # only, so ask the relays that keep superseded ones, one author per REQ,
+    # then Primal's cache, which shows the last useful profile too.
+    empties = [h for h, ev in profiles.items() if kind0_is_empty(ev)]
+    if empties:
+        print(f"  history pass — {len(empties)} empty profile(s)")
+        older = fetch_events_by_authors(PROFILE_HISTORY_RELAYS, [0], empties,
+                                        batch_size=1, max_wall_seconds=15,
+                                        label="    history: ")
+        profiles = newest_kind0([ev for ev in older if verify_raw_event(ev)], into=profiles)
+        still = [h for h in empties if kind0_is_empty(profiles[h])]
+        if still and use_primal:
+            got = fetch_primal_user_infos(still)
+            profiles = newest_kind0([ev for ev in got.values() if verify_raw_event(ev)],
+                                    into=profiles)
+        fixed = sum(1 for h in empties if not kind0_is_empty(profiles[h]))
+        print(f"    {fixed}/{len(empties)} recovered from an earlier profile")
 
     missing = [h for h in hexes if h not in profiles]
     if missing and use_primal:

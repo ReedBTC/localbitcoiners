@@ -384,7 +384,7 @@ carry `donor_event` (the donor's raw signed kind-1), `donor_note_id`,
 `bots/shared/donor_notes.py` and `bots/shared/test_donor_notes.py` pins them.
 Things that fail silently if missed:
 
-- **Five rules decide whether a note is the donor's.** The signer must be a
+- **Six rules decide whether a note is the donor's.** The signer must be a
   person (the show key and every OnlyBoosts publisher account are out, and a
   `P` tag is never read); when the ledger knows the npub the note's pubkey
   must be it; a sats-only match suppresses our claim but never attributes;
@@ -397,7 +397,14 @@ Things that fail silently if missed:
   trailer stripped contains the ledger `message`, or both are empty; an
   empty note is a different boost, not "no signal", and a same-size note
   that says something else is refused). Only the donor's notes that pass
-  are candidates, nearest first; two passing is still a burst. `donor_text`
+  are candidates, nearest first; two passing is still a burst. Rule 6
+  (2026-10-29, `app_match`): a payment with no npub (a BoostMeBuddy /
+  BoostMeBitch / OnlyBoosts keysend) attributes as `sats+app` only on exact
+  sats, the note's app equal to the payment's, the note's episode
+  POSITIVELY equal (silence is no match), the payment's message however
+  short contained in the note (a `nostr:` mention stands for an "@Name"),
+  and exactly one person's note passing; it runs after find_match's tiers
+  fail, so the publisher's claim decision never sees it. `donor_text`
   / `comment_agrees` in `donor_notes.py` are the one normalisation: the
   ledger keeps newlines as the two characters `\n` and pre-2026-05-10 rows
   keep the whole trailer. Website share notes never carry the message, so

@@ -602,10 +602,10 @@ function buildZapModal(targetEvent, recipientProfile) {
   const recRow = document.createElement('div')
   recRow.className = 'zap-recipient'
   const pic = document.createElement('img')
-  pic.src = recipientProfile.picture || '/assets/LocalBitcoiners.png'
+  pic.src = recipientProfile.picture || '/assets/avatar-default.svg'
   pic.alt = ''
   pic.referrerPolicy = 'no-referrer'
-  pic.onerror = () => { pic.src = '/assets/LocalBitcoiners.png' }
+  pic.onerror = () => { pic.onerror = null; pic.src = '/assets/avatar-default.svg' }
   recRow.appendChild(pic)
   // No innerHTML on attacker-controlled fields (display name, lud16).
   const recName = document.createElement('div')
