@@ -54,6 +54,14 @@ const SHOW_PUBKEY = (() => {
   catch { return '' }
 })()
 
+// A person with no usable picture gets a generic silhouette, not the show's
+// logo (Reed, 2026-10-29: the logo on a stranger's card read as the show's
+// own note). The show's cards keep the logo when its picture fails.
+const DEFAULT_AVATAR = '/assets/avatar-default.svg'
+function avatarFallback(pubkey) {
+  return String(pubkey || '').toLowerCase() === SHOW_PUBKEY ? '/assets/LocalBitcoiners.png' : DEFAULT_AVATAR
+}
+
 const PRIMAL_WS_URL = 'wss://cache1.primal.net/v1'
 const PRIMAL_TIMEOUT_MS = 6000
 // The site-wide READ set. Exported and imported by feeds.js, feeds-articles.js,
@@ -478,10 +486,10 @@ function buildEmbedNoteEl(seg) {
   const profile = profileCache.get(ev.pubkey)
 
   const img = document.createElement('img')
-  img.src = profile?.picture || '/assets/LocalBitcoiners.png'
+  img.src = profile?.picture || avatarFallback(ev.pubkey)
   img.alt = ''
   img.referrerPolicy = 'no-referrer'
-  img.onerror = () => { img.src = '/assets/LocalBitcoiners.png' }
+  img.onerror = () => { img.onerror = null; img.src = avatarFallback(ev.pubkey) }
   authorRow.appendChild(img)
 
   const nameEl = document.createElement('span')
@@ -917,10 +925,10 @@ export function renderNoteCard(ev, { isRoot = false, hideEpisode = false } = {})
   authorRow.className = 'note-author'
 
   const img = document.createElement('img')
-  img.src = profile?.picture || '/assets/LocalBitcoiners.png'
+  img.src = profile?.picture || avatarFallback(shown.pubkey)
   img.alt = ''
   img.referrerPolicy = 'no-referrer'
-  img.onerror = () => { img.src = '/assets/LocalBitcoiners.png' }
+  img.onerror = () => { img.onerror = null; img.src = avatarFallback(shown.pubkey) }
 
   const label = profile?.name || (shown.pubkey.slice(0, 8) + '…')
   const person = String(shown.pubkey || '').toLowerCase() !== SHOW_PUBKEY
