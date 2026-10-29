@@ -2,7 +2,7 @@
 """Offline regression test for the donor-note rules (shared/donor_notes.py)
 and the wall fields they feed (boost-publisher/boost_wall.py).
 
-Pins the four rules that keep a note from being shown under the wrong name:
+Pins the rules that keep a note from being shown under the wrong name:
 publisher signers excluded, the ledger npub wins, sats-only never attributes,
 an ambiguous npub-only match goes to review — plus the record shape the site
 parses (`event` always present, `"donor_event" in rec` as the presence test,
@@ -219,6 +219,85 @@ d, why = cov.decide({**info(ALICE_NPUB), "share_status": "published", "share_not
 check("a receipt skip leaves match_out empty (the share note is handled by the caller)", d == "skip" and not out)
 d, why = cov.decide(info(ALICE_NPUB), [], T0 + 100)
 check("return shape unchanged without match_out", d == "hold")
+
+print("rule 6: a keysend with no npub pairs on sats + app + episode")
+REED = "32092ec1a258c9f2c11a9a5bb53b127ca20941f1803dd7f6715050ff8e9fd13a"
+EP33 = "The Succession of Bitcoin Culture | Ep. 033"
+BMB_NOTE = ("⚡ Boost ⚡\n\n#40hpw\n\nReed boosted 100 sats → Local Bitcoiners\n📻 " + EP33)
+
+
+def krec(id_, pk=REED, ts=T0 + 8, sats=100, msg=BMB_NOTE, app="boostmebuddy", title=EP33):
+    r = rec(id_, pk, None, ts, sats, msg)
+    r["client_app"] = {"id": app, "via": None}
+    r["episode"] = {"guid": "g", "title": title, "num": None}
+    return r
+
+
+def kinfo(msg="#40hpw", sats=100, app="BoostMeBuddy", ep="033", **kw):
+    d = {"sender_npub": None, "total_sats": sats, "message": msg, "episode_number": ep,
+         "settled_at": "2026-10-24T23:26:58Z", "source": "keysend", "app": app}
+    d.update(kw)
+    return d
+
+
+# The 2026-10-24 case: "#40hpw" is under the 12-char floor, so find_match says sats.
+m, how, why = dn.index_match([krec("k")], kinfo(), T0, set())
+check("short message + app + episode attributes as sats+app", m and m["id"] == "k" and how == dn.APP_TIER)
+m, how, why = dn.index_match([krec("k", app="fountain")], kinfo(), T0, set())
+check("a different app does not", m is None and how == "sats")
+m, how, why = dn.index_match([krec("k", title="Some Other Episode | Ep. 032")], kinfo(), T0, set())
+check("a different episode does not", m is None)
+m, how, why = dn.index_match([krec("k", title="Untitled")], kinfo(), T0, set())
+check("a note naming no episode does not (equality, not absence of conflict)", m is None)
+m, how, why = dn.index_match([krec("k")], kinfo(ep=None), T0, set())
+check("a payment naming no episode does not", m is None)
+m, how, why = dn.index_match([krec("k", sats=101)], kinfo(), T0, set())
+check("sats are exact", m is None)
+m, how, why = dn.index_match([krec("k")], kinfo(msg="#bitcoin"), T0, set())
+check("a short message the note lacks does not", m is None)
+m, how, why = dn.index_match([krec("k", ts=T0 + 2000)], kinfo(), T0, set())
+check("outside the window does not", m is None)
+m, how, why = dn.index_match([krec("k", pk=BOT)], kinfo(), T0, set())
+check("a publisher's note never does", m is None)
+m, how, why = dn.index_match([krec("k")], kinfo(show_level=True), T0, set())
+check("a show-level payment does not", m is None)
+m, how, why = dn.index_match([krec("k")], kinfo(sender_npub=ALICE_NPUB), T0, set())
+check("a payment with an npub is rules 2–5's, not rule 6's", m is None or how != dn.APP_TIER)
+m, how, why = dn.index_match([krec("k"), krec("j", pk=BOB, ts=T0 + 30)], kinfo(), T0, set())
+check("two passing notes are ambiguous and go to review",
+      m is None and how == dn.APP_TIER and why.startswith("ambiguous"))
+m, how, why = dn.index_match([krec("k", msg="ChadF and 33 others boosted 100 sats → Local Bitcoiners\n📻 " + EP33)],
+                             kinfo(msg=""), T0, set())
+check("a payment with no message pairs on sats + app + episode alone", m and how == dn.APP_TIER)
+consumed = {"k"}
+m, how, why = dn.index_match([krec("k")], kinfo(), T0, consumed)
+check("a consumed note is not reused", m is None)
+
+print("rule 6: mentions")
+NOTE = ("⚡ Boost ⚡\n\nYou already know nostr:npub1z9hy7a0n8zxnhgrcew2nnkr4sx6sum07exve99pqq30leujye3usgd858n "
+        "from nostr:npub1kqrddzzl6xng2wn0n0eyyjnf6smwmtp8m5atetzjw7vqyngwrphs4ye5xu tune in to learn more "
+        "about his Bitcoin meetup!\n\nReed boosted 100 sats → Local Bitcoiners")
+LEDGER = "You already know @Business Cat from @Rock Paper Bitcoin tune in to learn more about his Bitcoin meetup!"
+check("@Name in the ledger matches a nostr: mention in the note", dn.message_in_note(LEDGER, NOTE))
+check("…but not when the words around it differ",
+      not dn.message_in_note(LEDGER.replace("learn more", "hear more"), NOTE))
+check("…and not without a mention in the note",
+      not dn.message_in_note(LEDGER, NOTE.replace("nostr:npub1kqrddzzl6xng2wn0n0eyyjnf6smwmtp8m5atetzjw7vqyngwrphs4ye5xu", "Rock")))
+check("plain containment still holds", dn.message_in_note("#40hpw", BMB_NOTE))
+check("no payment message is no constraint", dn.message_in_note("", "anything"))
+
+print("rule 6: the live path")
+d = dn.donor_from_index_record(krec("k"), kinfo(), "sats", records=None)
+check("without the index a sats match still does not attribute", d is None)
+_fetch = dn.fetch_event
+dn.fetch_event = lambda *a, **k: None
+try:
+    d = dn.donor_from_index_record(krec("k"), dict(kinfo(), settled_at="2026-10-24T23:26:58Z"),
+                                   "sats", records=[dict(krec("k"), ts=dn._ts("2026-10-24T23:26:58Z") + 8)])
+    check("with the index it attributes as sats+app", d and d["donor_match"] == dn.APP_TIER and d["donor_note_id"] == "k")
+finally:
+    dn.fetch_event = _fetch
+
 
 print("topboosts prefers the donor's note")
 spec = importlib.util.spec_from_file_location(

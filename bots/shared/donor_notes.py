@@ -49,6 +49,17 @@ and five rules that make a wrong card impossible rather than unlikely:
      something else). Among the donor's notes in the window only the ones
      that pass are candidates; two that pass are a burst (rule 4).
 
+  6. A keysend with no npub (BoostMeBuddy, BoostMeBitch, OnlyBoosts) has
+     nothing but the amount to go on under rules 2–3, and a short message
+     ("#40hpw") is under find_match's floor. Such a payment attributes on
+     the `sats+app` tier (Reed, 2026-10-29, after OnlyBoosts' msg+app tier):
+     exact sats, the note's app equal to the payment's, the note's episode
+     POSITIVELY equal to the payment's (silence on either side is no
+     match), the payment's message, however short, contained in the note
+     (a `nostr:` mention in the note stands for an "@Name" in the ledger),
+     and exactly one person's note in the window passing all of that. Two
+     is ambiguous and neither is shown.
+
 Signatures are verified before a pubkey is believed (collector_common).
 """
 
@@ -96,7 +107,9 @@ DONOR_RELAYS = list(dict.fromkeys(
 # find_match tiers that may attribute a note (rule 3). "message" is a ≥12-char
 # containment of the donor's text with no npub on either side to contradict
 # it — kept, it never fired on the 2026-10-17 backfill, so it stays harmless.
-ATTRIBUTING_TIERS = {"npub+message", "npub", "sats+message", "message"}
+# "sats+app" is rule 6, decided by app_match below, never by find_match.
+APP_TIER = "sats+app"
+ATTRIBUTING_TIERS = {"npub+message", "npub", "sats+message", "message", APP_TIER}
 DONOR_FIELDS = ("donor_note_id", "donor_match", "donor_event")
 
 # Sources whose donor note is the comment itself (rule 5). A website boost's
@@ -142,6 +155,8 @@ def row_info(src):
         "settled_at":     src.get("settled_at"),
         "source":         src.get("source"),
         "payment_hash":   src.get("payment_hash"),
+        "app":            src.get("app") or src.get("app_name") or None,
+        "show_level":     str(src.get("show_level")).casefold() == "true",
     }
 
 
@@ -178,6 +193,98 @@ def needs_comment_check(info):
     return (info or {}).get("source") in FOUNTAIN_SOURCES
 
 
+# ── rule 6: a keysend with no npub, paired by app and episode ─────────────────
+
+_MENTION_RE = r"nostr:n(?:pub|profile)1[02-9ac-hj-np-z]+"
+_MAX_MENTIONS = 6
+_MAX_NAME_WORDS = 5     # a display name as BoostMeBuddy prints it after "@"
+
+
+def _app_slug(s):
+    return re.sub(r"[^a-z0-9]", "", str(s or "").casefold())
+
+
+def record_apps(record):
+    """The app slugs an OnlyBoosts index record names (its classifier's
+    client_app id and via; a person's note is its own app)."""
+    ca = (record or {}).get("client_app") or {}
+    return {a for a in (_app_slug(ca.get("id")), _app_slug(ca.get("via"))) if a}
+
+
+def message_in_note(ledger_message, note_text):
+    """The payment's message, however short, appears in the note. True when
+    the payment carries no message. A BoostMeBuddy ledger row keeps a mention
+    as "@Business Cat" where the signed note has `nostr:npub1…`, so an "@"
+    in the ledger may stand for a mention in the note: the name after it is
+    one to five words, the text after the name must follow the mention. A
+    changed word right after a name reads as part of the name; this is
+    corroboration beside sats, app and episode, not proof on its own."""
+    a, b = donor_text(ledger_message), donor_text(note_text)
+    if not a:
+        return True
+    if not b:
+        return False
+    if a in b:
+        return True
+    parts = a.split("@")
+    if len(parts) < 2 or len(parts) - 1 > _MAX_MENTIONS:
+        return False
+    pattern = re.escape(parts[0])
+    for g in parts[1:]:
+        words = g.split(" ")
+        rests = []
+        for k in range(1, min(len(words), _MAX_NAME_WORDS) + 1):
+            rest = " ".join(words[k:])
+            rests.append(re.escape(" " + rest) if rest else "")
+        pattern += _MENTION_RE + "(?:" + "|".join(rests) + ")"
+    return re.search(pattern, b) is not None
+
+
+def _ep3(n):
+    try:
+        return str(int(str(n).strip())).zfill(3)
+    except (TypeError, ValueError):
+        return None
+
+
+def app_match(records, info, settled_ts, consumed=None):
+    """Rule 6. (record, None) when exactly one person's note passes, (None,
+    why) when several do, (None, None) when the tier does not apply or
+    nothing passes. `records` may be the raw index."""
+    info = info or {}
+    if info.get("sender_npub") or info.get("show_level"):
+        return None, None
+    app = _app_slug(info.get("app") or info.get("app_name"))
+    ep = _ep3(info.get("episode_number") or info.get("episode_num"))
+    sats = info.get("total_sats")
+    if not (app and ep and sats and settled_ts):
+        return None, None
+    hits = []
+    for r in donor_records(records):
+        if r.get("id") in (consumed or ()):
+            continue
+        try:
+            if abs(int(r.get("ts") or 0) - settled_ts) > cov.MATCH_WINDOW_SEC:
+                continue
+        except (TypeError, ValueError):
+            continue
+        if r.get("sats") != sats or app not in record_apps(r):
+            continue
+        if _ep3(cov._episode_of(r)[1]) != ep:
+            continue
+        if not message_in_note(info.get("message"), r.get("msg")):
+            continue
+        if needs_comment_check(info) and not comment_agrees(info.get("message"), r.get("msg")):
+            continue
+        hits.append(r)
+    if len(hits) == 1:
+        return hits[0], None
+    if hits:
+        return None, (f"ambiguous: {len(hits)} notes pass {APP_TIER} "
+                      f"({', '.join(r['id'][:12] + '…' for r in hits)})")
+    return None, None
+
+
 # ── the guard every donor note passes ─────────────────────────────────────────
 
 def verified_donor_event(event, info):
@@ -210,13 +317,21 @@ def donor_from_event(event, info, how):
             "donor_pubkey": ev["pubkey"]}
 
 
-def donor_from_index_record(record, info, how, cache=None, relays=None):
+def donor_from_index_record(record, info, how, cache=None, relays=None, records=None):
     """A donor dict from an OnlyBoosts index record: the raw event fetched off
     the relays and verified; or, when no relay returns it yet, the id alone
     (rules 1–2 applied to what the index says about the signer) so the
-    reconcile pass can fetch it later. None when it is not a donor note."""
+    reconcile pass can fetch it later. None when it is not a donor note.
+
+    `records` (the whole index for the window) lets a non-attributing match
+    be retried on rule 6, which needs every candidate to know it is unique."""
     if how not in ATTRIBUTING_TIERS:
-        return None
+        if records is None:
+            return None
+        record, _ = app_match(records, info, _ts((info or {}).get("settled_at")))
+        if not record:
+            return None
+        how = APP_TIER
     booster = (record or {}).get("booster") or {}
     if not is_donor_signer(booster.get("pk")):
         return None
@@ -274,6 +389,14 @@ def index_match(records, info, settled_ts, consumed=None):
     Adds the match to `consumed` so two boosts cannot share one note."""
     recs = donor_records(records)
     m, how = cov.find_match(recs, info, settled_ts, consumed)
+    if not m or how not in ATTRIBUTING_TIERS:
+        am, awhy = app_match(recs, info, settled_ts, consumed)
+        if am:
+            if consumed is not None:
+                consumed.add(am["id"])
+            return am, APP_TIER, None
+        if awhy:
+            return None, APP_TIER, awhy
     if not m:
         return None, None, "no index match"
     if how not in ATTRIBUTING_TIERS:
