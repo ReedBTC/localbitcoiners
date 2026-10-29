@@ -12,7 +12,7 @@
  * See assets/js/profile-cache.js, which reads the rendered fields back out of
  * the verified event rather than trusting the parsed siblings.
  */
-const PROFILES_URL = "https://relay.mynostr.app/profiles.json";
+const PROFILES_URL = "https://relay.mynostr.app/profiles.preview.json"; // PREVIEW ONLY — drop this commit before merge
 
 // Bound the upstream fetch: 10s wall-clock, 5 MB body cap. Same rationale as
 // rss.js — an unbounded fetch could pin the Pages Function's CPU/memory

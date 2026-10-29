@@ -10,7 +10,7 @@
  * transport, not a source of trust. Unrelated to community-boosts.js, which
  * serves OTHER podcasts' boosts for the /feeds tab.
  */
-const BOOST_WALL_URL = "https://relay.mynostr.app/boost_wall.json";
+const BOOST_WALL_URL = "https://relay.mynostr.app/boost_wall.preview.json"; // PREVIEW ONLY — drop this commit before merge
 
 // Bound the upstream fetch: 10s wall-clock, 10 MB body cap. Same rationale
 // as rss.js — an unbounded fetch could pin the Pages Function's CPU/memory
