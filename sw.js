@@ -226,7 +226,7 @@
 // payment hash, npubs only, hosts and past guests never) so
 // the hosts can welcome newcomers as they read boosts off. boosts.html is
 // precached, and the old page has no import for the new module.
-const VERSION = 'lb-v89';
+const VERSION = 'lb-v90';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

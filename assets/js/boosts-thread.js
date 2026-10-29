@@ -22,10 +22,19 @@ import {
   displayEventOf,
   displayContentOf,
   isDonorCard,
-  metaStripParts,
   donorEventProblem,
   boostTimeOf,
 } from '/assets/js/boost-record.js'
+import { metaRowOf } from '/assets/js/boost-card-meta.js'
+// The site-wide person-click rule (supporters wall, stats lists, the feeds):
+// OnlyBoosts page when they have one, copy npub otherwise. ready() must have
+// resolved before a card is built, so fetchBoostThread awaits it alongside
+// the wall fetch; see the note there.
+import {
+  ready as obReady,
+  hasBoosterPage,
+  wireBoosterAction,
+} from '/assets/js/onlyboosts.js'
 import {
   KIND_DATE_EVENT,
   KIND_TIME_EVENT,
@@ -35,6 +44,15 @@ import {
 
 // ── Config ───────────────────────────────────────────────────────────
 export const ROOT_NEVENT = 'nevent1qvzqqqqqqypzpses3q0zsa5rs8wchh7jws6pmjsvtzpv9xuxgt4yhjp0w43jv3vjqyd8wumn8ghj7urewfsk66ty9enxjct5dfskvtnrdakj7qgwwaehxw309ahx7uewd3hkctcqyr3keved458q3n7x7839r86vj4dx0s4xh0p8j7fzvf4nq7824ulagy77tpj'
+
+// The show's own pubkey, read off the root nevent's author TLV rather than
+// restated as a second constant. A card whose shown note is the show's (the
+// bot's boost-board reply) keeps a plain author; every other author is a
+// person and gets the site's person-click treatment (renderNoteCard).
+const SHOW_PUBKEY = (() => {
+  try { return String(nip19.decode(ROOT_NEVENT).data.author || '').toLowerCase() }
+  catch { return '' }
+})()
 
 const PRIMAL_WS_URL = 'wss://cache1.primal.net/v1'
 const PRIMAL_TIMEOUT_MS = 6000
@@ -164,6 +182,52 @@ function isSafeUrl(url) {
     const u = new URL(url)
     return u.protocol === 'http:' || u.protocol === 'https:'
   } catch { return false }
+}
+
+// Copy a person's npub, the fallback click for an author with no OnlyBoosts
+// page. The toast reuses boost-actions.css's .lb-toast (loaded on every page
+// that renders these cards) rather than importing boost-actions.js, which
+// imports this module. prompt() is the last resort so the click never
+// silently does nothing (Firefox Android gates the async clipboard).
+async function copyNpub(npub) {
+  let ok = false
+  if (navigator.clipboard && window.isSecureContext) {
+    try { await navigator.clipboard.writeText(npub); ok = true } catch {}
+  }
+  if (!ok) {
+    try {
+      const ta = document.createElement('textarea')
+      ta.value = npub
+      ta.setAttribute('readonly', '')
+      ta.style.position = 'fixed'
+      ta.style.top = '0'
+      ta.style.left = '0'
+      ta.style.width = '1px'
+      ta.style.height = '1px'
+      ta.style.fontSize = '16px'
+      document.body.appendChild(ta)
+      ta.focus()
+      ta.select()
+      try { ta.setSelectionRange(0, npub.length) } catch {}
+      ok = document.execCommand('copy')
+      ta.remove()
+    } catch { ok = false }
+  }
+  if (ok) { showToast('npub copied'); return }
+  try { window.prompt('Copy this npub:', npub) }
+  catch { showToast('Couldn’t copy npub', true) }
+}
+
+function showToast(text, isError = false) {
+  const t = document.createElement('div')
+  t.className = 'lb-toast' + (isError ? ' is-error' : '')
+  t.textContent = text
+  document.body.appendChild(t)
+  requestAnimationFrame(() => t.classList.add('show'))
+  setTimeout(() => {
+    t.classList.remove('show')
+    setTimeout(() => t.remove(), 350)
+  }, 3000)
 }
 
 function relTime(ts) {
@@ -828,7 +892,19 @@ async function fetchThreadFromBoostWall(rootId) {
 // displayEventFor(ev): the booster's own note when the wall record carries
 // one. Author, time, body, the Nostr link and the action bar all follow the
 // shown note; the card itself stays keyed and cached by the thread event.
-export function renderNoteCard(ev, { isRoot = false } = {}) {
+//
+// The card is the OnlyBoosts card (Reed's call, 2026-10-29): the author row,
+// then a meta row of sats · via app · episode title (linking to /ep###),
+// then the message. `hideEpisode` is for the episode's own page, where the
+// title would restate the heading.
+//
+// The author is clickable when the shown note is a person's, which is every
+// note but the show bot's own: their OnlyBoosts page when they have one (a
+// blue dot on the avatar, the site-wide mark), a copy of their npub
+// otherwise. The NAME is the primary control and the avatar a mouse-only
+// duplicate (aria-hidden, out of the tab order), so a card announces one
+// link, not two to one destination.
+export function renderNoteCard(ev, { isRoot = false, hideEpisode = false } = {}) {
   const meta = boostMetaById.get(ev.id) || null
   const shown = displayEventOf(ev, meta)
   const donor = isDonorCard(meta)
@@ -845,16 +921,52 @@ export function renderNoteCard(ev, { isRoot = false } = {}) {
   img.alt = ''
   img.referrerPolicy = 'no-referrer'
   img.onerror = () => { img.src = '/assets/LocalBitcoiners.png' }
-  authorRow.appendChild(img)
+
+  const label = profile?.name || (shown.pubkey.slice(0, 8) + '…')
+  const person = String(shown.pubkey || '').toLowerCase() !== SHOW_PUBKEY
+  let npub = ''
+  if (person) { try { npub = nip19.npubEncode(shown.pubkey) } catch { npub = '' } }
 
   const nameWrap = document.createElement('div')
   nameWrap.style.display = 'flex'
   nameWrap.style.flexDirection = 'column'
   nameWrap.style.minWidth = '0'
 
-  const nameEl = document.createElement('span')
-  nameEl.className = 'author-name'
-  nameEl.textContent = profile?.name || (shown.pubkey.slice(0, 8) + '…')
+  let nameEl
+  if (npub) {
+    // <a> when there is a page to open, <button> when the click copies:
+    // decided here and never revised, which is why ready() is awaited in
+    // fetchBoostThread before any card is built (a late swap would lose
+    // middle-click and open-in-new-tab, and a window.open after an await
+    // is a blocked popup on mobile).
+    const linked = hasBoosterPage(shown.pubkey)
+    const tag = linked ? 'a' : 'button'
+    nameEl = document.createElement(tag)
+    if (!linked) nameEl.type = 'button'
+    nameEl.className = 'author-name author-id'
+    nameEl.textContent = label
+
+    const avatar = document.createElement(tag)
+    if (!linked) avatar.type = 'button'
+    avatar.className = 'note-avatar-link'
+    avatar.appendChild(img)
+
+    const onCopy = () => { copyNpub(npub) }
+    wireBoosterAction(nameEl, { id: shown.pubkey, name: label, avatar, onCopy })
+    wireBoosterAction(avatar, { id: shown.pubkey, name: label, onCopy })
+    avatar.setAttribute('tabindex', '-1')
+    avatar.setAttribute('aria-hidden', 'true')
+    if (!linked) {
+      nameEl.title = 'Copy npub'
+      nameEl.setAttribute('aria-label', `Copy npub for ${label}`)
+    }
+    authorRow.appendChild(avatar)
+  } else {
+    nameEl = document.createElement('span')
+    nameEl.className = 'author-name'
+    nameEl.textContent = label
+    authorRow.appendChild(img)
+  }
   nameWrap.appendChild(nameEl)
 
   if (profile?.nip05) {
@@ -878,24 +990,42 @@ export function renderNoteCard(ev, { isRoot = false } = {}) {
 
   card.appendChild(authorRow)
 
-  // The meta strip: sats, app, episode off the payment record, on every card
+  // The meta row: sats, app, episode off the payment record, on every card
   // that has one. A Fountain donor note is only the comment, so without this
-  // line the card would not say what was boosted or where.
-  const stripParts = metaStripParts(meta)
-  if (stripParts.length) {
+  // row the card would not say what was boosted or where. The parts and the
+  // episode link are boost-card-meta.js's; this only lays them out.
+  const row = metaRowOf(meta, { withEpisode: !hideEpisode })
+  if (row) {
     const strip = document.createElement('div')
     strip.className = 'note-meta'
-    stripParts.forEach((part, i) => {
-      if (i) {
-        const sep = document.createElement('span')
-        sep.className = 'note-meta-sep'
-        sep.textContent = '·'
-        strip.appendChild(sep)
+
+    const sats = document.createElement('span')
+    sats.className = 'note-meta-sats'
+    sats.textContent = `⚡ ${row.sats}`
+    strip.appendChild(sats)
+
+    if (row.via) {
+      const via = document.createElement('span')
+      via.className = 'note-meta-via'
+      via.textContent = row.via
+      strip.appendChild(via)
+    }
+
+    if (row.episode) {
+      const ep = document.createElement(row.episode.href ? 'a' : 'span')
+      ep.className = 'note-meta-ep'
+      ep.textContent = row.episode.label
+      if (row.episode.href) {
+        ep.href = row.episode.href
+        if (row.episode.num !== null) ep.title = `Episode ${row.episode.num}`
       }
-      const span = document.createElement('span')
-      span.textContent = part
-      strip.appendChild(span)
-    })
+      strip.appendChild(ep)
+    } else if (row.showBoost) {
+      const show = document.createElement('span')
+      show.className = 'note-meta-ep'
+      show.textContent = 'Show boost'
+      strip.appendChild(show)
+    }
     card.appendChild(strip)
   }
 
@@ -1001,6 +1131,13 @@ export async function fetchBoostThread({ rootNevent = ROOT_NEVENT, onPartial = n
 
   const relays = Array.from(new Set([...STATIC_RELAYS, ...hintRelays]))
 
+  // The OnlyBoosts booster index, so each card can be built as a link or a
+  // copy button and never swapped later (see renderNoteCard). Started here
+  // so it loads alongside the wall fetch rather than after it; ready()
+  // resolves even when the index cannot be fetched, with a 2.5 s cap, so a
+  // dead upstream costs the links, never the feed.
+  const boosterIndexReady = obReady().catch(() => {})
+
   // ── Primary: the pre-assembled wall ────────────────────────────────
   // One cached same-origin fetch replaces both live sources below. When it
   // answers we skip them entirely rather than unioning, because the file is
@@ -1069,6 +1206,7 @@ export async function fetchBoostThread({ rootNevent = ROOT_NEVENT, onPartial = n
   // evicts exactly the cards whose content changed, so the repaint is cheap.
   //
   // Callers that don't pass onPartial behave exactly as before.
+  await boosterIndexReady
   if (typeof onPartial === 'function') {
     try { onPartial({ rootEvent: root, childrenOf }) }
     catch (e) { console.warn('[boosts-thread] onPartial threw', e) }

@@ -300,9 +300,30 @@ note embeds it. Things that fail silently if missed:
   fallbacks for events without a record only. Sort and range windows use
   `settled_at`: donor notes land anywhere from 13 min before to 15 min after
   the payment, and the show note's `created_at` is the bot's publish time.
-- **The meta strip** (`.note-meta`, sats · via app · Ep. N) prints on every
-  card whose record carries `sats`, including show cards whose text already
-  says it (the pre-ledger records have no sats and get no strip).
+- **The meta row** (`.note-meta`: ⚡ sats, "via app", the episode TITLE
+  linking to `/ep###`; since lb-v90 the OnlyBoosts card, Reed's call
+  2026-10-29) prints on every card whose record carries `sats`, including
+  show cards whose text already says it (the pre-ledger records have no sats
+  and get no row). The parts and the link live in
+  `assets/js/boost-card-meta.js` (`metaRowOf`; a NEW module on purpose, the
+  same reason as `boost-record.js`, whose `metaStripParts` stays for stale
+  importers and is no longer read), tested by
+  `scripts/test-boost-card-meta.mjs`. The title is the record's
+  `episode_title` with the `Local Bitcoiners •` prefix cut; the number alone
+  is the fallback, "Show boost" for show-level records. The episode's own
+  page passes `hideEpisode: true` (sats and app only; the title would restate
+  the heading).
+- **The author is clickable on a person's note, never on the show bot's**
+  (`renderNoteCard`, keyed off the root nevent's author TLV): the site-wide
+  rule from `assets/js/onlyboosts.js`, their OnlyBoosts page when they have
+  one (blue dot on the avatar) or a copy of their npub (toast via
+  `.lb-toast`). The NAME is the control (`<a>` or `<button>`), the avatar
+  wrapper a mouse-only duplicate (`aria-hidden`, `tabindex=-1`). The link-or-
+  copy choice is made at render and never revised, so `fetchBoostThread`
+  awaits `ready()` (2.5 s cap, resolves on failure) before `onPartial` and
+  before returning; `onlyboosts.css` must be linked on every page that
+  renders these cards (`boosts.html`, `stats.html`, the `/ep###` head in
+  `functions/_middleware.js`).
 - **A donor note is verified three times**: signature (same chunked pass as
   the show note), signer == the record's `sender_npub` (a named sender that
   does not decode as an npub refuses the note; only a blank sender admits any
