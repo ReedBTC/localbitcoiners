@@ -112,7 +112,9 @@ function repaint(rootEvent, childrenOf, epNum, statusEl, listEl) {
   ul.className = 'note-list ep-boosts-anchors'
   for (const ev of anchors) {
     const li = document.createElement('li')
-    li.appendChild(renderNoteCard(ev))
+    // The episode's own page: the meta row keeps sats and app but not the
+    // title, which would restate the heading (the OnlyBoosts /episode rule).
+    li.appendChild(renderNoteCard(ev, { hideEpisode: true }))
     ul.appendChild(li)
   }
   listEl.appendChild(ul)

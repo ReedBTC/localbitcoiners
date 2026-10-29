@@ -656,6 +656,7 @@ function renderEpisodePage(ep) {
 
   <link rel="stylesheet" href="/assets/css/boosts-thread.css" />
   <link rel="stylesheet" href="/assets/css/boost-actions.css" />
+  <link rel="stylesheet" href="/assets/css/onlyboosts.css" />
   <link rel="stylesheet" href="/assets/css/episode.css" />
   <link rel="stylesheet" href="/assets/css/nav.css" />
   <link rel="stylesheet" href="/assets/css/theme.css" />

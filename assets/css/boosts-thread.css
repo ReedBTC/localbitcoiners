@@ -43,6 +43,54 @@
   font-weight: 700;
   color: var(--navy);
 }
+/* The author is clickable on a person's note (boosts-thread.js#renderNoteCard):
+   an <a> to their OnlyBoosts page or a <button> that copies their npub. Both
+   keep the look the plain span had (a wall of blue underlined names would read
+   as a list of links rather than as the people who sent these boosts) and earn
+   the site's warm underline on hover, the same treatment the calendar card's
+   organizer identity has below. */
+.note-author a.author-name,
+.note-author button.author-name {
+  display: inline-block;
+  max-width: 100%;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--navy);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.12s;
+}
+.note-author a.author-name:hover,
+.note-author button.author-name:hover,
+.note-author a.author-name:focus-visible,
+.note-author button.author-name:focus-visible {
+  color: var(--orange);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.note-author a.author-name:focus-visible,
+.note-author button.author-name:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+/* The avatar's clickable wrapper. It exists to carry the click and the
+   OnlyBoosts dot (onlyboosts.css positions the dot against it); `.note-author
+   img` above still sizes the image inside, so it must not add a box of its
+   own or the author row shifts. Round, so the dot's `border-radius: inherit`
+   re-clips the image. */
+.note-author .note-avatar-link {
+  display: flex;
+  flex-shrink: 0;
+  line-height: 0;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
 .note-author .author-handle {
   color: var(--muted);
   font-size: 0.78rem;
@@ -55,20 +103,40 @@
   flex-shrink: 0;
 }
 
-/* The meta strip: sats · app · episode off the payment record, on every
-   card that has one (boosts-thread.js renderNoteCard). A booster's own note
-   says none of that itself. */
+/* The meta row: sats, "via <app>", the episode title, off the payment record,
+   on every card that has one (boosts-thread.js renderNoteCard). A booster's
+   own note says none of that itself. The OnlyBoosts card's row: the sats
+   bold in the accent, the app muted beside them ("via" is its own
+   separator), the episode as a quiet link that wraps rather than pushing
+   anything off the card. */
 .note-meta {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem 0.5rem;
+  align-items: baseline;
+  gap: 0.3rem 0.6rem;
   margin: -0.15rem 0 0.55rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--navy);
+  font-size: 0.84rem;
+  line-height: 1.4;
 }
-.note-meta .note-meta-sep { color: var(--muted); font-weight: 400; }
+.note-meta-sats {
+  font-weight: 700;
+  color: var(--brand-d, #d97b0e);
+  white-space: nowrap;
+}
+.note-meta-via {
+  color: var(--muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.note-meta-ep {
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+  max-width: 100%;
+  word-break: break-word;
+}
+a.note-meta-ep:hover,
+a.note-meta-ep:focus-visible { color: var(--brand-d, #d97b0e); text-decoration: underline; text-underline-offset: 2px; }
 /* A Fountain boost sent without a comment is only the trailer, which the
    renderer strips; the strip above already says everything the card has. */
 .note-card .note-body:empty { display: none; }
