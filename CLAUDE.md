@@ -345,6 +345,57 @@ note embeds it. Things that fail silently if missed:
   `['e', parent.id, '', 'root']` and nothing else). Like, repost and zap act
   on the shown note and its author's lud16.
 
+## Links inside a note paint what they point at (boost-media-previews, lb-v92)
+
+Reed's ask, 2026-11-07: people share GIFs in boosts now, and a note full of
+bare URLs read as a block of blue text. `renderSegmentsInto` in
+`boosts-thread.js` (the one tokenizer behind the boost wall, `/ep###`, the
+stats page's Biggest Boosts and the Podcast Boosts feed's messages) now
+treats a `link` token three ways: a picture or clip renders inline, a page
+link renders as a shortened anchor with an Open Graph card under it, and
+anything else stays an anchor. Things that fail silently if missed:
+
+- **App boilerplate comes off at render** (`stripBoilerplate` in
+  `note-media.js`, OnlyBoosts' rule of the same day, called in
+  `renderContentInto`, the embed snippet and the Podcast Boosts feed): a
+  listen link ALONE on its line (the bot's `🔗 https://fountain.fm/episode/…`,
+  Fountain's donor-note footer, BoostMeBuddy / BoostMeBitch `?podcast=`,
+  Podcast Index, pod.link, OnlyBoosts, this site's bare `localbitcoiners.com`
+  and `/ep###`), a share-card image (`/og/boost.png`) and the three app
+  banners anywhere. A link inside the booster's sentence stays, and so do
+  the 📅 / 📄 / 🛒 feature lines. Measured 2026-11-07: 597 of 616 wall
+  records carried a URL, almost all of them these. The strip is display
+  only; `finishBoostThread` scans the unstripped text for quoted notes.
+  Widen `LISTEN_LINK_RE` when a new app's footer shows up as blue text.
+- **What a URL is lives in `assets/js/note-media.js`** (a NEW module on
+  purpose, pure, tested by `scripts/test-note-media.mjs`): image / video by
+  extension, else by the note's NIP-92 `imeta` tag (`m image/png` beside the
+  url; the renderer passes the SHOWN event's tags, so a donor note's imeta
+  is read, not the show note's). `linkLabel` is the anchor text (host and
+  path, 48 chars; the href keeps the whole URL), `splitTrailingPunct` keeps
+  a sentence's full stop out of the href. OnlyBoosts rejected inline images
+  on 2026-08-21 as making the cards too tall and brought them back on
+  2026-11-07 in a 280×200 box; `.note-media` in `boosts-thread.css` is that
+  same box (OB's `a.msg-media`), so a card reads alike on both sites.
+- **Preview cards come from `/api/link-preview?url=`**, a Pages Function
+  that fetches the page at the edge (8 s, 256 KB, public http(s) hosts only;
+  `previewTargetProblem` in `functions/_shared/link-preview-parse.js` refuses
+  loopback, private ranges, odd ports) and answers `{kind: page | image |
+  none}` with a day of cache. The parse is pure and tested beside
+  note-media. The browser side (`assets/js/link-preview.js`, NEW) appends a
+  hidden slot after the anchor, fetches once the slot is within 400 px of
+  the viewport, memoises per URL in memory and sessionStorage, and swaps in
+  the card, or inline media when the URL served an image, or nothing on a
+  miss. Three cards per body (`PREVIEWS_PER_BODY`); quoted notes (`inEmbed`)
+  get none unless the caller sets `previews: true`, which the Podcast
+  Boosts feed does because its messages are top-level.
+- **Everything from the endpoint is untrusted**: text through textContent,
+  image URLs through the http(s) check before `<img>`, never innerHTML.
+- **A block inside a pre-wrap body eats one newline on each side**
+  (`trimTrailingNewline` and the `afterBlock` flag), or every GIF carries a
+  blank line above and below it. A preview that later misses leaves the
+  shorter gap; that is accepted.
+
 ## "New Member!" badge on the boost wall (lb-v84, 2026-10-08)
 
 `boosts.html` marks a supporter's first boost with a gold "🎉 New Member!"
