@@ -345,6 +345,44 @@ note embeds it. Things that fail silently if missed:
   `['e', parent.id, '', 'root']` and nothing else). Like, repost and zap act
   on the shown note and its author's lud16.
 
+## Links inside a note paint what they point at (boost-media-previews, lb-v91)
+
+Reed's ask, 2026-11-07: people share GIFs in boosts now, and a note full of
+bare URLs read as a block of blue text. `renderSegmentsInto` in
+`boosts-thread.js` (the one tokenizer behind the boost wall, `/ep###`, the
+stats page's Biggest Boosts and the Podcast Boosts feed's messages) now
+treats a `link` token three ways: a picture or clip renders inline, a page
+link renders as a shortened anchor with an Open Graph card under it, and
+anything else stays an anchor. Things that fail silently if missed:
+
+- **What a URL is lives in `assets/js/note-media.js`** (a NEW module on
+  purpose, pure, tested by `scripts/test-note-media.mjs`): image / video by
+  extension, else by the note's NIP-92 `imeta` tag (`m image/png` beside the
+  url; the renderer passes the SHOWN event's tags, so a donor note's imeta
+  is read, not the show note's). `linkLabel` is the anchor text (host and
+  path, 48 chars; the href keeps the whole URL), `splitTrailingPunct` keeps
+  a sentence's full stop out of the href. OnlyBoosts rejected inline images
+  on 2026-08-21 as making the cards too tall; this site renders them at
+  Reed's ask, bounded to 340px by `.note-media` in `boosts-thread.css`.
+- **Preview cards come from `/api/link-preview?url=`**, a Pages Function
+  that fetches the page at the edge (8 s, 256 KB, public http(s) hosts only;
+  `previewTargetProblem` in `functions/_shared/link-preview-parse.js` refuses
+  loopback, private ranges, odd ports) and answers `{kind: page | image |
+  none}` with a day of cache. The parse is pure and tested beside
+  note-media. The browser side (`assets/js/link-preview.js`, NEW) appends a
+  hidden slot after the anchor, fetches once the slot is within 400 px of
+  the viewport, memoises per URL in memory and sessionStorage, and swaps in
+  the card, or inline media when the URL served an image, or nothing on a
+  miss. Three cards per body (`PREVIEWS_PER_BODY`); quoted notes (`inEmbed`)
+  get none unless the caller sets `previews: true`, which the Podcast
+  Boosts feed does because its messages are top-level.
+- **Everything from the endpoint is untrusted**: text through textContent,
+  image URLs through the http(s) check before `<img>`, never innerHTML.
+- **A block inside a pre-wrap body eats one newline on each side**
+  (`trimTrailingNewline` and the `afterBlock` flag), or every GIF carries a
+  blank line above and below it. A preview that later misses leaves the
+  shorter gap; that is accepted.
+
 ## "New Member!" badge on the boost wall (lb-v84, 2026-10-08)
 
 `boosts.html` marks a supporter's first boost with a gold "🎉 New Member!"

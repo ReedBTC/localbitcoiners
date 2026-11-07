@@ -16,6 +16,8 @@
  * mutating repaints.
  */
 import { SimplePool, nip19, verifyEvent } from '/assets/widgets/nostr-tools.js'
+import { mediaKindOf, imetaMapOf, splitTrailingPunct, linkLabel } from '/assets/js/note-media.js'
+import { buildMediaEl, attachLinkPreview } from '/assets/js/link-preview.js'
 import { resolveProfiles } from '/assets/js/profile-cache.js'
 import {
   parseWallRecord,
@@ -340,22 +342,52 @@ function parseSegments(content) {
   return segments.length ? segments : [{ type: 'text', value: content }]
 }
 
+// How many link-preview cards one body may carry. A note that lists six
+// links gets cards for the first three and plain (shortened) anchors after.
+const PREVIEWS_PER_BODY = 3
+
+// opts: inEmbed (a quoted note: no nested embeds, no preview cards),
+//       imeta (Map from note-media.js#imetaMapOf, the note's NIP-92 tags),
+//       previews (override: cards on/off; default on unless inEmbed).
 function renderSegmentsInto(el, segments, opts = {}) {
+  const wantPreviews = opts.previews ?? !opts.inEmbed
+  let previews = 0
+  // A link that became a block (a picture, a card) leaves the newline the
+  // author typed after it; with pre-wrap that is a blank line between the
+  // block and the next paragraph, so one newline on each side is dropped.
+  let afterBlock = false
   for (const seg of segments) {
     if (seg.type === 'text') {
-      el.appendChild(document.createTextNode(seg.value))
+      let value = seg.value
+      if (afterBlock && value.startsWith('\n')) value = value.slice(1)
+      afterBlock = false
+      if (value) el.appendChild(document.createTextNode(value))
     } else if (seg.type === 'link') {
-      const url = seg.data?.url || seg.value
+      afterBlock = false
+      const { url, tail } = splitTrailingPunct(seg.data?.url || seg.value)
       if (isSafeUrl(url)) {
-        const a = document.createElement('a')
-        a.href = url
-        a.textContent = url
-        a.target = '_blank'
-        a.rel = 'noopener noreferrer'
-        el.appendChild(a)
+        const kind = mediaKindOf(url, opts.imeta || null)
+        if (kind) {
+          trimTrailingNewline(el)
+          el.appendChild(buildMediaEl(url, kind))
+          afterBlock = true
+        } else {
+          const a = document.createElement('a')
+          a.href = url
+          a.textContent = linkLabel(url)
+          a.title = url
+          a.target = '_blank'
+          a.rel = 'noopener noreferrer'
+          el.appendChild(a)
+          if (wantPreviews && previews < PREVIEWS_PER_BODY) {
+            previews++
+            attachLinkPreview(el, url)
+          }
+        }
       } else {
         el.appendChild(document.createTextNode(url))
       }
+      if (tail) el.appendChild(document.createTextNode(tail))
     } else if (seg.type === 'mention') {
       el.appendChild(buildMentionEl(seg))
     } else if (seg.type === 'note_embed') {
@@ -368,6 +400,14 @@ function renderSegmentsInto(el, segments, opts = {}) {
     } else {
       el.appendChild(document.createTextNode(seg.value || ''))
     }
+  }
+}
+
+function trimTrailingNewline(el) {
+  const last = el.lastChild
+  if (last && last.nodeType === 3 && last.nodeValue.endsWith('\n')) {
+    last.nodeValue = last.nodeValue.slice(0, -1)
+    if (!last.nodeValue) last.remove()
   }
 }
 
@@ -501,7 +541,7 @@ function buildEmbedNoteEl(seg) {
   body.className = 'embed-body'
   const text = ev.content || ''
   const snippet = text.length > 600 ? text.slice(0, 600) + '…' : text
-  renderSegmentsInto(body, parseSegments(snippet), { inEmbed: true })
+  renderSegmentsInto(body, parseSegments(snippet), { inEmbed: true, imeta: imetaMapOf(ev.tags) })
   card.appendChild(body)
 
   const footer = document.createElement('div')
@@ -521,8 +561,10 @@ function buildEmbedNoteEl(seg) {
   return card
 }
 
-function renderContentInto(el, text) {
-  renderSegmentsInto(el, parseSegments(text))
+// `source` is the event whose text this is (the donor note or the show note),
+// read for its NIP-92 imeta tags only.
+function renderContentInto(el, text, source = null) {
+  renderSegmentsInto(el, parseSegments(text), { imeta: imetaMapOf(source?.tags) })
 }
 
 // ── Profile parsing ──────────────────────────────────────────────────
@@ -1031,7 +1073,7 @@ export function renderNoteCard(ev, { isRoot = false, hideEpisode = false } = {})
 
   const body = document.createElement('div')
   body.className = 'note-body'
-  renderContentInto(body, displayContentOf(ev, meta))
+  renderContentInto(body, displayContentOf(ev, meta), shown)
   card.appendChild(body)
 
   const footer = document.createElement('div')

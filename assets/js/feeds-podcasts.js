@@ -1024,9 +1024,11 @@ function boostRow(b) {
   if (msg) {
     const msgEl = h('div', { class: 'pcast-boost-msg' })
     // Reuse the boost-thread tokenizer: nostr: mentions → chips, URLs →
-    // links, everything else plain text nodes. inEmbed keeps a quoted note
-    // as a chip instead of triggering an embed fetch.
-    renderSegmentsInto(msgEl, parseSegments(msg), { inEmbed: true })
+    // links (a picture or clip inline, a preview card under a page link),
+    // everything else plain text nodes. inEmbed keeps a quoted note as a
+    // chip instead of triggering an embed fetch; previews is set back on
+    // because this is a top-level message, not a quote.
+    renderSegmentsInto(msgEl, parseSegments(msg), { inEmbed: true, previews: true })
     parts.push(msgEl)
   }
   const row = h('div', { class: 'pcast-boost' }, parts)

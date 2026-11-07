@@ -226,7 +226,14 @@
 // payment hash, npubs only, hosts and past guests never) so
 // the hosts can welcome newcomers as they read boosts off. boosts.html is
 // precached, and the old page has no import for the new module.
-const VERSION = 'lb-v90';
+// lb-v91: links inside boost notes paint what they point at: a GIF, image
+// or clip inline (note-media.js decides, by extension or the note's imeta
+// tags), and a page link gets an Open Graph card under it from the new
+// /api/link-preview (assets/js/link-preview.js). boosts-thread.js and
+// boosts-thread.css change, both precached, and the two new modules are
+// added below; an old thread script against the new CSS is harmless, the
+// new script against a stale cache would 404 its imports.
+const VERSION = 'lb-v91';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
@@ -262,6 +269,8 @@ const PRECACHE_URLS = [
   '/assets/js/ep-boosts.js',
   '/assets/js/boosts-thread.js',
   '/assets/js/boost-record.js',
+  '/assets/js/note-media.js',
+  '/assets/js/link-preview.js',
   '/assets/js/profile-cache.js',
   '/assets/js/calendar-events.js',
   '/assets/js/onlyboosts.js',
