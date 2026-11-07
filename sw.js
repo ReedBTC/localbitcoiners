@@ -227,8 +227,10 @@
 // the hosts can welcome newcomers as they read boosts off. boosts.html is
 // precached, and the old page has no import for the new module.
 // lb-v91: links inside boost notes paint what they point at: a GIF, image
-// or clip inline (note-media.js decides, by extension or the note's imeta
-// tags), and a page link gets an Open Graph card under it from the new
+// or clip inline in OnlyBoosts' 280x200 box (note-media.js decides, by
+// extension or the note's imeta tags), the app boilerplate (the bot's 🔗
+// line, listen links, share-card images) comes off at render, and a page
+// link that survives gets an Open Graph card under it from the new
 // /api/link-preview (assets/js/link-preview.js). boosts-thread.js and
 // boosts-thread.css change, both precached, and the two new modules are
 // added below; an old thread script against the new CSS is harmless, the

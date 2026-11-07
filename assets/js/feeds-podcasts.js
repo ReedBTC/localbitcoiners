@@ -32,6 +32,7 @@ import {
   parseSegments,
   renderSegmentsInto,
 } from '/assets/js/boosts-thread.js'
+import { stripBoilerplate } from '/assets/js/note-media.js'
 import { fromApiValue } from '/assets/js/value-block.js'
 import { buildActionBar, configureBoostActions } from '/assets/js/boost-actions.js'
 import { ensureLoginWidget } from '/assets/js/widget-loader.js'
@@ -1020,7 +1021,7 @@ function boostRow(b) {
   ])
 
   const parts = [head]
-  const msg = (b.message || '').trim()
+  const msg = stripBoilerplate(b.message || '').trim()
   if (msg) {
     const msgEl = h('div', { class: 'pcast-boost-msg' })
     // Reuse the boost-thread tokenizer: nostr: mentions → chips, URLs →

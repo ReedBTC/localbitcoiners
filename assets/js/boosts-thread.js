@@ -16,7 +16,7 @@
  * mutating repaints.
  */
 import { SimplePool, nip19, verifyEvent } from '/assets/widgets/nostr-tools.js'
-import { mediaKindOf, imetaMapOf, splitTrailingPunct, linkLabel } from '/assets/js/note-media.js'
+import { mediaKindOf, imetaMapOf, splitTrailingPunct, linkLabel, stripBoilerplate } from '/assets/js/note-media.js'
 import { buildMediaEl, attachLinkPreview } from '/assets/js/link-preview.js'
 import { resolveProfiles } from '/assets/js/profile-cache.js'
 import {
@@ -540,7 +540,8 @@ function buildEmbedNoteEl(seg) {
   const body = document.createElement('div')
   body.className = 'embed-body'
   const text = ev.content || ''
-  const snippet = text.length > 600 ? text.slice(0, 600) + '…' : text
+  const tidy = stripBoilerplate(text)
+  const snippet = tidy.length > 600 ? tidy.slice(0, 600) + '…' : tidy
   renderSegmentsInto(body, parseSegments(snippet), { inEmbed: true, imeta: imetaMapOf(ev.tags) })
   card.appendChild(body)
 
@@ -562,9 +563,11 @@ function buildEmbedNoteEl(seg) {
 }
 
 // `source` is the event whose text this is (the donor note or the show note),
-// read for its NIP-92 imeta tags only.
+// read for its NIP-92 imeta tags only. The app boilerplate (the bot's 🔗
+// line, share-card images, listen links) comes off here, at render, so the
+// thread scanner still sees the whole note.
 function renderContentInto(el, text, source = null) {
-  renderSegmentsInto(el, parseSegments(text), { imeta: imetaMapOf(source?.tags) })
+  renderSegmentsInto(el, parseSegments(stripBoilerplate(text)), { imeta: imetaMapOf(source?.tags) })
 }
 
 // ── Profile parsing ──────────────────────────────────────────────────

@@ -153,29 +153,34 @@ a.note-meta-ep:focus-visible { color: var(--brand-d, #d97b0e); text-decoration: 
 .note-body a.nostr-mention:hover { text-decoration: underline; }
 
 /* ── Media and link previews inside a note (link-preview.js) ──────────
-   A picture or clip the note links to is painted inline, bounded so a GIF
-   stays a line in the card and not the card; a page link gets a small card
+   A picture or clip the note links to is painted inline in a bounded box so
+   a GIF stays a line in the card and not the card; a page link gets a small card
    (thumbnail, site, title, description) once /api/link-preview answers.
    Both are blocks inside a pre-wrap body, which is why the renderer trims
    the newline on each side of them. The same classes serve the Podcast
    Boosts feed's .pcast-boost-msg on the homepage. */
+/* OnlyBoosts' box (a.msg-media in its theme.css): never taller than 200px
+   or wider than 280px, whatever the picture's own size, which is what
+   answered the 2026-08-21 objection that pictures made the cards too big. */
 .note-media {
   display: block;
-  margin: 0.45rem 0;
-  max-width: 100%;
+  width: fit-content;
+  max-width: min(100%, 280px);
+  margin: 0.4rem 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  line-height: 0;
+  background: var(--cream-d);
 }
-.note-media > a { display: inline-block; max-width: 100%; line-height: 0; }
+.note-media > a { display: block; line-height: 0; }
 .note-media img,
 .note-media video {
   display: block;
   max-width: 100%;
-  max-height: 340px;
+  max-height: 200px;
   width: auto;
   height: auto;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--cream-d);
-  object-fit: contain;
 }
 .note-media video { min-width: min(100%, 280px); }
 .link-preview-slot[hidden] { display: none; }

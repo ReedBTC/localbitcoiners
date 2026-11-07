@@ -4,6 +4,7 @@
  * are pure string functions the Node tests (scripts/test-note-media.mjs) run
  * without a DOM. The renderer asks three things of a link token:
  *
+ *   stripBoilerplate(text)    the note minus what the boosting app appended
  *   mediaKindOf(url, imeta)   'image' | 'video' | null — paint it inline?
  *   splitTrailingPunct(raw)   the URL without the sentence's full stop
  *   linkLabel(url)            the short text the anchor shows
@@ -86,4 +87,82 @@ export function linkLabel(url, max = 48) {
   }
   s = s.replace(/\/$/, '')
   return s.length > max ? s.slice(0, max - 1) + '…' : s
+}
+
+/* App boilerplate comes off a note before it is tokenized (2026-11-07,
+ * OnlyBoosts' rule carried over at Reed's ask: a boost card should look the
+ * same on both sites). Measured on the 616 wall records that day, 597 carried
+ * a URL and nearly every one was something an app appends to every note,
+ * restating what the card already shows in its meta row:
+ *
+ *   - a SHARE-CARD IMAGE, a picture of the boost itself (`/og/boost.png` on
+ *     BoostMeBuddy, BoostMeBitch and tardbox; imeta-tagged, so without this
+ *     it would paint as a 1200x300 banner under the message);
+ *   - an APP BANNER, the brand image a publisher opens its notes with
+ *     (OnlyBoosts' two, this show's bot);
+ *   - a LISTEN LINK to the boosted show or episode in some app: the bot's
+ *     `🔗 https://fountain.fm/episode/…` line on every show note, the same
+ *     link Fountain's donor notes end with, BoostMeBuddy's `?podcast=`,
+ *     Podcast Index, pod.link, Castamatic, Podcast Guru, Podhome, Wavlake,
+ *     OnlyBoosts, and this site's own bare `https://localbitcoiners.com`
+ *     footer and `/ep###` pages. The meta row links the episode already.
+ *
+ * A share card or banner goes wherever it sits. A listen link goes only
+ * when it is ALONE ON ITS LINE (a symbol or emoji in front allowed), which
+ * is how every template writes it; one inside the booster's own sentence
+ * ("Boosting this episode from https://localbitcoiners.com/feeds") is their
+ * prose and stays. The "Find it on <app>" line some relay bots write above
+ * their link goes with it. The 📅 / 📄 / 🛒 feature lines stay: they point
+ * at the featured item, which the card does not otherwise link. The note
+ * itself is untouched; this is only how it reads here, and the display text
+ * the thread scanner reads for quoted notes is the unstripped one. */
+const URL_SCAN_RE = /https?:\/\/[^\s<>"')\]]+/g
+const SHARE_CARD_PATH_RE = /\/og\/boost\.png$/i
+const APP_BANNERS = new Set([
+  'https://i.nostr.build/iQ4vHJ88xTrGZ36eey9lWJ.png', // OnlyBoosts, a boost
+  'https://i.nostr.build/QoXlTuDurz3b4EqNefAzoC.png', // OnlyBoosts, a donation
+  'https://i.nostr.build/a6G5FkkfTlSyfJ7z.png',       // this show's bot
+])
+const LISTEN_LINK_RE = new RegExp('^https?://(?:www\\.)?(?:' + [
+  'podcastindex\\.org/podcast/',
+  'fountain\\.fm/(?:show|episode|track|album|artist)/',
+  'boostmebuddy\\.com/\\?podcast=',
+  'boostmebitch\\.com/\\?podcast=',
+  'tardbox\\.com/boost/',
+  'pod\\.link/',
+  'castamatic\\.com/guid/',
+  'app\\.podcastguru\\.io/podcast/',
+  'serve\\.podhome\\.fm/episodepage/',
+  'wavlake\\.com/(?:track|album)/',
+  'onlyboosts\\.social/(?:episode|show)/',
+  'localbitcoiners\\.com/?(?:ep\\d+/?)?$',
+].join('|') + ')', 'i')
+// A line that is nothing but a URL, with at most a symbol or emoji before it.
+const LINK_LINE_RE = /^[^\p{L}\p{N}\s]*\s*(https?:\/\/\S+)\s*$/u
+const FIND_IT_RE = /^\s*\S*\s*Find it on\b/i
+
+function isBoilerplateImage(url) {
+  if (APP_BANNERS.has(url)) return true
+  try { return SHARE_CARD_PATH_RE.test(new URL(url).pathname) } catch { return false }
+}
+
+export function stripBoilerplate(text) {
+  const src = String(text == null ? '' : text)
+  if (!/https?:\/\//i.test(src)) return src
+  const lines = src.replace(/\r\n?/g, '\n').split('\n')
+  const keep = []
+  let changed = false
+  for (const line of lines) {
+    const m = line.match(LINK_LINE_RE)
+    if (m && (LISTEN_LINK_RE.test(m[1]) || isBoilerplateImage(m[1]))) {
+      if (keep.length && FIND_IT_RE.test(keep[keep.length - 1])) keep.pop()
+      changed = true
+      continue
+    }
+    keep.push(line)
+  }
+  let out = keep.join('\n')
+  // A share card or banner mid-line (rare) goes too.
+  out = out.replace(URL_SCAN_RE, (u) => (isBoilerplateImage(u) ? ((changed = true), '') : u))
+  return changed ? out.replace(/\n[ \t]*(?:\n[ \t]*){2,}/g, '\n\n').trim() : src
 }

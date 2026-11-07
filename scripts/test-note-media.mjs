@@ -12,14 +12,18 @@
  *      says so (NIP-92, `m image/png` beside the url).
  *   2. Sentence punctuation after a URL stays out of the href.
  *   3. The anchor label drops the scheme and www. and is cut to 48 chars.
- *   4. The parse reads Open Graph first, Twitter second, <title> last,
+ *   4. App boilerplate comes off before rendering (OnlyBoosts' rule): the
+ *      bot's 🔗 fountain line, a listen link alone on its line, a share-card
+ *      image anywhere, the site's bare footer URL; a link inside the
+ *      booster's sentence, a feature line and a GIF stay.
+ *   5. The parse reads Open Graph first, Twitter second, <title> last,
  *      decodes entities, resolves a relative og:image against the page,
  *      refuses a non-http image, and returns null with no title.
- *   5. The target check refuses loopback, private ranges, odd ports,
+ *   6. The target check refuses loopback, private ranges, odd ports,
  *      credentials and non-http schemes, and admits a public https URL.
  */
 import assert from 'node:assert/strict'
-import { mediaKindOf, imetaMapOf, splitTrailingPunct, linkLabel } from '../assets/js/note-media.js'
+import { mediaKindOf, imetaMapOf, splitTrailingPunct, linkLabel, stripBoilerplate } from '../assets/js/note-media.js'
 import { parseLinkPreview, previewTargetProblem, decodeEntities } from '../functions/_shared/link-preview-parse.js'
 
 let passed = 0
@@ -75,6 +79,33 @@ ok('drops the scheme and www., keeps the path, cuts at 48', () => {
   assert.equal(long.length, 48)
   assert.ok(long.endsWith('…'))
   assert.ok(long.startsWith('boostmebuddy.com/?podcast='))
+})
+
+console.log('stripBoilerplate')
+ok("the show note loses its 🔗 fountain line and nothing else", () => {
+  const note = '⚡ New boost on Local Bitcoiners!\n💰 100 sats 📱 via Fountain\n👤 nostr:npub1x\n💬 Hello\n🎙️ Local Bitcoiners • Ep. 033\n🔗 https://fountain.fm/episode/qQjER3A6RVPFP6nLTAyb\n\n#LocalBitcoiners'
+  assert.equal(stripBoilerplate(note), '⚡ New boost on Local Bitcoiners!\n💰 100 sats 📱 via Fountain\n👤 nostr:npub1x\n💬 Hello\n🎙️ Local Bitcoiners • Ep. 033\n\n#LocalBitcoiners')
+})
+ok('a BoostMeBitch note keeps the GIF and the prose, loses the listen links and the share card', () => {
+  const note = '⚡ Boost ⚡\n\nMagic number.\nhttps://media.giphy.com/media/DQcqDjL0vcxz7lEhNT/giphy.gif\n\nChadF boosted 333 sats → Local Bitcoiners\n📻 Ep. 033\n\nhttps://fountain.fm/episode/qQjER3A6RVPFP6nLTAyb\nhttps://www.boostmebitch.com/?podcast=56fb&episode=69b6\n\nhttps://www.boostmebitch.com/api/og/boost.png?art=x&sats=333\n\nnostr:nevent1abc'
+  assert.equal(stripBoilerplate(note), '⚡ Boost ⚡\n\nMagic number.\nhttps://media.giphy.com/media/DQcqDjL0vcxz7lEhNT/giphy.gif\n\nChadF boosted 333 sats → Local Bitcoiners\n📻 Ep. 033\n\nnostr:nevent1abc')
+})
+ok("the site's own footer URL and /ep### alone on a line go; inside a sentence they stay", () => {
+  assert.equal(stripBoilerplate('Great show\nhttps://localbitcoiners.com'), 'Great show')
+  assert.equal(stripBoilerplate('Great show\nhttps://localbitcoiners.com/ep033'), 'Great show')
+  assert.equal(stripBoilerplate('Boosting this episode from https://localbitcoiners.com/feeds'), 'Boosting this episode from https://localbitcoiners.com/feeds')
+  assert.equal(stripBoilerplate('See https://fountain.fm/episode/abc for the one I mean'), 'See https://fountain.fm/episode/abc for the one I mean')
+})
+ok('feature lines (📅 plektos, 📄 mynostr, 🛒 shopstr) and other links stay', () => {
+  const note = '💬 Boosting my meetup\n📅 https://plektos.app/event/naddr1xyz'
+  assert.equal(stripBoilerplate(note), note)
+  assert.equal(stripBoilerplate('https://www.meetup.com/bitcoin-only-sactown/events/315540285/'), 'https://www.meetup.com/bitcoin-only-sactown/events/315540285/')
+})
+ok('a Find it on line goes with its link; a banner goes mid-line; no URL is untouched', () => {
+  assert.equal(stripBoilerplate('Hi\n🎧 Find it on Fountain\nhttps://fountain.fm/show/Q48W\nbye'), 'Hi\nbye')
+  assert.equal(stripBoilerplate('look https://i.nostr.build/a6G5FkkfTlSyfJ7z.png here'), 'look  here')
+  assert.equal(stripBoilerplate('no links\n\n\nhere'), 'no links\n\n\nhere')
+  assert.equal(stripBoilerplate(null), '')
 })
 
 console.log('parseLinkPreview')
