@@ -1,6 +1,7 @@
 /* The feeds' share of the homepage URL.
  *
- * Since feeds-homepage (lb-v80) the community feeds live on `/`, and what a
+ * Each community feed has its own page since rails-homepage (2026-11);
+ * before that (feeds-homepage, lb-v80) they lived on `/`, and what a
  * reader is looking at is spelled out in the URL so it can be shared:
  *
  *   /?feed=podcasts&view=all&range=1m&sort=sats#feeds
@@ -33,7 +34,12 @@ export const FEED_PARAM_KEYS = ['range', 'sort', 'type', 'short']
 export function initialFeedParams(feed) {
   let q
   try { q = new URLSearchParams(location.search) } catch { return {} }
-  if ((q.get('feed') || '') !== feed) return {}
+  // Since rails-homepage (2026-11) each feed has its own page, and the page
+  // itself names the feed (<body data-active-feed>): /events?range=1m carries
+  // no `feed` key. A URL that does name one (the pre-rails homepage links
+  // still in published notes) must name this feed.
+  const named = q.get('feed') || (typeof document !== 'undefined' && document.body && document.body.dataset.activeFeed) || ''
+  if (named !== feed) return {}
   const out = {}
   for (const k of FEED_PARAM_KEYS) {
     const v = q.get(k)

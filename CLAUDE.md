@@ -88,88 +88,71 @@ runner (`payAllLegs.js`) restates the keysend leg rather than importing it:
   asked when it returns null. `leg.recipient.address` stays as published.
   `test-keysend-upgrade.mjs` scans the call sites.
 
-## The homepage is the community feeds page (feeds-homepage, lb-v80)
+## The homepage is rails, the feeds are pages (rails-homepage, lb-v93)
 
-`index.html` is the former `feeds.html` with a top block above the tabs:
-a compact hero (the transparent banner cut, capped at 680px), the
-latest-episode card under a "Latest Episode" section title (the inline RSS
-episode script still renders it; the drawers and the Browse-all links are
-gone), an Episodes / Boosts / Stats row, then `<section id="feeds">`: a
-"Community Feeds" title in the same style (the navy band and the membership
-chip are gone from the homepage), the sticky boxed tab chrome (four tabs,
-and under the active one a Featured / All sub-row, the OnlyBoosts
-homepage's chrome carried back), the tinted panels, the Find modal; then
-the footer. The old Explore grid, the old hub modules and `home.js` are
-gone. Every column is 1100px with 1.5rem sides (`--feed-track`,
-`.featured-wrap`, `.home-module`); change one and change the others. Things
-that fail silently if missed:
+Since 2026-11-07 (Reed, after the OnlyBoosts homepage's feedback: "nobody
+likes the tabs") `index.html` is the hero, the latest-episode card, the
+Episodes / Boosts / Stats row, then one sideways row of tiles per
+community section, the OnlyBoosts discovery homepage's shape: Community
+(the top ten supporters, round tiles, name alone), then under `#feeds`
+Events, Marketplace, Podcast Boosts and Articles, each heading linking its
+own page: `events.html`, `market.html`, `podcasts.html`, `articles.html`
+(`/events` …). A tile is the picture, the title and one line (date, price,
+show, author); featured items come first with a gold ring and the bolt; a
+click opens the page's own card in a modal (an event card, an episode card,
+the article reader; a listing opens merch.js's product modal). The tabs,
+the Featured / All sub-row and the `?feed=` URL state are gone. Things that
+fail silently if missed:
 
-- **The URL spells out the feeds**: `/?feed=<tab>&view=<featured|all>
-  [&range&sort&type&short]#feeds`. `#feeds` is the section (the controller
-  scrolls to it); the query is the tab, sub-tab and the active feed's All-view
-  controls (`range`, `sort`, `type` for events, `short` for articles; an
-  absent key is the feed's default). The inline controller owns the URL and
-  keeps params per feed; renderers only read their opening params once
-  (`initialFeedParams`) and announce a reader's change (`publishFeedParams`),
-  both in `assets/js/feed-url.js`, a NEW module on purpose (a named export
-  added to a cached shared module is a link-time error on every feed). A
-  plain visit keeps a plain `/`; the URL starts tracking the moment the
-  reader touches the feeds or arrives by a feeds link. The old hashes
-  (`#events` … `#articles`, `#market-cart`) still route, and in-page feeds
-  links (nav Feeds / Merch / cart, Explore cards) are handled in place rather
-  than reloading. `_redirects`: `/feeds` → `/#feeds`, meetups → `/?feed=
-  events#feeds`, merch → `/?feed=market#feeds`. The note templates print
-  the feed's own URL (`FEATURE_TEMPLATE` in `featured-*.js`,
-  `PROMOTE_TEMPLATE` in `calendar-events.js`, the three templates in the
-  widget's `eventAnnouncement.js`): `/?feed=<tab>#feeds`. Notes published
-  before lb-v80 still say `/feeds`, which 301s to the same place.
-- **Featured / All is a CSS switch off `body[data-feed-view]`**, not two
-  renders. Each renderer still paints one panel (gold `.feat-box` first, in
-  a `*-featured-mount` wrapper on three tabs, then the list); Featured shows
-  the box alone plus skeletons and placeholders and hides every panel head
-  (the Events Create button is painted a second time beside Find in the
-  Featured row by `featuredBox`; both are wired by one delegated click on
-  `.event-create-btn` in the inline loader), All hides the box. Since
-  2026-09-06 **All includes the featured items** (the `!visible.has(...)`
-  exclusions in all four renderers are gone), and the box has **no range
-  pills** (`featuredHead` ignores `range`); every box runs at the 33-day
-  default. Featured is the landing view on every tab.
-- **The show's own listings are standing features.** There is no "Show
-  Merch" section any more (Reed, 2026-09-06): every house listing (author
-  `MERCHANT_HEX`) sits in the Marketplace tab's gold box, credited "Featured
-  by Local Bitcoiners" and aged from its listing date, for as long as it is
-  listed (`houseFeatureInfo` in `feeds-market.js` marks it `permanent`,
-  which `isFeatureLive` in `featured-shared.js` honours; nothing else sets
-  that flag). A house listing someone also pays to feature keeps the paid
-  credit. The All view is one grid of every listing in the shared
-  Buy-Now-first sort.
-- **The supporters wall is ranked, on both pages, by one script.**
-  `assets/js/supporters.js` (a module since 2026-09-06) paints `/supporters`
-  and the homepage's Community section (`#community-root`), with a 1W / 1M /
-  All range over when sats were sent and a Rank pill: Chart rank (default;
-  OnlyBoosts' rule, competition rank in sats + boosts + episodes summed,
-  lowest first, ties episodes → sats → boosts), Most sats / boosts /
-  episodes. Counting rules, Reed's calls: sats include boosts, streams and
-  zaps (zaps only once a person's zaps reach 100); boosts and episodes count
-  non-zap rows only, a stream row once per episode; zaps earn no boost or
-  episode credit. The `.pcast-*` control chrome is copied into
-  `supporters.html` like the other pages, accented brand orange via
-  `.sup-controls`. Ranking is client-side over `/api/sats`; there is no
-  endpoint to change.
-- **`nav.js`'s cart rule keys on the path**: the empty cart shows only on the
-  Marketplace tab of `/` (or a cached `/feeds`). Change the homepage's path
-  and change that regex. The cart link is `/?feed=market&cart=1#feeds`; the
-  controller consumes `cart=1` into `window.__lbOpenCartOnMarket` and drops
-  it from the URL.
-- **Two lazy widget loaders were merged into one.** The homepage carries the
-  feeds page's loader (Create button, Find modal accordion) plus the
-  `window.__lbEnsureWidgetLoaded` global the inline episode script's
-  per-card Boost buttons await. Drop either half and a button silently does
-  nothing.
-- **The old hub modules are gone**: `home-people.js`, `home-leaderboards.js`,
-  `home-boosts.js`, `home-merch.js`, `home-feeds.js`. `home.js` stays for the
-  Explore-card counts and reveal-on-scroll. The data-only loaders those
-  teasers imported from `feeds-*.js` and `merch.js` are still exported.
+- **The rails read the pages' own data, never their own.** `home-rails.js`
+  calls `loadEventRail` + `renderEventCard` (feeds.js), `loadMarketItems` +
+  `priceText` + `openListing` (feeds-market.js), `loadPodcastItems` +
+  `railEpisodes` + `openEpisodeCard` (feeds-podcasts.js), `loadArticleItems`
+  + `openArticleReader` + `articleAuthorName/Picture` (feeds-articles.js),
+  and the featured sets from the `featured-*` modules, so a rail and its
+  page agree on what is featured and in what order. `loadEventRail`'s state
+  must keep the SAME SHAPE as `loadEvents`'s (`featuredCoords`, `featuredBy`,
+  `featuredAt` included): the two share the localStorage cache and its
+  hydrator writes every field (the rail went blank on a second visit before
+  that). The Community rail is `supporters.js`'s rail mode (`renderRail`,
+  `RAIL_SIZE` 10, `#community-root`), the wall's cards restyled as tiles by
+  `home-rails.css`; `/supporters` keeps the wall.
+- **Rail orders are Reed's (2026-11-07).** Events: featured first, then
+  soonest; in-person only like the page's default, except a featured event
+  of any type. Marketplace: paid features and the house store's listings
+  first (a house listing displays as featured), then the page's Buy-Now-first
+  order. Podcast Boosts: features first, then "most boosters over the
+  narrowest air-date window with something in it", the page's opening sort.
+  Articles: features first, then the page's order. Pictures: the event's
+  image else the organizer's avatar; the article's cover else the author's
+  avatar.
+- **The feed pages are one panel each, hydrated by `feeds.js` off
+  `<body data-active-feed>`**, with `data-feed-view="page"`: the gold box
+  first, then the list, and an item appears ONCE: all four renderers leave
+  a featured item out of the list again (the 2026-09-06 "All includes the
+  featured items" rule is reversed; the `visible` sets do the exclusion).
+  The Events panel head's Create button is hidden on the page (the box's
+  copy shows). `feed-page.js` carries what the homepage's inline block
+  carried for the feeds (the widget loader, Create, the Find modal, the
+  nav's Boost / Log in) and the page's URL: the controls are plain query
+  params (`/events?range=1m&type=virtual`, `/market?cart=1`), written from
+  `lb:feed-params`; `initialFeedParams` accepts the body's feed when the
+  URL names none. `feed-page.css` is the pages' scaffold; `feeds.css` is
+  the former inline block of `index.html` (panels, cards, boxes, modals,
+  the per-feed accents), linked by the pages AND the homepage (the modals
+  need the card styles); its tab-chrome rules are dead.
+- **The pre-rails URLs still route.** `index.html`'s head script forwards
+  `/?feed=<tab>…`, `/#<tab>` and `/#market-cart` (published notes carry
+  them) to the pages, keeping `range/sort/type/short` and `cart`.
+  `_redirects`: `/feeds` → `/#feeds` (the rails), `/meetups`, `/newevent` →
+  `/events`, `/merch` → `/market`. The note templates (three
+  `FEATURE_TEMPLATE`s, `PROMOTE_TEMPLATE`, the three in the widget's
+  `eventAnnouncement.js`) print `https://localbitcoiners.com/<page>`.
+  `nav.js`'s cart rule keys on `/market` (and the old homepage test for
+  cached copies); the nav partial's Community group links the four pages.
+- **Every column is 60rem** (`--feed-track`, now defined in `feeds.css`):
+  `.featured-wrap`, `.home-module`, `.rail`, the pages' `.feeds-shell-wrap`.
+  Rails show 4 tiles from 640px and 6 from 900px, scrolling for the rest.
 
 ## Featured sections on the feeds (lb-v71 → lb-v75)
 

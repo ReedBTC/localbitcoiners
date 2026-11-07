@@ -25,16 +25,16 @@ const NADDR_PLACEHOLDER = '{naddr}'
 // tab's own URL is what a note points at. Notes published before that still
 // say /feeds, which 301s to the same place.
 export const DEFAULT_KIND1_TEMPLATE =
-  `I just posted a meetup on https://localbitcoiners.com/?feed=events#feeds`
+  `I just posted a meetup on https://localbitcoiners.com/events`
 
 export const DEFAULT_BOOST_TEMPLATE =
-  `I just posted a meetup on https://localbitcoiners.com/?feed=events#feeds`
+  `I just posted a meetup on https://localbitcoiners.com/events`
 
 // Default for the "boost an existing meetup" flows (My Meetups + Search
 // modals). Reads as "I have one already, here it comes" rather than the
 // just-published framing of DEFAULT_BOOST_TEMPLATE.
 export const BOOST_EXISTING_TEMPLATE =
-  `Boosting my meetup from https://localbitcoiners.com/?feed=events#feeds`
+  `Boosting my meetup from https://localbitcoiners.com/events`
 
 /**
  * Replace {naddr} placeholders with the real naddr1… string. If the

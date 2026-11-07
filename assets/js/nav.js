@@ -92,9 +92,9 @@
   // ── Cart icon (sitewide) ─────────────────────────────────────────────
   // The merch cart lives in sessionStorage (key 'lb_merch_cart', written by
   // merch.js). The nav shows a running item-count badge on every page and
-  // routes clicks to the cart modal in place once the homepage's Marketplace
-  // tab has hydrated (feeds-market.js exposes window.openMerchCart), or to
-  // /?feed=market&cart=1#feeds from anywhere else. The badge refreshes on a
+  // routes clicks to the cart modal in place once the Marketplace page has
+  // hydrated (feeds-market.js exposes window.openMerchCart), or to
+  // /market?cart=1 from anywhere else. The badge refreshes on a
   // 'lb-cart-changed' event merch.js fires when the cart mutates, plus on
   // tab-focus / bfcache restore.
   function cartItemCount() {
@@ -113,12 +113,13 @@
       badge.style.display = n ? 'flex' : 'none'
     }
     // Don't show an empty cart on pages you can't shop from; always show it
-    // while the Marketplace tab is open so the cart is reachable while
-    // browsing (the shop's own surface, since /merch was folded in there).
-    // The feeds live on the homepage since feeds-homepage (lb-v80); the old
-    // /feeds path is kept in the test for anyone on a cached copy of it.
-    var shopping = /^\/(index\.html)?$|\/feeds(\.html)?$/.test(location.pathname) &&
-      document.body.getAttribute('data-active-feed') === 'market'
+    // on the Marketplace page so the cart is reachable while browsing (the
+    // shop's own surface, since /merch was folded in there). The marketplace
+    // is /market since rails-homepage (2026-11); before that it was a tab on
+    // the homepage, which still carries data-active-feed on a cached copy.
+    var shopping = /^\/market(\.html)?$/.test(location.pathname) ||
+      (/^\/(index\.html)?$|\/feeds(\.html)?$/.test(location.pathname) &&
+        document.body.getAttribute('data-active-feed') === 'market')
     link.style.display = (n > 0 || shopping) ? '' : 'none'
   }
   document.addEventListener('click', function (e) {
@@ -130,9 +131,8 @@
       e.preventDefault()
       window.openMerchCart()
     }
-    // Otherwise let the anchor navigate to /?feed=market&cart=1#feeds (the
-    // homepage's feeds controller routes that to the Marketplace tab and opens
-    // the cart on arrival; on the homepage itself it handles the click in place).
+    // Otherwise let the anchor navigate to /market?cart=1 (feed-page.js opens
+    // the cart on arrival once the catalog is merged).
   })
   window.addEventListener('lb-cart-changed', updateNavCart)
   // Switching to/from the Marketplace tab changes whether an empty cart shows.

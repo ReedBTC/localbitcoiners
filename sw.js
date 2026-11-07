@@ -235,7 +235,15 @@
 // boosts-thread.css change, both precached, and the two new modules are
 // added below; an old thread script against the new CSS is harmless, the
 // new script against a stale cache would 404 its imports.
-const VERSION = 'lb-v92';
+// v93: rails-homepage. The homepage's Community section and the four
+// community feeds are rows of tiles (home-rails.js + home-rails.css, new;
+// supporters.js's rail mode), and the feeds are their own pages (/events,
+// /market, /podcasts, /articles; feed-page.js + feed-page.css + feeds.css,
+// new, the last the former inline block of index.html). Evicts the stale
+// index.html, nav.js/nav.css (new links), supporters.js, feeds.js, the four
+// feeds-*.js and featured-*.js (note templates, exports), calendar-events.js
+// and feed-url.js.
+const VERSION = 'lb-v93';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
@@ -267,6 +275,11 @@ const PRECACHE_URLS = [
   '/assets/css/boosts-thread.css',
   '/assets/css/boost-actions.css',
   '/assets/css/onlyboosts.css',
+  '/assets/css/feeds.css',
+  '/assets/css/feed-page.css',
+  '/assets/css/home-rails.css',
+  '/assets/js/home-rails.js',
+  '/assets/js/feed-page.js',
   '/assets/js/episode-enhance.js',
   '/assets/js/ep-sats.js',
   '/assets/js/ep-boosts.js',

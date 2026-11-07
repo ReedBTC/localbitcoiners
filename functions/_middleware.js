@@ -701,11 +701,13 @@ function renderEpisodePage(ep) {
               <h4>Show</h4>
               <a href="/episodes.html"><span aria-hidden="true">🎧</span> Episodes</a>
               <a href="/stats.html"><span aria-hidden="true">📊</span> Stats</a>
-              <a href="/?feed=market#feeds"><span aria-hidden="true">👕</span> Merch</a>
+              <a href="/market"><span aria-hidden="true">👕</span> Merch</a>
             </div>
             <div class="nav-explore-group">
               <h4>Community</h4>
-              <a href="/#feeds"><span aria-hidden="true">🗞️</span> Feeds</a>
+              <a href="/events"><span aria-hidden="true">📅</span> Events</a>
+              <a href="/podcasts"><span aria-hidden="true">🎙️</span> Podcast Boosts</a>
+              <a href="/articles"><span aria-hidden="true">📄</span> Articles</a>
               <a href="/supporters"><span aria-hidden="true">🟧</span> Supporters</a>
               <a href="/boosts.html"><span aria-hidden="true">⚡</span> Boosts</a>
             </div>
@@ -734,12 +736,11 @@ function renderEpisodePage(ep) {
       </button>
     </div>
     <!-- Cart icon → merch checkout cart. Hidden by nav.js until the cart
-         (sessionStorage 'lb_merch_cart') has items, except on the homepage's
-         Marketplace tab where it always shows. Click opens the cart modal in
-         place once that tab has hydrated (feeds-market.js exposes
-         window.openMerchCart) or navigates to the homepage's Marketplace tab
-         with cart=1, which the feeds controller consumes on arrival. -->
-    <a id="nav-cart-link" class="nav-cart" href="/?feed=market&amp;cart=1#feeds" aria-label="View cart" style="display:none">
+         (sessionStorage 'lb_merch_cart') has items, except on /market where
+         it always shows. Click opens the cart modal in place once that page
+         has hydrated (feeds-market.js exposes window.openMerchCart) or
+         navigates to /market?cart=1, which feed-page.js consumes on arrival. -->
+    <a id="nav-cart-link" class="nav-cart" href="/market?cart=1" aria-label="View cart" style="display:none">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
         <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
