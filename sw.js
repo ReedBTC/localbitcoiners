@@ -253,7 +253,8 @@
 // of the homepage, 25 per Load more (home-boosts.js, new).
 // v96: the episodes rail moves under Community Articles, "w/ <guest>" /
 // "Solo rip", Latest Boosts in the page's own column.
-const VERSION = 'lb-v96';
+// v97: "&" between two guests on the episode tiles.
+const VERSION = 'lb-v97';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

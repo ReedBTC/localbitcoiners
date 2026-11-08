@@ -101,8 +101,8 @@ Marketplace, Community Podcast Boosts and Community Articles (the word
 its own page: `events.html`, `market.html`, `podcasts.html`, `articles.html`
 (`/events` …), then Latest Episodes, the last rail (2026-11-08: the last
 ten episodes, the show's cover with the number on its corner, the title cut
-at " w/" and " | Ep.", the sub line "w/ <name>" or "Solo rip" (Reed's
-words, keep both), a tile is a LINK to `/ep###`; the inline RSS script
+at " w/" and " | Ep.", the sub line "w/ <name>" ("&" between two names) or
+"Solo rip" (Reed's words, keep both), a tile is a LINK to `/ep###`; the inline RSS script
 publishes the parsed items as `window.__lbEpisodeItems` + the
 `lb:episodes` event and the rail reads those, no second fetch), and the
 page ends in Latest Boosts (`#home-boosts`, `home-boosts.js`, 2026-11-08):

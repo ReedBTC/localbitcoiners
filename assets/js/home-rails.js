@@ -190,7 +190,9 @@ function paintError(section, text) {
 const EP_TITLE_RE = /^(.*?)(?:\s+w\/\s*(.+?))?(?:\s*\|\s*Ep\.?\s*\d+)?\s*$/i
 export function episodeTileParts(title) {
   const m = EP_TITLE_RE.exec(String(title || '')) || []
-  const guestRaw = (m[2] || '').split(':')[0].trim()
+  // Two guests join with "&", not "and": two characters more of the names
+  // fit on the sub line (Reed, 2026-11-08).
+  const guestRaw = (m[2] || '').split(':')[0].trim().replace(/\s+and\s+/gi, ' & ')
   return { title: (m[1] || title || '').trim(), guest: guestRaw }
 }
 
