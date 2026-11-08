@@ -236,12 +236,14 @@ function buildArticles(data) {
 // tab's default view, takes the newest `limit`, and resolves author profiles
 // so the teaser card can show a name/avatar (attached as `.author`). Mirrors
 // the loadMarketItems / renderMarket split in feeds-market.js.
-export async function loadArticleItems({ limit = 12 } = {}) {
+// `keep` is an extra filter applied before the cut (the homepage rail keeps
+// covers only), so the profiles are fetched for the kept articles alone.
+export async function loadArticleItems({ limit = 12, keep = null } = {}) {
   const resp = await fetch(API_URL, { headers: { Accept: 'application/json' } })
   if (!resp.ok) throw new Error('community-articles ' + resp.status)
   const data = await resp.json()
   const articles = buildArticles(data)
-    .filter((a) => a.content.length >= SHORT_MAX)
+    .filter((a) => a.content.length >= SHORT_MAX && (!keep || keep(a)))
     .slice(0, limit)
   await loadAuthorProfiles(articles)
   for (const a of articles) a.author = profileFor(a.pubkey)
@@ -260,10 +262,6 @@ export async function openArticleReader(a) {
 // profiles a credit needs: the rail backfills the gold-ringed tiles the
 // way the page's box does.
 export { parseArticle, loadAuthorProfiles as loadArticleProfiles, authorName as articleAuthorName }
-export function articleAuthorPicture(pubkey) {
-  const p = profileFor(pubkey)
-  return (p && isSafeUrl(p.picture)) ? p.picture : null
-}
 
 // Below this length (characters) an article is treated as "short" and hidden
 // from the default view — most sub-420-char kind-30023s are threads/notes, not

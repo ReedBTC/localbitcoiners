@@ -28,19 +28,21 @@
   <script>
   (function () {
     var PAGES = { events: '/events', market: '/market', podcasts: '/podcasts', articles: '/articles' };
+    // Own keys only: "#constructor" or "?feed=__proto__" must not resolve.
+    var pageOf = function (k) { return Object.prototype.hasOwnProperty.call(PAGES, k) ? PAGES[k] : ''; };
     var q, feed = '', cart = false;
     var hash = (location.hash || '').slice(1);
     try { q = new URLSearchParams(location.search); } catch (e) { return; }
     feed = q.get('feed') || '';
     cart = q.get('cart') === '1';
     if (hash === 'market-cart') { feed = feed || 'market'; cart = true; }
-    else if (PAGES[hash]) feed = feed || hash;
-    if (!PAGES[feed]) return;
+    else if (pageOf(hash)) feed = feed || hash;
+    if (!pageOf(feed)) return;
     var keep = new URLSearchParams();
     ['range', 'sort', 'type', 'short'].forEach(function (k) { var v = q.get(k); if (v) keep.set(k, v); });
     if (cart) keep.set('cart', '1');
     var qs = keep.toString();
-    location.replace(PAGES[feed] + (qs ? '?' + qs : ''));
+    location.replace(pageOf(feed) + (qs ? '?' + qs : ''));
   })();
   </script>
 

@@ -123,7 +123,7 @@ fail silently if missed:
   calls `loadEventRail` + `renderEventCard` (feeds.js), `loadMarketItems` +
   `priceText` + `openListing` (feeds-market.js), `loadPodcastItems` +
   `railEpisodes` + `openEpisodeCard` (feeds-podcasts.js), `loadArticleItems`
-  + `openArticleReader` + `articleAuthorName/Picture` (feeds-articles.js),
+  + `openArticleReader` + `articleAuthorName` (feeds-articles.js),
   and the featured sets from the `featured-*` modules, so a rail and its
   page agree on what is featured and in what order. `loadEventRail`'s state
   must keep the SAME SHAPE as `loadEvents`'s (`featuredCoords`, `featuredBy`,

@@ -397,8 +397,17 @@ function renderEventDescription(text) {
     let last = 0
     for (const m of para.matchAll(DESC_URL_RE)) {
       let url = m[0]
-      const trail = url.match(/[.,;:!?)\]]+$/)
+      // Sentence punctuation stays out of the href; a ')' or ']' comes off
+      // only while the URL has more closers than openers, so a Wikipedia
+      // "Hub_(venue)" keeps its own.
+      let trail = url.match(/[.,;:!?]+$/)
       if (trail) url = url.slice(0, -trail[0].length)
+      const count = (s, ch) => s.split(ch).length - 1
+      while (/[)\]]$/.test(url)) {
+        const close = url.slice(-1), open = close === ')' ? '(' : '['
+        if (count(url, close) <= count(url, open)) break
+        url = url.slice(0, -1)
+      }
       p.appendChild(document.createTextNode(para.slice(last, m.index)))
       const a = document.createElement('a')
       a.href = url

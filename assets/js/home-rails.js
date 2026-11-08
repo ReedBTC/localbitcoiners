@@ -45,12 +45,18 @@ function isHttpUrl(u) {
   try { const x = new URL(String(u)); return x.protocol === 'https:' || x.protocol === 'http:' } catch { return false }
 }
 
-// "Sat, Nov 14", with the year once the event is not this year's.
-function dateLabel(ms) {
+// "Sat, Nov 14", with the year once the event is not this year's. An
+// all-day event (kind 31922) starts at UTC midnight of its date
+// (calendar-events.js ymdToMs), so it is formatted in UTC like the page
+// card's formatEventWhen; in the viewer's zone it printed the day before
+// west of Greenwich (Coordinator's review, 2026-11-08).
+function dateLabel(ms, utc = false) {
   const d = new Date(ms)
   if (!Number.isFinite(d.getTime())) return ''
   const opts = { weekday: 'short', month: 'short', day: 'numeric' }
-  if (d.getFullYear() !== new Date().getFullYear()) opts.year = 'numeric'
+  if (utc) opts.timeZone = 'UTC'
+  const year = utc ? d.getUTCFullYear() : d.getFullYear()
+  if (year !== new Date().getFullYear()) opts.year = 'numeric'
   try { return d.toLocaleDateString(undefined, opts) } catch { return d.toDateString() }
 }
 
@@ -202,7 +208,8 @@ export function episodeTileParts(title) {
 function episodeItems() {
   if (Array.isArray(window.__lbEpisodeItems)) return Promise.resolve(window.__lbEpisodeItems)
   return new Promise((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error('episodes timeout')), 20000)
+    // Past the inline script's worst case (8 s /api/rss + two 10 s proxies).
+    const t = setTimeout(() => reject(new Error('episodes timeout')), 35000)
     document.addEventListener('lb:episodes', (e) => { clearTimeout(t); resolve(e.detail || []) }, { once: true })
   })
 }
@@ -242,7 +249,7 @@ const RAILS = {
       const { items, credits } = await feeds.loadEventRail()
       return items.map(({ group, featured }) => ({
         title: group.parsed.title || 'Untitled event',
-        sub: dateLabel(group.startMs),
+        sub: dateLabel(group.startMs, !!group.parsed.isDateBased),
         img: group.parsed.image || group.profile?.picture || null,
         glyph: '📅',
         featured,
@@ -354,7 +361,7 @@ const RAILS = {
         import('/assets/js/featured-articles.js'),
       ])
       const hasCover = (a) => isHttpUrl(a.image)
-      const articles = (await mod.loadArticleItems({ limit: 80 })).filter(hasCover).slice(0, 20)
+      const articles = await mod.loadArticleItems({ limit: 20, keep: hasCover })
       const coordOf = (a) => fa.articleCoord(a.pubkey, a.dTag)
       const byCoord = new Map(articles.map((a) => [coordOf(a), a]))
       const featured = fa.readConfirmedFeaturedArticles()

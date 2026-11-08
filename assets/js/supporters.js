@@ -794,6 +794,10 @@ import { rangeControl, sortControl, rangeStartMs, rangeWindow } from '/assets/js
     Promise.all([satsP, guestsP, epP, obReady()]).then(function (res) {
       var rows = res[0];
       var people = aggregate(rows, -Infinity);   // everyone, for the profile fetch
+      // The rail's ten are ranked over every row, zaps included, while
+      // aggregate() drops a zap-only person under ZAP_MIN_SATS; make sure
+      // each of the ten gets a profile (Coordinator's review, 2026-11-08).
+      if (HOME) people = people.concat(leaderboardPeople(rows));
       var guestNpubs = res[1];
       var epMap = res[2] || Object.create(null);
       var npubs = collectNpubs(people, guestNpubs);
