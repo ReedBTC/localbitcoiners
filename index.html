@@ -897,33 +897,10 @@
      opening the page's own card in a modal. The tabs, the Featured / All
      sub-row, the Find modal and the ?feed= URL state moved to the pages
      (/events, /market, /podcasts, /articles; feed-page.js). -->
-<!-- Full-width white band: a rail is the 72rem column, so its own background
+<!-- Full-width white band: the rail is the 72rem column, so its own background
      would stop at the column edge and the cream body would show beside it
-     (Reed, 2026-11-08: the band read as a stripe no other rail has). Holds
-     the Latest Episodes rail (the last ten episodes as tiles, the number on
-     the artwork, the guest on the sub line; a tile is a link to /ep###) and
-     the Community rail. -->
-<div id="top-rails">
-<section class="rail" data-rail="episodes" aria-labelledby="rail-episodes-title">
-  <div class="rail-head">
-    <h2 class="home-module-title" id="rail-episodes-title"><a href="/episodes">Latest Episodes</a></h2>
-    <a class="rail-more" href="/episodes">See all episodes →</a>
-  </div>
-  <div class="rail-track">
-    <ol class="rail-list rail-list--skeleton" aria-hidden="true">
-      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
-      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
-      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
-      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
-      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
-      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
-      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
-      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
-      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
-      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
-    </ol>
-  </div>
-</section>
+     (Reed, 2026-11-08: the band read as a stripe no other rail has). -->
+<div id="community-band">
 <section id="community" class="rail" aria-labelledby="rail-community-title">
   <div class="rail-head">
     <h2 class="home-module-title" id="rail-community-title"><a href="/supporters">Community</a></h2>
@@ -1004,6 +981,29 @@
     </div>
     <div class="rail-track">
       <ol class="rail-list rail-list--skeleton" aria-hidden="true">
+      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
+      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
+      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
+      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
+      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
+      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
+      </ol>
+    </div>
+  </section>
+  <!-- Latest Episodes, the last rail (Reed, 2026-11-08): the last ten
+       episodes as tiles, the number on the artwork, "w/ <guest>" or
+       "Solo rip" on the sub line; a tile is a link to /ep###. -->
+  <section class="rail" data-rail="episodes" aria-labelledby="rail-episodes-title">
+    <div class="rail-head">
+      <h2 class="home-module-title" id="rail-episodes-title"><a href="/episodes">Latest Episodes</a></h2>
+      <a class="rail-more" href="/episodes">See all episodes →</a>
+    </div>
+    <div class="rail-track">
+      <ol class="rail-list rail-list--skeleton" aria-hidden="true">
+      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
+      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
+      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
+      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
       <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
       <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
       <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>

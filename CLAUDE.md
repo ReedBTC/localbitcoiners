@@ -93,21 +93,22 @@ runner (`payAllLegs.js`) restates the keysend leg rather than importing it:
 Since 2026-11-07 (Reed, after the OnlyBoosts homepage's feedback: "nobody
 likes the tabs") `index.html` is the hero, the latest-episode card, the
 Episodes / Boosts / Stats row, then one sideways row of tiles per
-community section, the OnlyBoosts discovery homepage's shape: Latest
-Episodes (the last ten episodes, 2026-11-08: the show's cover with the
-number on its corner, the title cut at " w/" and " | Ep.", the sub line
-"Guest: <name>" or "Solo episode", a tile is a LINK to `/ep###`; the
-inline RSS script publishes the parsed items as `window.__lbEpisodeItems`
-+ the `lb:episodes` event and the rail reads those, no second fetch),
-Community (the top ten supporters, round tiles, name alone), both on the
-white full-width band `#top-rails`, then under `#feeds` Community Events, Community
+community section, the OnlyBoosts discovery homepage's shape: Community
+(the top ten supporters, round tiles, name alone, on the white full-width
+band `#community-band`), then under `#feeds` Community Events, Community
 Marketplace, Community Podcast Boosts and Community Articles (the word
 "Community" on every rail heading, Reed 2026-11-08), each heading linking
 its own page: `events.html`, `market.html`, `podcasts.html`, `articles.html`
-(`/events` …), and the page ends in Latest Boosts (`#home-boosts`,
-`home-boosts.js`, 2026-11-08): the boost wall's cards newest first, 25
-per "Load more boosts", the boosts page's column (860px) without its sort
-and range and without the New Member badge; `fetchBoostThread` +
+(`/events` …), then Latest Episodes, the last rail (2026-11-08: the last
+ten episodes, the show's cover with the number on its corner, the title cut
+at " w/" and " | Ep.", the sub line "w/ <name>" or "Solo rip" (Reed's
+words, keep both), a tile is a LINK to `/ep###`; the inline RSS script
+publishes the parsed items as `window.__lbEpisodeItems` + the
+`lb:episodes` event and the rail reads those, no second fetch), and the
+page ends in Latest Boosts (`#home-boosts`, `home-boosts.js`, 2026-11-08):
+the boost wall's cards newest first, 25 per "Load more boosts", in the
+page's own `--feed-track` column, without the boosts page's sort and
+range and without the New Member badge; `fetchBoostThread` +
 `renderChildCards` + `configureBoostActions` exactly as `boosts.html`, and
 the login widget is kicked when the section loads so the action bar works. A tile is the picture, the title and one line (date, price,
 show, author); featured items come first with a gold ring and the bolt; a

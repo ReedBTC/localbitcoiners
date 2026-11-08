@@ -45,11 +45,11 @@
 
 /* Every rail sits on white, the Community one included (Reed, 2026-11-08:
    on the cream body it read as a full-width band the other rails lack);
-   #top-rails is the full-width wrapper (Latest Episodes + Community), since
-   the rail is the column; #home-boosts is the page's tail.
+   #community-band is the full-width wrapper, since the rail is the column;
+   #home-boosts is the page's tail.
    #feeds is the section's address (/feeds 301s to /#feeds) and lands under
    the sticky nav. */
-#top-rails, #feeds, #home-boosts { background: var(--white); }
+#community-band, #feeds, #home-boosts { background: var(--white); }
 #feeds { padding: 0.5rem 0 1rem; scroll-margin-top: 64px; }
 #community { padding-bottom: 0.5rem; }
 
@@ -233,11 +233,12 @@
 a.rt:hover .rt-title { text-decoration: underline; text-underline-offset: 3px; }
 
 /* ── Latest Boosts: the boost wall's cards close the page ──
-   The boosts page's column (860px) inside the page, newest first, 25 per
-   Load more. The cards and their action bar are the boosts page's own
-   (boosts-thread.css, boost-actions.css). */
+   The page's own column (--feed-track, the Latest Episode card's width;
+   Reed, 2026-11-08: "each of the boost cards should be that wide"), newest
+   first, 25 per Load more. The cards and their action bar are the boosts
+   page's own (boosts-thread.css, boost-actions.css). */
 #home-boosts { padding: 0.5rem 0 2.5rem; }
-.home-boosts-inner { max-width: 860px; margin: 0 auto; padding: 1.5rem 1.25rem 0; }
+.home-boosts-inner { max-width: var(--feed-track, 60rem); margin: 0 auto; padding: 1.5rem 1.25rem 0; }
 .home-boosts-note { margin: 0.5rem 0 1rem; color: var(--muted); font-size: 0.95rem; }
 #home-boosts-list .reply-children { border-left: 0; padding-left: 0; margin-top: 0; }
 .home-boosts-foot { display: flex; justify-content: center; margin-top: 1.25rem; }

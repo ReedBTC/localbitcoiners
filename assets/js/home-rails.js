@@ -183,8 +183,10 @@ function paintError(section, text) {
 
 // ── The rails ────────────────────────────────────────────────────────
 // Episode titles are "<Title> w/<Guest>: <Place> | Ep. NNN" (a solo show
-// has no " w/" part): the tile prints the title alone, the sub line the
-// guest or "Solo episode", the number on the artwork (Reed, 2026-11-08).
+// has no " w/" part): the tile prints the title alone, the sub line
+// "w/ <Guest>" (the title's own shorthand, shorter than "Guest:") or
+// "Solo rip" (what the hosts call one), the number on the artwork (Reed,
+// 2026-11-08).
 const EP_TITLE_RE = /^(.*?)(?:\s+w\/\s*(.+?))?(?:\s*\|\s*Ep\.?\s*\d+)?\s*$/i
 export function episodeTileParts(title) {
   const m = EP_TITLE_RE.exec(String(title || '')) || []
@@ -204,8 +206,9 @@ function episodeItems() {
 }
 
 const RAILS = {
-  // The last ten episodes, newest first; a tile is a link to the episode
-  // page. Repainted when the fresh feed differs from the cached one.
+  // The last ten episodes, newest first, the last rail before Latest
+  // Boosts; a tile is a link to the episode page. Repainted when the fresh
+  // feed differs from the cached one.
   episodes: {
     empty: 'No episodes yet.',
     error: 'Couldn’t load episodes right now.',
@@ -215,7 +218,7 @@ const RAILS = {
         const parts = episodeTileParts(ep.title)
         return {
           title: parts.title || ep.title || `Episode ${ep.num}`,
-          sub: parts.guest ? `Guest: ${parts.guest}` : 'Solo episode',
+          sub: parts.guest ? `w/ ${parts.guest}` : 'Solo rip',
           img: ep.image || null,
           glyph: '🎙️',
           badge: String(ep.num),

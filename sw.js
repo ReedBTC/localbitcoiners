@@ -251,7 +251,9 @@
 // v95: the Latest Episodes rail above Community (index.html publishes the
 // feed's items, home-rails.js paints them) and the boost wall at the foot
 // of the homepage, 25 per Load more (home-boosts.js, new).
-const VERSION = 'lb-v95';
+// v96: the episodes rail moves under Community Articles, "w/ <guest>" /
+// "Solo rip", Latest Boosts in the page's own column.
+const VERSION = 'lb-v96';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
