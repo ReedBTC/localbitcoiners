@@ -343,6 +343,13 @@ function sellerRow(item) {
   return h('div', { class: 'market-seller' }, [avatar, h('span', { class: 'market-seller-name', text: sellerName(item) })])
 }
 
+// The price as the tile under a homepage rail prints it: the listing's
+// price, or the seller's free text ("Best offer", "Price on request").
+export function priceText(product, rate) {
+  const el = priceEl(product, rate)
+  return el ? el.textContent : ''
+}
+
 function priceEl(product, rate) {
   // Some sellers put free text in the price amount ("Best offer", or — on
   // westernmassbitcoin — "30,000 - sold!"). Number() → NaN there, so render the
@@ -441,6 +448,13 @@ function openDetail(item, onContact) {
     }, 'Contact seller')
   }
   openProductModal(item.product, opts)
+}
+
+// A listing's detail modal from outside the page (the homepage's rail,
+// rails-homepage 2026-11): the same product modal the card opens, Contact
+// seller over the static relays since no feed resolved any.
+export function openListing(item) {
+  openDetail(item, (it) => openContactModal(it, feedRelays && feedRelays.length ? feedRelays : STATIC_RELAYS))
 }
 
 // ── Featured affordances ─────────────────────────────────────────────
@@ -1055,19 +1069,20 @@ export async function renderMarket({ panel, list, relays, members } = {}) {
   const featuredMount = h('div', { class: 'market-featured-mount' })
   const communityMount = h('div', { class: 'market-community-mount' })
 
-  // Repaints the gold box and the grid together. The grid is EVERY listing,
-  // house and community, featured ones included: the box and the grid became
-  // the Featured and All sub-tabs of the tab (2026-09-06), and "All" has to
-  // mean all. A featured listing's card in the grid keeps its Feature button;
-  // boosting it again renews the feature.
+  // Repaints the gold box and the grid together. The grid is every listing
+  // the box does not already show: since rails-homepage (2026-11) the page
+  // shows the two together with no Featured / All switch, so a listing
+  // appears once, the featured ones (the house store's among them) first.
+  // (Between 2026-09-06 and then the grid repeated the featured listings,
+  // because "All" was a sub-tab and had to mean all.)
   function rerender() {
     const visible = new Set()
     featuredMount.innerHTML = ''
     featuredMount.appendChild(buildFeaturedSection(state, byCoord, rate, onContact, visible, rerender))
     communityMount.innerHTML = ''
-    communityMount.appendChild(items.length
-      ? grid(items)
-      : placeholder('No listings yet', ' No marketplace listings right now — check back soon.'))
+    const rest = items.filter((it) => !visible.has(it.product.coord))
+    if (rest.length) communityMount.appendChild(grid(rest))
+    else if (!items.length) communityMount.appendChild(placeholder('No listings yet', ' No marketplace listings right now — check back soon.'))
   }
 
   list.className = ''

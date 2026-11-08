@@ -1157,6 +1157,28 @@ function sortItems(items, key) {
   return [...items].sort(SORTERS[key] || SORTERS.recent)
 }
 
+// ── The homepage's Podcast Boosts rail (rails-homepage, 2026-11) ─────
+// The page's own opening order: most boosters over the narrowest air-date
+// window with something in it (Reed, 2026-11-07: "the same as we currently
+// have it, most boosters for 1W").
+export function railEpisodes(items) {
+  return sortItems(filterItems(items, defaultRange(items)), 'count')
+}
+
+// The page's episode card (art, title, boost drawer, Boost button) for the
+// homepage's modal, with the booster and mention profiles it needs resolved
+// first. The shared reply/like/zap actions are wired once the widget is up,
+// as renderPodcasts does.
+export async function openEpisodeCard(item, opts = {}) {
+  await obReady()
+  await Promise.all([loadBoosterProfiles([item]), loadMentionProfiles([item])]).catch(() => {})
+  ensureWidgetLoaded()
+    .then(() => { try { configureBoostActions({}) } catch {} })
+    .catch(() => {})
+  return episodeCard(item, opts)
+}
+export { itemFromRecords, fetchProfilesInto }
+
 // ── Air-date range filter ────────────────────────────────────────────
 // Scopes the feed to episodes that *aired* recently (ep.published), which is
 // independent of when they were boosted — an old episode boosted today is in
@@ -1364,12 +1386,13 @@ export async function renderPodcasts({ panel, list }) {
     }
   }
 
-  // The feed is every boosted episode in the window, featured ones included:
-  // the gold box and the list became the Featured and All sub-tabs of the tab
-  // (2026-09-06), and "All" has to mean all. A featured episode's card in the
-  // list keeps its Feature button; boosting it again renews the feature.
+  // The feed is every boosted episode in the window that the gold box does
+  // not already show: since rails-homepage (2026-11) the page shows the two
+  // together with no Featured / All switch, so an episode appears once, the
+  // featured ones first. (Between 2026-09-06 and then the list repeated the
+  // featured episodes, because "All" was a sub-tab and had to mean all.)
   function rebuild() {
-    sorted = sortItems(filterItems(items, rangeKey), sortKey)
+    sorted = sortItems(filterItems(items, rangeKey), sortKey).filter((it) => !visibleFeatured.has(it.guid))
     shown = 0
     cards.innerHTML = ''
     moreWrap.innerHTML = ''

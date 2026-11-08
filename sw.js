@@ -235,7 +235,30 @@
 // boosts-thread.css change, both precached, and the two new modules are
 // added below; an old thread script against the new CSS is harmless, the
 // new script against a stale cache would 404 its imports.
-const VERSION = 'lb-v92';
+// v93: rails-homepage. The homepage's Community section and the four
+// community feeds are rows of tiles (home-rails.js + home-rails.css, new;
+// supporters.js's rail mode), and the feeds are their own pages (/events,
+// /market, /podcasts, /articles; feed-page.js + feed-page.css + feeds.css,
+// new, the last the former inline block of index.html). Evicts the stale
+// index.html, nav.js/nav.css (new links), supporters.js, feeds.js, the four
+// feeds-*.js and featured-*.js (note templates, exports), calendar-events.js
+// and feed-url.js.
+// v94: the rails take OnlyBoosts' 72rem desktop track and 5 / 10 columns,
+// the Community band goes white, the events rail keeps events still to
+// come, the articles rail keeps covers only, the event modal shows the
+// description (calendar-events.js, feeds.js, home-rails.js/.css, feeds.css,
+// nav.css, boosts-thread.css).
+// v95: the Latest Episodes rail above Community (index.html publishes the
+// feed's items, home-rails.js paints them) and the boost wall at the foot
+// of the homepage, 25 per Load more (home-boosts.js, new).
+// v96: the episodes rail moves under Community Articles, "w/ <guest>" /
+// "Solo rip", Latest Boosts in the page's own column.
+// v97: "&" between two guests on the episode tiles.
+// v98: the Community rail is the stats page's Supporter Leaderboard ten.
+// v99: the Coordinator's pre-merge review: all-day event tiles in UTC,
+// own-key router lookups, the leaderboard ten always get profiles,
+// balanced-paren URL trimming, the episodes rail waits out the RSS chain.
+const VERSION = 'lb-v99';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
@@ -267,6 +290,12 @@ const PRECACHE_URLS = [
   '/assets/css/boosts-thread.css',
   '/assets/css/boost-actions.css',
   '/assets/css/onlyboosts.css',
+  '/assets/css/feeds.css',
+  '/assets/css/feed-page.css',
+  '/assets/css/home-rails.css',
+  '/assets/js/home-rails.js',
+  '/assets/js/home-boosts.js',
+  '/assets/js/feed-page.js',
   '/assets/js/episode-enhance.js',
   '/assets/js/ep-sats.js',
   '/assets/js/ep-boosts.js',

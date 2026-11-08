@@ -55,6 +55,10 @@ export function parseCalendarEvent(ev) {
     summary:  calendarTagValue(ev, 'summary'),
     location: calendarTagValue(ev, 'location'),
     image:    calendarTagValue(ev, 'image'),
+    // NIP-52's description is the event's content (the summary tag is the
+    // short form). Kept for the homepage's modal, which shows the whole
+    // event (Reed, 2026-11-08); the list cards leave it off.
+    content:  typeof ev.content === 'string' ? ev.content : '',
     isDateBased,
     start: startRaw,
     end:   endRaw,
@@ -223,7 +227,7 @@ export async function fetchCalendarEventsFromRelays(coords, relays) {
 // ({ name, picture }) or null; `bech32` is the event's naddr; `actions`
 // opts the card into the interactive Repost/Zap bar (Feeds + Meetups pass
 // it; the boosts-page embeds don't).
-export function renderCalendarCard(parsed, { bech32 = '', profile = null, actions = false, actionsLeft = null, featured = false, featuredBy = null } = {}) {
+export function renderCalendarCard(parsed, { bech32 = '', profile = null, actions = false, actionsLeft = null, featured = false, featuredBy = null, description = false } = {}) {
   const card = document.createElement('div')
   card.className = 'embed-note is-event'
   // Boosted (= "promoted") events wear a gold glow, mirroring the top-tier
@@ -238,7 +242,21 @@ export function renderCalendarCard(parsed, { bech32 = '', profile = null, action
   // meta go; `actionsParent` is where the action bar goes.
   let col = card
   let actionsParent = card
-  if (parsed.image) {
+  if (parsed.image && description) {
+    // The whole-event view (the homepage's modal): the picture runs the
+    // card's width above the text instead of the list card's side thumb.
+    card.classList.add('has-hero')
+    const hero = document.createElement('div')
+    hero.className = 'event-hero'
+    const himg = document.createElement('img')
+    himg.src = parsed.image
+    himg.alt = ''
+    himg.loading = 'lazy'
+    himg.referrerPolicy = 'no-referrer'
+    himg.onerror = () => { hero.remove(); card.classList.remove('has-hero') }
+    hero.appendChild(himg)
+    card.appendChild(hero)
+  } else if (parsed.image) {
     card.classList.add('has-thumb')
     const top = document.createElement('div')
     top.className = 'event-top'
@@ -342,6 +360,14 @@ export function renderCalendarCard(parsed, { bech32 = '', profile = null, action
     col.appendChild(whereEl)
   }
 
+  // The description (`description: true`, the homepage's modal): the
+  // event's content, else its summary tag, as paragraphs with bare URLs
+  // linked. Text goes through textContent; nothing in it is markup.
+  if (description) {
+    const desc = renderEventDescription(parsed.content || parsed.summary || '')
+    if (desc) col.appendChild(desc)
+  }
+
   if (actions) {
     // Already-featured (boosted) cards drop the Promote button — it only makes
     // sense as "get this into Featured". In its place they credit whoever paid
@@ -355,6 +381,46 @@ export function renderCalendarCard(parsed, { bech32 = '', profile = null, action
   }
 
   return card
+}
+
+// The description block: blank-line-separated paragraphs, http(s) URLs as
+// anchors (trailing sentence punctuation kept out of the href), everything
+// else plain text. Returns null for an empty description.
+const DESC_URL_RE = /https?:\/\/[^\s<>"']+/g
+function renderEventDescription(text) {
+  const body = String(text || '').replace(/\r\n?/g, '\n').trim()
+  if (!body) return null
+  const wrap = document.createElement('div')
+  wrap.className = 'event-desc'
+  for (const para of body.split(/\n{2,}/)) {
+    const p = document.createElement('p')
+    let last = 0
+    for (const m of para.matchAll(DESC_URL_RE)) {
+      let url = m[0]
+      // Sentence punctuation stays out of the href; a ')' or ']' comes off
+      // only while the URL has more closers than openers, so a Wikipedia
+      // "Hub_(venue)" keeps its own.
+      let trail = url.match(/[.,;:!?]+$/)
+      if (trail) url = url.slice(0, -trail[0].length)
+      const count = (s, ch) => s.split(ch).length - 1
+      while (/[)\]]$/.test(url)) {
+        const close = url.slice(-1), open = close === ')' ? '(' : '['
+        if (count(url, close) <= count(url, open)) break
+        url = url.slice(0, -1)
+      }
+      p.appendChild(document.createTextNode(para.slice(last, m.index)))
+      const a = document.createElement('a')
+      a.href = url
+      a.textContent = url.length > 60 ? url.slice(0, 57) + '…' : url
+      a.target = '_blank'
+      a.rel = 'noopener noreferrer nofollow'
+      p.appendChild(a)
+      last = m.index + url.length
+    }
+    p.appendChild(document.createTextNode(para.slice(last)))
+    wrap.appendChild(p)
+  }
+  return wrap
 }
 
 // Where an event title links to. Centralized so the target app is a
@@ -512,7 +578,7 @@ function buildFeaturedBy(info) {
 // The same prose the /meetups "boost an existing meetup" flows send, so a
 // promote from a card is indistinguishable to the boost bot (which logs the
 // referenced event into meetups.json → the boosted set).
-const PROMOTE_TEMPLATE = 'Boosting my meetup from https://localbitcoiners.com/?feed=events#feeds'
+const PROMOTE_TEMPLATE = 'Boosting my meetup from https://localbitcoiners.com/events'
 
 // The most-recent promote click is stashed here so feeds.js can optimistically
 // light up the card the moment the boost settles — before the daily meetups.json

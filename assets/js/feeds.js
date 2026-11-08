@@ -245,7 +245,7 @@ function computeItems(state) {
 }
 
 // ── localStorage cache (stale-while-revalidate) ──────────────────────
-const CACHE_KEY = 'lb_feeds_events_v2'
+const CACHE_KEY = 'lb_feeds_events_v3'  // v3: parsed events carry `content`
 const CACHE_MAX_AGE = 24 * 60 * 60 * 1000  // ignore cache older than a day
 
 function readCache() {
@@ -484,8 +484,9 @@ function naddrFor(parsed, relays) {
   }
 }
 
-function renderCard(item, featured = false, featuredBy = null) {
+function renderCard(item, featured = false, featuredBy = null, opts = {}) {
   return renderCalendarCard(item.parsed, {
+    ...opts,
     bech32: item.naddr,
     profile: item.profile,
     actions: true,
@@ -498,8 +499,8 @@ function renderCard(item, featured = false, featuredBy = null) {
 // other versions" toggle sits at the left of the card's action row
 // (Repost + Zap pushed right), and an in-card panel below the action bar
 // holds the other versions as full cards.
-function renderGroup(group, featured = false, featuredBy = null) {
-  if (!group.versions || !group.versions.length) return renderCard(group, featured, featuredBy)
+function renderGroup(group, featured = false, featuredBy = null, opts = {}) {
+  if (!group.versions || !group.versions.length) return renderCard(group, featured, featuredBy, opts)
 
   const n = group.versions.length
   const toggle = document.createElement('button')
@@ -511,6 +512,7 @@ function renderGroup(group, featured = false, featuredBy = null) {
     `<span>Other Versions (${n})</span>`
 
   const card = renderCalendarCard(group.parsed, {
+    ...opts,
     bech32: group.naddr,
     profile: group.profile,
     actions: true,
@@ -773,18 +775,19 @@ function renderEvents(panel, allItems, range = '1m', type = 'inperson', featured
     .sort((a, b) => a.startMs - b.startMs)
   const past = days ? [] : groups.filter((g) => g.endMs < now).sort((a, b) => b.startMs - a.startMs)
 
-  // The gold box holds the featured (boosted) upcoming events; the Events
-  // grid holds EVERY upcoming event, featured ones included, since the two
-  // became the Featured and All sub-tabs of the Events tab (2026-09-06) and
-  // "All" that left out the featured events would be a lie. Featured past
-  // events keep their gold in the Past drawer.
+  // The gold box holds the featured (boosted) upcoming events and the Events
+  // grid holds the rest: since rails-homepage (2026-11) the page shows the
+  // two together with no Featured / All switch, so an event appears once,
+  // the featured ones first. (Between 2026-09-06 and then the grid repeated
+  // the featured events, because "All" was a sub-tab and had to mean all.)
+  // Featured past events keep their gold in the Past drawer.
   const isFeat = (g) => groupIsFeatured(g, featuredCoords)
   // ttlDays 0: an event stays featured until it happens (the forward window
   // and the Past drawer are its expiry), unlike the 33-day life of a featured
   // article, listing or episode.
   const inBox = (g) => isFeat(g) && inFeaturedRange({ featuredAt: featuredAtFor(g) }, featRange, { ttlDays: 0 })
   const featUpcoming = upcoming.filter(inBox)
-  const normUpcoming = upcoming
+  const normUpcoming = upcoming.filter((g) => !inBox(g))
   const featPast = past.filter(isFeat)
   const normPast = past.filter((g) => !isFeat(g))
   const anyFeatured = upcoming.some(isFeat) || featPast.length > 0
@@ -976,6 +979,118 @@ export async function fetchUpcomingEvents(supporters, { limit = 12 } = {}) {
     console.warn('[feeds] upcoming-events profile fetch failed', e)
   }
   return upcoming
+}
+
+// ── The homepage's Events rail (rails-homepage, 2026-11) ─────────────
+// The upcoming events as one flat list for a row of tiles: featured first,
+// then soonest first (featured among themselves soonest first too). In-person
+// only, the page's default type, except that a featured event is in whatever
+// its type: someone paid to put it up. Snapshot-first like loadEvents with
+// the relay path as the fallback, then the boosted set, the relay backfill
+// of featured events the snapshot lacks, and the organizer + booster
+// profiles. Each item carries the GROUP (the page's own shape, so
+// renderEventCard paints the page's card in the homepage's modal) and
+// `featured`; `credits` is the coord → "Featured by" map renderEventCard
+// takes.
+export async function loadEventRail() {
+  // The same state shape as loadEvents: the page's localStorage cache is
+  // shared, and its hydrator writes every one of these fields.
+  const state = {
+    eventsByCoord: new Map(),
+    deletedIds: new Set(),
+    deletedCoords: new Map(),
+    profiles: new Map(),
+    relays: STATIC_RELAYS,
+    featuredCoords: readConfirmedFeatured(),
+    featuredBy: new Map(),
+    featuredAt: readConfirmedFeaturedAt(),
+  }
+  const cached = readCache()
+  if (cached) hydrateStateFromCache(state, cached)
+
+  let snapshot = null
+  try {
+    snapshot = await fetchEventsSnapshot()
+  } catch (e) {
+    console.warn('[rails] events snapshot unavailable — querying relays', e)
+  }
+  if (snapshot) {
+    ingestEvents(state, snapshot)
+  } else if (!state.eventsByCoord.size) {
+    const { relays, members } = await resolveSupporters()
+    state.relays = relays
+    if (members.length) await streamEvents(members, relays, state, () => {})
+  }
+
+  const { featuredCoords, featuredAt, featuredBy } = state
+  try {
+    const boosted = await fetchBoostedSet()
+    for (const c of boosted.coords) featuredCoords.add(c)
+    for (const [c, info] of boosted.by) featuredBy.set(c, info)
+    for (const [c, ts] of boosted.at) {
+      if (ts > (featuredAt.get(c) || 0)) featuredAt.set(c, ts)
+    }
+    await backfillFeatured(state, boosted)
+  } catch (e) {
+    console.warn('[rails] featured events unavailable', e)
+  }
+
+  const now = Date.now()
+  const groups = groupItems(computeItems(state))
+  const isFeat = (g) => groupIsFeatured(g, featuredCoords)
+  // Events that have not STARTED yet (Reed, 2026-11-08: a weekend event
+  // showing on its second day read as a past event on the tile, which
+  // prints the start date). The page's list keeps events in progress.
+  const upcoming = groups
+    .filter((g) => g.startMs > now && (isFeat(g) || matchesType(g, 'inperson')))
+    .sort((a, b) => {
+      const fa = isFeat(a), fb = isFeat(b)
+      if (fa !== fb) return fa ? -1 : 1
+      return a.startMs - b.startMs
+    })
+
+  // Organizer profiles (the tile's fallback picture, the card's byline) and
+  // the boosters' (the "Featured by" credit).
+  try {
+    const pubkeys = [...new Set([
+      ...upcoming.map((g) => g.parsed.pubkey),
+      ...[...featuredBy.values()].map((b) => b.pubkey),
+    ].filter(Boolean))]
+    if (pubkeys.length) {
+      const profiles = await fetchProfilesFromPrimal(pubkeys)
+      profiles.forEach((prof, pk) => state.profiles.set(pk, prof))
+      for (const info of featuredBy.values()) {
+        const prof = state.profiles.get(info.pubkey)
+        if (prof) {
+          info.name = prof.name || info.name || ''
+          info.picture = prof.picture || info.picture || ''
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[rails] event profile fetch failed', e)
+  }
+  for (const g of upcoming) {
+    g.profile = state.profiles.get(g.parsed.pubkey) || g.profile || null
+    for (const v of g.versions || []) v.profile = state.profiles.get(v.parsed.pubkey) || v.profile || null
+  }
+
+  const credits = new Map()
+  for (const c of featuredCoords) {
+    const by = featuredBy.get(c)
+    const ts = featuredAt.get(c)
+    if (!by && !ts) continue
+    credits.set(c, { ...(by || { pubkey: '', name: '', picture: '' }), when: ts ? relAge(ts) : '' })
+  }
+
+  return { items: upcoming.map((g) => ({ group: g, featured: isFeat(g) })), credits }
+}
+
+// The Events page's card for a group (primary card, Other Versions toggle,
+// action bar), for the homepage's modal; `{ description: true }` adds the
+// event's description under the when / where lines.
+export function renderEventCard(group, featured = false, credits = null, opts = {}) {
+  return renderGroup(group, featured, credits, opts)
 }
 
 // ── Events tab loader ────────────────────────────────────────────────

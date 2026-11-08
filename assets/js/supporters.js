@@ -35,14 +35,29 @@ import { rangeControl, sortControl, rangeStartMs, rangeWindow } from '/assets/js
   var GUESTS_URL = '/api/guests';
 
   // ── Two pages, one wall ──
-  // This script also paints the homepage's Community section (feeds-homepage,
-  // 2026-09-06): the same podium + ranked grid + "Show N more" wall, and
+  // This script also paints the homepage's Community section: since
+  // rails-homepage (2026-11) a rail of the top ten (renderRail); from
+  // feeds-homepage (2026-09-06) until then the same podium + grid wall, and
   // nothing else — no section heading (the page supplies its own "Community"
   // title), no Show Guests. Which page it is on is decided by which root the
   // markup carries: #supporters-root is the full page, #community-root the
   // homepage. The same PODIUM / WALL_VISIBLE shape both places, so the two
   // walls always agree on who is above the fold.
   var HOME = !document.getElementById('supporters-root') && !!document.getElementById('community-root');
+  // Since rails-homepage (2026-11) the homepage's Community section is a RAIL:
+  // one row of RAIL_SIZE people, name alone, no figure (Reed, 2026-11-07:
+  // nobody here reads the order the way OnlyBoosts' readers do), linking to
+  // /supporters for the wall. #community-root is the rail's track; the
+  // podium-and-grid wall is /supporters alone now. WHO is on it is the stats
+  // page's Supporter Leaderboard (Reed, 2026-11-08: the hosts read that list
+  // off on the show): its opening view, the ten supporters who have
+  // supported the most episodes, see leaderboardPeople below.
+  var RAIL_SIZE = 10;
+  // The hosts never rank (stats.js HOST_NPUBS, the same two keys).
+  var HOST_NPUBS = {
+    'npub1xgyjasdztryl9sg6nfdm2wcj0j3qjs03sq7a0an32pg0lr5l6yaqxhgu7s': true, // Reed
+    'npub1f5pre6wl6ad87vr4hr5wppqq30sh58m4p33mthnjreh03qadcajs7gwt3z': true, // Rev Hodl
+  };
   var IDS = HOME
     ? { root: 'community-root', loading: 'community-loading', error: 'community-error' }
     : { root: 'supporters-root', loading: 'supporters-loading', error: 'supporters-error' };
@@ -477,6 +492,63 @@ import { rangeControl, sortControl, rangeStartMs, rangeWindow } from '/assets/js
     return { text: compact(p.sats) + ' sats', title: title };
   }
 
+  // ⚠️ The stats page's Supporter Leaderboard, "Episodes Supported" view
+  // (stats.js renderIdentityBoard + draw('episodes')), restated here because
+  // stats.js is a classic script and this is a module (the compRanks
+  // precedent). Same rule, step for step, so the homepage row and the list
+  // the hosts read off agree: rows with a positive total_sats and a parseable
+  // settled_at, every source (the stats board counts zap rows' episodes
+  // too); hosts out; identity = npub, else sender_name, anonymous dropped;
+  // the figure = distinct positive episode_num; sorted by that figure alone,
+  // a stable sort so a tie keeps ledger order; the first ten. Change the
+  // stats page's rule and change this one.
+  function leaderboardPeople(rows) {
+    var byId = Object.create(null);
+    var order = [];
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      if (!(typeof row.total_sats === 'number' && row.total_sats > 0)) continue;
+      if (!isFinite(Date.parse(row.settled_at))) continue;
+      if (row.sender_npub && HOST_NPUBS[row.sender_npub]) continue;
+      var npub = row.sender_npub || '';
+      var key = npub || row.sender_name || '';
+      if (!key) continue;
+      var id = byId[key];
+      if (!id) { id = byId[key] = { npub: npub || null, name: row.sender_name || null, eps: Object.create(null), episodes: 0 }; order.push(id); }
+      if (row.episode_num != null) {
+        var num = parseInt(row.episode_num, 10);
+        if (isFinite(num) && num > 0) id.eps[num] = true;
+      }
+    }
+    order.forEach(function (p) { p.episodes = Object.keys(p.eps).length; });
+    return order.sort(function (a, b) { return b.episodes - a.episodes; }).slice(0, RAIL_SIZE);
+  }
+
+  // The homepage's Community rail: the Supporter Leaderboard's ten, each the
+  // same card the wall builds (so the OnlyBoosts link-or-copy wiring and the
+  // profile upgrade apply), wrapped as a round tile (home-rails.css styles
+  // .sup-card inside .rail-tile).
+  function renderRail(container, ctx) {
+    var people = leaderboardPeople(ctx.rows);
+    container.innerHTML = '';
+    if (!people.length) {
+      var empty = document.createElement('p');
+      empty.className = 'rail-empty';
+      empty.textContent = 'No supporters yet.';
+      container.appendChild(empty);
+      return;
+    }
+    var list = document.createElement('ol');
+    list.className = 'rail-list';
+    people.forEach(function (p) {
+      var li = document.createElement('li');
+      li.className = 'rail-tile rail-tile--person';
+      li.appendChild(ctx.cardFor(p.npub, p.name));
+      list.appendChild(li);
+    });
+    container.appendChild(list);
+  }
+
   // The Supporters wall: the controls, then a podium row, a ranked grid and
   // "Show N more", repainted from the ledger rows whenever a control changes.
   // The first PODIUM cards carry opts.podium for the larger avatar.
@@ -640,7 +712,7 @@ import { rangeControl, sortControl, rangeStartMs, rangeWindow } from '/assets/js
     //    controls (renderWall). The homepage gets the wall alone, under the
     //    page's own "Community" title.
     if (HOME) {
-      renderWall(root, null, null, null, { rows: rows, cardFor: cardFor });
+      renderRail(root, { rows: rows, cardFor: cardFor });
       return;
     }
     renderWall(root, 'Supporters',
@@ -722,6 +794,10 @@ import { rangeControl, sortControl, rangeStartMs, rangeWindow } from '/assets/js
     Promise.all([satsP, guestsP, epP, obReady()]).then(function (res) {
       var rows = res[0];
       var people = aggregate(rows, -Infinity);   // everyone, for the profile fetch
+      // The rail's ten are ranked over every row, zaps included, while
+      // aggregate() drops a zap-only person under ZAP_MIN_SATS; make sure
+      // each of the ten gets a profile (Coordinator's review, 2026-11-08).
+      if (HOME) people = people.concat(leaderboardPeople(rows));
       var guestNpubs = res[1];
       var epMap = res[2] || Object.create(null);
       var npubs = collectNpubs(people, guestNpubs);

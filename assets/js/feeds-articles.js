@@ -236,17 +236,32 @@ function buildArticles(data) {
 // tab's default view, takes the newest `limit`, and resolves author profiles
 // so the teaser card can show a name/avatar (attached as `.author`). Mirrors
 // the loadMarketItems / renderMarket split in feeds-market.js.
-export async function loadArticleItems({ limit = 12 } = {}) {
+// `keep` is an extra filter applied before the cut (the homepage rail keeps
+// covers only), so the profiles are fetched for the kept articles alone.
+export async function loadArticleItems({ limit = 12, keep = null } = {}) {
   const resp = await fetch(API_URL, { headers: { Accept: 'application/json' } })
   if (!resp.ok) throw new Error('community-articles ' + resp.status)
   const data = await resp.json()
   const articles = buildArticles(data)
-    .filter((a) => a.content.length >= SHORT_MAX)
+    .filter((a) => a.content.length >= SHORT_MAX && (!keep || keep(a)))
     .slice(0, limit)
   await loadAuthorProfiles(articles)
   for (const a of articles) a.author = profileFor(a.pubkey)
   return articles
 }
+
+// ── The homepage's Articles rail (rails-homepage, 2026-11) ───────────
+// The reader for the homepage's modal, with the booster index and the
+// author's profile in hand first (the byline decides link-vs-copy at render).
+export async function openArticleReader(a) {
+  await obReady()
+  if (!profileFor(a.pubkey)) await loadAuthorProfiles([a])
+  return articleReaderEl(a)
+}
+// A featured article the snapshot lacks, fetched by coordinate, and the
+// profiles a credit needs: the rail backfills the gold-ringed tiles the
+// way the page's box does.
+export { parseArticle, loadAuthorProfiles as loadArticleProfiles, authorName as articleAuthorName }
 
 // Below this length (characters) an article is treated as "short" and hidden
 // from the default view — most sub-420-char kind-30023s are threads/notes, not
@@ -649,24 +664,11 @@ function renderMarkdownInto(container, markdown, title) {
 // Open the full-width in-panel reader: hide the list + panel head, render the
 // article, and wire a back control that restores the list. Mirrors MyNostr's
 // mobile flow (list → full-width reader → back) on every screen size.
-function openReader(ctx, a) {
-  const { panel, list } = ctx
-  const head = panel.querySelector('.feed-panel-head')
-
-  // Remember the feed's scroll position so Back returns you to where you were,
-  // not the top of the list.
-  ctx.savedScrollY = window.scrollY || window.pageYOffset || 0
-
-  const back = h('button', {
-    class: 'art-reader-back', type: 'button',
-    onclick: () => closeReader(ctx),
-  }, [h('span', { 'aria-hidden': 'true', text: '←' }), 'Back to articles'])
-
-  // Back pill + ⋮ menu are floating controls (position:fixed, set by
-  // positionFloatingControls) — kept beside the article column and always
-  // reachable while scrolling.
-  const more = moreMenu(a, 'art-reader-more')
-
+// The reader itself: cover, title, byline, summary, the markdown body and
+// the interaction bar. openReader mounts it in the page in place of the
+// list; the homepage's Articles rail (rails-homepage, 2026-11) mounts it in
+// a modal through openArticleReader.
+export function articleReaderEl(a) {
   const cover = a.image
     ? h('div', { class: 'art-reader-cover' }, h('img', { src: a.image, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }))
     : null
@@ -707,6 +709,28 @@ function openReader(ctx, a) {
     proseEl,
     foot,
   ])
+  return reader
+}
+
+function openReader(ctx, a) {
+  const { panel, list } = ctx
+  const head = panel.querySelector('.feed-panel-head')
+
+  // Remember the feed's scroll position so Back returns you to where you were,
+  // not the top of the list.
+  ctx.savedScrollY = window.scrollY || window.pageYOffset || 0
+
+  const back = h('button', {
+    class: 'art-reader-back', type: 'button',
+    onclick: () => closeReader(ctx),
+  }, [h('span', { 'aria-hidden': 'true', text: '←' }), 'Back to articles'])
+
+  // Back pill + ⋮ menu are floating controls (position:fixed, set by
+  // positionFloatingControls) — kept beside the article column and always
+  // reachable while scrolling.
+  const more = moreMenu(a, 'art-reader-more')
+
+  const reader = articleReaderEl(a)
   // The floating controls sit OUTSIDE the article flow (they're position:fixed),
   // but live inside the reader element so they're removed on close and hidden
   // when the tab switches.
@@ -1093,15 +1117,16 @@ export async function renderArticles({ panel, list }) {
   }
 
   // Repaints the gold box and the feed together. The feed is every article
-  // that passes the short filter, featured ones included: the box and the
-  // list became the Featured and All sub-tabs of the tab (2026-09-06), and
-  // "All" has to mean all. A featured article's card in the list keeps its
-  // Feature button; boosting it again renews the feature.
+  // that passes the short filter and that the box does not already show:
+  // since rails-homepage (2026-11) the page shows the two together with no
+  // Featured / All switch, so an article appears once, the featured ones
+  // first. (Between 2026-09-06 and then the list repeated the featured
+  // articles, because "All" was a sub-tab and had to mean all.)
   function rerender() {
     const visible = new Set()
     featuredMount.innerHTML = ''
     featuredMount.appendChild(buildFeaturedSection(state, byCoord, onOpen, visible, rerender))
-    view = articles.filter(matches)
+    view = articles.filter((a) => matches(a) && !visible.has(articleCoord(a.pubkey, a.dTag)))
     shown = 0
     cards.innerHTML = ''
     renderMore()

@@ -1,0 +1,328 @@
+/* The homepage's rails (rails-homepage, 2026-11): Community, Events,
+ * Marketplace, Podcast Boosts and Articles, each one sideways row of square
+ * tiles under a heading that links its page; the OnlyBoosts discovery
+ * homepage's shape (its discover.css), carried back here. A person's tile
+ * is round (OB's rule: a circle reads as an individual, a square as
+ * content); a featured item wears a gold ring and a bolt. The tile markup is
+ * assets/js/home-rails.js; the Community row is supporters.js's cards in
+ * the same tiles. */
+
+/* ── A rail ── */
+.rail {
+  max-width: var(--feed-track, 60rem);
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem;
+  min-width: 0;
+}
+.rail-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+/* The heading is the page's section title (Latest Episode's). */
+.rail-head .home-module-title { margin-top: 0; }
+.rail-more {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--green-d);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.rail-more:hover { text-decoration: underline; text-underline-offset: 3px; }
+.rail-sub { margin: -0.6rem 0 0.9rem; font-size: 0.92rem; color: var(--muted); }
+.rail-track { min-width: 0; }
+.rail-empty, .rail-error {
+  margin: 0;
+  padding: 1.1rem 1rem;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 0.95rem;
+  background: var(--white);
+}
+
+/* Every rail sits on white, the Community one included (Reed, 2026-11-08:
+   on the cream body it read as a full-width band the other rails lack);
+   #community-band is the full-width wrapper, since the rail is the column;
+   #home-boosts is the page's tail.
+   #feeds is the section's address (/feeds 301s to /#feeds) and lands under
+   the sticky nav. */
+#community-band, #feeds, #home-boosts { background: var(--white); }
+#feeds { padding: 0.5rem 0 1rem; scroll-margin-top: 64px; }
+#community { padding-bottom: 0.5rem; }
+
+/* ── The track: a sideways scroller at every width ──
+   A phone shows what fits (tiles no narrower than 118px); from 640px four
+   tiles fill the row exactly, from 900px five, from 1100px ten on the
+   72rem track (OnlyBoosts' counts, Reed 2026-11-08: "fit 10 across"), and
+   the rest scroll. The column is sized off the track so a full row sits
+   edge to edge; the 4px bleed is for the gold ring and the focus outline,
+   which the scroller would otherwise clip. */
+.rail-list {
+  --rail-cols: 1;
+  --rail-gap: 0.9rem;
+  list-style: none;
+  margin: -4px -4px 0;
+  padding: 4px 4px 0.5rem;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(118px, 1fr);
+  gap: var(--rail-gap);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+}
+@media (min-width: 640px) {
+  .rail-list {
+    --rail-cols: 4;
+    grid-auto-columns: calc((100% - 8px - (var(--rail-cols) - 1) * var(--rail-gap)) / var(--rail-cols));
+  }
+}
+@media (min-width: 900px) {
+  .rail-list { --rail-cols: 5; }
+}
+@media (min-width: 1100px) {
+  .rail-list { --rail-cols: 10; --rail-gap: 0.8rem; }
+}
+.rail-tile { min-width: 0; scroll-snap-align: start; }
+
+/* ── A tile ── */
+.rt {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--text);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.rt-media {
+  position: relative;
+  display: block;
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--cream-d);
+  border: 1px solid var(--border);
+}
+.rt-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rt-media--none { display: flex; align-items: center; justify-content: center; }
+.rt-glyph { font-size: 2rem; line-height: 1; }
+.rt-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.rt-sub {
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rt:hover .rt-title { color: var(--green-d); text-decoration: underline; text-underline-offset: 3px; }
+.rt:focus-visible { outline: none; }
+.rt:focus-visible .rt-media { outline: 3px solid var(--orange); outline-offset: 2px; }
+
+/* A featured item: the gold ring (the Featured boxes' gold) and the feature
+   bolt in the corner. A house listing counts as featured (Reed, 2026-11-07). */
+.rail-tile--featured .rt-media {
+  box-shadow: 0 0 0 3px #e0a92e;
+  border-color: #a9761a;
+}
+.rt-feat {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #e0a92e;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+.rt-feat svg { width: 13px; height: 13px; fill: currentColor; }
+
+/* ── A person's tile (the Community rail): supporters.js's .sup-card, round ── */
+.rail-tile--person .sup-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--text);
+  text-align: center;
+  text-decoration: none;
+  cursor: default;
+}
+.rail-tile--person .sup-card.is-copyable { cursor: pointer; }
+.rail-tile--person .sup-avatar {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  overflow: visible;
+  background: var(--cream-d) url('/assets/avatar-default.svg') center / cover no-repeat;
+  border: 2px solid var(--border);
+}
+.rail-tile--person .sup-avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+.rail-tile--person .sup-card.is-copyable:hover .sup-avatar { border-color: var(--green-d); }
+.rail-tile--person .sup-card:focus-visible { outline: none; }
+.rail-tile--person .sup-card:focus-visible .sup-avatar { outline: 3px solid var(--orange); outline-offset: 2px; }
+.rail-tile--person .sup-name {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rail-tile--person .sup-card.is-copyable:hover .sup-name { color: var(--green-d); text-decoration: underline; text-underline-offset: 3px; }
+/* The OnlyBoosts dot rides the avatar's edge; the avatar is round and larger
+   than the wall's, so the dot sits in from the corner. */
+.rail-tile--person .sup-avatar .ob-dot { right: 8%; bottom: 8%; top: auto; }
+
+/* The episode number on the artwork's corner (every episode shares the
+   show's cover, so the number is what tells the tiles apart). */
+.rt-num {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(45, 32, 16, 0.78);
+  color: var(--cream, #fbf5e6);
+  font-family: var(--font-sans, system-ui, sans-serif);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+}
+a.rt:hover .rt-title { text-decoration: underline; text-underline-offset: 3px; }
+
+/* ── Latest Boosts: the boost wall's cards close the page ──
+   The page's own column (--feed-track, the Latest Episode card's width;
+   Reed, 2026-11-08: "each of the boost cards should be that wide"), newest
+   first, 25 per Load more. The cards and their action bar are the boosts
+   page's own (boosts-thread.css, boost-actions.css). */
+#home-boosts { padding: 0.5rem 0 2.5rem; }
+.home-boosts-inner { max-width: var(--feed-track, 60rem); margin: 0 auto; padding: 1.5rem 1.25rem 0; }
+.home-boosts-note { margin: 0.5rem 0 1rem; color: var(--muted); font-size: 0.95rem; }
+#home-boosts-list .reply-children { border-left: 0; padding-left: 0; margin-top: 0; }
+.home-boosts-foot { display: flex; justify-content: center; margin-top: 1.25rem; }
+.home-boosts-more {
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 0.7rem 1.6rem;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  background: var(--cream);
+  color: var(--text);
+  cursor: pointer;
+}
+.home-boosts-more:hover { border-color: var(--green-d); color: var(--green-d); }
+.home-boosts-more[aria-busy="true"] { opacity: 0.6; cursor: progress; }
+
+/* ── Skeleton tiles while a rail loads ── */
+.rail-list--skeleton .rt-media,
+.rail-list--skeleton .rt-title,
+.rail-list--skeleton .rt-sub {
+  background: linear-gradient(90deg, var(--cream-d) 25%, #f3ead3 50%, var(--cream-d) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  border-color: transparent;
+}
+.rail-list--skeleton .rt-title { height: 0.95rem; width: 80%; border-radius: 4px; }
+.rail-list--skeleton .rt-sub { height: 0.75rem; width: 50%; border-radius: 4px; }
+.rail-list--skeleton .rail-tile--person .rt-media { border-radius: 50%; }
+.rail-list--skeleton .rail-tile--person .rt-title { margin: 0 auto; }
+@media (prefers-reduced-motion: reduce) {
+  .rail-list--skeleton .rt-media, .rail-list--skeleton .rt-title, .rail-list--skeleton .rt-sub { animation: none; }
+}
+
+/* ── The item modal ──
+   A tile opens the feed page's own card (an event card, an episode card, the
+   article reader) in a dialog; a listing opens merch.js's product modal
+   instead. Scrolls as a whole on a phone; the card keeps its own width. */
+.rail-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(45, 32, 16, 0.62);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 4vh 1rem 6vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.rail-modal {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  background: var(--cream);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 2.6rem 1.25rem 1.25rem;
+  box-shadow: 0 18px 50px rgba(45, 32, 16, 0.35);
+}
+.rail-modal--wide { max-width: 840px; }
+.rail-modal-close {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.6rem;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--white);
+  color: var(--text);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.rail-modal-close:hover { border-color: var(--green-d); color: var(--green-d); }
+.rail-modal-body { min-width: 0; }
+/* The page's card chrome assumes a list around it; in the dialog it stands
+   alone, flush to the dialog's padding. */
+.rail-modal-body > .embed-note,
+.rail-modal-body > .pcast-card,
+.rail-modal-body > .art-reader { margin: 0; max-width: none; }
+.rail-modal-body > .pcast-card { box-shadow: none; }
+@media (max-width: 640px) {
+  .rail-modal-backdrop { padding: 0; align-items: stretch; }
+  .rail-modal { border-radius: 0; border-left: 0; border-right: 0; min-height: 100%; padding: 3rem 0.9rem 1.25rem; }
+}
