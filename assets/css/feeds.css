@@ -81,6 +81,10 @@ body[data-active-feed="articles"] { --accent: var(--articles-accent); --accent-d
    (`.supporters-wrap`: 60rem incl. 1.25rem sides). Reed, 2026-09-06: at
    1100px the page read as too wide once the Community wall arrived. */
 :root { --feed-track: 60rem; }
+/* The desktop track is OnlyBoosts' (its --page-track, 2026-11-07): 72rem
+   from 1100px up, Reed's ask of 2026-11-08 ("make it a bit wider"). The
+   @media rule sits right after the base so it wins at equal specificity. */
+@media (min-width: 1100px) { :root { --feed-track: 72rem; } }
 /* The chrome is the shell's lid: it fills the shell's width, keeps only
    the hairline under the sub-row, and stays cream so that when it sticks
    under the nav it covers the panel scrolling beneath it. */

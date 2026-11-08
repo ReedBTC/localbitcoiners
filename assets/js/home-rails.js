@@ -174,9 +174,10 @@ function paintError(section, text) {
 
 // ── The four rails ───────────────────────────────────────────────────
 const RAILS = {
-  // Upcoming events, featured first then soonest first (feeds.js decides);
-  // the picture is the event's, else the organizer's avatar (Reed,
-  // 2026-11-07), and the line is the date alone.
+  // Events still to come, featured first then soonest first (feeds.js
+  // decides); the picture is the event's, else the organizer's avatar
+  // (Reed, 2026-11-07), and the line is the date alone. The modal is the
+  // whole event: the page's card plus the description (Reed, 2026-11-08).
   events: {
     empty: 'No upcoming events. Post one from the Events page.',
     error: 'Couldn’t load events right now.',
@@ -191,7 +192,8 @@ const RAILS = {
         featured,
         open: async () => {
           await obReady()
-          openCardModal(feeds.renderEventCard(group, featured, credits), { label: group.parsed.title || 'Event' })
+          const card = feeds.renderEventCard(group, featured, credits, { description: true })
+          openCardModal(card, { label: group.parsed.title || 'Event', wide: true })
         },
       }))
     },
@@ -282,11 +284,11 @@ const RAILS = {
     },
   },
 
-  // Articles: the features first, then the page's order; the line is the
-  // author, and the picture is the cover, else the author's avatar (most
-  // community articles carry no cover; the organizer-avatar call for events
-  // applied here). A featured article outside the community snapshot is
-  // fetched from relays like the page's box does.
+  // Articles WITH A COVER, the features first, then the page's order; the
+  // line is the author. Reed, 2026-11-08: no cover, not on the homepage
+  // (the avatar fallback made a row of faces); the page lists them all. A
+  // featured article outside the community snapshot is fetched from relays
+  // like the page's box does, and the cover rule applies to it too.
   articles: {
     empty: 'No articles yet.',
     error: 'Couldn’t load articles right now.',
@@ -295,7 +297,8 @@ const RAILS = {
         import('/assets/js/feeds-articles.js'),
         import('/assets/js/featured-articles.js'),
       ])
-      const articles = await mod.loadArticleItems({ limit: 20 })
+      const hasCover = (a) => isHttpUrl(a.image)
+      const articles = (await mod.loadArticleItems({ limit: 80 })).filter(hasCover).slice(0, 20)
       const coordOf = (a) => fa.articleCoord(a.pubkey, a.dTag)
       const byCoord = new Map(articles.map((a) => [coordOf(a), a]))
       const featured = fa.readConfirmedFeaturedArticles()
@@ -317,12 +320,12 @@ const RAILS = {
         console.warn('[rails] featured articles unavailable', e)
       }
       const infoOf = (a) => { const i = featured.get(coordOf(a)); return i && isFeatureLive(i) ? i : null }
-      const feat = [...byCoord.values()].filter(infoOf)
+      const feat = [...byCoord.values()].filter((a) => infoOf(a) && hasCover(a))
       const rest = articles.filter((a) => !infoOf(a))
       return featuredFirst([...feat, ...rest], (a) => !!infoOf(a), (a) => infoOf(a)?.featuredAt).map((a) => ({
         title: a.title,
         sub: mod.articleAuthorName(a.pubkey),
-        img: a.image || mod.articleAuthorPicture(a.pubkey) || null,
+        img: a.image,
         glyph: '📄',
         featured: !!infoOf(a),
         open: async () => {

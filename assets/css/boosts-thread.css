@@ -404,6 +404,31 @@ a.event-title:hover { color: var(--orange); }
   min-width: 0;
 }
 
+/* The whole-event view's picture: the card's width, above the text. */
+.embed-note.is-event .event-hero { margin: 0 0 0.9rem; }
+.embed-note.is-event .event-hero img {
+  display: block;
+  width: 100%;
+  max-height: 420px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--cream-d);
+}
+
+/* The description under the when / where lines (the homepage's event
+   modal asks for it; list cards do not). */
+.embed-note.is-event .event-desc {
+  margin-top: 0.75rem;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.embed-note.is-event .event-desc p { margin: 0 0 0.65rem; white-space: pre-wrap; }
+.embed-note.is-event .event-desc p:last-child { margin-bottom: 0; }
+.embed-note.is-event .event-desc a { color: var(--green-d); text-decoration: underline; text-underline-offset: 2px; }
+
 /* Push the ⋮ menu to the right edge of the author row (calendar cards
    have no timestamp to do it). */
 .embed-note.is-event .embed-author .note-more { margin-left: auto; }

@@ -43,17 +43,22 @@
   background: var(--white);
 }
 
-/* The four feed rails sit on white like the feeds section did; #feeds is the
-   section's address (/feeds 301s to /#feeds) and lands under the sticky nav. */
-#feeds { background: var(--white); padding: 0.5rem 0 1rem; scroll-margin-top: 64px; }
+/* Every rail sits on white, the Community one included (Reed, 2026-11-08:
+   on the cream body it read as a full-width band the other rails lack);
+   #community-band is the full-width wrapper, since the rail is the column.
+   #feeds is the section's address (/feeds 301s to /#feeds) and lands under
+   the sticky nav. */
+#community-band, #feeds { background: var(--white); }
+#feeds { padding: 0.5rem 0 1rem; scroll-margin-top: 64px; }
 #community { padding-bottom: 0.5rem; }
 
 /* ── The track: a sideways scroller at every width ──
    A phone shows what fits (tiles no narrower than 118px); from 640px four
-   tiles fill the row exactly, from 900px six, and the rest scroll. The
-   column is sized off the track so a full row sits edge to edge; the 4px
-   bleed is for the gold ring and the focus outline, which the scroller
-   would otherwise clip. */
+   tiles fill the row exactly, from 900px five, from 1100px ten on the
+   72rem track (OnlyBoosts' counts, Reed 2026-11-08: "fit 10 across"), and
+   the rest scroll. The column is sized off the track so a full row sits
+   edge to edge; the 4px bleed is for the gold ring and the focus outline,
+   which the scroller would otherwise clip. */
 .rail-list {
   --rail-cols: 1;
   --rail-gap: 0.9rem;
@@ -76,7 +81,10 @@
   }
 }
 @media (min-width: 900px) {
-  .rail-list { --rail-cols: 6; }
+  .rail-list { --rail-cols: 5; }
+}
+@media (min-width: 1100px) {
+  .rail-list { --rail-cols: 10; --rail-gap: 0.8rem; }
 }
 .rail-tile { min-width: 0; scroll-snap-align: start; }
 
@@ -248,7 +256,7 @@
   padding: 2.6rem 1.25rem 1.25rem;
   box-shadow: 0 18px 50px rgba(45, 32, 16, 0.35);
 }
-.rail-modal--wide { max-width: 760px; }
+.rail-modal--wide { max-width: 840px; }
 .rail-modal-close {
   position: absolute;
   top: 0.55rem;

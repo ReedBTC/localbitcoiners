@@ -245,7 +245,7 @@ function computeItems(state) {
 }
 
 // ── localStorage cache (stale-while-revalidate) ──────────────────────
-const CACHE_KEY = 'lb_feeds_events_v2'
+const CACHE_KEY = 'lb_feeds_events_v3'  // v3: parsed events carry `content`
 const CACHE_MAX_AGE = 24 * 60 * 60 * 1000  // ignore cache older than a day
 
 function readCache() {
@@ -484,8 +484,9 @@ function naddrFor(parsed, relays) {
   }
 }
 
-function renderCard(item, featured = false, featuredBy = null) {
+function renderCard(item, featured = false, featuredBy = null, opts = {}) {
   return renderCalendarCard(item.parsed, {
+    ...opts,
     bech32: item.naddr,
     profile: item.profile,
     actions: true,
@@ -498,8 +499,8 @@ function renderCard(item, featured = false, featuredBy = null) {
 // other versions" toggle sits at the left of the card's action row
 // (Repost + Zap pushed right), and an in-card panel below the action bar
 // holds the other versions as full cards.
-function renderGroup(group, featured = false, featuredBy = null) {
-  if (!group.versions || !group.versions.length) return renderCard(group, featured, featuredBy)
+function renderGroup(group, featured = false, featuredBy = null, opts = {}) {
+  if (!group.versions || !group.versions.length) return renderCard(group, featured, featuredBy, opts)
 
   const n = group.versions.length
   const toggle = document.createElement('button')
@@ -511,6 +512,7 @@ function renderGroup(group, featured = false, featuredBy = null) {
     `<span>Other Versions (${n})</span>`
 
   const card = renderCalendarCard(group.parsed, {
+    ...opts,
     bech32: group.naddr,
     profile: group.profile,
     actions: true,
@@ -1036,8 +1038,11 @@ export async function loadEventRail() {
   const now = Date.now()
   const groups = groupItems(computeItems(state))
   const isFeat = (g) => groupIsFeatured(g, featuredCoords)
+  // Events that have not STARTED yet (Reed, 2026-11-08: a weekend event
+  // showing on its second day read as a past event on the tile, which
+  // prints the start date). The page's list keeps events in progress.
   const upcoming = groups
-    .filter((g) => g.endMs >= now && (isFeat(g) || matchesType(g, 'inperson')))
+    .filter((g) => g.startMs > now && (isFeat(g) || matchesType(g, 'inperson')))
     .sort((a, b) => {
       const fa = isFeat(a), fb = isFeat(b)
       if (fa !== fb) return fa ? -1 : 1
@@ -1082,9 +1087,10 @@ export async function loadEventRail() {
 }
 
 // The Events page's card for a group (primary card, Other Versions toggle,
-// action bar), for the homepage's modal.
-export function renderEventCard(group, featured = false, credits = null) {
-  return renderGroup(group, featured, credits)
+// action bar), for the homepage's modal; `{ description: true }` adds the
+// event's description under the when / where lines.
+export function renderEventCard(group, featured = false, credits = null, opts = {}) {
+  return renderGroup(group, featured, credits, opts)
 }
 
 // ── Events tab loader ────────────────────────────────────────────────

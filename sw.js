@@ -243,7 +243,12 @@
 // index.html, nav.js/nav.css (new links), supporters.js, feeds.js, the four
 // feeds-*.js and featured-*.js (note templates, exports), calendar-events.js
 // and feed-url.js.
-const VERSION = 'lb-v93';
+// v94: the rails take OnlyBoosts' 72rem desktop track and 5 / 10 columns,
+// the Community band goes white, the events rail keeps events still to
+// come, the articles rail keeps covers only, the event modal shows the
+// description (calendar-events.js, feeds.js, home-rails.js/.css, feeds.css,
+// nav.css, boosts-thread.css).
+const VERSION = 'lb-v94';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

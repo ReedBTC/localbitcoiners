@@ -88,19 +88,23 @@ runner (`payAllLegs.js`) restates the keysend leg rather than importing it:
   asked when it returns null. `leg.recipient.address` stays as published.
   `test-keysend-upgrade.mjs` scans the call sites.
 
-## The homepage is rails, the feeds are pages (rails-homepage, lb-v93)
+## The homepage is rails, the feeds are pages (rails-homepage, lb-v94)
 
 Since 2026-11-07 (Reed, after the OnlyBoosts homepage's feedback: "nobody
 likes the tabs") `index.html` is the hero, the latest-episode card, the
 Episodes / Boosts / Stats row, then one sideways row of tiles per
 community section, the OnlyBoosts discovery homepage's shape: Community
-(the top ten supporters, round tiles, name alone), then under `#feeds`
-Events, Marketplace, Podcast Boosts and Articles, each heading linking its
-own page: `events.html`, `market.html`, `podcasts.html`, `articles.html`
+(the top ten supporters, round tiles, name alone, on a white full-width
+band `#community-band`), then under `#feeds` Community Events, Community
+Marketplace, Community Podcast Boosts and Community Articles (the word
+"Community" on every rail heading, Reed 2026-11-08), each heading linking
+its own page: `events.html`, `market.html`, `podcasts.html`, `articles.html`
 (`/events` …). A tile is the picture, the title and one line (date, price,
 show, author); featured items come first with a gold ring and the bolt; a
-click opens the page's own card in a modal (an event card, an episode card,
-the article reader; a listing opens merch.js's product modal). The tabs,
+click opens the page's own card in a modal (an event card with the whole
+event: `renderEventCard(…, { description: true })` adds the picture across
+the card and the NIP-52 content as paragraphs, Reed 2026-11-08; an episode
+card; the article reader; a listing opens merch.js's product modal). The tabs,
 the Featured / All sub-row and the `?feed=` URL state are gone. Things that
 fail silently if missed:
 
@@ -119,13 +123,16 @@ fail silently if missed:
   `home-rails.css`; `/supporters` keeps the wall.
 - **Rail orders are Reed's (2026-11-07).** Events: featured first, then
   soonest; in-person only like the page's default, except a featured event
-  of any type. Marketplace: paid features and the house store's listings
+  of any type; and only events that have NOT STARTED (`startMs > now`,
+  2026-11-08: a weekend event on its second day printed its start date and
+  read as past), where the page keeps events in progress. Marketplace: paid features and the house store's listings
   first (a house listing displays as featured), then the page's Buy-Now-first
   order. Podcast Boosts: features first, then "most boosters over the
   narrowest air-date window with something in it", the page's opening sort.
-  Articles: features first, then the page's order. Pictures: the event's
-  image else the organizer's avatar; the article's cover else the author's
-  avatar.
+  Articles: features first, then the page's order, and ONLY ARTICLES WITH
+  A COVER (2026-11-08, featured ones included; the avatar fallback made a
+  row of faces; the page lists them all). Pictures: the event's image else
+  the organizer's avatar; the article's cover.
 - **The feed pages are one panel each, hydrated by `feeds.js` off
   `<body data-active-feed>`**, with `data-feed-view="page"`: the gold box
   first, then the list, and an item appears ONCE: all four renderers leave
@@ -150,9 +157,14 @@ fail silently if missed:
   `eventAnnouncement.js`) print `https://localbitcoiners.com/<page>`.
   `nav.js`'s cart rule keys on `/market` (and the old homepage test for
   cached copies); the nav partial's Community group links the four pages.
-- **Every column is 60rem** (`--feed-track`, now defined in `feeds.css`):
-  `.featured-wrap`, `.home-module`, `.rail`, the pages' `.feeds-shell-wrap`.
-  Rails show 4 tiles from 640px and 6 from 900px, scrolling for the rest.
+- **Every column is `--feed-track`** (defined in `feeds.css`): 60rem, and
+  72rem from 1100px up, OnlyBoosts' `--page-track` of its favorites-recommend
+  branch (Reed, 2026-11-08: "that's what I want the width of our page to
+  be"; the @media rule sits right after the base `:root` so it wins). It is
+  `.featured-wrap`, `.home-module`, `.rail`, the pages' `.feeds-shell-wrap`;
+  the nav bar is OB's 1240px. Rails show 4 tiles from 640px, 5 from 900px
+  and 10 from 1100px (OB's counts), scrolling for the rest. `/supporters`
+  keeps its own 60rem wall.
 
 ## Featured sections on the feeds (lb-v71 → lb-v75)
 
