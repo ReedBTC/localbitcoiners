@@ -45,12 +45,19 @@ import { rangeControl, sortControl, rangeStartMs, rangeWindow } from '/assets/js
   // walls always agree on who is above the fold.
   var HOME = !document.getElementById('supporters-root') && !!document.getElementById('community-root');
   // Since rails-homepage (2026-11) the homepage's Community section is a RAIL:
-  // one row of the top RAIL_SIZE people by the wall's default rank (chart rank,
-  // all time), name alone, no figure (Reed, 2026-11-07: nobody here reads the
-  // order the way OnlyBoosts' readers do), linking to /supporters for the
-  // wall. #community-root is the rail's track; the podium-and-grid wall is
-  // /supporters alone now.
+  // one row of RAIL_SIZE people, name alone, no figure (Reed, 2026-11-07:
+  // nobody here reads the order the way OnlyBoosts' readers do), linking to
+  // /supporters for the wall. #community-root is the rail's track; the
+  // podium-and-grid wall is /supporters alone now. WHO is on it is the stats
+  // page's Supporter Leaderboard (Reed, 2026-11-08: the hosts read that list
+  // off on the show): its opening view, the ten supporters who have
+  // supported the most episodes, see leaderboardPeople below.
   var RAIL_SIZE = 10;
+  // The hosts never rank (stats.js HOST_NPUBS, the same two keys).
+  var HOST_NPUBS = {
+    'npub1xgyjasdztryl9sg6nfdm2wcj0j3qjs03sq7a0an32pg0lr5l6yaqxhgu7s': true, // Reed
+    'npub1f5pre6wl6ad87vr4hr5wppqq30sh58m4p33mthnjreh03qadcajs7gwt3z': true, // Rev Hodl
+  };
   var IDS = HOME
     ? { root: 'community-root', loading: 'community-loading', error: 'community-error' }
     : { root: 'supporters-root', loading: 'supporters-loading', error: 'supporters-error' };
@@ -485,12 +492,44 @@ import { rangeControl, sortControl, rangeStartMs, rangeWindow } from '/assets/js
     return { text: compact(p.sats) + ' sats', title: title };
   }
 
-  // The homepage's Community rail: the top RAIL_SIZE people at the wall's
-  // default range and rank, each the same card the wall builds (so the
-  // OnlyBoosts link-or-copy wiring and the profile upgrade apply), wrapped
-  // as a round tile (home-rails.css styles .sup-card inside .rail-tile).
+  // ⚠️ The stats page's Supporter Leaderboard, "Episodes Supported" view
+  // (stats.js renderIdentityBoard + draw('episodes')), restated here because
+  // stats.js is a classic script and this is a module (the compRanks
+  // precedent). Same rule, step for step, so the homepage row and the list
+  // the hosts read off agree: rows with a positive total_sats and a parseable
+  // settled_at, every source (the stats board counts zap rows' episodes
+  // too); hosts out; identity = npub, else sender_name, anonymous dropped;
+  // the figure = distinct positive episode_num; sorted by that figure alone,
+  // a stable sort so a tie keeps ledger order; the first ten. Change the
+  // stats page's rule and change this one.
+  function leaderboardPeople(rows) {
+    var byId = Object.create(null);
+    var order = [];
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      if (!(typeof row.total_sats === 'number' && row.total_sats > 0)) continue;
+      if (!isFinite(Date.parse(row.settled_at))) continue;
+      if (row.sender_npub && HOST_NPUBS[row.sender_npub]) continue;
+      var npub = row.sender_npub || '';
+      var key = npub || row.sender_name || '';
+      if (!key) continue;
+      var id = byId[key];
+      if (!id) { id = byId[key] = { npub: npub || null, name: row.sender_name || null, eps: Object.create(null), episodes: 0 }; order.push(id); }
+      if (row.episode_num != null) {
+        var num = parseInt(row.episode_num, 10);
+        if (isFinite(num) && num > 0) id.eps[num] = true;
+      }
+    }
+    order.forEach(function (p) { p.episodes = Object.keys(p.eps).length; });
+    return order.sort(function (a, b) { return b.episodes - a.episodes; }).slice(0, RAIL_SIZE);
+  }
+
+  // The homepage's Community rail: the Supporter Leaderboard's ten, each the
+  // same card the wall builds (so the OnlyBoosts link-or-copy wiring and the
+  // profile upgrade apply), wrapped as a round tile (home-rails.css styles
+  // .sup-card inside .rail-tile).
   function renderRail(container, ctx) {
-    var people = orderPeople(aggregate(ctx.rows, rangeStartMs(DEFAULT_RANGE)), DEFAULT_VIEW).slice(0, RAIL_SIZE);
+    var people = leaderboardPeople(ctx.rows);
     container.innerHTML = '';
     if (!people.length) {
       var empty = document.createElement('p');

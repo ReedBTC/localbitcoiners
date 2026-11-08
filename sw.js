@@ -254,7 +254,8 @@
 // v96: the episodes rail moves under Community Articles, "w/ <guest>" /
 // "Solo rip", Latest Boosts in the page's own column.
 // v97: "&" between two guests on the episode tiles.
-const VERSION = 'lb-v97';
+// v98: the Community rail is the stats page's Supporter Leaderboard ten.
+const VERSION = 'lb-v98';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

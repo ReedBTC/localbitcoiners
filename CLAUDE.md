@@ -131,7 +131,12 @@ fail silently if missed:
   hydrator writes every field (the rail went blank on a second visit before
   that). The Community rail is `supporters.js`'s rail mode (`renderRail`,
   `RAIL_SIZE` 10, `#community-root`), the wall's cards restyled as tiles by
-  `home-rails.css`; `/supporters` keeps the wall.
+  `home-rails.css`; `/supporters` keeps the wall. WHO is on it is the
+  stats page's Supporter Leaderboard in its opening "Episodes Supported"
+  view (Reed, 2026-11-08: the hosts read that list off on the show), the
+  rule restated in `leaderboardPeople` (hosts out, npub else name,
+  distinct `episode_num`, stable sort, ten); change `renderIdentityBoard`
+  in `stats.js` and change it too.
 - **Rail orders are Reed's (2026-11-07).** Events: featured first, then
   soonest; in-person only like the page's default, except a featured event
   of any type; and only events that have NOT STARTED (`startMs > now`,
