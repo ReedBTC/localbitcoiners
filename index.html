@@ -897,10 +897,33 @@
      opening the page's own card in a modal. The tabs, the Featured / All
      sub-row, the Find modal and the ?feed= URL state moved to the pages
      (/events, /market, /podcasts, /articles; feed-page.js). -->
-<!-- Full-width white band: the rail itself is the 72rem column, so its own
-     background would stop at the column edge and the cream body would show
-     beside it (Reed, 2026-11-08: the band read as a stripe no other rail has). -->
-<div id="community-band">
+<!-- Full-width white band: a rail is the 72rem column, so its own background
+     would stop at the column edge and the cream body would show beside it
+     (Reed, 2026-11-08: the band read as a stripe no other rail has). Holds
+     the Latest Episodes rail (the last ten episodes as tiles, the number on
+     the artwork, the guest on the sub line; a tile is a link to /ep###) and
+     the Community rail. -->
+<div id="top-rails">
+<section class="rail" data-rail="episodes" aria-labelledby="rail-episodes-title">
+  <div class="rail-head">
+    <h2 class="home-module-title" id="rail-episodes-title"><a href="/episodes">Latest Episodes</a></h2>
+    <a class="rail-more" href="/episodes">See all episodes →</a>
+  </div>
+  <div class="rail-track">
+    <ol class="rail-list rail-list--skeleton" aria-hidden="true">
+      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
+      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
+      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
+      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
+      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
+      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
+      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
+      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
+      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
+      <li class="rail-tile"><span class="rt"><span class="rt-media"></span><span class="rt-title"></span><span class="rt-sub"></span></span></li>
+    </ol>
+  </div>
+</section>
 <section id="community" class="rail" aria-labelledby="rail-community-title">
   <div class="rail-head">
     <h2 class="home-module-title" id="rail-community-title"><a href="/supporters">Community</a></h2>
@@ -991,6 +1014,28 @@
     </div>
   </section>
 </div>
+
+<!-- ═══════════════════════ LATEST BOOSTS (the page's tail) ═══════════════════════
+     The boost wall's cards, newest first, 25 at a time behind a Load more
+     button: the boosts page without its sort and range (Reed, 2026-11-08:
+     "that way the homepage kind of never ends"). assets/js/home-boosts.js
+     loads it when it nears the viewport; the cards are boosts-thread.js's,
+     the action bar boost-actions.js's. No New Member badge here (that is
+     the boosts page's, by design). -->
+<section id="home-boosts" aria-labelledby="home-boosts-title">
+  <div class="home-boosts-inner">
+    <div class="rail-head">
+      <h2 class="home-module-title" id="home-boosts-title"><a href="/boosts">Latest Boosts</a></h2>
+      <a class="rail-more" href="/boosts">See all boosts →</a>
+    </div>
+    <p id="home-boosts-loading" class="home-boosts-note">Loading boosts…</p>
+    <p id="home-boosts-error" class="rail-error" style="display:none">Couldn’t load boosts right now. <a href="/boosts">Open the boosts page →</a></p>
+    <div id="home-boosts-list"></div>
+    <div class="home-boosts-foot">
+      <button type="button" id="home-boosts-more" class="home-boosts-more" hidden>Load more boosts</button>
+    </div>
+  </div>
+</section>
 
 
 <!-- ══════════════════════════════ RICH FOOTER ══════════════════════════════
@@ -1582,6 +1627,7 @@
     channelEl = doc.querySelector('channel');
     const items = Array.from(doc.querySelectorAll('item'));
     if (items.length === 0) return false;
+    publishEpisodesForRail(items);
 
     if ($list) $list.replaceChildren();
     if ($featured) $featured.replaceChildren();
@@ -1604,6 +1650,29 @@
       }
     }
     return true;
+  }
+
+  /* ── The Latest Episodes rail (home-rails.js) reads the same feed ──
+     One plain record per item: number, title, picture (the item's
+     itunes:image, else the channel's cover) and the episode page. Set on
+     window and announced, so the rail paints from the cached XML before
+     the network answers and again if the fresh feed differs. */
+  function publishEpisodesForRail(items) {
+    const chanImg = firstChildByLocalName(channelEl, 'image')?.getAttribute('href') || '';
+    const list = items.map((item, index) => {
+      const itunesEp = item.querySelector('episode')?.textContent?.trim();
+      const num = itunesEp ? parseInt(itunesEp, 10) : (items.length - index);
+      const img = firstChildByLocalName(item, 'image')?.getAttribute('href') || chanImg;
+      return {
+        num,
+        title: item.querySelector('title')?.textContent?.trim() || '',
+        image: /^https:\/\//.test(img) ? img : '',
+        href: '/ep' + pad(num),
+        pubDate: item.querySelector('pubDate')?.textContent?.trim() || '',
+      };
+    });
+    window.__lbEpisodeItems = list;
+    document.dispatchEvent(new CustomEvent('lb:episodes', { detail: list }));
   }
 
   /* ── main ── */
@@ -1804,5 +1873,6 @@
      each loads as it nears the viewport, through the feed pages' own
      loaders, and opens the page's card in a modal. -->
 <script type="module" src="/assets/js/home-rails.js"></script>
+<script type="module" src="/assets/js/home-boosts.js"></script>
 </body>
 </html>

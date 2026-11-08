@@ -116,7 +116,10 @@ export function openCardModal(card, { label = '', wide = false } = {}) {
 
 // ── A tile ───────────────────────────────────────────────────────────
 // `open` is what a click does (opens the modal, or merch's product modal).
-function tileEl({ title, sub = '', img = null, glyph = '•', featured = false, open }) {
+// A tile is a button that runs `open` (a modal), or, given `href`, a plain
+// link (the episode tiles go to /ep###). `badge` prints on the artwork's
+// corner (the episode number; every episode shares the show's cover).
+function tileEl({ title, sub = '', img = null, glyph = '•', featured = false, badge = '', href = '', open }) {
   const media = h('span', { class: 'rt-media' + (isHttpUrl(img) ? '' : ' rt-media--none') })
   if (isHttpUrl(img)) {
     const im = h('img', { src: img, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' })
@@ -127,15 +130,21 @@ function tileEl({ title, sub = '', img = null, glyph = '•', featured = false, 
     media.appendChild(h('span', { class: 'rt-glyph', 'aria-hidden': 'true', text: glyph }))
   }
   if (featured) {
-    const badge = h('span', { class: 'rt-feat', title: 'Featured' })
-    badge.innerHTML = FEATURE_BOLT_SVG
-    media.appendChild(badge)
+    const feat = h('span', { class: 'rt-feat', title: 'Featured' })
+    feat.innerHTML = FEATURE_BOLT_SVG
+    media.appendChild(feat)
   }
-  const btn = h('button', { class: 'rt', type: 'button' }, [
+  if (badge) media.appendChild(h('span', { class: 'rt-num', 'aria-hidden': 'true', text: badge }))
+  const inner = [
     media,
-    h('span', { class: 'rt-title', text: title || 'Untitled' }),
+    h('span', { class: 'rt-title', text: title || 'Untitled', title: title || '' }),
     sub ? h('span', { class: 'rt-sub', text: sub, title: sub }) : null,
-  ])
+  ]
+  if (href) {
+    const a = h('a', { class: 'rt', href }, inner)
+    return h('li', { class: 'rail-tile' + (featured ? ' rail-tile--featured' : '') }, [a])
+  }
+  const btn = h('button', { class: 'rt', type: 'button' }, inner)
   let busy = false
   btn.addEventListener('click', async () => {
     if (busy) return
@@ -172,8 +181,50 @@ function paintError(section, text) {
   track.appendChild(h('p', { class: 'rail-error', text }))
 }
 
-// ── The four rails ───────────────────────────────────────────────────
+// ── The rails ────────────────────────────────────────────────────────
+// Episode titles are "<Title> w/<Guest>: <Place> | Ep. NNN" (a solo show
+// has no " w/" part): the tile prints the title alone, the sub line the
+// guest or "Solo episode", the number on the artwork (Reed, 2026-11-08).
+const EP_TITLE_RE = /^(.*?)(?:\s+w\/\s*(.+?))?(?:\s*\|\s*Ep\.?\s*\d+)?\s*$/i
+export function episodeTileParts(title) {
+  const m = EP_TITLE_RE.exec(String(title || '')) || []
+  const guestRaw = (m[2] || '').split(':')[0].trim()
+  return { title: (m[1] || title || '').trim(), guest: guestRaw }
+}
+
+// The homepage's inline episode script parses the RSS feed and publishes
+// the items (window.__lbEpisodeItems + the lb:episodes event); the rail
+// waits for that rather than fetching the feed a second time.
+function episodeItems() {
+  if (Array.isArray(window.__lbEpisodeItems)) return Promise.resolve(window.__lbEpisodeItems)
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('episodes timeout')), 20000)
+    document.addEventListener('lb:episodes', (e) => { clearTimeout(t); resolve(e.detail || []) }, { once: true })
+  })
+}
+
 const RAILS = {
+  // The last ten episodes, newest first; a tile is a link to the episode
+  // page. Repainted when the fresh feed differs from the cached one.
+  episodes: {
+    empty: 'No episodes yet.',
+    error: 'Couldn’t load episodes right now.',
+    async load() {
+      const items = await episodeItems()
+      return items.slice(0, 10).map((ep) => {
+        const parts = episodeTileParts(ep.title)
+        return {
+          title: parts.title || ep.title || `Episode ${ep.num}`,
+          sub: parts.guest ? `Guest: ${parts.guest}` : 'Solo episode',
+          img: ep.image || null,
+          glyph: '🎙️',
+          badge: String(ep.num),
+          href: ep.href,
+        }
+      })
+    },
+  },
+
   // Events still to come, featured first then soonest first (feeds.js
   // decides); the picture is the event's, else the organizer's avatar
   // (Reed, 2026-11-07), and the line is the date alone. The modal is the
@@ -352,6 +403,13 @@ async function loadRail(section) {
     paintError(section, rail.error)
   }
 }
+
+// A fresh feed that differs from the cached one republishes the episodes;
+// repaint that rail if it has already loaded.
+document.addEventListener('lb:episodes', () => {
+  const section = document.querySelector('.rail[data-rail="episodes"]')
+  if (section && loaded.has('episodes')) RAILS.episodes.load().then((tiles) => paintRail(section, tiles, RAILS.episodes.empty)).catch(() => {})
+})
 
 const sections = Array.from(document.querySelectorAll('.rail[data-rail]'))
 if ('IntersectionObserver' in window) {

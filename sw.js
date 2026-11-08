@@ -248,7 +248,10 @@
 // come, the articles rail keeps covers only, the event modal shows the
 // description (calendar-events.js, feeds.js, home-rails.js/.css, feeds.css,
 // nav.css, boosts-thread.css).
-const VERSION = 'lb-v94';
+// v95: the Latest Episodes rail above Community (index.html publishes the
+// feed's items, home-rails.js paints them) and the boost wall at the foot
+// of the homepage, 25 per Load more (home-boosts.js, new).
+const VERSION = 'lb-v95';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
@@ -284,6 +287,7 @@ const PRECACHE_URLS = [
   '/assets/css/feed-page.css',
   '/assets/css/home-rails.css',
   '/assets/js/home-rails.js',
+  '/assets/js/home-boosts.js',
   '/assets/js/feed-page.js',
   '/assets/js/episode-enhance.js',
   '/assets/js/ep-sats.js',

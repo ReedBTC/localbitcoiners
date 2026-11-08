@@ -45,10 +45,11 @@
 
 /* Every rail sits on white, the Community one included (Reed, 2026-11-08:
    on the cream body it read as a full-width band the other rails lack);
-   #community-band is the full-width wrapper, since the rail is the column.
+   #top-rails is the full-width wrapper (Latest Episodes + Community), since
+   the rail is the column; #home-boosts is the page's tail.
    #feeds is the section's address (/feeds 301s to /#feeds) and lands under
    the sticky nav. */
-#community-band, #feeds { background: var(--white); }
+#top-rails, #feeds, #home-boosts { background: var(--white); }
 #feeds { padding: 0.5rem 0 1rem; scroll-margin-top: 64px; }
 #community { padding-bottom: 0.5rem; }
 
@@ -212,6 +213,47 @@
 /* The OnlyBoosts dot rides the avatar's edge; the avatar is round and larger
    than the wall's, so the dot sits in from the corner. */
 .rail-tile--person .sup-avatar .ob-dot { right: 8%; bottom: 8%; top: auto; }
+
+/* The episode number on the artwork's corner (every episode shares the
+   show's cover, so the number is what tells the tiles apart). */
+.rt-num {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(45, 32, 16, 0.78);
+  color: var(--cream, #fbf5e6);
+  font-family: var(--font-sans, system-ui, sans-serif);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+}
+a.rt:hover .rt-title { text-decoration: underline; text-underline-offset: 3px; }
+
+/* ── Latest Boosts: the boost wall's cards close the page ──
+   The boosts page's column (860px) inside the page, newest first, 25 per
+   Load more. The cards and their action bar are the boosts page's own
+   (boosts-thread.css, boost-actions.css). */
+#home-boosts { padding: 0.5rem 0 2.5rem; }
+.home-boosts-inner { max-width: 860px; margin: 0 auto; padding: 1.5rem 1.25rem 0; }
+.home-boosts-note { margin: 0.5rem 0 1rem; color: var(--muted); font-size: 0.95rem; }
+#home-boosts-list .reply-children { border-left: 0; padding-left: 0; margin-top: 0; }
+.home-boosts-foot { display: flex; justify-content: center; margin-top: 1.25rem; }
+.home-boosts-more {
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 0.7rem 1.6rem;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  background: var(--cream);
+  color: var(--text);
+  cursor: pointer;
+}
+.home-boosts-more:hover { border-color: var(--green-d); color: var(--green-d); }
+.home-boosts-more[aria-busy="true"] { opacity: 0.6; cursor: progress; }
 
 /* ── Skeleton tiles while a rail loads ── */
 .rail-list--skeleton .rt-media,
