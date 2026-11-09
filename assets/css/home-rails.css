@@ -214,8 +214,7 @@
    than the wall's, so the dot sits in from the corner. */
 .rail-tile--person .sup-avatar .ob-dot { right: 8%; bottom: 8%; top: auto; }
 
-/* The episode number on the artwork's corner (every episode shares the
-   show's cover, so the number is what tells the tiles apart). */
+/* The episode's place on the leaderboard, on the artwork's corner. */
 .rt-num {
   position: absolute;
   left: 6px;
@@ -231,6 +230,46 @@
   letter-spacing: 0.02em;
 }
 a.rt:hover .rt-title { text-decoration: underline; text-underline-offset: 3px; }
+
+/* The caption across the top of the artwork: every episode shares the
+   show's cover, so the tile prints the episode's city or meetup on it
+   (Reed and Rev, 2026-11-08: the same art with one line of difference,
+   not per-episode art). The cover's top is its quiet olive ground; the
+   wordmark sits at the bottom, under the rank pill. */
+.rt-cap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  padding: 0.45rem 0.5rem 1.1rem;
+  background: linear-gradient(to bottom, rgba(28, 20, 6, 0.86) 0%, rgba(28, 20, 6, 0.62) 55%, rgba(28, 20, 6, 0) 100%);
+  color: var(--cream, #fbf5e6);
+  font-family: var(--font-sans, system-ui, sans-serif);
+  text-align: left;
+  pointer-events: none;
+}
+.rt-cap-eyebrow {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f2a73b;
+  line-height: 1.3;
+}
+.rt-cap-text {
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
 
 /* ── Latest Boosts: the boost wall's cards close the page ──
    The page's own column (--feed-track, the Latest Episode card's width;

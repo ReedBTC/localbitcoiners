@@ -190,6 +190,7 @@
     }
 
     /* ── Section chrome (heading, subline, canvas), shared by every section ── */
+    .stats-chart-heading { scroll-margin-top: 5rem; }  /* the homepage's Top Episodes heading links #episode-leaderboard under the sticky nav */
     .stats-chart-heading {
       font-family: 'Playfair Display', Georgia, serif;
       font-size: clamp(1.4rem, 3vw, 1.9rem);
@@ -733,7 +734,7 @@
 
 <!-- ══════════════════════════════ EPISODE LEADERBOARD ══════════════════════════════ -->
 <section class="section-wide">
-  <h2 class="stats-chart-heading">Episode Leaderboard</h2>
+  <h2 class="stats-chart-heading" id="episode-leaderboard">Episode Leaderboard</h2>
   <p class="stats-chart-sub" data-board-sub>Loading…</p>
 
   <div class="stats-chart-controls" role="radiogroup" aria-label="Leaderboard metric">

@@ -22,6 +22,7 @@
  * the tile and modal CSS is assets/css/home-rails.css.
  */
 import { ready as obReady } from '/assets/js/onlyboosts.js'
+import { topEpisodes, rankChip } from '/assets/js/episode-rank.js'
 import { STATIC_RELAYS } from '/assets/js/boosts-thread.js'
 import { FEATURE_BOLT_SVG, isFeatureLive } from '/assets/js/featured-shared.js'
 
@@ -124,8 +125,12 @@ export function openCardModal(card, { label = '', wide = false } = {}) {
 // `open` is what a click does (opens the modal, or merch's product modal).
 // A tile is a button that runs `open` (a modal), or, given `href`, a plain
 // link (the episode tiles go to /ep###). `badge` prints on the artwork's
-// corner (the episode number; every episode shares the show's cover).
-function tileEl({ title, sub = '', img = null, glyph = '•', featured = false, badge = '', href = '', open }) {
+// corner (the episode's place on the leaderboard). `cap` is a caption
+// across the top of the artwork, { eyebrow, text }: every episode shares
+// the show's cover, so the tile prints the episode's city or meetup on it,
+// the same art with one line of difference (Reed and Rev, 2026-11-08: ten
+// identical covers read as one card repeated; no per-episode art).
+function tileEl({ title, sub = '', img = null, glyph = '•', featured = false, badge = '', cap = null, href = '', open }) {
   const media = h('span', { class: 'rt-media' + (isHttpUrl(img) ? '' : ' rt-media--none') })
   if (isHttpUrl(img)) {
     const im = h('img', { src: img, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' })
@@ -141,6 +146,12 @@ function tileEl({ title, sub = '', img = null, glyph = '•', featured = false, 
     media.appendChild(feat)
   }
   if (badge) media.appendChild(h('span', { class: 'rt-num', 'aria-hidden': 'true', text: badge }))
+  if (cap && (cap.text || cap.eyebrow)) {
+    media.appendChild(h('span', { class: 'rt-cap', 'aria-hidden': 'true' }, [
+      cap.eyebrow ? h('span', { class: 'rt-cap-eyebrow', text: cap.eyebrow }) : null,
+      cap.text ? h('span', { class: 'rt-cap-text', text: cap.text }) : null,
+    ]))
+  }
   const inner = [
     media,
     h('span', { class: 'rt-title', text: title || 'Untitled', title: title || '' }),
@@ -189,17 +200,48 @@ function paintError(section, text) {
 
 // ── The rails ────────────────────────────────────────────────────────
 // Episode titles are "<Title> w/<Guest>: <Place> | Ep. NNN" (a solo show
-// has no " w/" part): the tile prints the title alone, the sub line
+// has no " w/" part, and some have no place: "<Title> | Ep. NNN"; the
+// early ones are "<Title>: <Place> | Ep. NNN", and episode 1 is
+// "001. <Title> | <Place>"). The tile prints the title alone, the sub line
 // "w/ <Guest>" (the title's own shorthand, shorter than "Guest:") or
-// "Solo rip" (what the hosts call one), the number on the artwork (Reed,
-// 2026-11-08).
-const EP_TITLE_RE = /^(.*?)(?:\s+w\/\s*(.+?))?(?:\s*\|\s*Ep\.?\s*\d+)?\s*$/i
+// "Solo rip" (what the hosts call one), and the place on the artwork
+// (Reed, 2026-11-08; Reed and Rev, 2026-11-08).
+const EP_TAIL_RE = /\s*\|\s*Ep(?:isode)?\.?\s*\d+\s*$/i
+const EP_GUEST_RE = /^(.*?)\s+w\/\s*(.+)$/i
+// A colon segment without a guest is a place unless it reads as a
+// subtitle; the two early titles that end in a subtitle both say
+// "Meetups" ("…: The Value of Bitcoin Meetups", "…: AI, Meetups & the
+// Meshtadel"), where no place does.
+const NOT_A_PLACE_RE = /\bmeetups?\b/i
 export function episodeTileParts(title) {
-  const m = EP_TITLE_RE.exec(String(title || '')) || []
+  let t = String(title || '').trim()
+  let place = ''
+  if (EP_TAIL_RE.test(t)) {
+    t = t.replace(EP_TAIL_RE, '').trim()
+  } else {
+    // Episode 1's form: the place after the bar, the number before the title.
+    const bar = t.indexOf(' | ')
+    if (bar > 0) { place = t.slice(bar + 3).trim(); t = t.slice(0, bar).trim() }
+    t = t.replace(/^\d{1,3}\.\s+/, '')
+  }
+  let guest = ''
+  const g = EP_GUEST_RE.exec(t)
+  if (g) {
+    t = g[1].trim()
+    const colon = g[2].indexOf(':')
+    guest = (colon >= 0 ? g[2].slice(0, colon) : g[2]).trim()
+    if (colon >= 0) place = g[2].slice(colon + 1).trim() || place
+  } else if (!place) {
+    const colon = t.lastIndexOf(':')
+    if (colon > 0) {
+      const seg = t.slice(colon + 1).trim()
+      if (seg && !NOT_A_PLACE_RE.test(seg)) { place = seg; t = t.slice(0, colon).trim() }
+    }
+  }
   // Two guests join with "&", not "and": two characters more of the names
-  // fit on the sub line (Reed, 2026-11-08).
-  const guestRaw = (m[2] || '').split(':')[0].trim().replace(/\s+and\s+/gi, ' & ')
-  return { title: (m[1] || title || '').trim(), guest: guestRaw }
+  // fit on the sub line (Reed, 2026-11-08). The place too.
+  const amp = (x) => x.replace(/\s+and\s+/gi, ' & ')
+  return { title: t || String(title || '').trim(), guest: amp(guest), place: amp(place) }
 }
 
 // The homepage's inline episode script parses the RSS feed and publishes
@@ -214,24 +256,51 @@ function episodeItems() {
   })
 }
 
+// The ledger rows: supporters.js fetches /api/sats for the Community rail
+// and publishes them (window.__lbSatsRows + the lb:sats event, null on a
+// failure); the rail waits for that rather than fetching 800 KB twice, and
+// fetches itself when the row never comes.
+const SATS_URL = '/api/sats'
+function satsRows() {
+  if (Array.isArray(window.__lbSatsRows)) return Promise.resolve(window.__lbSatsRows)
+  const own = () => fetch(SATS_URL).then((r) => { if (!r.ok) throw new Error('sats ' + r.status); return r.json() })
+    .then((d) => (Array.isArray(d.rows) ? d.rows : []))
+  return new Promise((resolve, reject) => {
+    let done = false
+    const settle = (p) => { if (done) return; done = true; clearTimeout(t); p.then(resolve, reject) }
+    const t = setTimeout(() => settle(own()), 15000)
+    document.addEventListener('lb:sats', (e) => settle(Array.isArray(e.detail) ? Promise.resolve(e.detail) : own()), { once: true })
+  })
+}
+
+const pad3 = (n) => String(n).padStart(3, '0')
+
 const RAILS = {
-  // The last ten episodes, newest first, the last rail before Latest
-  // Boosts; a tile is a link to the episode page. Repainted when the fresh
-  // feed differs from the cached one.
+  // Top Episodes (Reed and Rev, 2026-11-08: the top episodes are where
+  // new listeners are told to start, where "latest" reads as the one you
+  // already heard): the stats page's Episode Leaderboard, its opening
+  // Overall view, the first ten (episode-rank.js), each the show's cover
+  // with the episode's place across it and its rank on the corner; a tile
+  // is a link to the episode page. Repainted when the fresh feed differs
+  // from the cached one.
   episodes: {
     empty: 'No episodes yet.',
     error: 'Couldn’t load episodes right now.',
     async load() {
-      const items = await episodeItems()
-      return items.slice(0, 10).map((ep) => {
+      const [items, rows] = await Promise.all([episodeItems(), satsRows()])
+      const byNum = new Map(items.map((ep) => [Number(ep.num), ep]))
+      const cover = (items.find((ep) => isHttpUrl(ep.image)) || {}).image || null
+      return topEpisodes(rows, 10).map((e) => {
+        const ep = byNum.get(e.num) || {}
         const parts = episodeTileParts(ep.title)
         return {
-          title: parts.title || ep.title || `Episode ${ep.num}`,
+          title: parts.title || ep.title || `Episode ${pad3(e.num)}`,
           sub: parts.guest ? `w/ ${parts.guest}` : 'Solo rip',
-          img: ep.image || null,
+          img: ep.image || cover,
           glyph: '🎙️',
-          badge: String(ep.num),
-          href: ep.href,
+          badge: rankChip(e),
+          cap: { eyebrow: `Ep. ${e.num}`, text: parts.place },
+          href: ep.href || `/ep${pad3(e.num)}`,
         }
       })
     },
