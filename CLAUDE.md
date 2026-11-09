@@ -93,18 +93,15 @@ runner (`payAllLegs.js`) restates the keysend leg rather than importing it:
 Since 2026-11-07 (Reed, after the OnlyBoosts homepage's feedback: "nobody
 likes the tabs") `index.html` is the hero, the latest-episode card, the
 Episodes / Boosts / Stats row, then one sideways row of tiles per
-community section, the OnlyBoosts discovery homepage's shape: "Meet the
-community" (the top ten supporters, round tiles, name alone, on the white
-full-width band `#community-band`), then under `#feeds` "Discover upcoming
-events", "Shop with bitcoiners", "Find new podcasts" and "Read new
-articles", each heading linking its own page: `events.html`, `market.html`,
+community section, the OnlyBoosts discovery homepage's shape: "Meet the Community" (the top ten supporters, round tiles, name alone, on the white
+full-width band `#community-band`), then under `#feeds` "Find Upcoming Events", "Shop with Local Bitcoiners", "Discover New Podcasts" and "Read Articles from the Community", each heading linking its own page: `events.html`, `market.html`,
 `podcasts.html`, `articles.html` (`/events` …). **Every rail heading is a
-call to action, not a label** (Rev on the 2026-11-08 call, Reed agreed:
+call to action, not a label, in Title Case** (Rev on the 2026-11-08 call, Reed agreed; the wording is Reed's own, 2026-11-09:
 the site's purpose is discovery and "Community Events" told a first-time
 visitor nothing about what to do there; it replaced the one-day "Community
 <Feed>" labels of lb-v99). Keep them accurate: the events and marketplace
 rails are everything community members posted, not a curated pick, so no
-heading promises curation. Then "Start with our top episodes", the last
+heading promises curation. Then "Check Out Our Top Episodes", the last
 rail (Reed and Rev, 2026-11-08; it was Latest Episodes for a day: the top
 episodes are where new listeners are told to start, "latest" reads as the
 one you already heard): the stats page's Episode Leaderboard in its
