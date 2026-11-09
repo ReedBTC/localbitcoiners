@@ -88,24 +88,45 @@ runner (`payAllLegs.js`) restates the keysend leg rather than importing it:
   asked when it returns null. `leg.recipient.address` stays as published.
   `test-keysend-upgrade.mjs` scans the call sites.
 
-## The homepage is rails, the feeds are pages (rails-homepage, lb-v95)
+## The homepage is rails, the feeds are pages (rails-homepage, lb-v95; headings and Top Episodes lb-v100)
 
 Since 2026-11-07 (Reed, after the OnlyBoosts homepage's feedback: "nobody
 likes the tabs") `index.html` is the hero, the latest-episode card, the
 Episodes / Boosts / Stats row, then one sideways row of tiles per
-community section, the OnlyBoosts discovery homepage's shape: Community
-(the top ten supporters, round tiles, name alone, on the white full-width
-band `#community-band`), then under `#feeds` Community Events, Community
-Marketplace, Community Podcast Boosts and Community Articles (the word
-"Community" on every rail heading, Reed 2026-11-08), each heading linking
-its own page: `events.html`, `market.html`, `podcasts.html`, `articles.html`
-(`/events` …), then Latest Episodes, the last rail (2026-11-08: the last
-ten episodes, the show's cover with the number on its corner, the title cut
-at " w/" and " | Ep.", the sub line "w/ <name>" ("&" between two names) or
-"Solo rip" (Reed's words, keep both), a tile is a LINK to `/ep###`; the inline RSS script
-publishes the parsed items as `window.__lbEpisodeItems` + the
-`lb:episodes` event and the rail reads those, no second fetch), and the
-page ends in Latest Boosts (`#home-boosts`, `home-boosts.js`, 2026-11-08):
+community section, the OnlyBoosts discovery homepage's shape: "Meet the
+community" (the top ten supporters, round tiles, name alone, on the white
+full-width band `#community-band`), then under `#feeds` "Discover upcoming
+events", "Shop with bitcoiners", "Find new podcasts" and "Read new
+articles", each heading linking its own page: `events.html`, `market.html`,
+`podcasts.html`, `articles.html` (`/events` …). **Every rail heading is a
+call to action, not a label** (Rev on the 2026-11-08 call, Reed agreed:
+the site's purpose is discovery and "Community Events" told a first-time
+visitor nothing about what to do there; it replaced the one-day "Community
+<Feed>" labels of lb-v99). Keep them accurate: the events and marketplace
+rails are everything community members posted, not a curated pick, so no
+heading promises curation. Then "Start with our top episodes", the last
+rail (Reed and Rev, 2026-11-08; it was Latest Episodes for a day: the top
+episodes are where new listeners are told to start, "latest" reads as the
+one you already heard): the stats page's Episode Leaderboard in its
+opening Overall view, the first ten, the rule in `episode-rank.js` (a NEW
+pure module, `scripts/test-episode-rank.mjs`; `renderLeaderboard` in
+`stats.js` is the classic-script copy, change both), each tile the show's
+cover with the episode's city or meetup across its top (`.rt-cap`, the
+place parsed from the title by `episodeTileParts`: after the colon in the
+" w/<Guest>: <Place>" part, else a colon segment that does not say
+"Meetups", else episode 1's "| <Place>" tail; Reed does NOT want
+per-episode art, "the same background with the location on it"), the rank
+chip (`#1`, `T#1` on a tie) on its corner, the title cut at " w/", ": " and
+" | Ep.", the sub line "w/ <name>" ("&" between two names) or "Solo rip"
+(Reed's words, keep both), a tile is a LINK to `/ep###`, the heading links
+`/stats#episode-leaderboard`; the inline RSS script publishes the parsed
+items as `window.__lbEpisodeItems` + the `lb:episodes` event, and
+`supporters.js` publishes the ledger rows it fetched for the Community
+rail as `window.__lbSatsRows` + the `lb:sats` event (null on a failure),
+so the rail fetches neither twice (it fetches `/api/sats` itself only when
+no `lb:sats` comes inside 15 s). Latest Boosts keeps its name (Rev: the
+endless boost feed is right as it is). The page ends in Latest Boosts
+(`#home-boosts`, `home-boosts.js`, 2026-11-08):
 the boost wall's cards newest first, 25 per "Load more boosts", in the
 page's own `--feed-track` column, without the boosts page's sort and
 range and without the New Member badge; `fetchBoostThread` +
@@ -257,10 +278,13 @@ Sort + 1W/1M/All head. Things that fail silently if missed:
   row): `#`-prefixed position (T# on a shared place), title linking to the
   episode page, and at the right the view's total or, on Overall, the three
   component ranks as sats / boosts / supporters under a "rank in" head.
-  `compRanks` is duplicated in `stats.js` (classic script) and
-  `supporters.js` (module), and the weekly episodesats note ranks by the
-  same rule (`eps_rank` in `bots/leaderboards/local_bitcoiners_leaderboards.py`,
-  since 2026-09-22); change the rule in all three. The "My Stats" view is
+  `compRanks` is duplicated in `stats.js` (classic script),
+  `supporters.js` (module) and `assets/js/episode-rank.js` (the pure module
+  the homepage's Top Episodes rail ranks by, since 2026-11-09, whose
+  `overallOrder` restates `renderLeaderboard`'s Overall step for step), and
+  the weekly episodesats note ranks by the same rule (`eps_rank` in
+  `bots/leaderboards/local_bitcoiners_leaderboards.py`, since 2026-09-22);
+  change the rule in all four. The "My Stats" view is
   gone; Episodes You've Supported covers it.
 - **By App tiles are data-driven** from `row.app`; a new app appears on its
   own the first time it boosts. Colors are a fixed map (`appColorVar`);

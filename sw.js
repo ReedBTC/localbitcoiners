@@ -258,7 +258,12 @@
 // v99: the Coordinator's pre-merge review: all-day event tiles in UTC,
 // own-key router lookups, the leaderboard ten always get profiles,
 // balanced-paren URL trimming, the episodes rail waits out the RSS chain.
-const VERSION = 'lb-v99';
+// lb-v100 (2026-11-09): the rail headings say what the visitor can do
+// there, the Latest Episodes rail becomes Top Episodes (the Episode
+// Leaderboard's Overall ten, episode-rank.js, new) and every episode tile
+// carries its city or meetup across the cover (home-rails.js/.css,
+// supporters.js publishes the ledger rows for it).
+const VERSION = 'lb-v100';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
@@ -295,6 +300,7 @@ const PRECACHE_URLS = [
   '/assets/css/home-rails.css',
   '/assets/js/home-rails.js',
   '/assets/js/home-boosts.js',
+  '/assets/js/episode-rank.js',
   '/assets/js/feed-page.js',
   '/assets/js/episode-enhance.js',
   '/assets/js/ep-sats.js',

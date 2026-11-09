@@ -779,6 +779,17 @@ import { rangeControl, sortControl, rangeStartMs, rangeWindow } from '/assets/js
     var satsP = fetch(SATS_URL, { cache: 'no-cache' })
       .then(function (r) { if (!r.ok) throw new Error('sats ' + r.status); return r.json(); })
       .then(function (d) { return Array.isArray(d.rows) ? d.rows : []; });
+    // The homepage's Top Episodes rail (home-rails.js) ranks the same rows;
+    // publish them once fetched so it need not fetch the ledger a second
+    // time (null tells it to fetch for itself).
+    if (HOME) {
+      satsP.then(function (rows) {
+        window.__lbSatsRows = rows;
+        document.dispatchEvent(new CustomEvent('lb:sats', { detail: rows }));
+      }, function () {
+        document.dispatchEvent(new CustomEvent('lb:sats', { detail: null }));
+      });
+    }
 
     // Guests are non-critical — fall back to an empty roster if the
     // feed endpoint is down so the supporters wall still renders. The
