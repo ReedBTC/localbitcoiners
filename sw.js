@@ -265,7 +265,9 @@
 // supporters.js publishes the ledger rows for it).
 // lb-v101 (2026-11-10): "Feature an event / item / episode / article" links
 // on the four community rails (index.html, home-rails.css).
-const VERSION = 'lb-v101';
+// lb-v102 (2026-11-10): the Feature link is a gold-ringed pill with the
+// featured tiles' bolt (home-rails.css).
+const VERSION = 'lb-v102';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

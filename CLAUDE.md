@@ -102,8 +102,10 @@ visitor nothing about what to do there; it replaced the one-day "Community
 <Feed>" labels of lb-v99). Keep them accurate: the events and marketplace
 rails are everything community members posted, not a curated pick, so no
 heading promises curation. Beside each of the four's See all link sits
-"Feature an event / item / episode / article", a plain link to the same
-page (Reed, 2026-11-10: nothing is featured FROM the homepage, the link
+"Feature an event / item / episode / article", a link to the same page
+dressed as the featured tiles are (gold ring, gold circle with the white
+bolt; Reed, 2026-11-10: so the visitor learns what the gold-ringed tiles
+are) (Reed, 2026-11-10: nothing is featured FROM the homepage, the link
 sends them to the page's gold box and the cards' Feature buttons); the
 `.rail-actions` pair wraps under the heading where it no longer fits
 beside it. Then "Check Out Our Top Episodes", the last

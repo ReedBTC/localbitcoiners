@@ -27,20 +27,55 @@
    feature from the homepage without featuring on the homepage) and See all. */
 .rail-actions {
   display: flex;
+  align-items: center;
   gap: 1.1rem;
   margin-left: auto;
   white-space: nowrap;
 }
 /* The heading is the page's section title (Latest Episode's). */
 .rail-head .home-module-title { margin-top: 0; }
-.rail-more, .rail-feature {
+.rail-more {
   font-size: 0.9rem;
   font-weight: 700;
   color: var(--green-d);
   text-decoration: none;
   white-space: nowrap;
 }
-.rail-more:hover, .rail-feature:hover { text-decoration: underline; text-underline-offset: 3px; }
+.rail-more:hover { text-decoration: underline; text-underline-offset: 3px; }
+/* The Feature link is a small pill in the featured tiles' own dress: the
+   gold ring and the gold circle with the white bolt, so a visitor reads
+   "the gold-ringed tiles with the bolt are featured, and this is how"
+   (Reed, 2026-11-10). Same gold as .rail-tile--featured / .rt-feat. */
+.rail-feature {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.18rem 0.75rem 0.18rem 0.3rem;
+  border-radius: 999px;
+  border: 2px solid #e0a92e;
+  background: #fffaf0;
+  color: #8a5f12;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.3;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.rail-feature:hover { background: #e0a92e; color: #fff; }
+.rail-feature:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+.rail-feature-bolt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #e0a92e;
+  color: #fff;
+  flex: none;
+}
+.rail-feature:hover .rail-feature-bolt { background: #fff; color: #e0a92e; }
+.rail-feature-bolt svg { width: 13px; height: 13px; display: block; }
 .rail-sub { margin: -0.6rem 0 0.9rem; font-size: 0.92rem; color: var(--muted); }
 .rail-track { min-width: 0; }
 .rail-empty, .rail-error {
