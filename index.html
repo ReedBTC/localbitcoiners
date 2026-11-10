@@ -896,7 +896,10 @@
      section's address: /feeds 301s here), the four community feeds, each
      a heading that says what the visitor can do there (Rev, 2026-11-08:
      "Community Events" is a label; "Find Upcoming Events" is an
-     invitation) linking its own page, and one row of square tiles painted by
+     invitation) linking its own page, a "Feature an event / item / episode /
+     article" link beside See all (Reed, 2026-11-10: nobody features from
+     the homepage, the link takes them to the page where the gold box and
+     the cards' Feature buttons are), and one row of square tiles painted by
      assets/js/home-rails.js: featured items first with a gold ring, a tile
      opening the page's own card in a modal. The tabs, the Featured / All
      sub-row, the Find modal and the ?feed= URL state moved to the pages
@@ -930,7 +933,10 @@
   <section class="rail" data-rail="events" aria-labelledby="rail-events-title">
     <div class="rail-head">
       <h2 class="home-module-title" id="rail-events-title"><a href="/events">Find Upcoming Events</a></h2>
-      <a class="rail-more" href="/events">See all events →</a>
+      <span class="rail-actions">
+        <a class="rail-feature" href="/events">Feature an event</a>
+        <a class="rail-more" href="/events">See all events →</a>
+      </span>
     </div>
     <div class="rail-track">
       <ol class="rail-list rail-list--skeleton" aria-hidden="true">
@@ -947,7 +953,10 @@
   <section class="rail" data-rail="market" aria-labelledby="rail-market-title">
     <div class="rail-head">
       <h2 class="home-module-title" id="rail-market-title"><a href="/market">Shop with Local Bitcoiners</a></h2>
-      <a class="rail-more" href="/market">See the marketplace →</a>
+      <span class="rail-actions">
+        <a class="rail-feature" href="/market">Feature an item</a>
+        <a class="rail-more" href="/market">See the marketplace →</a>
+      </span>
     </div>
     <div class="rail-track">
       <ol class="rail-list rail-list--skeleton" aria-hidden="true">
@@ -964,7 +973,10 @@
   <section class="rail" data-rail="podcasts" aria-labelledby="rail-podcasts-title">
     <div class="rail-head">
       <h2 class="home-module-title" id="rail-podcasts-title"><a href="/podcasts">Discover New Podcasts</a></h2>
-      <a class="rail-more" href="/podcasts">See all boosted episodes →</a>
+      <span class="rail-actions">
+        <a class="rail-feature" href="/podcasts">Feature an episode</a>
+        <a class="rail-more" href="/podcasts">See all boosted episodes →</a>
+      </span>
     </div>
     <div class="rail-track">
       <ol class="rail-list rail-list--skeleton" aria-hidden="true">
@@ -981,7 +993,10 @@
   <section class="rail" data-rail="articles" aria-labelledby="rail-articles-title">
     <div class="rail-head">
       <h2 class="home-module-title" id="rail-articles-title"><a href="/articles">Read Articles from the Community</a></h2>
-      <a class="rail-more" href="/articles">See all articles →</a>
+      <span class="rail-actions">
+        <a class="rail-feature" href="/articles">Feature an article</a>
+        <a class="rail-more" href="/articles">See all articles →</a>
+      </span>
     </div>
     <div class="rail-track">
       <ol class="rail-list rail-list--skeleton" aria-hidden="true">

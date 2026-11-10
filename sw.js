@@ -263,7 +263,9 @@
 // Leaderboard's Overall ten, episode-rank.js, new) and every episode tile
 // carries its city or meetup across the cover (home-rails.js/.css,
 // supporters.js publishes the ledger rows for it).
-const VERSION = 'lb-v100';
+// lb-v101 (2026-11-10): "Feature an event / item / episode / article" links
+// on the four community rails (index.html, home-rails.css).
+const VERSION = 'lb-v101';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

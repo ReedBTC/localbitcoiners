@@ -101,7 +101,12 @@ the site's purpose is discovery and "Community Events" told a first-time
 visitor nothing about what to do there; it replaced the one-day "Community
 <Feed>" labels of lb-v99). Keep them accurate: the events and marketplace
 rails are everything community members posted, not a curated pick, so no
-heading promises curation. Then "Check Out Our Top Episodes", the last
+heading promises curation. Beside each of the four's See all link sits
+"Feature an event / item / episode / article", a plain link to the same
+page (Reed, 2026-11-10: nothing is featured FROM the homepage, the link
+sends them to the page's gold box and the cards' Feature buttons); the
+`.rail-actions` pair wraps under the heading where it no longer fits
+beside it. Then "Check Out Our Top Episodes", the last
 rail (Reed and Rev, 2026-11-08; it was Latest Episodes for a day: the top
 episodes are where new listeners are told to start, "latest" reads as the
 one you already heard): the stats page's Episode Leaderboard in its

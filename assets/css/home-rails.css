@@ -16,21 +16,31 @@
 }
 .rail-head {
   display: flex;
+  flex-wrap: wrap;   /* the links drop under a heading they no longer fit beside (phones) */
   align-items: baseline;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.35rem 1rem;
   margin-bottom: 1rem;
+}
+/* The links at the heading's right: "Feature an event" (to the page, where
+   the gold box and the cards' Feature buttons are; Reed, 2026-11-10: a way to
+   feature from the homepage without featuring on the homepage) and See all. */
+.rail-actions {
+  display: flex;
+  gap: 1.1rem;
+  margin-left: auto;
+  white-space: nowrap;
 }
 /* The heading is the page's section title (Latest Episode's). */
 .rail-head .home-module-title { margin-top: 0; }
-.rail-more {
+.rail-more, .rail-feature {
   font-size: 0.9rem;
   font-weight: 700;
   color: var(--green-d);
   text-decoration: none;
   white-space: nowrap;
 }
-.rail-more:hover { text-decoration: underline; text-underline-offset: 3px; }
+.rail-more:hover, .rail-feature:hover { text-decoration: underline; text-underline-offset: 3px; }
 .rail-sub { margin: -0.6rem 0 0.9rem; font-size: 0.92rem; color: var(--muted); }
 .rail-track { min-width: 0; }
 .rail-empty, .rail-error {
