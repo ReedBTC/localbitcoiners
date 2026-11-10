@@ -267,7 +267,8 @@
 // on the four community rails (index.html, home-rails.css).
 // lb-v102 (2026-11-10): the Feature link is a gold-ringed pill with the
 // featured tiles' bolt (home-rails.css).
-const VERSION = 'lb-v102';
+// lb-v103 (2026-11-10): the Feature pill on its own line under the heading.
+const VERSION = 'lb-v103';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

@@ -16,22 +16,19 @@
 }
 .rail-head {
   display: flex;
-  flex-wrap: wrap;   /* the links drop under a heading they no longer fit beside (phones) */
+  flex-wrap: wrap;   /* See all drops under a heading it no longer fits beside (phones) */
   align-items: baseline;
   justify-content: space-between;
   gap: 0.35rem 1rem;
   margin-bottom: 1rem;
 }
-/* The links at the heading's right: "Feature an event" (to the page, where
-   the gold box and the cards' Feature buttons are; Reed, 2026-11-10: a way to
-   feature from the homepage without featuring on the homepage) and See all. */
-.rail-actions {
-  display: flex;
-  align-items: center;
-  gap: 1.1rem;
-  margin-left: auto;
-  white-space: nowrap;
-}
+/* The Feature pill's own line under the heading, left-aligned like the
+   heading (Reed, 2026-11-10: a subtitle row, the same on every rail and on
+   a phone, where a right-aligned pill under a left-aligned heading read as
+   two rows fighting). It links the page, where the gold box and the cards'
+   Feature buttons are: a way to feature from the homepage without featuring
+   on the homepage. */
+.rail-cta { margin: -0.4rem 0 1rem; }
 /* The heading is the page's section title (Latest Episode's). */
 .rail-head .home-module-title { margin-top: 0; }
 .rail-more {
