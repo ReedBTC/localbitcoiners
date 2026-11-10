@@ -101,7 +101,16 @@ the site's purpose is discovery and "Community Events" told a first-time
 visitor nothing about what to do there; it replaced the one-day "Community
 <Feed>" labels of lb-v99). Keep them accurate: the events and marketplace
 rails are everything community members posted, not a curated pick, so no
-heading promises curation. Then "Check Out Our Top Episodes", the last
+heading promises curation. Under each of the four's heading, on its own
+left-aligned line (`.rail-cta`), sits "Feature an event / item / episode /
+article", a link to the same page dressed as the featured tiles are (gold
+ring, gold circle with the white bolt). Reed, 2026-11-10: nothing is
+featured FROM the homepage, the pill sends them to the page's gold box and
+the cards' Feature buttons, its dress teaches what the gold-ringed tiles
+are, and it is a subtitle row rather than a pill at the heading's right,
+which fought the left-aligned heading on a phone. See all stays at the
+heading's right and wraps under it where it no longer fits. Then "Check
+Out Our Top Episodes", the last
 rail (Reed and Rev, 2026-11-08; it was Latest Episodes for a day: the top
 episodes are where new listeners are told to start, "latest" reads as the
 one you already heard): the stats page's Episode Leaderboard in its
