@@ -1198,7 +1198,10 @@ def run_sats(config, state, existing_boost_hashes):
     here — those come from Firestore in run_supporters().
 
     Returns (new_boost_rows, keysend_stream_txs, castamatic_stream_txs,
-    newest_settled_at, stats_dict).
+    newest_settled_at, stats_dict). `stats_dict["hub_error"]` is set when the
+    walk did not reach the end of the history (a failed page, or an empty page
+    before totalCount); main() then aborts the run, because the stream lists
+    are partial and the re-aggregation would publish them as the whole.
     """
     cutoff = state.get("last_processed") or FETCH_START
     print(f"  Cursor (boosts only): settledAt > {cutoff}")
@@ -1219,15 +1222,19 @@ def run_sats(config, state, existing_boost_hashes):
     offset                = 0
     limit                 = 500
     newest_ts             = state.get("last_processed")
+    hub_error             = None
 
     while True:
         try:
             txs, total = fetch_page(config, limit, offset)
         except Exception as e:
             print(f"[error] Could not reach Alby Hub: {e}")
+            hub_error = f"page at offset {offset}: {e}"
             break
 
         if not txs:
+            if offset < total:
+                hub_error = f"empty page at offset {offset} of totalCount {total}"
             break
 
         lnbits_source.enrich_txs(txs, lnbits_comments)
@@ -1307,6 +1314,7 @@ def run_sats(config, state, existing_boost_hashes):
         "keysend_stream_txs":     len(keysend_stream_txs),
         "castamatic_stream_txs":  len(castamatic_stream_txs),
         "unrouted":               list(cache.get("unrouted") or []),
+        "hub_error":              hub_error,
     }
     return new_rows, keysend_stream_txs, castamatic_stream_txs, newest_ts, stats
 
@@ -2405,6 +2413,17 @@ def main():
     (new_boost_rows, keysend_stream_txs, castamatic_stream_txs,
      newest_ts, sats_stats) = run_sats(config, state, existing_hashes)
     print()
+    if sats_stats["hub_error"]:
+        # Node-stream rows (keysend + Castamatic) are rebuilt from scratch off
+        # this walk every run, so an incomplete walk would write them as 0 (or
+        # short) and push that to the site as the truth: 2026-06-02, and six
+        # pushes on 2026-11-22/23 while the hub sat locked after LND restarts.
+        # Stop before anything is written; the CSV, the JSON on the VPS and
+        # the state keep the last good run, and the next tick redoes all four
+        # passes. Non-zero so lb-bot-alert opens an issue for a long outage.
+        print(f"[abort] Alby Hub walk incomplete ({sats_stats['hub_error']}); "
+              f"nothing written, nothing pushed — the last good data stands.")
+        sys.exit(1)
     print(f"  New boost rows:                  {sats_stats['new_boost_rows']}")
     print(f"  Duplicates skipped:              {sats_stats['skipped_dup']}")
     print(f"  Fountain stream txs skipped:     {sats_stats['skipped_fountain_strm']}  (→ Firestore)")
