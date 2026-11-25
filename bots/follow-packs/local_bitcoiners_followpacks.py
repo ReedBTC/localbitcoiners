@@ -36,6 +36,7 @@ from nostr_utils import (
     get_outbox_relays, NOSTR_RELAYS,
 )
 from pynostr.key import PrivateKey
+from feeds import LB
 
 DRY_RUN = False   # LIVE — publishes kind-39089 packs from the show account
 
@@ -43,7 +44,7 @@ CREDENTIALS_FILE = Path.home() / ".config/nostr-bots/credentials.env"
 REPO_ROOT        = Path(__file__).resolve().parent.parent.parent
 SATS_JSON        = REPO_ROOT / "data" / "sats.json"
 STATE_FILE       = Path(__file__).resolve().parent / "state.json"
-RSS_FEED         = "https://feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU"
+RSS_FEED         = LB.feed_url  # the registry's (bots/shared/feeds.py)
 
 # The show account that owns the packs. Same key the boost-publisher signs with
 # (NSEC_LOCAL_BITCOINERS → this hex); the website's ?p= link uses the hex, so

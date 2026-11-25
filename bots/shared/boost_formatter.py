@@ -598,8 +598,8 @@ MIN_TITLE_MATCH_CHARS = 10
 def get_episode_url_from_rss(ep_title, cache=None):
     """Title-based RSS lookup used as a fallback for keysend boosts that come
     in with an episode title but no URL. Returns the user-facing Fountain URL
-    from `<podcast:contentLink href="...">`, which carries the page-id used at
-    fountain.fm/episode/{id}. (The enclosure URL pattern
+    from the item's Fountain page id (`_item_fountain_id`: contentLink, else a
+    fountain.fm/episode/ <link>). (The enclosure URL pattern
     `items/{id}/files/...mp3` carries an unrelated audio-file id and was a
     previous source of broken links.)
 
@@ -1075,6 +1075,27 @@ def _rss_text(s):
             .replace("&gt;", ">").replace("&quot;", '"').replace("&apos;", "'")
             .strip())
 
+_FOUNTAIN_EPISODE_URL = "https://fountain.fm/episode/"
+
+def _item_fountain_id(item_xml):
+    """An RSS item's Fountain episode page id, or None.
+
+    The Fountain-hosted feed carried it in <podcast:contentLink>; the Podhome
+    feed (since 2026-11-25) has no contentLink and puts the Fountain URL in the
+    item's <link> instead (Ep. 001's <link> is a nostree.me page, so it gets
+    None here and the episode_id_map fallback). contentLink first, then <link>
+    only when it IS a fountain.fm/episode/ URL. The site applies the same rule
+    (localbitcoiners-web, podhome-feed); keep them in step, or the site-signed
+    show note and format_note_from_info disagree on the 🔗 line."""
+    c = re.search(r'<podcast:contentLink[^>]*href="(?:https://fountain\.fm/episode/)([^"]+)"', item_xml)
+    if c:
+        return c.group(1)
+    l = re.search(r'<link>\s*([^<]*?)\s*</link>', item_xml)
+    if l and l.group(1).startswith(_FOUNTAIN_EPISODE_URL):
+        fid = l.group(1)[len(_FOUNTAIN_EPISODE_URL):].split("?")[0].split("#")[0].strip("/")
+        return fid or None
+    return None
+
 def build_rss_item_index(cache):
     """Parse the LB RSS feed once per run and return a dict keyed by the
     item's <guid>. Each value is a dict with:
@@ -1082,10 +1103,11 @@ def build_rss_item_index(cache):
       title        str | None  the item's <title>, entity-decoded. Lets a boost
                                that arrives with an episode guid but no usable
                                title (some keysend apps) still name its episode.
-      fountain_id  str | None  Fountain page id from <podcast:contentLink href=
-                               "https://fountain.fm/episode/{id}">. None when
-                               Fountain hasn't yet backfilled the contentLink
-                               for a freshly-published episode (the audio-file
+      fountain_id  str | None  Fountain page id (`_item_fountain_id`): the
+                               <podcast:contentLink href="https://fountain.fm/
+                               episode/{id}">, else the item's <link> when it is
+                               that URL (the Podhome feed's shape). None when
+                               neither carries one (the audio-file
                                id from the enclosure URL is a different id and
                                cannot substitute here — using it produces
                                broken fountain.fm/episode/{id} links).
@@ -1116,8 +1138,7 @@ def build_rss_item_index(cache):
             if not g:
                 continue
             guid = g.group(1).strip()
-            c = re.search(r'<podcast:contentLink[^>]*href="(?:https://fountain\.fm/episode/)([^"]+)"', item_xml)
-            fountain_id = c.group(1) if c else None
+            fountain_id = _item_fountain_id(item_xml)
             # The [guests:] marker lives inside the HTML-encoded RSS description,
             # same convention scrape_fountain_episode reads off the Fountain page.
             # Match against the raw item XML — works whether the marker is
@@ -1684,7 +1705,7 @@ def _classify_website(tx, ep_num_padded, payment_hash, settled_at, our_msats, ca
         if item_guid and item_guid not in rss_index:
             print(f"  [warn] website boost {payment_hash[:12]}... — item_guid {item_guid!r} not in RSS feed and no episode_id_map fallback; using synthetic ep key, omitting 🔗")
         else:
-            print(f"  [info] website boost {payment_hash[:12]}... — RSS has guid but no <podcast:contentLink> yet and no episode_id_map fallback; omitting 🔗 line")
+            print(f"  [info] website boost {payment_hash[:12]}... — RSS has guid but no Fountain episode id (contentLink or <link>) and no episode_id_map fallback; omitting 🔗 line")
         episode_url = None
         episode_id  = f"lb_website_{ep_num_padded}"
 
