@@ -94,6 +94,11 @@ LB = Feed(
     title="Local Bitcoiners",
     guid="56fbb1aa-da79-5e4b-bebc-3b934ab8914c",
     feed_id="7683299",                     # Podcast Index byfeedid
+    # PI's second entry for the show: it indexed the Podhome URL as a new feed
+    # (2026-11-25) instead of following the 301. Apps resolving the show
+    # through it send feedId 8129640, and an unlisted id votes OTHER in
+    # feed_verdict, which drops an LB boost as another show's.
+    feed_ids=frozenset({"8129640"}),
     # Hosted on Podhome since 2026-11-25. The Fountain-hosted URL 301s here
     # until Reed cancels Fountain hosting (2026-12-09) and stays in feed_urls
     # for good: apps and Podcast Index carried it in every boostagram before
