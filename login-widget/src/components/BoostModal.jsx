@@ -44,8 +44,7 @@ import ConfirmLeaveOverlay from './ConfirmLeaveOverlay.jsx'
 const SHOW_RECIPIENTS_RAW = [
   { name: 'Reed',     address: 'reed@getalby.com',      splitWeight: 33, type: 'lnaddress' },
   { name: 'RevHodl',  address: 'revhodl@minibits.cash', splitWeight: 33, type: 'lnaddress' },
-  { name: 'LB V4V',   address: 'lb_v4v@getalby.com',    splitWeight: 32, type: 'lnaddress' },
-  { name: 'Fountain', address: 'boostbot@fountain.fm',  splitWeight: 2,  type: 'lnaddress' },
+  { name: 'LB V4V',   address: 'lb_v4v@getalby.com',    splitWeight: 34, type: 'lnaddress' },
 ]
 // The leg a feature takes over. Named rather than indexed so a future
 // reorder of the list above can't silently redirect a host's sats.
@@ -72,13 +71,13 @@ const SHOW_SPLITS = buildSplits(SHOW_RECIPIENTS_RAW)
  * One address (author / organizer / seller): that leg is renamed and
  * re-addressed, weight unchanged. A recipients bundle (a podcast's value
  * block): the leg becomes one leg per bundle recipient, weights scaled so
- * they sum to the leg's 32, keysend nodes included — payAllLegs decides at
+ * they sum to the leg's 34, keysend nodes included — payAllLegs decides at
  * pay time whether a node leg is a real keysend or falls back to the node's
  * Lightning address, exactly as it does for the external-boost flow.
  *
  * No usable address (many long-form authors publish through RSS bridges
  * and have no lud16) → the standard splits are returned untouched, so
- * that 32% stays with the show's V4V wallet rather than being spread across
+ * that 34% stays with the show's V4V wallet rather than being spread across
  * the other legs. applyRecipientOverrides deduplicates by address, so a
  * maker who is already a host gets one merged leg rather than being paid
  * twice.

@@ -8,7 +8,7 @@
 // from the raw HTML. Client-side rendering would have given every
 // shared link the generic site preview, which defeats the whole point.
 
-const RSS_URL = "https://feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU";
+const RSS_URL = "https://serve.podhome.fm/rss/56fbb1aa-da79-5e4b-bebc-3b934ab8914c";
 const SITE_ORIGIN = "https://localbitcoiners.com";
 const OG_IMAGE = `${SITE_ORIGIN}/assets/LocalBitcoiners_banner.png`;
 const FETCH_TIMEOUT_MS = 10_000;
@@ -282,6 +282,14 @@ function decodeXmlEntities(s) {
   );
 }
 
+// Podhome (since 2026-11-25) publishes no <podcast:contentLink>; the
+// Fountain page is the item's <link> instead. Only a fountain.fm episode
+// URL counts (Ep. 001's <link> is a nostree.me page). The inline scripts
+// in index.html / episodes.html and bots/shared apply the same rule.
+function fountainLinkOf(link) {
+  return link && link.startsWith("https://fountain.fm/episode/") ? link : null;
+}
+
 // For tags that occur multiple times where we want one matching a
 // predicate on an attribute. Used for <podcast:contentLink href="…">
 // where several entries exist (one per service) and we want fountain's.
@@ -293,7 +301,7 @@ function matchAttrFiltered(xml, tag, attr, valueFilter) {
     const am = attrs.match(new RegExp(`\\b${attr}=["']([^"']*)["']`));
     if (am) {
       const val = am[1];
-      if (!valueFilter || valueFilter(val)) return val;
+      if (!valueFilter || valueFilter(val, attrs)) return val;
     }
   }
   return null;
@@ -388,15 +396,20 @@ function extractEpisode(itemXml, epNum, channelValueXml) {
     "podcast:contentLink",
     "href",
     (v) => v && v.startsWith("https://fountain.fm/episode/")
-  );
-  // Podcasting 2.0 chapters — Fountain writes a <podcast:chapters> tag per
+  ) || fountainLinkOf(matchTag(itemXml, "link"));
+  // Podcasting 2.0 chapters — the host writes a <podcast:chapters> tag per
   // item pointing at an external JSON file (type application/json+chapters).
   // We only keep the URL here; the JSON is fetched at the edge in onRequest.
   const chaptersUrl = matchAttr(itemXml, "podcast:chapters", "url");
-  // Fountain's per-item <podcast:transcript> (SRT captions, no speaker
+  // The feed's per-item <podcast:transcript> (SRT captions, no speaker
   // labels). The button's fallback when the repo has no .txt; see
   // hasLocalTranscript.
-  const transcriptUrl = matchAttr(itemXml, "podcast:transcript", "url");
+  // An item may list several (Podhome's Ep. 031: HTML, SRT, VTT); the
+  // button saves a .srt, so take the SubRip one, else the first.
+  const transcriptUrl =
+    matchAttrFiltered(itemXml, "podcast:transcript", "url", (v, attrs) =>
+      /\btype=["']application\/x-subrip["']/.test(attrs)) ||
+    matchAttr(itemXml, "podcast:transcript", "url");
   const guests = parseGuests(descRaw);
   const splits = parseSplits(itemXml, channelValueXml);
 
@@ -845,7 +858,7 @@ function renderEpisodePage(ep) {
         <li><a href="https://podverse.fm/podcast/eKqrkoAVH" target="_blank" rel="noopener">🎧 Podverse</a></li>
         <li><a href="https://curiocaster.com/podcast/pi7683299" target="_blank" rel="noopener">🎧 CurioCaster</a></li>
         <li><a href="https://castamatic.com/guid/56fbb1aa-da79-5e4b-bebc-3b934ab8914c" target="_blank" rel="noopener">🎧 Castamatic</a></li>
-        <li><a href="https://feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU" target="_blank" rel="noopener">📡 RSS Feed</a></li>
+        <li><a href="https://serve.podhome.fm/rss/56fbb1aa-da79-5e4b-bebc-3b934ab8914c" target="_blank" rel="noopener">📡 RSS Feed</a></li>
       </ul>
     </div>
 

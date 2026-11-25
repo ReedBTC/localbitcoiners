@@ -3,7 +3,7 @@
 // static-page URLs. Cached at the edge for 1 hour — sitemaps don't
 // need to be live the same way episode pages do.
 
-const RSS_URL = "https://feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU";
+const RSS_URL = "https://serve.podhome.fm/rss/56fbb1aa-da79-5e4b-bebc-3b934ab8914c";
 const SITE_ORIGIN = "https://localbitcoiners.com";
 const FETCH_TIMEOUT_MS = 10_000;
 const RESPONSE_MAX_BYTES = 5 * 1024 * 1024;

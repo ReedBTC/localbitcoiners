@@ -97,7 +97,7 @@ This is the boost from 2026-09-03 rewritten as a keysend leg to Reed:
   "podcast": "Local Bitcoiners",
   "feedID": "7683299",
   "guid": "56fbb1aa-da79-5e4b-bebc-3b934ab8914c",
-  "url": "https://feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU",
+  "url": "https://serve.podhome.fm/rss/56fbb1aa-da79-5e4b-bebc-3b934ab8914c",
   "episode": "Quiet on Quantum Loud on Privacy w/Satsie and Armin: Boston, MA | Ep. 027",
   "episode_guid": "12649a7e-ad7e-4db6-a384-56900442ab6c",
   "itemID": "59848974289",
@@ -243,7 +243,7 @@ Use these exact values wherever a field asks for them.
 | Podcast title | `Local Bitcoiners` |
 | Podcast guid | `56fbb1aa-da79-5e4b-bebc-3b934ab8914c` |
 | Podcast Index feed id | `7683299` |
-| Feed URL | `https://feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU` |
+| Feed URL | `https://serve.podhome.fm/rss/56fbb1aa-da79-5e4b-bebc-3b934ab8914c` |
 | Episode guid | the `<guid>` of the RSS item, e.g. `12649a7e-ad7e-4db6-a384-56900442ab6c` for Ep. 027 |
 
 The value block is lightning-address only:
@@ -252,8 +252,7 @@ The value block is lightning-address only:
 <podcast:value type="lightning" method="lnaddress">
   <podcast:valueRecipient name="reed@getalby.com" split="33" type="lnaddress" address="reed@getalby.com"/>
   <podcast:valueRecipient name="revhodl@minibits.cash" split="33" type="lnaddress" address="revhodl@minibits.cash"/>
-  <podcast:valueRecipient name="lb_v4v@getalby.com" split="32" type="lnaddress" address="lb_v4v@getalby.com"/>
-  <podcast:valueRecipient name="Fountain" split="2" type="lnaddress" address="boostbot@fountain.fm"/>
+  <podcast:valueRecipient name="lb_v4v@getalby.com" split="34" type="lnaddress" address="lb_v4v@getalby.com"/>
 </podcast:value>
 ```
 
