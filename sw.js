@@ -273,7 +273,10 @@
 // from <link> when the item has no contentLink, and the show boost is the
 // new channel block, 33/33/34 with no Fountain leg, so the Feature leg is
 // 34%. The widget bundle and the inline episode scripts are cached.
-const VERSION = 'lb-v104';
+// lb-v105 (2026-11-25): the site-signed show note's 🔗 line is this site's
+// /ep page, as the bot's is, so the feed's <link> can point here instead of
+// at Fountain. The widget bundle is cached.
+const VERSION = 'lb-v105';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
