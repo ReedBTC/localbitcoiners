@@ -61,7 +61,9 @@ The boost flow was ported back from the OnlyBoosts fork in 2026-08 (merge
   receipt's `share_note` author is the show pubkey, precisely because the
   site's note is theirs. Change the bot's note format and
   `buildShowSiteNoteTemplate` in `login-widget/src/lib/boostagram.js`
-  together, or the texts drift apart on the show's own profile.
+  together, or the texts drift apart on the show's own profile. Since
+  2026-11-25 (lb-v105) both sides' 🔗 line is `https://localbitcoiners.com/ep###`,
+  never the Fountain page, so the feed's `<link>` is free to point here.
 
 Two payment-path rules ported from OnlyBoosts on 2026-09-04 (their 1f673bd5
 and 18d0febb), applied to BOTH boost paths here, since the show's own leg
