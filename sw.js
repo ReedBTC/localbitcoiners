@@ -268,7 +268,12 @@
 // lb-v102 (2026-11-10): the Feature link is a gold-ringed pill with the
 // featured tiles' bolt (home-rails.css).
 // lb-v103 (2026-11-10): the Feature pill on its own line under the heading.
-const VERSION = 'lb-v103';
+// lb-v104 (2026-11-25): the show feed moved from Fountain to Podhome. Every
+// feed URL points at serve.podhome.fm, the episode's Fountain page is read
+// from <link> when the item has no contentLink, and the show boost is the
+// new channel block, 33/33/34 with no Fountain leg, so the Feature leg is
+// 34%. The widget bundle and the inline episode scripts are cached.
+const VERSION = 'lb-v104';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;

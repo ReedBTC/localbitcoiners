@@ -8,7 +8,7 @@
 // "Show Guests" section without pulling and parsing the whole feed in
 // the browser. Same-origin, so no CORS headers are needed. Edge-cached.
 
-const RSS_URL = "https://feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU";
+const RSS_URL = "https://serve.podhome.fm/rss/56fbb1aa-da79-5e4b-bebc-3b934ab8914c";
 const FETCH_TIMEOUT_MS = 10_000;
 const RESPONSE_MAX_BYTES = 5 * 1024 * 1024; // RSS feeds are <500KB in practice
 // Same validation _middleware.js uses — bech32 npub, exactly 58 data chars.

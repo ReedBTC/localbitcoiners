@@ -45,6 +45,9 @@ export const LNADDRESS_OVERRIDES = {}
  * billandkeonne@getalby.com. It then merges with the existing 96% leg
  * (same post-override address) into a single 98% leg. This entry predates
  * the retirement of the global Fountain reroute and stays on purpose.
+ * Since the feed moved to Podhome (2026-11-25) the item block itself reads
+ * billandkeonne 98 / reed 1 / rev 1 with no boostbot leg, so the entry is
+ * inert; it is kept so a cached copy of the old feed still pays the fund.
  *
  * This table is mirrored on the bot side; the two have to be changed in
  * the same window as the RSS split edit, or the site and the bot will

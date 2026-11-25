@@ -1,4 +1,4 @@
-const RSS_URL = "https://feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU";
+const RSS_URL = "https://serve.podhome.fm/rss/56fbb1aa-da79-5e4b-bebc-3b934ab8914c";
 
 // Bound the upstream fetch: 10s wall-clock, 5 MB body cap. Without
 // these, a slow / hostile upstream could pin the Pages Function CPU

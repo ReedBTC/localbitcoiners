@@ -307,7 +307,7 @@
   // ── MP3 download ──────────────────────────────────────────────
   // The `download` attribute is ignored cross-origin by Chrome when the
   // server doesn't send Content-Disposition: attachment, so it just
-  // opens the audio file in a new tab. Fountain's CDN does send
+  // opens the audio file in a new tab. Podhome's CDN (as Fountain's did) sends
   // Access-Control-Allow-Origin: *, so we can fetch the bytes, wrap
   // them in a Blob, and trigger a real download via a synthetic anchor.
   // Also wires `[data-lb-download-file]` (data-file-url / data-file-name):
