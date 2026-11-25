@@ -811,9 +811,7 @@ def load_rss_value_blocks():
     <podcast:value> fall back to "__channel__" at lookup time."""
     blocks = {}
     try:
-        rss = requests.get(
-            "https://feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU", timeout=10,
-        ).text
+        rss = requests.get(LB.feed_url, timeout=10).text
     except Exception as e:
         print(f"  [warn] RSS fetch for value blocks failed: {e}")
         return blocks

@@ -393,11 +393,38 @@ def test_boost_session():
         bf.requests.get = real_get
 
 
+def test_podhome_move():
+    """The feed moved to Podhome on 2026-11-25. Both URLs name LB (the old one
+    rides every pre-move boostagram), and an item's Fountain id comes from
+    contentLink, else a fountain.fm/episode/ <link>, else nothing."""
+    print("podhome move")
+    lb = bf.LB
+    for u in ("https://serve.podhome.fm/rss/56fbb1aa-da79-5e4b-bebc-3b934ab8914c",
+              "https://feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU"):
+        check(f"feed url {u} → LB",
+              bf.feed_verdict({"feed_url": u, "title": "Local Bitcoiners"},
+                              lb.identity()) == bf.FEED_MATCH)
+        check(f"feed url {u} → identify_feed localbitcoiners",
+              bf.identify_feed({"feed_url": u}) == "localbitcoiners")
+    check("primary feed_url is Podhome",
+          lb.feed_url == "https://serve.podhome.fm/rss/56fbb1aa-da79-5e4b-bebc-3b934ab8914c")
+    fid = bf._item_fountain_id
+    check("contentLink wins over <link>",
+          fid('<link>https://fountain.fm/episode/BBB</link>'
+              '<podcast:contentLink href="https://fountain.fm/episode/AAA">x</podcast:contentLink>') == "AAA")
+    check("Fountain <link> alone → its id",
+          fid("<link>https://fountain.fm/episode/HNqXnzeY6eLR0cIFPkuz</link>") == "HNqXnzeY6eLR0cIFPkuz")
+    check("non-Fountain <link> (Ep. 001's nostree.me) → None",
+          fid("<link>https://nostree.me/npub1cvcgs83gw6pc</link>") is None)
+    check("site <link> → None", fid("<link>https://localbitcoiners.com/</link>") is None)
+    check("no link at all → None", fid("<title>x</title>") is None)
+
+
 def main():
     for t in (test_feed_verdict, test_host_matching, test_unknown_host_feed,
               test_classify_dispatch, test_no_substring_host_dispatch,
               test_registry, test_wallet_gate, test_unrouted_records,
-              test_boost_session):
+              test_boost_session, test_podhome_move):
         t()
         print()
     if FAILURES:

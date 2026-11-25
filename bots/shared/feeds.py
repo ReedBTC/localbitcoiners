@@ -94,13 +94,20 @@ LB = Feed(
     title="Local Bitcoiners",
     guid="56fbb1aa-da79-5e4b-bebc-3b934ab8914c",
     feed_id="7683299",                     # Podcast Index byfeedid
-    feed_url="https://feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU",
+    # Hosted on Podhome since 2026-11-25. The Fountain-hosted URL 301s here
+    # until Reed cancels Fountain hosting (2026-12-09) and stays in feed_urls
+    # for good: apps and Podcast Index carried it in every boostagram before
+    # the move, and an unlisted URL votes OTHER in feed_verdict, which drops
+    # the boost as not ours.
+    feed_url="https://serve.podhome.fm/rss/56fbb1aa-da79-5e4b-bebc-3b934ab8914c",
+    feed_urls=frozenset({"https://feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU"}),
     fountain_show_id="Q48WBr6nT3mrbwMZ8ydY",
     # Any of these in a boost page's HTML positively names us. Deliberately
     # excludes the feed id — a bare 7-digit number matches by coincidence in a
     # page of ids and timestamps.
     page_markers=(
         "56fbb1aa-da79-5e4b-bebc-3b934ab8914c",
+        "https://serve.podhome.fm/rss/56fbb1aa-da79-5e4b-bebc-3b934ab8914c",
         "https://feeds.fountain.fm/uv4pyDVtNAiiCCx5emOU",
         "Q48WBr6nT3mrbwMZ8ydY",
         "Local Bitcoiners",
