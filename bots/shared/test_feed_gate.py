@@ -420,11 +420,46 @@ def test_podhome_move():
     check("no link at all → None", fid("<title>x</title>") is None)
 
 
+def test_episode_page_link():
+    """The 🔗 line is the site's /ep### page whenever the episode is known, for
+    every source (byte-identical to the site-signed show note), and the boost's
+    own URL otherwise."""
+    print("episode page link")
+    epu = bf.episode_page_url
+    check("padded number → /ep038", epu({"episode_number": "038"}) == "https://localbitcoiners.com/ep038")
+    check("unpadded number → /ep001", epu({"episode_number": "1"}) == "https://localbitcoiners.com/ep001")
+    check("show-level → None", epu({"episode_number": "038", "show_level": True}) is None)
+    check("no number → None", epu({"episode_number": None}) is None)
+    check("non-numeric → None", epu({"episode_number": "abc"}) is None)
+    check("Ep. 001's Fountain title (no number) → /ep001",
+          epu({"episode_number": None, "episode_id": "",
+               "episode_title": "Local Bitcoiners • 001. Starting and Growing Meetups"})
+          == "https://localbitcoiners.com/ep001")
+    base = {"message": "", "total_sats": 111, "app_name": "Fountain", "sender_npub": None,
+            "sender_name": "", "source": "fountain_boost", "guests": [],
+            "episode_title": "Local Bitcoiners • Ep. 038", "legs_failed": 0}
+    note = bf.format_note_from_info({**base, "episode_number": "038",
+                                     "episode_url": "https://fountain.fm/episode/HNqXnzeY6eLR0cIFPkuz"})
+    check("Fountain boost prints the site page, not Fountain",
+          "\n🔗 https://localbitcoiners.com/ep038\n" in note and "fountain.fm/episode" not in note)
+    note = bf.format_note_from_info({**base, "episode_number": "038", "episode_url": None,
+                                     "source": "website", "app_name": "localbitcoiners.com"})
+    check("website boost with no Fountain id still gets the line",
+          "\n🔗 https://localbitcoiners.com/ep038\n" in note)
+    show = "https://fountain.fm/show/Q48WBr6nT3mrbwMZ8ydY"
+    note = bf.format_note_from_info({**base, "episode_number": None, "show_level": True,
+                                     "episode_title": "", "episode_url": show})
+    check("show-level keeps its URL", f"\n🔗 {show}\n" in note)
+    note = bf.format_note_from_info({**base, "episode_number": None, "episode_url": None})
+    check("unknown episode with no URL prints no 🔗 line", "🔗" not in note)
+
+
 def main():
     for t in (test_feed_verdict, test_host_matching, test_unknown_host_feed,
               test_classify_dispatch, test_no_substring_host_dispatch,
               test_registry, test_wallet_gate, test_unrouted_records,
-              test_boost_session, test_podhome_move):
+              test_boost_session, test_podhome_move,
+              test_episode_page_link):
         t()
         print()
     if FAILURES:

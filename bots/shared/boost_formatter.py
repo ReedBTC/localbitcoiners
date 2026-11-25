@@ -1813,8 +1813,13 @@ def _classify_fountain_boost(tx, desc, payment_hash, settled_at, our_msats, cach
                                     feed_meta={"fountain_show_id": sid})
                     return None
             elif episode_id:
+                # The feed's ids plus every id the bots have learned off a
+                # Fountain boost: once the feed's <link>s point at the site it
+                # may carry none, and every LB episode would take the slower
+                # (and deferrable) page check.
                 _lb_ids = {v.get("fountain_id") for v in build_rss_item_index(cache).values()
                            if v.get("fountain_id")}
+                _lb_ids |= {v for v in _ensure_episode_id_map(cache).values() if v}
                 if episode_id not in _lb_ids:
                     feed = _fountain_episode_feed(episode_url, cache)
                     if feed == "other":
@@ -2530,6 +2535,31 @@ def _sender_display(info):
         return "Anon"
     return None
 
+LB_EPISODE_PAGE = "https://localbitcoiners.com/ep"
+
+def episode_page_url(info):
+    """The site's own page for the boost's episode, `https://localbitcoiners.com/
+    ep` + the 3-digit number, or None for a show-level boost or an unknown
+    episode. Since 2026-11-25 the 🔗 line prints this for every source, because
+    the feed's item <link>s point at these pages and stop naming Fountain. The
+    site-signed show note prints the same line (buildShowSiteNoteTemplate in
+    login-widget/src/lib/boostagram.js, lb-v105); change both together."""
+    if info.get("show_level"):
+        return None
+    num = str(info.get("episode_number") or "").strip()
+    if not num.isdigit():
+        # Ep. 001's title has no "Ep. N" ("Local Bitcoiners • 001. Starting…"
+        # off Fountain), so its Fountain boosts reach here without a number.
+        # The learned id map knows the episode; the title's lead is the fallback.
+        fid = info.get("episode_id") or ""
+        num = next((n for n, v in load_episode_id_map().items() if fid and v == fid), "")
+        if not num:
+            m = re.match(r"(?:Local Bitcoiners\s*•\s*)?(\d{3})\.\s", info.get("episode_title") or "")
+            num = m.group(1) if m else ""
+    if not num.isdigit() or int(num) <= 0:
+        return None
+    return f"{LB_EPISODE_PAGE}{int(num):03d}"
+
 def format_note_from_info(info):
     """Build the boost-publisher kind-1 note text from a BoostInfo dict.
     Matches the prior format_note layout exactly so production note format is
@@ -2577,8 +2607,9 @@ def format_note_from_info(info):
             line += " - Guest(s): " + " & ".join(f"nostr:{n}" for n in info["guests"])
         lines.append(line)
 
-    if info["episode_url"]:
-        lines.append(f"🔗 {info['episode_url']}")
+    link = episode_page_url(info) or info["episode_url"]
+    if link:
+        lines.append(f"🔗 {link}")
 
     lines.append("")
     lines.append("#LocalBitcoiners")
