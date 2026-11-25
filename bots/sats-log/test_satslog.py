@@ -180,9 +180,72 @@ def test_website_override_mirror():
                   block is not None and src_addr in block.group(1) and dst_addr in block.group(1))
 
 
+def test_hub_guard():
+    """An incomplete Alby Hub walk aborts the run before anything is written.
+    Node-stream rows are rebuilt from the walk every run, so a 401 used to
+    write them as 0 and push that to the site (2026-06-02, 2026-11-22/23)."""
+    print("hub guard")
+    saved = (sl.fetch_page, sl.lnbits_source.build_comment_map, sl.persist_cache)
+    sl.lnbits_source.build_comment_map = lambda config: {}
+    sl.persist_cache = lambda cache: None
+    state = {"last_processed": "2026-11-01T00:00:00Z"}
+    page = [_tx("aa" * 32, settled="2026-11-02T00:00:00Z")]
+    try:
+        def unauthorized(config, limit, offset):
+            raise RuntimeError("401 Client Error: Unauthorized")
+        sl.fetch_page = unauthorized
+        *_, stats = sl.run_sats({}, dict(state), set())
+        check("a failed first page sets hub_error", bool(stats["hub_error"]))
+
+        def fail_second(config, limit, offset):
+            if offset:
+                raise RuntimeError("timed out")
+            return page, 1000
+        sl.fetch_page = fail_second
+        *_, stats = sl.run_sats({}, dict(state), set())
+        check("a failed later page sets hub_error", bool(stats["hub_error"]))
+
+        sl.fetch_page = lambda config, limit, offset: ([], 1000)
+        *_, stats = sl.run_sats({}, dict(state), set())
+        check("an empty page short of totalCount sets hub_error", bool(stats["hub_error"]))
+
+        sl.fetch_page = lambda config, limit, offset: (page, 1)
+        *_, stats = sl.run_sats({}, dict(state), set())
+        check("a complete walk leaves hub_error None", stats["hub_error"] is None)
+
+        sl.fetch_page = lambda config, limit, offset: ([], 0)
+        *_, stats = sl.run_sats({}, dict(state), set())
+        check("an empty hub (totalCount 0) is complete", stats["hub_error"] is None)
+
+        # main() must exit non-zero before the first write.
+        writes = []
+        saved_main = {n: getattr(sl, n) for n in (
+            "load_config", "load_state", "load_existing_rows", "save_state",
+            "write_csv_full", "write_sats_json", "push_data_to_vps", "git_autopush")}
+        sl.load_config = lambda path: {}
+        sl.load_state = lambda: dict(state)
+        sl.load_existing_rows = lambda: []
+        for n in ("save_state", "write_csv_full", "write_sats_json",
+                  "push_data_to_vps", "git_autopush"):
+            setattr(sl, n, lambda *a, _n=n, **k: writes.append(_n))
+        sl.fetch_page = unauthorized
+        code = None
+        try:
+            sl.main()
+        except SystemExit as e:
+            code = e.code
+        finally:
+            for n, f in saved_main.items():
+                setattr(sl, n, f)
+        check("main() exits 1 on an incomplete walk", code == 1)
+        check("main() writes and pushes nothing on an incomplete walk", writes == [])
+    finally:
+        sl.fetch_page, sl.lnbits_source.build_comment_map, sl.persist_cache = saved
+
+
 def main():
     for t in (test_stream_gate, test_write_unrouted, test_channel_block_bucket_map,
-              test_website_override_mirror):
+              test_website_override_mirror, test_hub_guard):
         t()
         print()
     if FAILURES:
