@@ -87,7 +87,7 @@ from boost_formatter import (
     classify_lb_tx, make_cache, persist_cache,
     build_rss_item_index, _extract_episode_number,
     FEATURABLE_KINDS, _NADDR_RE, _OB_EPISODE_URL_RE, decode_naddr,
-    is_boost_shaped, record_unrouted, UNROUTED_COLUMNS,
+    is_boost_shaped, record_unrouted, UNROUTED_COLUMNS, load_episode_id_map,
 )
 from feeds import LB, identify_feed, is_ingest_tx
 from nostr_utils import (
@@ -1182,6 +1182,38 @@ def _is_keysend_stream(tx):
 def _is_castamatic_stream(tx):
     desc = tx.get("description", "") or ""
     return desc.startswith("rss::payment::stream") and "castamatic.com" in desc
+
+
+# Stand-in episode ids a boost row gets when its episode's Fountain id was not
+# known yet at classify time (the website classifier's synthetic key; keysend_
+# is the pre-2026-07 shape). A blank id on an episode-level row is the same
+# case for Castamatic / keysend boosts.
+STANDIN_EPISODE_ID_PREFIXES = ("lb_website_", "keysend_")
+
+
+def reconcile_episode_ids(rows, id_map):
+    """Swap stand-in episode_ids for the real Fountain id once `id_map`
+    (bots/shared/lb_episode_ids.json, zero-padded number -> Fountain id) knows
+    the episode. Since 2026-11-25 the feed carries no Fountain ids, so a new
+    episode's id is learned off its first Fountain boost; website boosts that
+    came before it were keyed lb_website_NNN, and the weekly episodesats
+    leaderboard (keyed by episode_id) listed the episode twice while
+    run_supporters skipped its Fountain streams. Boost rows only, episode-level
+    only; a row whose id is already real is never touched. Mutates `rows` in
+    place and returns the number of rows changed. Idempotent."""
+    changed = 0
+    for r in rows:
+        if r.get("kind") != "boost" or r.get("show_level") == "true":
+            continue
+        eid = r.get("episode_id") or ""
+        if eid and not eid.startswith(STANDIN_EPISODE_ID_PREFIXES):
+            continue
+        num = (r.get("episode_num") or "").strip()
+        real = id_map.get(num) if num.isdigit() and len(num) == 3 else None
+        if real and real != eid:
+            r["episode_id"] = real
+            changed += 1
+    return changed
 
 
 def run_sats(config, state, existing_boost_hashes):
@@ -2432,6 +2464,10 @@ def main():
     print(f"  Non-LB txs (unclassified):       {sats_stats['skipped_unclassified']}")
 
     all_boost_rows = existing_boost_rows + new_boost_rows
+    # After run_sats, so an id learned off this run's Fountain boost applies now.
+    n_reconciled = reconcile_episode_ids(all_boost_rows, load_episode_id_map())
+    if n_reconciled:
+        print(f"  Stand-in episode ids reconciled:  {n_reconciled}")
 
     # episode_num → (episode_id, episode_title), used to resolve keysend stream
     # episode titles to a Fountain episode id.
