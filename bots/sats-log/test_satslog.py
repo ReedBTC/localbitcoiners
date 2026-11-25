@@ -243,9 +243,34 @@ def test_hub_guard():
         sl.fetch_page, sl.lnbits_source.build_comment_map, sl.persist_cache = saved
 
 
+def test_reconcile_episode_ids():
+    """Stand-in episode ids become the real Fountain id once the map knows the
+    episode, and nothing else moves."""
+    print("episode id reconcile")
+    idmap = {"038": "HNqXnzeY6eLR0cIFPkuz", "001": "PyYiZvwjQw13umitWd3D"}
+    def row(eid, num, kind="boost", show="false"):
+        return {"episode_id": eid, "episode_num": num, "kind": kind, "show_level": show}
+    rows = [row("lb_website_038", "038"), row("keysend_038", "038"), row("", "038"),
+            row("lb_website_039", "039"), row("SomeOtherRealId", "038"),
+            row("lb_website_038", "038", kind="stream"), row("", "038", show="true"),
+            row("", ""), row("lb_donation_x", "")]
+    n = sl.reconcile_episode_ids(rows, idmap)
+    check("three stand-ins swapped", n == 3)
+    check("lb_website_038 → real id", rows[0]["episode_id"] == "HNqXnzeY6eLR0cIFPkuz")
+    check("keysend_038 → real id", rows[1]["episode_id"] == "HNqXnzeY6eLR0cIFPkuz")
+    check("blank id with a number → real id", rows[2]["episode_id"] == "HNqXnzeY6eLR0cIFPkuz")
+    check("an episode the map lacks stays a stand-in", rows[3]["episode_id"] == "lb_website_039")
+    check("a real id is never replaced", rows[4]["episode_id"] == "SomeOtherRealId")
+    check("stream rows untouched", rows[5]["episode_id"] == "lb_website_038")
+    check("show-level rows untouched", rows[6]["episode_id"] == "")
+    check("no number, no change", rows[7]["episode_id"] == "" and rows[8]["episode_id"] == "lb_donation_x")
+    check("idempotent", sl.reconcile_episode_ids(rows, idmap) == 0)
+
+
 def main():
     for t in (test_stream_gate, test_write_unrouted, test_channel_block_bucket_map,
-              test_website_override_mirror, test_hub_guard):
+              test_website_override_mirror, test_hub_guard,
+              test_reconcile_episode_ids):
         t()
         print()
     if FAILURES:
