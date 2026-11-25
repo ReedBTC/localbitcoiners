@@ -406,6 +406,10 @@ def test_podhome_move():
                               lb.identity()) == bf.FEED_MATCH)
         check(f"feed url {u} → identify_feed localbitcoiners",
               bf.identify_feed({"feed_url": u}) == "localbitcoiners")
+    for fid in ("7683299", "8129640"):
+        check(f"PI feed id {fid} → LB",
+              bf.feed_verdict({"feed_id": fid, "title": "Local Bitcoiners"},
+                              lb.identity()) == bf.FEED_MATCH)
     check("primary feed_url is Podhome",
           lb.feed_url == "https://serve.podhome.fm/rss/56fbb1aa-da79-5e4b-bebc-3b934ab8914c")
     fid = bf._item_fountain_id
