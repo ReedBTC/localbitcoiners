@@ -378,6 +378,29 @@
       box-shadow: 0 4px 20px rgba(30,58,95,0.1);
     }
 
+    /* The episode's cover beside its number, title and date. */
+    .episode-head {
+      display: flex;
+      align-items: center;
+      gap: 1.1rem;
+      margin-bottom: 0.35rem;
+    }
+    .episode-head-text { min-width: 0; flex: 1 1 auto; }
+    .episode-art {
+      flex: 0 0 auto;
+      width: 104px;
+      aspect-ratio: 1;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--navy);
+    }
+    .episode-art img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .episode-card.featured .episode-art { width: 148px; }
+    @media (max-width: 600px) {
+      .episode-head { gap: 0.8rem; padding-right: 2.2rem; }
+      .episode-art, .episode-card.featured .episode-art { width: 76px; }
+    }
     .episode-header {
       display: flex;
       align-items: baseline;
@@ -1386,6 +1409,34 @@
     dateP.textContent = fmtDate(pubDate);
     card.appendChild(dateP);
 
+    // The episode's own cover (Podhome, since 2026-11-26), beside the
+    // number, title and date. Only the item's itunes:image counts; an
+    // episode without one keeps the plain card rather than the show cover.
+    const art = firstChildByLocalName(item, 'image')?.getAttribute('href') || '';
+    const showCover = [...(channelEl?.children || [])].find((c) => c.localName === 'image' && c.getAttribute('href'))?.getAttribute('href') || '';
+    if (/^https:\/\//.test(art) && art !== showCover) {
+      const head = document.createElement('div');
+      head.className = 'episode-head';
+      const artLink = document.createElement('a');
+      artLink.className = 'episode-art';
+      artLink.href = `/ep${pad(epNum)}`;
+      artLink.tabIndex = -1;
+      artLink.setAttribute('aria-hidden', 'true');
+      const img = document.createElement('img');
+      img.src = art;
+      img.alt = '';
+      img.loading = 'lazy';
+      img.width = 300;
+      img.height = 300;
+      img.onerror = () => artLink.remove();
+      artLink.appendChild(img);
+      const text = document.createElement('div');
+      text.className = 'episode-head-text';
+      text.append(header, dateP);
+      head.append(artLink, text);
+      card.appendChild(head);
+    }
+
     if (shortDesc) {
       const descP = document.createElement('p');
       // Clamp the description to 2 lines (CSS) on every card and offer a
@@ -1679,17 +1730,22 @@
 
   /* ── The Latest Episodes rail (home-rails.js) reads the same feed ──
      One plain record per item: number, title, picture (the item's
-     itunes:image, else the channel's cover) and the episode page. Set on
+     itunes:image, else the channel's cover), whether the picture is the
+     episode's own, and the episode page. Set on
      window and announced, so the rail paints from the cached XML before
      the network answers and again if the fresh feed differs. */
   function publishEpisodesForRail(items) {
-    const chanImg = firstChildByLocalName(channelEl, 'image')?.getAttribute('href') || '';
+    const chanImg = [...(channelEl?.children || [])].find((c) => c.localName === 'image' && c.getAttribute('href'))?.getAttribute('href') || '';
     const list = items.map((item, index) => {
       const itunesEp = item.querySelector('episode')?.textContent?.trim();
       const num = itunesEp ? parseInt(itunesEp, 10) : (items.length - index);
-      const img = firstChildByLocalName(item, 'image')?.getAttribute('href') || chanImg;
+      const own = firstChildByLocalName(item, 'image')?.getAttribute('href') || '';
+      const img = own || chanImg;
       return {
         num,
+        // The episode's own cover (since 2026-11-26) already prints its
+        // number and place, so the rail paints no caption over it.
+        ownArt: /^https:\/\//.test(own) && own !== chanImg,
         title: item.querySelector('title')?.textContent?.trim() || '',
         image: /^https:\/\//.test(img) ? img : '',
         href: '/ep' + pad(num),

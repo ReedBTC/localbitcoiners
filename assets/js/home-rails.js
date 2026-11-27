@@ -129,7 +129,9 @@ export function openCardModal(card, { label = '', wide = false } = {}) {
 // across the top of the artwork, { eyebrow, text }: every episode shares
 // the show's cover, so the tile prints the episode's city or meetup on it,
 // the same art with one line of difference (Reed and Rev, 2026-11-08: ten
-// identical covers read as one card repeated; no per-episode art).
+// identical covers read as one card repeated). Since 2026-11-26 each
+// episode has its own cover, which prints that itself; the caption stays
+// for an episode still on the show cover.
 function tileEl({ title, sub = '', img = null, glyph = '•', featured = false, badge = '', cap = null, href = '', open }) {
   const media = h('span', { class: 'rt-media' + (isHttpUrl(img) ? '' : ' rt-media--none') })
   if (isHttpUrl(img)) {
@@ -299,7 +301,9 @@ const RAILS = {
           img: ep.image || cover,
           glyph: '🎙️',
           badge: rankChip(e),
-          cap: { eyebrow: `Ep. ${e.num}`, text: parts.place },
+          // An episode's own cover prints its number and place; the caption
+          // is for the shared show cover only (Reed, 2026-11-27).
+          cap: ep.ownArt ? null : { eyebrow: `Ep. ${e.num}`, text: parts.place },
           href: ep.href || `/ep${pad3(e.num)}`,
         }
       })

@@ -276,7 +276,11 @@
 // lb-v105 (2026-11-25): the site-signed show note's 🔗 line is this site's
 // /ep page, as the bot's is, so the feed's <link> can point here instead of
 // at Fountain. The widget bundle is cached.
-const VERSION = 'lb-v105';
+// lb-v106 (2026-11-27): each episode's own cover (Podhome) shows on the
+// episode cards, the /ep### page and its link previews, and the Top
+// Episodes tiles, which drop the place caption over it. The inline scripts,
+// home-rails.js and episode.css are cached.
+const VERSION = 'lb-v106';
 const STATIC_CACHE = `${VERSION}-static`;
 const HTML_CACHE = `${VERSION}-html`;
 const WIDGET_CACHE = `${VERSION}-widgets`;
