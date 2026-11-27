@@ -272,6 +272,10 @@
   letter-spacing: 0.02em;
 }
 a.rt:hover .rt-title { text-decoration: underline; text-underline-offset: 3px; }
+/* An episode's own cover (since 2026-11-26) prints its number and place
+   along the bottom, so the rank pill moves to the top corner there; the
+   caption below is only painted over the shared show cover. */
+.rt-media:not(:has(.rt-cap)) .rt-num { top: 6px; bottom: auto; }
 
 /* The caption across the top of the artwork: every episode shares the
    show's cover, so the tile prints the episode's city or meetup on it

@@ -81,6 +81,13 @@ export async function onRequest(context) {
   const channelValueXml = matchChannelValue(xml);
 
   const ep = extractEpisode(itemXml, epNum, channelValueXml);
+  // The episode's own cover (Podhome, since 2026-11-26): the item's
+  // itunes:image when it is not the show's cover. Null keeps the page
+  // and its link previews on the show banner, as before.
+  const chanHead = xml.slice(0, Math.max(0, xml.indexOf("<item")));
+  const showCover = matchAttr(chanHead, "itunes:image", "href");
+  const art = safeHttpUrl(matchAttr(itemXml, "itunes:image", "href"));
+  ep.artUrl = art && art !== showCover ? art : null;
   [ep.chapters, ep.hasLocalTranscript] = await Promise.all([
     fetchChapters(ep.chaptersUrl),
     hasLocalTranscript(context, epNum),
@@ -641,12 +648,12 @@ function renderEpisodePage(ep) {
   <meta property="og:title" content="${htmlEscape(ogTitle)}" />
   <meta property="og:description" content="${htmlEscape(ogDesc)}" />
   <meta property="og:site_name" content="Local Bitcoiners" />
-  <meta property="og:image" content="${OG_IMAGE}" />
+  <meta property="og:image" content="${htmlEscape(ep.artUrl || OG_IMAGE)}" />
   ${ep.enclosureUrl ? `<meta property="og:audio" content="${htmlEscape(ep.enclosureUrl)}" />` : ""}
-  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:card" content="${ep.artUrl ? "summary" : "summary_large_image"}" />
   <meta name="twitter:title" content="${htmlEscape(ogTitle)}" />
   <meta name="twitter:description" content="${htmlEscape(ogDesc)}" />
-  <meta name="twitter:image" content="${OG_IMAGE}" />
+  <meta name="twitter:image" content="${htmlEscape(ep.artUrl || OG_IMAGE)}" />
 
   <script type="application/ld+json">
   ${jsonForScript({
@@ -655,7 +662,7 @@ function renderEpisodePage(ep) {
     "name": ep.title,
     "episodeNumber": ep.number,
     "url": pageUrl,
-    "image": OG_IMAGE,
+    "image": ep.artUrl || OG_IMAGE,
     "description": ogDesc,
     ...(isoPubDate ? { "datePublished": isoPubDate } : {}),
     ...(ep.enclosureUrl ? { "associatedMedia": { "@type": "MediaObject", "contentUrl": ep.enclosureUrl } } : {}),
@@ -771,9 +778,14 @@ function renderEpisodePage(ep) {
 
 <main class="ep-main">
   <article class="ep-card ep-card-player">
+    ${ep.artUrl ? `<div class="ep-head">
+      <img class="ep-art" src="${htmlEscape(ep.artUrl)}" alt="" width="300" height="300" />
+      <div class="ep-head-text">` : ""}
     <p class="ep-num">Ep. ${ep.number}</p>
     <h1 class="ep-title">${htmlEscape(ep.title)}</h1>
     <p class="ep-date">${htmlEscape(dateStr)}</p>
+    ${ep.artUrl ? `</div>
+    </div>` : ""}
 
     ${audioBlock}
 

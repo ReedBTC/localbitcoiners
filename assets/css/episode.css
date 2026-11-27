@@ -115,6 +115,19 @@ img { display: block; max-width: 100%; }
   color: var(--muted);
   font-style: italic;
 }
+/* The episode's own cover beside its number, title and date. */
+.ep-head { display: flex; align-items: center; gap: 1.4rem; }
+.ep-head-text { min-width: 0; flex: 1 1 auto; }
+.ep-art {
+  flex: 0 0 auto;
+  display: block;
+  width: 168px;
+  height: 168px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--navy);
+}
 .ep-player {
   margin-top: 1.5rem;
   width: 100%;
@@ -709,6 +722,9 @@ img { display: block; max-width: 100%; }
   /* Mobile: MP3 + Transcript collapse into a ⋮ menu at the player card's
      top-right, leaving Boost + Subscribe splitting the action row 50/50. */
   .ep-card-player { position: relative; }
+  .ep-head { gap: 0.9rem; padding-right: 2.4rem; }
+  .ep-art { width: 92px; height: 92px; border-radius: 8px; }
+  .ep-head .ep-title { font-size: 1.25rem; margin-top: 0.5rem; }
   .ep-overflow { display: block; position: absolute; top: 1.3rem; right: 1.1rem; }
   .ep-overflow-btn {
     display: inline-flex; align-items: center; justify-content: center;
